@@ -9,14 +9,15 @@ use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Services\GrowthBoosterBonusService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * GBB "Input & Output Per Month" calculation report — the monthly sibling of
@@ -76,7 +77,7 @@ final class AdminGbbInputOutputController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(GrowthBoosterBonusFeature::class), 404);
 
@@ -87,7 +88,23 @@ final class AdminGbbInputOutputController extends Controller
             $pools->map(fn (GbbMonthlyPool $p) => $p->month_start)->all(),
         ));
 
-        $csv = "Month,Month Total BV,GBB Pool (Rs),Total AGP,Point Value (Rs),Distributor ADN,Distributor Name,AGP,Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status,Computed At\n";
+        $columns = [
+            ['key' => 'month',          'label' => 'Month'],
+            ['key' => 'month_total_bv', 'label' => 'Month Total BV'],
+            ['key' => 'gbb_pool',       'label' => 'GBB Pool (Rs)'],
+            ['key' => 'total_agp',      'label' => 'Total AGP'],
+            ['key' => 'point_value',    'label' => 'Point Value (Rs)'],
+            ['key' => 'adn',            'label' => 'Distributor ADN'],
+            ['key' => 'name',           'label' => 'Distributor Name'],
+            ['key' => 'agp',            'label' => 'AGP'],
+            ['key' => 'income',         'label' => 'Income (Rs)'],
+            ['key' => 'deduction',      'label' => 'Repurchase Deduction (Rs)'],
+            ['key' => 'credited',       'label' => 'Credited to Wallet (Rs)'],
+            ['key' => 'status',         'label' => 'Status'],
+            ['key' => 'computed_at',    'label' => 'Computed At'],
+        ];
+
+        $out = [];
 
         foreach ($pools as $pool) {
             $monthLabel = Carbon::parse($pool->month_start)->format('Y-m');
@@ -101,44 +118,41 @@ final class AdminGbbInputOutputController extends Controller
                 $totalDeduction += (int) $row->deduction_paise;
                 $totalCredited += (int) $row->credited_paise;
 
-                $csv .= implode(',', [
-                    $monthLabel,
-                    number_format($pool->company_bv_paise / 100, 2, '.', ''),
-                    number_format($pool->pool_paise / 100, 2, '.', ''),
-                    $pool->total_agp,
-                    number_format($pool->point_value_paise / 100, 2, '.', ''),
-                    $this->csvStr((string) ($row->adn ?? '')),
-                    $this->csvStr((string) ($row->full_name ?? '')),
-                    (int) $row->agp_earned,
-                    number_format(((int) $row->income_paise) / 100, 2, '.', ''),
-                    number_format(((int) $row->deduction_paise) / 100, 2, '.', ''),
-                    number_format(((int) $row->credited_paise) / 100, 2, '.', ''),
-                    $this->csvStr((string) $row->status),
-                    $computedAt,
-                ])."\n";
+                $out[] = [
+                    'month' => $monthLabel,
+                    'month_total_bv' => $pool->company_bv_paise / 100,
+                    'gbb_pool' => $pool->pool_paise / 100,
+                    'total_agp' => $pool->total_agp,
+                    'point_value' => $pool->point_value_paise / 100,
+                    'adn' => (string) ($row->adn ?? ''),
+                    'name' => (string) ($row->full_name ?? ''),
+                    'agp' => (int) $row->agp_earned,
+                    'income' => ((int) $row->income_paise) / 100,
+                    'deduction' => ((int) $row->deduction_paise) / 100,
+                    'credited' => ((int) $row->credited_paise) / 100,
+                    'status' => (string) $row->status,
+                    'computed_at' => $computedAt,
+                ];
             }
 
-            $csv .= implode(',', [
-                $monthLabel,
-                number_format($pool->company_bv_paise / 100, 2, '.', ''),
-                number_format($pool->pool_paise / 100, 2, '.', ''),
-                $pool->total_agp,
-                number_format($pool->point_value_paise / 100, 2, '.', ''),
-                '',
-                $this->csvStr('MONTH TOTAL'),
-                $pool->total_agp,
-                number_format($totalIncome / 100, 2, '.', ''),
-                number_format($totalDeduction / 100, 2, '.', ''),
-                number_format($totalCredited / 100, 2, '.', ''),
-                $this->csvStr('leftover '.number_format($pool->leftover_paise / 100, 2, '.', '')),
-                $computedAt,
-            ])."\n";
+            $out[] = [
+                'month' => $monthLabel,
+                'month_total_bv' => $pool->company_bv_paise / 100,
+                'gbb_pool' => $pool->pool_paise / 100,
+                'total_agp' => $pool->total_agp,
+                'point_value' => $pool->point_value_paise / 100,
+                'adn' => '',
+                'name' => 'MONTH TOTAL',
+                'agp' => $pool->total_agp,
+                'income' => $totalIncome / 100,
+                'deduction' => $totalDeduction / 100,
+                'credited' => $totalCredited / 100,
+                'status' => 'leftover '.number_format($pool->leftover_paise / 100, 2, '.', ''),
+                'computed_at' => $computedAt,
+            ];
         }
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="gbb-input-output-'.now()->toDateString().'.csv"',
-        ]);
+        return ReportExport::respond($request, 'gbb-input-output-'.now()->toDateString(), $columns, $out);
     }
 
     /**
@@ -241,15 +255,5 @@ final class AdminGbbInputOutputController extends Controller
         }
 
         return $late;
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 }

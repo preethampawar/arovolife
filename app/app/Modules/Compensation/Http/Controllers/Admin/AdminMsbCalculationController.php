@@ -7,14 +7,15 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * MSB daily (24-hr) calculation report (KP 2026-07-25 points engine).
@@ -69,7 +70,7 @@ final class AdminMsbCalculationController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(MentorshipBonusFeature::class), 404);
 
@@ -81,44 +82,55 @@ final class AdminMsbCalculationController extends Controller
         $personalBvMap = $this->batchPersonalBvPaise($sponsorIds);
         $totals = $this->totals($q, $from, $to, $status, $slab);
 
-        $csv = "SNo,Sponsor ADN,Sponsor Name,Title,Date,Sponsee ADN,Sponsee Name,MSB Points,Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
+        $columns = [
+            ['key' => 'sno',          'label' => 'SNo'],
+            ['key' => 'sponsor_adn',  'label' => 'Sponsor ADN'],
+            ['key' => 'sponsor_name', 'label' => 'Sponsor Name'],
+            ['key' => 'title',        'label' => 'Title'],
+            ['key' => 'date',         'label' => 'Date'],
+            ['key' => 'sponsee_adn',  'label' => 'Sponsee ADN'],
+            ['key' => 'sponsee_name', 'label' => 'Sponsee Name'],
+            ['key' => 'msb_points',   'label' => 'MSB Points'],
+            ['key' => 'value',        'label' => 'Value (Rs)'],
+            ['key' => 'income',       'label' => 'Income (Rs)'],
+            ['key' => 'deduction',    'label' => 'Repurchase Deduction (Rs)'],
+            ['key' => 'credited',     'label' => 'Credited to Wallet (Rs)'],
+            ['key' => 'status',       'label' => 'Status'],
+        ];
 
-        foreach ($rows as $i => $row) {
+        $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap): array {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->sponsor_id] ?? 0)->title ?? '';
-            $csv .= implode(',', [
-                $i + 1,
-                $this->csvStr($row->sponsor_adn),
-                $this->csvStr($row->sponsor_name ?? ''),
-                $this->csvStr($title),
-                Carbon::parse($row->cutoff_date)->toDateString(),
-                $this->csvStr($row->sponsee_adn),
-                $this->csvStr($row->sponsee_name ?? ''),
-                $row->msb_points !== null ? (int) $row->msb_points : '',
-                $row->msb_point_value_paise !== null ? number_format($row->msb_point_value_paise / 100, 2, '.', '') : '',
-                number_format($row->mb_gross_paise / 100, 2, '.', ''),
-                number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
-                number_format($row->mb_net_paise / 100, 2, '.', ''),
-                $this->csvStr($row->status),
-            ])."\n";
-        }
+
+            return [
+                'sno' => $i + 1,
+                'sponsor_adn' => (string) $row->sponsor_adn,
+                'sponsor_name' => (string) ($row->sponsor_name ?? ''),
+                'title' => $title,
+                'date' => Carbon::parse($row->cutoff_date)->toDateString(),
+                'sponsee_adn' => (string) $row->sponsee_adn,
+                'sponsee_name' => (string) ($row->sponsee_name ?? ''),
+                'msb_points' => $row->msb_points !== null ? (int) $row->msb_points : '',
+                'value' => $row->msb_point_value_paise !== null ? $row->msb_point_value_paise / 100 : '',
+                'income' => $row->mb_gross_paise / 100,
+                'deduction' => $row->repurchase_deduction_paise / 100,
+                'credited' => $row->mb_net_paise / 100,
+                'status' => (string) $row->status,
+            ];
+        })->all();
 
         // Grand total row across the full filtered set (MSB points, Income,
         // repurchase deduction, credited to wallet).
-        $csv .= implode(',', [
-            $this->csvStr('TOTAL'),
-            '', '', '', '', '', '',
-            $totals['points'],
-            '',
-            number_format($totals['income_paise'] / 100, 2, '.', ''),
-            number_format($totals['deduction_paise'] / 100, 2, '.', ''),
-            number_format($totals['credited_paise'] / 100, 2, '.', ''),
-            '',
-        ])."\n";
+        $out[] = [
+            'sno' => 'TOTAL', 'sponsor_adn' => '', 'sponsor_name' => '', 'title' => '', 'date' => '',
+            'sponsee_adn' => '', 'sponsee_name' => '',
+            'msb_points' => $totals['points'], 'value' => '',
+            'income' => $totals['income_paise'] / 100,
+            'deduction' => $totals['deduction_paise'] / 100,
+            'credited' => $totals['credited_paise'] / 100,
+            'status' => '',
+        ];
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="msb-calculation-'.now()->toDateString().'.csv"',
-        ]);
+        return ReportExport::respond($request, 'msb-calculation-'.now()->toDateString(), $columns, $out);
     }
 
     /**
@@ -213,16 +225,6 @@ final class AdminMsbCalculationController extends Controller
             ->when($to, fn ($b) => $b->where('mbr.cutoff_date', '<=', $to->toDateString()))
             ->when($status, fn ($b) => $b->where('mbr.status', $status))
             ->when($slab, fn ($b) => $b->where('mbr.slab', $slab));
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 
     /**

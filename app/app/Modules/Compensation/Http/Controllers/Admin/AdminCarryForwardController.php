@@ -7,14 +7,14 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 use App\Modules\Commerce\Support\Bv;
 use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
-use App\Modules\Shared\Support\Csv;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AdminCarryForwardController extends Controller
 {
@@ -32,7 +32,7 @@ final class AdminCarryForwardController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
 
@@ -41,8 +41,15 @@ final class AdminCarryForwardController extends Controller
         /** @var Collection<int, GsbCarryforward> $rows */
         $rows = $this->filtered($request)->get();
 
-        $csv = "ADN,Power-side CF BV,Power Side,Slab-1 Weaker CF BV,Weaker Side\n";
-        foreach ($rows as $row) {
+        $columns = [
+            ['key' => 'adn', 'label' => 'ADN'],
+            ['key' => 'power_cf_bv', 'label' => 'Power-side CF BV'],
+            ['key' => 'power_side', 'label' => 'Power Side'],
+            ['key' => 'weaker_cf_bv', 'label' => 'Slab-1 Weaker CF BV'],
+            ['key' => 'weaker_side', 'label' => 'Weaker Side'],
+        ];
+
+        $out = $rows->map(function (GsbCarryforward $row): array {
             $powerLabel = match ($row->power_side) {
                 'L' => 'Left',
                 'R' => 'Right',
@@ -54,19 +61,16 @@ final class AdminCarryForwardController extends Controller
                 default => '',
             };
 
-            $csv .= implode(',', [
-                Csv::safe($row->distributor->adn ?? ''),
-                Bv::points($row->power_side_bv_paise),
-                Csv::safe($powerLabel),
-                Bv::points($row->slab1_weaker_bv_paise),
-                Csv::safe($weakerLabel),
-            ])."\n";
-        }
+            return [
+                'adn' => (string) ($row->distributor->adn ?? ''),
+                'power_cf_bv' => Bv::points($row->power_side_bv_paise),
+                'power_side' => $powerLabel,
+                'weaker_cf_bv' => Bv::points($row->slab1_weaker_bv_paise),
+                'weaker_side' => $weakerLabel,
+            ];
+        })->values()->all();
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="gsb-carry-forwards-'.now()->toDateString().'.csv"',
-        ]);
+        return ReportExport::respond($request, 'gsb-carry-forwards-'.now()->toDateString(), $columns, $out);
     }
 
     private function validateFilters(Request $request): void

@@ -19,8 +19,12 @@
         @endif
         <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Filter</button>
     </form>
-    <a href="{{ request()->fullUrlWithQuery(['export' => 'csv']) }}"
-       class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50">Export CSV</a>
+    <div class="flex items-center gap-2">
+        <a href="{{ request()->fullUrlWithQuery(['format' => 'xlsx']) }}"
+           class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Export Excel</a>
+        <a href="{{ request()->fullUrlWithQuery(['format' => 'csv']) }}"
+           class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50">CSV</a>
+    </div>
 </div>
 
 <div class="bg-white rounded-xl border border-gray-200 overflow-x-auto">

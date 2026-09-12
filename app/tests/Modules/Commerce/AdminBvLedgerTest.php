@@ -181,22 +181,47 @@ it('summary CSV export returns text/csv, includes the row, and is audit-logged',
     $adn = DB::table('distributors')->where('id', $id)->value('adn');
 
     $res = $this->actingAs(ablAdmin())
-        ->get(route('admin.commerce.bv-ledger.export', ['tab' => 'summary']))
+        ->get(route('admin.commerce.bv-ledger.export', ['tab' => 'summary', 'format' => 'csv']))
         ->assertOk();
 
     expect($res->headers->get('content-type'))->toContain('text/csv');
-    expect($res->getContent())->toContain((string) $adn);
+    expect($res->streamedContent())->toContain((string) $adn);
     expect(AuditLog::where('action', 'bv.report.exported')->count())->toBe(1);
 });
 
-it('individual ledger CSV export is audit-logged', function (): void {
+it('individual ledger CSV export is audit-logged and preserves running-balance order', function (): void {
+    // ablSeedDistributor: +2,130 then +1,500 then -1,000 BV, in that order.
     $id = ablSeedDistributor('Export Two');
 
-    $this->actingAs(ablAdmin())
-        ->get(route('admin.commerce.bv-ledger.show.export', $id))
+    $res = $this->actingAs(ablAdmin())
+        ->get(route('admin.commerce.bv-ledger.show.export', ['distributor' => $id, 'format' => 'csv']))
         ->assertOk();
 
+    // S6b: the generator is only invoked once the stream is drained, and the
+    // running balance is only correct if cursor() preserved the query's own
+    // effective_at/id order rather than lazy()'s primary-key reordering.
+    $content = $res->streamedContent();
+    expect($content)->toContain('2130')
+        ->and($content)->toContain('3630')
+        ->and($content)->toContain('2630');
+
     expect(AuditLog::where('action', 'bv.report.exported')->count())->toBe(1);
+});
+
+it('entries tab CSV export carries the ADN, distributor name and order number via the joined stream', function (): void {
+    $id = ablDistributor('Joined Person');
+    $adn = DB::table('distributors')->where('id', $id)->value('adn');
+    $order = ablOrder($id);
+    ablEntry($id, $order->id, 213000, BvLedgerEntry::TYPE_ACCRUAL);
+
+    $res = $this->actingAs(ablAdmin())
+        ->get(route('admin.commerce.bv-ledger.export', ['tab' => 'entries', 'format' => 'csv']))
+        ->assertOk();
+
+    $content = $res->streamedContent();
+    expect($content)->toContain((string) $adn)
+        ->and($content)->toContain('Joined Person')
+        ->and($content)->toContain($order->order_no);
 });
 
 it('forbids a non-admin from the BV ledger report', function (): void {

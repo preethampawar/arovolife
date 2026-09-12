@@ -7,14 +7,15 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AdminAdcCalculationController extends Controller
 {
@@ -64,7 +65,7 @@ final class AdminAdcCalculationController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class), 404);
 
@@ -85,39 +86,54 @@ final class AdminAdcCalculationController extends Controller
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
 
-        $csv = "SNo,ADN,Arete Center,Name,Title,Rank,Month,Monthly Turnover BV (net),Rate %,Gross ADC (Rs),TDS (Rs),Net ADC (Rs),Status,Location,Pincode,District,State\n";
+        $columns = [
+            ['key' => 'sno',         'label' => 'SNo'],
+            ['key' => 'adn',        'label' => 'ADN'],
+            ['key' => 'center',     'label' => 'Arete Center'],
+            ['key' => 'name',       'label' => 'Name'],
+            ['key' => 'title',      'label' => 'Title'],
+            ['key' => 'rank',       'label' => 'Rank'],
+            ['key' => 'month',      'label' => 'Month'],
+            ['key' => 'turnover_bv', 'label' => 'Monthly Turnover BV (net)'],
+            ['key' => 'rate_pct',   'label' => 'Rate %'],
+            ['key' => 'gross',      'label' => 'Gross ADC (Rs)'],
+            ['key' => 'tds',        'label' => 'TDS (Rs)'],
+            ['key' => 'net',        'label' => 'Net ADC (Rs)'],
+            ['key' => 'status',     'label' => 'Status'],
+            ['key' => 'location',   'label' => 'Location'],
+            ['key' => 'pincode',    'label' => 'Pincode'],
+            ['key' => 'district',   'label' => 'District'],
+            ['key' => 'state',      'label' => 'State'],
+        ];
 
-        foreach ($rows as $i => $row) {
+        $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap): array {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
-            $turnoverBv = number_format($row->total_attributed_bv_paise / 100, 2, '.', '');
             $ratePct = $row->total_attributed_bv_paise > 0
-                ? number_format($row->gross_paise / $row->total_attributed_bv_paise * 100, 2, '.', '')
-                : '0.00';
-            $csv .= implode(',', [
-                $i + 1,
-                $this->csvStr($row->adn),
-                $this->csvStr($row->center_name ?? ''),
-                $this->csvStr($row->full_name ?? ''),
-                $this->csvStr($title),
-                $this->csvStr($row->rank_name ?? '—'),
-                Carbon::parse($row->month_start)->format('Y-m'),
-                $turnoverBv,
-                $ratePct,
-                number_format($row->gross_paise / 100, 2, '.', ''),
-                number_format($row->tds_paise / 100, 2, '.', ''),
-                number_format($row->net_paise / 100, 2, '.', ''),
-                $this->csvStr($row->status),
-                $this->csvStr($row->center_location ?? ''),
-                $this->csvStr($row->pincode ?? ''),
-                $this->csvStr($row->district ?? ''),
-                $this->csvStr($row->state ?? ''),
-            ])."\n";
-        }
+                ? $row->gross_paise / $row->total_attributed_bv_paise * 100
+                : 0.0;
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="adc-calculation-'.now()->format('Y-m').'.csv"',
-        ]);
+            return [
+                'sno' => $i + 1,
+                'adn' => (string) $row->adn,
+                'center' => (string) ($row->center_name ?? ''),
+                'name' => (string) ($row->full_name ?? ''),
+                'title' => $title,
+                'rank' => (string) ($row->rank_name ?? '—'),
+                'month' => Carbon::parse($row->month_start)->format('Y-m'),
+                'turnover_bv' => $row->total_attributed_bv_paise / 100,
+                'rate_pct' => $ratePct,
+                'gross' => $row->gross_paise / 100,
+                'tds' => $row->tds_paise / 100,
+                'net' => $row->net_paise / 100,
+                'status' => (string) $row->status,
+                'location' => (string) ($row->center_location ?? ''),
+                'pincode' => (string) ($row->pincode ?? ''),
+                'district' => (string) ($row->district ?? ''),
+                'state' => (string) ($row->state ?? ''),
+            ];
+        })->all();
+
+        return ReportExport::respond($request, 'adc-calculation-'.now()->format('Y-m'), $columns, $out);
     }
 
     /**
@@ -173,16 +189,6 @@ final class AdminAdcCalculationController extends Controller
             ->orderByDesc('abr.month_start')
             ->orderByDesc('abr.total_attributed_bv_paise')
             ->orderByDesc('abr.id');
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 
     /**

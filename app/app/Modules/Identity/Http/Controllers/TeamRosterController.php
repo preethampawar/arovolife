@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Controllers;
 
 use App\Modules\Identity\Services\TeamStatsService;
-use App\Modules\Shared\Support\Csv;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -57,26 +57,31 @@ final class TeamRosterController extends Controller
         $rows = $teamStats->roster($distributor, $scope);
         $label = self::SCOPE_LABELS[$scope] ?? ucfirst($scope);
         $filename = sprintf(
-            'arovolife-%s-%s.csv',
+            'arovolife-%s-%s',
             str_replace(' ', '-', strtolower($label)),
             now()->format('Y-m-d'),
         );
 
-        return response()->streamDownload(function () use ($rows): void {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['S.No.', 'ADN No.', 'Name', 'State', 'Status']);
-            foreach ($rows as $i => $row) {
-                fputcsv($out, [
-                    $i + 1,
-                    Csv::safe($row['adn']),
-                    Csv::safe($row['name']),
-                    Csv::safe($row['state']),
-                    Csv::safe($row['status']),
-                ]);
-            }
-            fclose($out);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        $columns = [
+            ['key' => 'sno', 'label' => 'S.No.'],
+            ['key' => 'adn', 'label' => 'ADN No.'],
+            ['key' => 'name', 'label' => 'Name'],
+            ['key' => 'state', 'label' => 'State'],
+            ['key' => 'status', 'label' => 'Status'],
+        ];
+
+        $out = [];
+
+        foreach ($rows as $i => $row) {
+            $out[] = [
+                'sno' => $i + 1,
+                'adn' => $row['adn'],
+                'name' => $row['name'],
+                'state' => $row['state'],
+                'status' => $row['status'],
+            ];
+        }
+
+        return ReportExport::respond($request, $filename, $columns, $out);
     }
 }

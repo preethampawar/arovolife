@@ -33,6 +33,7 @@ use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -231,23 +232,31 @@ final class IncomeController extends Controller
             ->orderByDesc('cutoff_date')
             ->cursor();
 
-        return response()->streamDownload(function () use ($rows): void {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['Date', 'Left BV matched', 'Right BV matched', 'Slab', 'Gross GSB (₹)', 'Repurchase Deduction (₹)', 'Credited to Wallet (₹)', 'Status']);
-            foreach ($rows as $row) {
-                fputcsv($out, [
-                    $row->cutoff_date->toDateString(),
-                    number_format($row->left_bv_paise / 100, 0, '.', ''),
-                    number_format($row->right_bv_paise / 100, 0, '.', ''),
-                    $row->slab,
-                    number_format($row->gross_gsb_paise / 100, 2, '.', ''),
-                    number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
-                    number_format($row->net_gsb_paise / 100, 2, '.', ''),
-                    $row->status,
-                ]);
-            }
-            fclose($out);
-        }, 'gsb-history.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        $columns = [
+            ['key' => 'date', 'label' => 'Date'],
+            ['key' => 'left_bv', 'label' => 'Left BV matched'],
+            ['key' => 'right_bv', 'label' => 'Right BV matched'],
+            ['key' => 'slab', 'label' => 'Slab'],
+            ['key' => 'gross', 'label' => 'Gross GSB (₹)'],
+            ['key' => 'deduction', 'label' => 'Repurchase Deduction (₹)'],
+            ['key' => 'credited', 'label' => 'Credited to Wallet (₹)'],
+            ['key' => 'status', 'label' => 'Status'],
+        ];
+
+        $out = $rows->map(static fn (GsbCutoffResult $row): array => [
+            'date' => $row->cutoff_date->toDateString(),
+            // BV is a point count, not money: 0 decimal places, exactly as the
+            // pre-XLSX CSV emitted it via number_format(..., 0).
+            'left_bv' => (int) round($row->left_bv_paise / 100),
+            'right_bv' => (int) round($row->right_bv_paise / 100),
+            'slab' => $row->slab,
+            'gross' => $row->gross_gsb_paise / 100,
+            'deduction' => $row->repurchase_deduction_paise / 100,
+            'credited' => $row->net_gsb_paise / 100,
+            'status' => $row->status,
+        ]);
+
+        return ReportExport::respond($request, 'gsb-history', $columns, $out);
     }
 
     public function mentorship(Request $request): View
@@ -510,23 +519,30 @@ final class IncomeController extends Controller
             $ledgerRows->pluck('entry.swept_by_payout_batch_id')->filter()->unique()->all(),
         );
 
-        return response()->streamDownload(function () use ($ledgerRows, $typeLabels, $batchLabels): void {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['Date', 'Credited On', 'Type', 'Bonus Month', 'Amount (₹)', 'Running Balance (₹)', 'Paid In Batch']);
-            foreach ($ledgerRows as $item) {
-                $entry = $item['entry'];
-                $balance = $item['running_balance_paise'];
-                fputcsv($out, [
-                    ($entry->earned_on ?? $entry->bonus_month ?? $entry->created_at)?->toDateString(),
-                    $entry->created_at?->toDateString(),
-                    $typeLabels[$entry->type] ?? ucfirst(str_replace('_', ' ', $entry->type)),
-                    $entry->bonus_month?->format('M Y') ?? '',
-                    number_format($entry->amount_paise / 100, 2, '.', ''),
-                    number_format($balance / 100, 2, '.', ''),
-                    $batchLabels[$entry->swept_by_payout_batch_id] ?? '',
-                ]);
-            }
-            fclose($out);
-        }, 'wallet-ledger.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        $columns = [
+            ['key' => 'date', 'label' => 'Date'],
+            ['key' => 'credited_on', 'label' => 'Credited On'],
+            ['key' => 'type', 'label' => 'Type'],
+            ['key' => 'bonus_month', 'label' => 'Bonus Month'],
+            ['key' => 'amount', 'label' => 'Amount (₹)'],
+            ['key' => 'running_balance', 'label' => 'Running Balance (₹)'],
+            ['key' => 'batch', 'label' => 'Paid In Batch'],
+        ];
+
+        // The label map is applied here, exactly as the page applies it: the
+        // export must never carry the internal enum (e.g. `gsb_credit`) out to
+        // a distributor, so an unmapped type still falls back to a humanised
+        // form rather than the raw value.
+        $out = $ledgerRows->map(static fn (array $item): array => [
+            'date' => ($item['entry']->earned_on ?? $item['entry']->bonus_month ?? $item['entry']->created_at)?->toDateString() ?? '',
+            'credited_on' => $item['entry']->created_at?->toDateString() ?? '',
+            'type' => $typeLabels[$item['entry']->type] ?? ucfirst(str_replace('_', ' ', $item['entry']->type)),
+            'bonus_month' => $item['entry']->bonus_month?->format('M Y') ?? '',
+            'amount' => $item['entry']->amount_paise / 100,
+            'running_balance' => $item['running_balance_paise'] / 100,
+            'batch' => $batchLabels[$item['entry']->swept_by_payout_batch_id] ?? '',
+        ]);
+
+        return ReportExport::respond($request, 'wallet-ledger', $columns, $out);
     }
 }

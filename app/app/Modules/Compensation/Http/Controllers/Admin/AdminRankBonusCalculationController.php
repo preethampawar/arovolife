@@ -9,14 +9,15 @@ use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * RB Monthly Calculation report — two tables per KP's 2026-08-05 mocks:
@@ -103,7 +104,7 @@ final class AdminRankBonusCalculationController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(RankBonusFeature::class), 404);
 
@@ -125,36 +126,53 @@ final class AdminRankBonusCalculationController extends Controller
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
 
         // The Arete Center column only exists while the ADC feature is on —
-        // header and cells drop together so the CSV stays rectangular.
+        // header and cells drop together so the export stays rectangular.
         $adcOn = Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class);
         $areteCenterMap = $adcOn ? $this->batchAreteCenters($distributorIds) : [];
 
-        $csv = 'SNo,ADN,'.($adcOn ? 'Arete Center,' : '')."Name,Title,Month,Rank,RAP,AO-GO Points,Point Value (Rs),Gross RB (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
-
-        foreach ($rows as $i => $row) {
-            $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
-            $csv .= implode(',', array_merge([
-                $i + 1,
-                $this->csvStr($row->adn),
-            ], $adcOn ? [$this->csvStr($areteCenterMap[$row->distributor_id] ?? '')] : [], [
-                $this->csvStr($row->full_name ?? ''),
-                $this->csvStr($title),
-                Carbon::parse($row->month_start)->format('Y-m'),
-                $row->rank_number,
-                $row->rap_points ?? '',
-                $row->aogo_points ?? '',
-                $row->point_value_paise !== null ? number_format($row->point_value_paise / 100, 2, '.', '') : '',
-                number_format($row->gross_paise / 100, 2, '.', ''),
-                number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
-                number_format($row->net_paise / 100, 2, '.', ''),
-                $this->csvStr($row->status),
-            ]))."\n";
-        }
-
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="rank-bonus-'.now()->format('Y-m').'.csv"',
+        $columns = array_merge([
+            ['key' => 'sno', 'label' => 'SNo'],
+            ['key' => 'adn', 'label' => 'ADN'],
+        ], $adcOn ? [
+            ['key' => 'arete_center', 'label' => 'Arete Center'],
+        ] : [], [
+            ['key' => 'name',       'label' => 'Name'],
+            ['key' => 'title',      'label' => 'Title'],
+            ['key' => 'month',      'label' => 'Month'],
+            ['key' => 'rank',       'label' => 'Rank'],
+            ['key' => 'rap',        'label' => 'RAP'],
+            ['key' => 'aogo',       'label' => 'AO-GO Points'],
+            ['key' => 'point_value', 'label' => 'Point Value (Rs)'],
+            ['key' => 'gross',      'label' => 'Gross RB (Rs)'],
+            ['key' => 'deduction',  'label' => 'Repurchase Deduction (Rs)'],
+            ['key' => 'credited',   'label' => 'Credited to Wallet (Rs)'],
+            ['key' => 'status',     'label' => 'Status'],
         ]);
+
+        $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap, $adcOn, $areteCenterMap): array {
+            $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
+
+            return array_merge([
+                'sno' => $i + 1,
+                'adn' => (string) $row->adn,
+            ], $adcOn ? [
+                'arete_center' => (string) ($areteCenterMap[$row->distributor_id] ?? ''),
+            ] : [], [
+                'name' => (string) ($row->full_name ?? ''),
+                'title' => $title,
+                'month' => Carbon::parse($row->month_start)->format('Y-m'),
+                'rank' => $row->rank_number,
+                'rap' => $row->rap_points ?? '',
+                'aogo' => $row->aogo_points ?? '',
+                'point_value' => $row->point_value_paise !== null ? $row->point_value_paise / 100 : '',
+                'gross' => $row->gross_paise / 100,
+                'deduction' => $row->repurchase_deduction_paise / 100,
+                'credited' => $row->net_paise / 100,
+                'status' => (string) $row->status,
+            ]);
+        })->all();
+
+        return ReportExport::respond($request, 'rank-bonus-'.now()->format('Y-m'), $columns, $out);
     }
 
     private function buildQuery(string $q, ?string $month, ?int $rank, ?string $status, bool $higherRanksOnly = false): Builder
@@ -189,16 +207,6 @@ final class AdminRankBonusCalculationController extends Controller
             ->orderByDesc('rbr.month_start')
             ->orderBy('rbr.rank_number')
             ->orderByDesc('rbr.id');
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 
     /**

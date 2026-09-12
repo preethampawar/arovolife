@@ -39,9 +39,13 @@
     <a href="{{ route('admin.compensation.genos-transactions.index', ['tab' => $tab]) }}"
        class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
     @endif
-    <a href="{{ route('admin.compensation.genos-transactions.export', array_filter(['tab' => $tab, 'q' => $q, 'from' => $from, 'to' => $to])) }}"
+    <a href="{{ route('admin.compensation.genos-transactions.export', array_merge(array_filter(['tab' => $tab, 'q' => $q, 'from' => $from, 'to' => $to]), ['format' => 'xlsx'])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
-        ↓ Download CSV
+        ↓ Download Excel
+    </a>
+    <a href="{{ route('admin.compensation.genos-transactions.export', array_merge(array_filter(['tab' => $tab, 'q' => $q, 'from' => $from, 'to' => $to]), ['format' => 'csv'])) }}"
+       class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">
+        CSV
     </a>
 </form>
 

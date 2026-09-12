@@ -50,9 +50,13 @@
         <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">Apply</button>
         @if($ranged)<a href="{{ route('admin.commerce.bv-ledger.show', $distributor->id) }}" class="text-xs text-gray-600 hover:text-gray-900">✕ Clear</a>@endif
     </form>
-    <a href="{{ route('admin.commerce.bv-ledger.show.export', array_merge($dateQuery, ['distributor' => $distributor->id])) }}"
+    <a href="{{ route('admin.commerce.bv-ledger.show.export', array_merge($dateQuery, ['distributor' => $distributor->id, 'format' => 'xlsx'])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors">
-        ⬇ Export CSV
+        ⬇ Export Excel
+    </a>
+    <a href="{{ route('admin.commerce.bv-ledger.show.export', array_merge($dateQuery, ['distributor' => $distributor->id, 'format' => 'csv'])) }}"
+       class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors">
+        CSV
     </a>
 </div>
 

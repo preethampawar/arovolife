@@ -9,14 +9,15 @@ use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GsbDailyPoolService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * GSB "Input & Output Per Day" calculation report (KP 2026-07-29).
@@ -80,7 +81,7 @@ final class AdminGsbInputOutputController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
 
@@ -92,7 +93,25 @@ final class AdminGsbInputOutputController extends Controller
             $pools->map(fn (GsbDailyPool $p) => $p->cutoff_date->toDateString())->all(),
         ));
 
-        $csv = "Day,Week,Date,Day Total BV,GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Variance (Rs),Computed At\n";
+        $columns = [
+            ['key' => 'day',         'label' => 'Day'],
+            ['key' => 'week',        'label' => 'Week'],
+            ['key' => 'date',        'label' => 'Date'],
+            ['key' => 'day_total_bv', 'label' => 'Day Total BV'],
+            ['key' => 'gsb_pool',    'label' => 'GSB Pool (Rs)'],
+            ['key' => 'slab',        'label' => 'Slab'],
+            ['key' => 'section',     'label' => 'Section'],
+            ['key' => 'achievers',   'label' => 'Achievers'],
+            ['key' => 'total_score', 'label' => 'Total Score'],
+            ['key' => 'score_value', 'label' => 'Score Value (Rs)'],
+            ['key' => 'income',      'label' => 'Income (Rs)'],
+            ['key' => 'deduction',   'label' => 'Repurchase Deduction (Rs)'],
+            ['key' => 'credited',    'label' => 'Credited to Wallet (Rs)'],
+            ['key' => 'variance',    'label' => 'Variance (Rs)'],
+            ['key' => 'computed_at', 'label' => 'Computed At'],
+        ];
+
+        $out = [];
 
         foreach ($pools as $pool) {
             $dateStr = $pool->cutoff_date->toDateString();
@@ -111,48 +130,45 @@ final class AdminGsbInputOutputController extends Controller
                 $grandDeduction += (int) $agg->deduction_paise;
                 $grandCredited += (int) $agg->credited_paise;
 
-                $csv .= implode(',', [
-                    $dayNo ?? '',
-                    $weekNo ?? '',
-                    $dateStr,
-                    number_format($pool->company_bv_paise / 100, 2, '.', ''),
-                    number_format($pool->pool_paise / 100, 2, '.', ''),
-                    (int) $agg->slab,
-                    $this->csvStr($isFixed ? 'Fixed' : 'Variable'),
-                    (int) $agg->achievers,
-                    (int) $agg->total_score,
-                    number_format($valuePaise / 100, 2, '.', ''),
-                    number_format($agg->income_paise / 100, 2, '.', ''),
-                    number_format($agg->deduction_paise / 100, 2, '.', ''),
-                    number_format($agg->credited_paise / 100, 2, '.', ''),
-                    number_format($variancePaise / 100, 2, '.', ''),
-                    $computedAt,
-                ])."\n";
+                $out[] = [
+                    'day' => $dayNo ?? '',
+                    'week' => $weekNo ?? '',
+                    'date' => $dateStr,
+                    'day_total_bv' => $pool->company_bv_paise / 100,
+                    'gsb_pool' => $pool->pool_paise / 100,
+                    'slab' => (int) $agg->slab,
+                    'section' => $isFixed ? 'Fixed' : 'Variable',
+                    'achievers' => (int) $agg->achievers,
+                    'total_score' => (int) $agg->total_score,
+                    'score_value' => $valuePaise / 100,
+                    'income' => $agg->income_paise / 100,
+                    'deduction' => $agg->deduction_paise / 100,
+                    'credited' => $agg->credited_paise / 100,
+                    'variance' => $variancePaise / 100,
+                    'computed_at' => $computedAt,
+                ];
             }
 
-            $csv .= implode(',', [
-                $dayNo ?? '',
-                $weekNo ?? '',
-                $dateStr,
-                number_format($pool->company_bv_paise / 100, 2, '.', ''),
-                number_format($pool->pool_paise / 100, 2, '.', ''),
-                '',
-                $this->csvStr('DAY TOTAL'),
-                '',
-                '',
-                '',
-                number_format($grandTotal / 100, 2, '.', ''),
-                number_format($grandDeduction / 100, 2, '.', ''),
-                number_format($grandCredited / 100, 2, '.', ''),
-                $this->csvStr('leftover '.number_format($pool->leftover_paise / 100, 2, '.', '')),
-                $computedAt,
-            ])."\n";
+            $out[] = [
+                'day' => $dayNo ?? '',
+                'week' => $weekNo ?? '',
+                'date' => $dateStr,
+                'day_total_bv' => $pool->company_bv_paise / 100,
+                'gsb_pool' => $pool->pool_paise / 100,
+                'slab' => '',
+                'section' => 'DAY TOTAL',
+                'achievers' => '',
+                'total_score' => '',
+                'score_value' => '',
+                'income' => $grandTotal / 100,
+                'deduction' => $grandDeduction / 100,
+                'credited' => $grandCredited / 100,
+                'variance' => 'leftover '.number_format($pool->leftover_paise / 100, 2, '.', ''),
+                'computed_at' => $computedAt,
+            ];
         }
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="gsb-input-output-'.now()->toDateString().'.csv"',
-        ]);
+        return ReportExport::respond($request, 'gsb-input-output-'.now()->toDateString(), $columns, $out);
     }
 
     /**
@@ -286,15 +302,5 @@ final class AdminGsbInputOutputController extends Controller
         return GsbDailyPoolService::isVariableSlab((int) $agg->slab)
             ? $pool->variable_score_value_paise
             : (int) ($agg->fixed_value_paise ?? 0);
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 }

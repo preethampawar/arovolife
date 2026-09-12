@@ -9,14 +9,15 @@ use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Rank Bonus "Input & Output Per Month" calculation report — the monthly
@@ -87,7 +88,7 @@ final class AdminRankBonusInputOutputController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(RankBonusFeature::class), 404);
 
@@ -100,80 +101,100 @@ final class AdminRankBonusInputOutputController extends Controller
 
         $blocks = $this->blocks($monthStarts);
 
-        $csv = "Month,Month Turnover,Rank,Rank Name,Pool % (current),Pool (Rs),Qualifiers,Held,Repurchase Blocked,Total Points,Point Value / Share (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Leftover (Rs),Computed At\n";
+        $columns = [
+            ['key' => 'month',        'label' => 'Month'],
+            ['key' => 'turnover',     'label' => 'Month Turnover'],
+            ['key' => 'rank',         'label' => 'Rank'],
+            ['key' => 'rank_name',    'label' => 'Rank Name'],
+            ['key' => 'pool_pct',     'label' => 'Pool % (current)'],
+            ['key' => 'pool',         'label' => 'Pool (Rs)'],
+            ['key' => 'qualifiers',   'label' => 'Qualifiers'],
+            ['key' => 'held',         'label' => 'Held'],
+            ['key' => 'blocked',      'label' => 'Repurchase Blocked'],
+            ['key' => 'total_points', 'label' => 'Total Points'],
+            ['key' => 'point_value',  'label' => 'Point Value / Share (Rs)'],
+            ['key' => 'income',       'label' => 'Income (Rs)'],
+            ['key' => 'deduction',    'label' => 'Repurchase Deduction (Rs)'],
+            ['key' => 'credited',     'label' => 'Credited to Wallet (Rs)'],
+            ['key' => 'leftover',     'label' => 'Leftover (Rs)'],
+            ['key' => 'computed_at',  'label' => 'Computed At'],
+        ];
+
+        $out = [];
 
         foreach ($monthStarts as $monthStart) {
             $block = $blocks[$monthStart];
             $monthLabel = Carbon::parse($monthStart)->format('Y-m');
             $computedAt = $block['computed_at']?->format('Y-m-d H:i:s') ?? '';
-            $turnover = $block['turnover_paise'] !== null
-                ? number_format($block['turnover_paise'] / 100, 2, '.', '')
-                : '';
+            $turnover = $block['turnover_paise'] !== null ? $block['turnover_paise'] / 100 : '';
 
             foreach ($block['ranks'] as $rank) {
                 $valuePaise = $rank['point_value_paise'] ?? $rank['share_paise'];
 
-                $csv .= implode(',', [
-                    $monthLabel,
-                    $turnover,
-                    $rank['rank'],
-                    $this->csvStr($rank['name'].($rank['frozen'] ? '' : ' (estimated)')),
-                    number_format($rank['pool_pct'], 2, '.', ''),
-                    number_format($rank['pool_paise'] / 100, 2, '.', ''),
-                    $rank['qualifiers'],
-                    $rank['held'],
-                    $rank['blocked'],
-                    $rank['total_points'] ?? '',
-                    $valuePaise !== null ? number_format($valuePaise / 100, 2, '.', '') : '',
-                    number_format($rank['income_paise'] / 100, 2, '.', ''),
-                    number_format($rank['deduction_paise'] / 100, 2, '.', ''),
-                    number_format($rank['credited_paise'] / 100, 2, '.', ''),
-                    $rank['leftover_paise'] !== null ? number_format($rank['leftover_paise'] / 100, 2, '.', '') : '',
-                    $computedAt,
-                ])."\n";
+                $out[] = [
+                    'month' => $monthLabel,
+                    'turnover' => $turnover,
+                    'rank' => $rank['rank'],
+                    'rank_name' => $rank['name'].($rank['frozen'] ? '' : ' (estimated)'),
+                    'pool_pct' => $rank['pool_pct'],
+                    'pool' => $rank['pool_paise'] / 100,
+                    'qualifiers' => $rank['qualifiers'],
+                    'held' => $rank['held'],
+                    'blocked' => $rank['blocked'],
+                    'total_points' => $rank['total_points'] ?? '',
+                    'point_value' => $valuePaise !== null ? $valuePaise / 100 : '',
+                    'income' => $rank['income_paise'] / 100,
+                    'deduction' => $rank['deduction_paise'] / 100,
+                    'credited' => $rank['credited_paise'] / 100,
+                    'leftover' => $rank['leftover_paise'] !== null ? $rank['leftover_paise'] / 100 : '',
+                    'computed_at' => $computedAt,
+                ];
             }
 
             if ($block['aogo'] !== null) {
-                $csv .= implode(',', [
-                    $monthLabel,
-                    $turnover,
-                    1,
-                    $this->csvStr('AO-GO (Rank 1 pool)'),
-                    '',
-                    '',
-                    $block['aogo']['grants'],
-                    0,
-                    0,
-                    $block['aogo']['points'],
-                    $block['aogo']['point_value_paise'] !== null
-                        ? number_format($block['aogo']['point_value_paise'] / 100, 2, '.', '')
+                $out[] = [
+                    'month' => $monthLabel,
+                    'turnover' => $turnover,
+                    'rank' => 1,
+                    'rank_name' => 'AO-GO (Rank 1 pool)',
+                    'pool_pct' => '',
+                    'pool' => '',
+                    'qualifiers' => $block['aogo']['grants'],
+                    'held' => 0,
+                    'blocked' => 0,
+                    'total_points' => $block['aogo']['points'],
+                    'point_value' => $block['aogo']['point_value_paise'] !== null
+                        ? $block['aogo']['point_value_paise'] / 100
                         : '',
-                    number_format($block['aogo']['income_paise'] / 100, 2, '.', ''),
-                    number_format($block['aogo']['deduction_paise'] / 100, 2, '.', ''),
-                    number_format($block['aogo']['credited_paise'] / 100, 2, '.', ''),
-                    '',
-                    $computedAt,
-                ])."\n";
+                    'income' => $block['aogo']['income_paise'] / 100,
+                    'deduction' => $block['aogo']['deduction_paise'] / 100,
+                    'credited' => $block['aogo']['credited_paise'] / 100,
+                    'leftover' => '',
+                    'computed_at' => $computedAt,
+                ];
             }
 
-            $csv .= implode(',', [
-                $monthLabel,
-                $turnover,
-                '',
-                $this->csvStr('MONTH TOTAL'),
-                '', '', '', '', '', '', '',
-                number_format($block['total_income_paise'] / 100, 2, '.', ''),
-                number_format($block['total_deduction_paise'] / 100, 2, '.', ''),
-                number_format($block['total_credited_paise'] / 100, 2, '.', ''),
-                number_format($block['total_leftover_paise'] / 100, 2, '.', ''),
-                $computedAt,
-            ])."\n";
+            $out[] = [
+                'month' => $monthLabel,
+                'turnover' => $turnover,
+                'rank' => '',
+                'rank_name' => 'MONTH TOTAL',
+                'pool_pct' => '',
+                'pool' => '',
+                'qualifiers' => '',
+                'held' => '',
+                'blocked' => '',
+                'total_points' => '',
+                'point_value' => '',
+                'income' => $block['total_income_paise'] / 100,
+                'deduction' => $block['total_deduction_paise'] / 100,
+                'credited' => $block['total_credited_paise'] / 100,
+                'leftover' => $block['total_leftover_paise'] / 100,
+                'computed_at' => $computedAt,
+            ];
         }
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="rb-input-output-'.now()->toDateString().'.csv"',
-        ]);
+        return ReportExport::respond($request, 'rb-input-output-'.now()->toDateString(), $columns, $out);
     }
 
     /**
@@ -421,15 +442,5 @@ final class AdminRankBonusInputOutputController extends Controller
         }
 
         return $blocks;
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 }

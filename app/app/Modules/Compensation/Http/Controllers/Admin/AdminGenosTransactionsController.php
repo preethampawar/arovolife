@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Services\PersonalBvTitleService;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AdminGenosTransactionsController extends Controller
 {
@@ -54,7 +55,7 @@ final class AdminGenosTransactionsController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         $request->validate([
             'tab' => ['nullable', 'in:credits,reversals'],
@@ -73,51 +74,74 @@ final class AdminGenosTransactionsController extends Controller
             $ancestorIds = $rows->pluck('ancestor_id')->unique()->values()->all();
             $personalBvMap = $this->batchPersonalBvPaise($ancestorIds);
 
-            $csv = "SNo,ADN,Name,Title,Side,Order ID,Order Date,BV,Reversal Date,BV Absorbed,Forward Debt BV\n";
-            foreach ($rows as $i => $row) {
-                $title = $this->titleService->forBvPaise($personalBvMap[$row->ancestor_id] ?? 0)->title ?? '';
-                $csv .= implode(',', [
-                    $i + 1,
-                    $this->csvStr($row->ancestor_adn),
-                    $this->csvStr($row->ancestor_name ?? ''),
-                    $this->csvStr($title),
-                    $row->side,
-                    '#'.$row->order_id,
-                    $row->order_date ? Carbon::parse($row->order_date)->toDateString() : '',
-                    number_format($row->bv_paise / 100, 0, '.', ''),
-                    $row->reversed_at ? Carbon::parse($row->reversed_at)->toDateString() : '',
-                    number_format($row->absorbed_paise / 100, 0, '.', ''),
-                    number_format($row->debt_paise / 100, 0, '.', ''),
-                ])."\n";
-            }
-            $filename = 'genos-bv-reversals-'.now()->toDateString().'.csv';
-        } else {
-            $rows = $this->buildCreditQuery($q, $from, $to)->get();
-            $ancestorIds = $rows->pluck('ancestor_id')->unique()->values()->all();
-            $personalBvMap = $this->batchPersonalBvPaise($ancestorIds);
+            $columns = [
+                ['key' => 'sno', 'label' => 'SNo'],
+                ['key' => 'adn', 'label' => 'ADN'],
+                ['key' => 'name', 'label' => 'Name'],
+                ['key' => 'title', 'label' => 'Title'],
+                ['key' => 'side', 'label' => 'Side'],
+                ['key' => 'order_id', 'label' => 'Order ID'],
+                ['key' => 'order_date', 'label' => 'Order Date'],
+                ['key' => 'bv', 'label' => 'BV'],
+                ['key' => 'reversal_date', 'label' => 'Reversal Date'],
+                ['key' => 'absorbed', 'label' => 'BV Absorbed'],
+                ['key' => 'debt', 'label' => 'Forward Debt BV'],
+            ];
 
-            $csv = "SNo,ADN,Name,Title,Side,Order ID,Order Date,BV,Debt Consumed BV\n";
-            foreach ($rows as $i => $row) {
+            $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap): array {
                 $title = $this->titleService->forBvPaise($personalBvMap[$row->ancestor_id] ?? 0)->title ?? '';
-                $csv .= implode(',', [
-                    $i + 1,
-                    $this->csvStr($row->ancestor_adn),
-                    $this->csvStr($row->ancestor_name ?? ''),
-                    $this->csvStr($title),
-                    $row->side,
-                    '#'.$row->order_id,
-                    $row->order_date ? Carbon::parse($row->order_date)->toDateString() : '',
-                    number_format($row->bv_paise / 100, 0, '.', ''),
-                    number_format($row->debt_consumed_paise / 100, 0, '.', ''),
-                ])."\n";
-            }
-            $filename = 'genos-bv-credits-'.now()->toDateString().'.csv';
+
+                return [
+                    'sno' => $i + 1,
+                    'adn' => (string) $row->ancestor_adn,
+                    'name' => (string) ($row->ancestor_name ?? ''),
+                    'title' => $title,
+                    'side' => $row->side,
+                    'order_id' => '#'.$row->order_id,
+                    'order_date' => $row->order_date ? Carbon::parse($row->order_date)->toDateString() : '',
+                    'bv' => (int) round($row->bv_paise / 100),
+                    'reversal_date' => $row->reversed_at ? Carbon::parse($row->reversed_at)->toDateString() : '',
+                    'absorbed' => (int) round($row->absorbed_paise / 100),
+                    'debt' => (int) round($row->debt_paise / 100),
+                ];
+            })->all();
+
+            return ReportExport::respond($request, 'genos-bv-reversals-'.now()->toDateString(), $columns, $out);
         }
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-        ]);
+        $rows = $this->buildCreditQuery($q, $from, $to)->get();
+        $ancestorIds = $rows->pluck('ancestor_id')->unique()->values()->all();
+        $personalBvMap = $this->batchPersonalBvPaise($ancestorIds);
+
+        $columns = [
+            ['key' => 'sno', 'label' => 'SNo'],
+            ['key' => 'adn', 'label' => 'ADN'],
+            ['key' => 'name', 'label' => 'Name'],
+            ['key' => 'title', 'label' => 'Title'],
+            ['key' => 'side', 'label' => 'Side'],
+            ['key' => 'order_id', 'label' => 'Order ID'],
+            ['key' => 'order_date', 'label' => 'Order Date'],
+            ['key' => 'bv', 'label' => 'BV'],
+            ['key' => 'debt_consumed', 'label' => 'Debt Consumed BV'],
+        ];
+
+        $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap): array {
+            $title = $this->titleService->forBvPaise($personalBvMap[$row->ancestor_id] ?? 0)->title ?? '';
+
+            return [
+                'sno' => $i + 1,
+                'adn' => (string) $row->ancestor_adn,
+                'name' => (string) ($row->ancestor_name ?? ''),
+                'title' => $title,
+                'side' => $row->side,
+                'order_id' => '#'.$row->order_id,
+                'order_date' => $row->order_date ? Carbon::parse($row->order_date)->toDateString() : '',
+                'bv' => (int) round($row->bv_paise / 100),
+                'debt_consumed' => (int) round($row->debt_consumed_paise / 100),
+            ];
+        })->all();
+
+        return ReportExport::respond($request, 'genos-bv-credits-'.now()->toDateString(), $columns, $out);
     }
 
     private function queryCredits(string $q, ?Carbon $from, ?Carbon $to): LengthAwarePaginator
@@ -190,16 +214,6 @@ final class AdminGenosTransactionsController extends Controller
             )
             ->orderByDesc('gbr.date')
             ->orderByDesc('gbr.id');
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 
     /**

@@ -14,7 +14,7 @@
     </div>
     @enddeveloper
 
-    {{-- Filter + CSV --}}
+    {{-- Filter + Excel / CSV --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
         <div>
             <label class="block text-xs text-gray-600 mb-1">From</label>
@@ -28,7 +28,8 @@
         @if(request('from') || request('to'))
             <a href="{{ route('income.gsb-history') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
         @endif
-        <a href="{{ route('income.gsb-history.export', request()->query()) }}" class="ml-auto px-4 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors font-medium">&#11015; CSV</a>
+        <a href="{{ route('income.gsb-history.export', array_merge(request()->query(), ['format' => 'xlsx'])) }}" class="ml-auto px-4 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors font-medium">&#11015; Excel</a>
+        <a href="{{ route('income.gsb-history.export', array_merge(request()->query(), ['format' => 'csv'])) }}" class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">CSV</a>
     </form>
 
     @if($rows->isEmpty())

@@ -22,8 +22,10 @@
     <input type="text" name="q" value="{{ $q }}" placeholder="Search ADN…"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm w-40">
     <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
-    <a href="{{ route('admin.compensation.personal-bv-topups.export', array_filter(['date' => $date->toDateString(), 'type' => $type, 'q' => $q])) }}"
-       class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">⬇ CSV</a>
+    <a href="{{ route('admin.compensation.personal-bv-topups.export', array_merge(array_filter(['date' => $date->toDateString(), 'type' => $type, 'q' => $q]), ['format' => 'xlsx'])) }}"
+       class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">⬇ Excel</a>
+    <a href="{{ route('admin.compensation.personal-bv-topups.export', array_merge(array_filter(['date' => $date->toDateString(), 'type' => $type, 'q' => $q]), ['format' => 'csv'])) }}"
+       class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">CSV</a>
 </form>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

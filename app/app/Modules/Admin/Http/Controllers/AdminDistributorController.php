@@ -14,15 +14,15 @@ use App\Modules\Compliance\Services\AuditLogPresenter;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\DistributorNominee;
 use App\Modules\Identity\Models\User;
-use App\Modules\Shared\Support\Csv;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AdminDistributorController extends Controller
 {
@@ -319,12 +319,12 @@ final class AdminDistributorController extends Controller
 
     /**
      * Register of Direct Sellers — DSR 2021 Rule 3(g) record-keeping export.
-     * The CSV is regulator-facing, so the column allow-list is explicit and
+     * The workbook is regulator-facing, so the column allow-list is explicit and
      * deliberately excludes anything that could leak full PII or secrets:
      * `pan_hash`, `aadhaar_ref`, `bank_account_enc`, encrypted MFA seed, etc.
      * Only the regulator-shareable last-4 derivatives appear.
      */
-    public function export(): Response
+    public function export(Request $request): StreamedResponse
     {
         $distributors = DB::table('distributors')
             ->join('users', 'distributors.user_id', '=', 'users.id')
@@ -371,7 +371,32 @@ final class AdminDistributorController extends Controller
             'ip' => request()->ip(),
         ]);
 
-        $csv = "ADN,Full Name,Email,Phone,State,PAN Last4,Aadhaar Last4,Bank IFSC,Depth,Side,Effective Date,Cooling Off End,Status,DOB,Sponsor ADN,KYC Verified,Couple Role,Spouse ADN\n";
+        $columns = [
+            ['key' => 'adn',                'label' => 'ADN'],
+            ['key' => 'full_name',          'label' => 'Full Name'],
+            ['key' => 'email',              'label' => 'Email'],
+            ['key' => 'phone',              'label' => 'Phone'],
+            ['key' => 'state',              'label' => 'State'],
+            ['key' => 'pan_last4',          'label' => 'PAN Last4'],
+            ['key' => 'aadhaar_last4',      'label' => 'Aadhaar Last4'],
+            ['key' => 'bank_ifsc',          'label' => 'Bank IFSC'],
+            ['key' => 'depth',              'label' => 'Depth'],
+            ['key' => 'side',               'label' => 'Side'],
+            ['key' => 'effective_date',     'label' => 'Effective Date'],
+            ['key' => 'cooling_off_end',    'label' => 'Cooling Off End'],
+            ['key' => 'status',             'label' => 'Status'],
+            ['key' => 'dob',                'label' => 'DOB'],
+            ['key' => 'sponsor_adn',        'label' => 'Sponsor ADN'],
+            ['key' => 'kyc_verified',       'label' => 'KYC Verified'],
+            ['key' => 'couple_role',        'label' => 'Couple Role'],
+            ['key' => 'spouse_adn',         'label' => 'Spouse ADN'],
+        ];
+
+        // Raw values only: the writer applies the formula-injection guard
+        // itself, so guarding here as well would prefix a legitimate leading
+        // `-` (or `=`, `+`, `@`) twice and corrupt a regulator-facing record.
+        $out = [];
+
         foreach ($distributors as $d) {
             // Self-rooted distributors (the genealogy seed) report no sponsor —
             // surface that as blank rather than echoing their own ADN.
@@ -383,23 +408,29 @@ final class AdminDistributorController extends Controller
                 ? ''
                 : ($d->is_primary_couple ? 'Primary' : 'Secondary');
 
-            $csv .= implode(',', array_map(
-                fn ($v) => '"'.str_replace('"', '""', Csv::safe($v)).'"',
-                [
-                    $d->adn, $d->full_name, $d->email, $d->phone_e164,
-                    $d->state, $d->pan_last4, $d->aadhaar_last4 ?? '', $d->bank_ifsc,
-                    $d->depth, $d->placement_side ?? '', $d->effective_date,
-                    $d->cooling_off_end_at, $d->status, $d->date_of_birth ?? '',
-                    $sponsorAdn, $d->kyc_verified_at ?? '',
-                    $coupleRole, $d->spouse_adn ?? '',
-                ]
-            ))."\n";
+            $out[] = [
+                'adn' => (string) $d->adn,
+                'full_name' => (string) $d->full_name,
+                'email' => (string) $d->email,
+                'phone' => (string) $d->phone_e164,
+                'state' => (string) $d->state,
+                'pan_last4' => (string) $d->pan_last4,
+                'aadhaar_last4' => (string) ($d->aadhaar_last4 ?? ''),
+                'bank_ifsc' => (string) $d->bank_ifsc,
+                'depth' => (int) $d->depth,
+                'side' => (string) ($d->placement_side ?? ''),
+                'effective_date' => (string) $d->effective_date,
+                'cooling_off_end' => (string) $d->cooling_off_end_at,
+                'status' => (string) $d->status,
+                'dob' => (string) ($d->date_of_birth ?? ''),
+                'sponsor_adn' => (string) $sponsorAdn,
+                'kyc_verified' => (string) ($d->kyc_verified_at ?? ''),
+                'couple_role' => $coupleRole,
+                'spouse_adn' => (string) ($d->spouse_adn ?? ''),
+            ];
         }
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="register-of-direct-sellers-'.now()->format('Y-m-d').'.csv"',
-        ]);
+        return ReportExport::respond($request, 'register-of-direct-sellers-'.now()->format('Y-m-d'), $columns, $out);
     }
 
     /**

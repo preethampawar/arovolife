@@ -6,12 +6,13 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\GsbPersonalBvTopup;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AdminGsbPersonalBvTopupController extends Controller
 {
@@ -47,7 +48,7 @@ final class AdminGsbPersonalBvTopupController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
 
@@ -67,21 +68,30 @@ final class AdminGsbPersonalBvTopupController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        $csv = "Date,ADN,Name,Order ID,BV,Side,Type,Reversed At\n";
-        foreach ($rows as $r) {
-            $csv .= '"'.$r->date->toDateString().'",'
-                .'"'.($r->distributor->adn ?? '').'",'
-                .'"'.($r->distributor->user?->full_name ?? '').'",'
-                .(int) $r->order_id.','
-                .(int) ($r->bv_paise / 100).','
-                .'"'.($r->side === 'L' ? 'Left' : 'Right').'",'
-                .'"'.($r->reversed_at ? 'Reversed' : 'Topup').'",'
-                .'"'.($r->reversed_at?->toDateTimeString() ?? '').'"'."\n";
-        }
+        $columns = [
+            ['key' => 'date', 'label' => 'Date'],
+            ['key' => 'adn', 'label' => 'ADN'],
+            ['key' => 'name', 'label' => 'Name'],
+            ['key' => 'order_id', 'label' => 'Order ID'],
+            ['key' => 'bv', 'label' => 'BV'],
+            ['key' => 'side', 'label' => 'Side'],
+            ['key' => 'type', 'label' => 'Type'],
+            ['key' => 'reversed_at', 'label' => 'Reversed At'],
+        ];
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="gsb-personal-bv-topups-'.$date->toDateString().'.csv"',
-        ]);
+        $out = $rows->map(function (GsbPersonalBvTopup $r): array {
+            return [
+                'date' => $r->date->toDateString(),
+                'adn' => (string) ($r->distributor->adn ?? ''),
+                'name' => (string) ($r->distributor->user?->full_name ?? ''),
+                'order_id' => (int) $r->order_id,
+                'bv' => (int) ($r->bv_paise / 100),
+                'side' => $r->side === 'L' ? 'Left' : 'Right',
+                'type' => $r->reversed_at ? 'Reversed' : 'Topup',
+                'reversed_at' => $r->reversed_at?->toDateTimeString() ?? '',
+            ];
+        })->values()->all();
+
+        return ReportExport::respond($request, 'gsb-personal-bv-topups-'.$date->toDateString(), $columns, $out);
     }
 }

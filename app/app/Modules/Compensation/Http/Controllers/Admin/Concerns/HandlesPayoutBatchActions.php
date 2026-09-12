@@ -253,6 +253,12 @@ trait HandlesPayoutBatchActions
     }
 
     /**
+     * Deliberately still CSV after the 2026-09-12 XLSX migration: this file is
+     * uploaded to the bank's portal, which parses CSV. It is not a report and
+     * no person opens it in Excel. Do not "finish the job" by converting it —
+     * a rejected bank upload is a stalled payout run.
+     */
+    /**
      * The instruction file finance uploads to the bank.
      *
      * Restricted to `finance.record` and to a batch that has actually been

@@ -59,9 +59,13 @@
         @endif
     </form>
 
-    <a href="{{ route('admin.commerce.bv-ledger.export', array_merge($baseQuery, ['tab' => $tab])) }}"
+    <a href="{{ route('admin.commerce.bv-ledger.export', array_merge($baseQuery, ['tab' => $tab, 'format' => 'xlsx'])) }}"
        class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors">
-        ⬇ Export CSV
+        ⬇ Export Excel
+    </a>
+    <a href="{{ route('admin.commerce.bv-ledger.export', array_merge($baseQuery, ['tab' => $tab, 'format' => 'csv'])) }}"
+       class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors">
+        CSV
     </a>
 </div>
 

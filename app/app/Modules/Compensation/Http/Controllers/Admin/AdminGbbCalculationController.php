@@ -7,15 +7,16 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AdminGbbCalculationController extends Controller
 {
@@ -60,7 +61,7 @@ final class AdminGbbCalculationController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(GrowthBoosterBonusFeature::class), 404);
 
@@ -79,37 +80,48 @@ final class AdminGbbCalculationController extends Controller
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
 
-        $csv = "SNo,ADN,Name,Title,Month,AGP Points,Point Value (Rs),AGP Value Per Point (Rs),Gross GBB (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
+        $columns = [
+            ['key' => 'sno',          'label' => 'SNo'],
+            ['key' => 'adn',         'label' => 'ADN'],
+            ['key' => 'name',        'label' => 'Name'],
+            ['key' => 'title',       'label' => 'Title'],
+            ['key' => 'month',       'label' => 'Month'],
+            ['key' => 'agp_points',  'label' => 'AGP Points'],
+            ['key' => 'point_value', 'label' => 'Point Value (Rs)'],
+            ['key' => 'value_per_point', 'label' => 'AGP Value Per Point (Rs)'],
+            ['key' => 'gross',       'label' => 'Gross GBB (Rs)'],
+            ['key' => 'deduction',   'label' => 'Repurchase Deduction (Rs)'],
+            ['key' => 'credited',    'label' => 'Credited to Wallet (Rs)'],
+            ['key' => 'status',      'label' => 'Status'],
+        ];
 
-        foreach ($rows as $i => $row) {
+        $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap): array {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
             $agpValuePerPoint = $row->agp_earned > 0
-                ? number_format($row->gbb_gross_paise / $row->agp_earned / 100, 2, '.', '')
-                : '0.00';
+                ? $row->gbb_gross_paise / $row->agp_earned / 100
+                : 0.0;
             // Frozen month point value; legacy rows predate the snapshot column.
             $pointValue = $row->point_value_paise !== null
-                ? number_format((int) $row->point_value_paise / 100, 2, '.', '')
+                ? (int) $row->point_value_paise / 100
                 : '';
-            $csv .= implode(',', [
-                $i + 1,
-                $this->csvStr($row->adn),
-                $this->csvStr($row->full_name ?? ''),
-                $this->csvStr($title),
-                Carbon::parse($row->year_month)->format('Y-m'),
-                $row->agp_earned,
-                $pointValue,
-                $agpValuePerPoint,
-                number_format($row->gbb_gross_paise / 100, 2, '.', ''),
-                number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
-                number_format($row->gbb_net_paise / 100, 2, '.', ''),
-                $this->csvStr($row->status),
-            ])."\n";
-        }
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="gbb-calculation-'.now()->format('Y-m').'.csv"',
-        ]);
+            return [
+                'sno' => $i + 1,
+                'adn' => (string) $row->adn,
+                'name' => (string) ($row->full_name ?? ''),
+                'title' => $title,
+                'month' => Carbon::parse($row->year_month)->format('Y-m'),
+                'agp_points' => $row->agp_earned,
+                'point_value' => $pointValue,
+                'value_per_point' => $agpValuePerPoint,
+                'gross' => $row->gbb_gross_paise / 100,
+                'deduction' => $row->repurchase_deduction_paise / 100,
+                'credited' => $row->gbb_net_paise / 100,
+                'status' => (string) $row->status,
+            ];
+        })->all();
+
+        return ReportExport::respond($request, 'gbb-calculation-'.now()->format('Y-m'), $columns, $out);
     }
 
     private function queryRows(string $q, ?string $month, ?string $status): LengthAwarePaginator
@@ -145,16 +157,6 @@ final class AdminGbbCalculationController extends Controller
             )
             ->orderByDesc('gmr.year_month')
             ->orderByDesc('gmr.id');
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 
     /**

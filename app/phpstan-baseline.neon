@@ -558,7 +558,6 @@ parameters:
 			count: 1
 			path: app/Modules/Commerce/Services/CartService.php
 
-
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Cart\:\:\$coupon_id\.$#'
 			identifier: property.notFound
@@ -749,18 +748,6 @@ parameters:
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$adn\.$#'
 			identifier: property.notFound
 			count: 1
-			path: app/Modules/Compensation/Http/Controllers/IncomeController.php
-
-		-
-			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Modules/Compensation/Http/Controllers/IncomeController.php
-
-		-
-			message: '#^Parameter \#1 \$stream of function fputcsv expects resource, resource\|false given\.$#'
-			identifier: argument.type
-			count: 4
 			path: app/Modules/Compensation/Http/Controllers/IncomeController.php
 
 		-
@@ -1070,6 +1057,12 @@ parameters:
 			path: app/Modules/Genealogy/Models/Sponsorship.php
 
 		-
+			message: '#^Parameter \#3 \$columns of static method App\\Modules\\Shared\\Support\\ReportExport\:\:respond\(\) expects list\<array\{key\: string, label\: string, align\?\: string\}\>, array\<int, array\{key\: string, label\: string\}\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Modules/Grievance/Http/Controllers/AdminGrievanceReportController.php
+
+		-
 			message: '#^Access to an undefined property App\\Modules\\Identity\\Models\\User\:\:\$login_throttle_cleared_at\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1092,18 +1085,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Modules/Identity/Http/Controllers/KycResubmitController.php
-
-		-
-			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Modules/Identity/Http/Controllers/TeamRosterController.php
-
-		-
-			message: '#^Parameter \#1 \$stream of function fputcsv expects resource, resource\|false given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Modules/Identity/Http/Controllers/TeamRosterController.php
 
 		-
 			message: '#^Class App\\Modules\\Identity\\Models\\Distributor uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
@@ -1352,6 +1333,18 @@ parameters:
 			path: app/Modules/Returns/Services/RefundOrder.php
 
 		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Modules/Shared/Support/AdminNavigation.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Modules\\Identity\\Models\\User\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Modules/Shared/Support/AdminNavigation.php
+
+		-
 			message: '#^Method App\\Modules\\Tax\\Models\\Invoice\:\:lines\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1384,6 +1377,312 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 6
+			path: tests/Feature/ActionCenter/ActionCenterScreensTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:assertNotNull\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/ActionCenterScreensTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/ActionCenterScreensTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: tests/Feature/ActionCenter/AdcApplicationsPendingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/AwaitingInspectionProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 8
+			path: tests/Feature/ActionCenter/AwaitingReceiptProviderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/ActionCenter/BadgeCountTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/BadgeCountTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: tests/Feature/ActionCenter/ContentRequiredPageUnpublishedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: tests/Feature/ActionCenter/CoolingOffExpiringProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/DistributorRequestsOpenProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: tests/Feature/ActionCenter/EngineRunsFailedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: tests/Feature/ActionCenter/ExpiredOnHandProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/ExpiringProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: tests/Feature/ActionCenter/FailedJobsProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/FrozenStaleProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 8
+			path: tests/Feature/ActionCenter/GrievanceSlaDueOrBreachedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: tests/Feature/ActionCenter/GrievanceThirdPartyOverdueProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/GrnDraftStaleProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: tests/Feature/ActionCenter/InvoiceMissingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/KycPendingReviewProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/LedgerDriftProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/LineChangePendingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/LowStockProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/MessagingReportedPendingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 4
+			path: tests/Feature/ActionCenter/PackedNotShippedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 9
+			path: tests/Feature/ActionCenter/PaidNotPackedProviderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/PaidNotPackedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: tests/Feature/ActionCenter/PaymentsUnreconciledProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: tests/Feature/ActionCenter/PayoutBatchAwaitingApprovalProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 4
+			path: tests/Feature/ActionCenter/PayoutBatchPartiallyFailedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 16
+			path: tests/Feature/ActionCenter/PayoutsBankDetailsMissingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 8
+			path: tests/Feature/ActionCenter/PoOverdueProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/RefundsFailedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/RefundsManualOwedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: tests/Feature/ActionCenter/RefundsPastPromiseProviderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/RegistryPermissionScopingTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: tests/Feature/ActionCenter/RestockNotReconciledTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 4
+			path: tests/Feature/ActionCenter/ShippedNotDeliveredProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$actor\.$#'
+			identifier: property.notFound
+			count: 10
+			path: tests/Feature/ActionCenter/SnoozeTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$service\.$#'
+			identifier: property.notFound
+			count: 6
+			path: tests/Feature/ActionCenter/SnoozeTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/SnoozeTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$operations\.$#'
+			identifier: property.notFound
+			count: 12
+			path: tests/Feature/ActionCenter/SnoozeUiTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 12
+			path: tests/Feature/ActionCenter/SnoozeUiTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/SnoozeUiTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$operations\.$#'
+			identifier: property.notFound
+			count: 12
+			path: tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$service\.$#'
+			identifier: property.notFound
+			count: 11
+			path: tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: tests/Feature/ActionCenter/TransferInTransitProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 4
+			path: tests/Feature/ActionCenter/UnpaidExpiringProviderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 2
 			path: tests/Feature/Commerce/AdminOrderInvoicePanelTest.php
 
@@ -1394,82 +1693,10 @@ parameters:
 			path: tests/Feature/Commerce/AdminOrderTransitionTest.php
 
 		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 10
-			path: tests/Feature/Inventory/AdminInventoryScreensTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Feature/Inventory/AdminInventoryScreensTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 15
-			path: tests/Feature/Inventory/AdminWarehouseTransferAdjustmentScreensTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Feature/Inventory/AdminWarehouseTransferAdjustmentScreensTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 4
-			path: tests/Feature/Inventory/StockIndexScreenTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Feature/Inventory/StockIndexScreenTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1
 			path: tests/Feature/Commerce/AdminOrderTransitionTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 4
-			path: tests/Feature/Inventory/ReportsRenderTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: tests/Feature/Inventory/ReportsRenderTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Feature/Inventory/StockInOutSummaryReconcilesTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Feature/Inventory/StockInOutSummaryReconcilesTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
-			identifier: method.notFound
-			count: 4
-			path: tests/Feature/Inventory/AlertsCommandTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Feature/Inventory/AlertsCommandTest.php
 
 		-
 			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$appResult\.$#'
@@ -1518,54 +1745,6 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Feature/Compensation/PayoutAdminPagesTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Feature/ActionCenter/ActionCenterScreensTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 6
-			path: tests/Feature/ActionCenter/ActionCenterScreensTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:assertNotNull\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Feature/ActionCenter/ActionCenterScreensTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Feature/ActionCenter/BadgeCountTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 4
-			path: tests/Feature/ActionCenter/BadgeCountTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: tests/Feature/ActionCenter/SnoozeUiTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$operations\.$#'
-			identifier: property.notFound
-			count: 12
-			path: tests/Feature/ActionCenter/SnoozeUiTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 12
-			path: tests/Feature/ActionCenter/SnoozeUiTest.php
 
 		-
 			message: '#^Call to an undefined static method Illuminate\\Support\\Facades\\Log\:\:shouldHaveReceived\(\)\.$#'
@@ -1700,6 +1879,54 @@ parameters:
 			path: tests/Feature/Console/PurchaseDataResetTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ExportEndpointsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ExportEndpointsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ExportEndpointsTest.php
+
+		-
+			message: '#^Function eetAssertCsv\(\) has parameter \$response with generic class Illuminate\\Testing\\TestResponse but does not specify its types\: TResponse$#'
+			identifier: missingType.generics
+			count: 1
+			path: tests/Feature/ExportEndpointsTest.php
+
+		-
+			message: '#^Function eetAssertXlsx\(\) has parameter \$response with generic class Illuminate\\Testing\\TestResponse but does not specify its types\: TResponse$#'
+			identifier: missingType.generics
+			count: 1
+			path: tests/Feature/ExportEndpointsTest.php
+
+		-
+			message: '#^Function eetFilename\(\) has parameter \$response with generic class Illuminate\\Testing\\TestResponse but does not specify its types\: TResponse$#'
+			identifier: missingType.generics
+			count: 1
+			path: tests/Feature/ExportEndpointsTest.php
+
+		-
+			message: '#^Function eetGet\(\) return type with generic class Illuminate\\Testing\\TestResponse does not specify its types\: TResponse$#'
+			identifier: missingType.generics
+			count: 1
+			path: tests/Feature/ExportEndpointsTest.php
+
+		-
+			message: '#^Function eetUrl\(\) has parameter \$params with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Feature/ExportEndpointsTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -1710,6 +1937,234 @@ parameters:
 			identifier: method.notFound
 			count: 4
 			path: tests/Feature/Identity/LoginAuditTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 10
+			path: tests/Feature/Inventory/AdminInventoryScreensTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/AdminInventoryScreensTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 15
+			path: tests/Feature/Inventory/AdminWarehouseTransferAdjustmentScreensTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/AdminWarehouseTransferAdjustmentScreensTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Inventory/AlertsCommandTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/AlertsCommandTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Inventory/CancelAfterPackRestocksTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/CancelAfterPackRestocksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Feature/Inventory/CancelAfterPackRestocksTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/CheckoutAvailabilityTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$awb_no\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$carrier_code\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$delivered_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$dispatched_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\<0, max\>\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 4
+			path: tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$warehouse_code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\|null\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Feature/Inventory/ProductFormNoLongerWritesOnHandTest.php
+
+		-
+			message: '#^Function pfnPayload\(\) has parameter \$overrides with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Feature/Inventory/ProductFormNoLongerWritesOnHandTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Inventory/ReportsRenderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Feature/Inventory/ReportsRenderTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Returns\\Models\\BuybackDecision\:\:\$net_refund_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Inventory/ReturnSaleableRestocksTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Inventory/ReturnSaleableRestocksTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/ReturnSaleableRestocksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: tests/Feature/Inventory/ReturnSaleableRestocksTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/StockInOutSummaryReconcilesTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/StockInOutSummaryReconcilesTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Inventory/StockIndexScreenTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/StockIndexScreenTest.php
 
 		-
 			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$app\.$#'
@@ -1764,6 +2219,48 @@ parameters:
 			identifier: argument.templateType
 			count: 1
 			path: tests/Feature/Seeders/DevBankAccountSeederTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Feature/Shared/AdminBreadcrumbsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Shared/AdminBreadcrumbsTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Shared/AdminNavigationAccessTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Shared/AdminNavigationAccessTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\Mixins\\Expectation\<mixed\>\:\:\$not\.$#'
+			identifier: property.notFound
+			count: 3
+			path: tests/Feature/Shared/AdminNavigationTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Shared/AdminNavigationTest.php
+
+		-
+			message: '#^Function adminNavItems\(\) should return list\<array\<string, mixed\>\> but returns array\<int, array\{route\: string, label\: string, icon\: string, prefix\?\: string, params\?\: array\<string, mixed\>, badge\?\: int, children\?\: list\<array\{prefix\: string, label\: string, route\: string\}\>\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Feature/Shared/AdminNavigationTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:from\(\)\.$#'
@@ -1830,7 +2327,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: tests/Modules/Admin/AdminCatalogTest.php
-
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$landing_price_paise\.$#'
@@ -2321,7 +2817,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 9
 			path: tests/Modules/Commerce/AdminBvLedgerTest.php
 
 		-
@@ -2719,7 +3215,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: tests/Modules/Commerce/SharedCartTest.php
-
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
@@ -4382,417 +4877,3 @@ parameters:
 			identifier: method.alreadyNarrowedType
 			count: 1
 			path: tests/Unit/ExampleTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/CancelAfterPackRestocksTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/CancelAfterPackRestocksTest.php
-
-		-
-			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\>\:\:and\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/CancelAfterPackRestocksTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/CheckoutAvailabilityTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$awb_no\.$#'
-			identifier: property.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$carrier_code\.$#'
-			identifier: property.notFound
-			count: 2
-			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$delivered_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$dispatched_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 2
-			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
-
-		-
-			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\<0, max\>\>\:\:and\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
-
-		-
-			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\>\:\:and\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
-
-		-
-			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
-			identifier: argument.templateType
-			count: 4
-			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function expect$#'
-			identifier: argument.templateType
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$warehouse_code\.$#'
-			identifier: property.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
-
-		-
-			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\|null\>\:\:and\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
-
-		-
-			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 3
-			path: /home/claude/aro/app/tests/Feature/Inventory/ProductFormNoLongerWritesOnHandTest.php
-
-		-
-			message: '#^Function pfnPayload\(\) has parameter \$overrides with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/ProductFormNoLongerWritesOnHandTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Returns\\Models\\BuybackDecision\:\:\$net_refund_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/ReturnSaleableRestocksTest.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/ReturnSaleableRestocksTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/ReturnSaleableRestocksTest.php
-
-		-
-			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\>\:\:and\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/Inventory/ReturnSaleableRestocksTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 9
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/PaidNotPackedProviderTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/PaidNotPackedProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/AwaitingInspectionProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 8
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/AwaitingReceiptProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 6
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/ExpiredOnHandProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/ExpiringProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/GrnDraftStaleProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 7
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/InvoiceMissingProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/LedgerDriftProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/LowStockProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 4
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/PackedNotShippedProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 8
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/PoOverdueProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 7
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/RestockNotReconciledTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 6
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/AdcApplicationsPendingProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 6
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/ContentRequiredPageUnpublishedProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 6
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/CoolingOffExpiringProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/DistributorRequestsOpenProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 6
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/EngineRunsFailedProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 7
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/FailedJobsProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/FrozenStaleProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 8
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/GrievanceSlaDueOrBreachedProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 7
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/GrievanceThirdPartyOverdueProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/KycPendingReviewProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/LineChangePendingProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/MessagingReportedPendingProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 4
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/ShippedNotDeliveredProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 6
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/TransferInTransitProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 4
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/UnpaidExpiringProviderTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/RegistryPermissionScopingTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$actor\.$#'
-			identifier: property.notFound
-			count: 10
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/SnoozeTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 6
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/SnoozeTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/SnoozeTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$operations\.$#'
-			identifier: property.notFound
-			count: 12
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$service\.$#'
-			identifier: property.notFound
-			count: 11
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
-
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 6
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/PaymentsUnreconciledProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 7
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/PayoutBatchAwaitingApprovalProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 4
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/PayoutBatchPartiallyFailedProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/PayoutsBankDetailsMissingProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/RefundsFailedProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 5
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/RefundsManualOwedProviderTest.php
-
-		-
-			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
-			identifier: property.notFound
-			count: 7
-			path: /home/claude/aro/app/tests/Feature/ActionCenter/RefundsPastPromiseProviderTest.php

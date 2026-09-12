@@ -8,14 +8,15 @@ use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * GSB 1–7 slab daily (24-hr) calculation report (KP 2026-07-21).
@@ -72,7 +73,7 @@ final class AdminGsbCalculationController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
 
@@ -84,41 +85,51 @@ final class AdminGsbCalculationController extends Controller
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
         $totals = $this->totals($q, $from, $to, $status, $slab);
 
-        $csv = "SNo,ADN,Name,Title,Date,Slab,Score,Score Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
-        foreach ($rows as $i => $row) {
+        $columns = [
+            ['key' => 'sno',        'label' => 'SNo'],
+            ['key' => 'adn',        'label' => 'ADN'],
+            ['key' => 'name',       'label' => 'Name'],
+            ['key' => 'title',      'label' => 'Title'],
+            ['key' => 'date',       'label' => 'Date'],
+            ['key' => 'slab',       'label' => 'Slab'],
+            ['key' => 'score',      'label' => 'Score'],
+            ['key' => 'score_value', 'label' => 'Score Value (Rs)'],
+            ['key' => 'income',     'label' => 'Income (Rs)'],
+            ['key' => 'deduction',  'label' => 'Repurchase Deduction (Rs)'],
+            ['key' => 'credited',   'label' => 'Credited to Wallet (Rs)'],
+            ['key' => 'status',     'label' => 'Status'],
+        ];
+
+        $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap): array {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
-            $csv .= implode(',', [
-                $i + 1,
-                $this->csvStr($row->adn),
-                $this->csvStr($row->full_name ?? ''),
-                $this->csvStr($title),
-                Carbon::parse($row->cutoff_date)->toDateString(),
-                $row->slab,
-                (int) $row->score,
-                $row->score_value_paise !== null ? number_format($row->score_value_paise / 100, 2, '.', '') : '',
-                number_format($row->gross_gsb_paise / 100, 2, '.', ''),
-                number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
-                number_format($row->net_gsb_paise / 100, 2, '.', ''),
-                $this->csvStr($row->status),
-            ])."\n";
-        }
+
+            return [
+                'sno' => $i + 1,
+                'adn' => (string) $row->adn,
+                'name' => (string) ($row->full_name ?? ''),
+                'title' => $title,
+                'date' => Carbon::parse($row->cutoff_date)->toDateString(),
+                'slab' => $row->slab,
+                'score' => (int) $row->score,
+                'score_value' => $row->score_value_paise !== null ? $row->score_value_paise / 100 : '',
+                'income' => $row->gross_gsb_paise / 100,
+                'deduction' => $row->repurchase_deduction_paise / 100,
+                'credited' => $row->net_gsb_paise / 100,
+                'status' => (string) $row->status,
+            ];
+        })->all();
 
         // Grand total row across the full filtered set (Score, Income, Deduction, Credited).
-        $csv .= implode(',', [
-            $this->csvStr('TOTAL'),
-            '', '', '', '', '',
-            $totals['score'],
-            '',
-            number_format($totals['income_paise'] / 100, 2, '.', ''),
-            number_format($totals['deduction_paise'] / 100, 2, '.', ''),
-            number_format($totals['credited_paise'] / 100, 2, '.', ''),
-            '',
-        ])."\n";
+        $out[] = [
+            'sno' => 'TOTAL', 'adn' => '', 'name' => '', 'title' => '', 'date' => '', 'slab' => '',
+            'score' => $totals['score'], 'score_value' => '',
+            'income' => $totals['income_paise'] / 100,
+            'deduction' => $totals['deduction_paise'] / 100,
+            'credited' => $totals['credited_paise'] / 100,
+            'status' => '',
+        ];
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="gsb-calculation-'.now()->toDateString().'.csv"',
-        ]);
+        return ReportExport::respond($request, 'gsb-calculation-'.now()->toDateString(), $columns, $out);
     }
 
     /**
@@ -209,16 +220,6 @@ final class AdminGsbCalculationController extends Controller
             ->when($to, fn ($b) => $b->where('gcr.cutoff_date', '<=', $to->toDateString()))
             ->when($status, fn ($b) => $b->where('gcr.status', $status))
             ->when($slab, fn ($b) => $b->where('gcr.slab', $slab));
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 
     /**

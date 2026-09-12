@@ -30,9 +30,13 @@
                 View
             </button>
         </form>
-        <a href="{{ route('admin.grievances.report.export', ['month' => $month->format('Y-m')]) }}"
+        <a href="{{ route('admin.grievances.report.export', ['month' => $month->format('Y-m'), 'format' => 'xlsx']) }}"
            class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">
-            Export 12 months (CSV)
+            Export 12 months (Excel)
+        </a>
+        <a href="{{ route('admin.grievances.report.export', ['month' => $month->format('Y-m'), 'format' => 'csv']) }}"
+           class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">
+            CSV
         </a>
     </div>
 </div>

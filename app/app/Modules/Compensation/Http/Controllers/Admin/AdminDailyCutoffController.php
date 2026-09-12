@@ -9,12 +9,13 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AdminDailyCutoffController extends Controller
 {
@@ -91,7 +92,7 @@ final class AdminDailyCutoffController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(GenosSalesBonusFeature::class), 404);
 
@@ -107,22 +108,32 @@ final class AdminDailyCutoffController extends Controller
             ->when($status, fn ($b) => $b->where('status', $status))
             ->get();
 
-        $csv = "ADN,Name,Left BV,Right BV,Slab,Gross GSB (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
-        foreach ($rows as $r) {
-            $csv .= '"'.($r->distributor->adn ?? '').'",'
-                .'"'.($r->distributor->user?->full_name ?? '').'",'
-                .(int) ($r->left_bv_paise / 100).','
-                .(int) ($r->right_bv_paise / 100).','
-                .'"'.($r->slab ?? '').'",'
-                .number_format($r->gross_gsb_paise / 100, 2, '.', '').','
-                .number_format($r->repurchase_deduction_paise / 100, 2, '.', '').','
-                .number_format($r->net_gsb_paise / 100, 2, '.', '').','
-                .'"'.$r->status.'"'."\n";
-        }
+        $columns = [
+            ['key' => 'adn', 'label' => 'ADN'],
+            ['key' => 'name', 'label' => 'Name'],
+            ['key' => 'left_bv', 'label' => 'Left BV'],
+            ['key' => 'right_bv', 'label' => 'Right BV'],
+            ['key' => 'slab', 'label' => 'Slab'],
+            ['key' => 'gross_gsb', 'label' => 'Gross GSB (Rs)'],
+            ['key' => 'deduction', 'label' => 'Repurchase Deduction (Rs)'],
+            ['key' => 'credited', 'label' => 'Credited to Wallet (Rs)'],
+            ['key' => 'status', 'label' => 'Status'],
+        ];
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="gsb-cutoff-'.$date->toDateString().'.csv"',
-        ]);
+        $out = $rows->map(function (GsbCutoffResult $r): array {
+            return [
+                'adn' => (string) ($r->distributor->adn ?? ''),
+                'name' => (string) ($r->distributor->user?->full_name ?? ''),
+                'left_bv' => (int) ($r->left_bv_paise / 100),
+                'right_bv' => (int) ($r->right_bv_paise / 100),
+                'slab' => (string) ($r->slab ?? ''),
+                'gross_gsb' => $r->gross_gsb_paise / 100,
+                'deduction' => $r->repurchase_deduction_paise / 100,
+                'credited' => $r->net_gsb_paise / 100,
+                'status' => (string) $r->status,
+            ];
+        })->values()->all();
+
+        return ReportExport::respond($request, 'gsb-cutoff-'.$date->toDateString(), $columns, $out);
     }
 }

@@ -8,7 +8,7 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Grievance\Enums\TicketCategory;
 use App\Modules\Grievance\Services\GrievanceComplianceReport;
-use App\Modules\Shared\Support\Csv;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
@@ -16,7 +16,7 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * The monthly grievance compliance report (T&C §11) and its CSV export.
+ * The monthly grievance compliance report (T&C §11) and its export.
  *
  * The export exists because this is the artefact handed to the Compliance
  * Committee quarterly (policy §6.6) and, on request, to a regulator — and a
@@ -68,41 +68,41 @@ final class AdminGrievanceReportController extends Controller
             ],
         ]);
 
-        $filename = 'grievance-compliance-'.$month->format('Y-m').'.csv';
+        // Column labels are the report's own canonical keys, verbatim and in
+        // order — this file is attached to a compliance filing, so the header
+        // is not ours to prettify.
+        $columns = array_map(
+            static fn (string $column): array => ['key' => $column, 'label' => $column],
+            GrievanceComplianceReport::csvColumns(),
+        );
 
-        return response()->streamDownload(function () use ($rows): void {
-            $handle = fopen('php://output', 'wb');
+        // The report carries complaint subjects and reporter-supplied text.
+        // This file goes to the Compliance Committee and, on request, to a
+        // regulator — both of whom open it in a spreadsheet, where a cell
+        // starting `=` is a formula. The writer applies that guard itself, so
+        // values go through raw.
+        $out = [];
 
-            if ($handle === false) {
-                return;
+        foreach ($rows as $row) {
+            $cells = [];
+
+            foreach (GrievanceComplianceReport::csvColumns() as $column) {
+                $value = $row[$column] ?? '';
+
+                // median_resolution_days is a ?float (days, one decimal place
+                // at source); render it to a fixed 2 dp rather than passing the
+                // raw float through.
+                if (is_float($value)) {
+                    $value = number_format($value, 2, '.', '');
+                }
+
+                $cells[$column] = $value;
             }
 
-            fputcsv($handle, GrievanceComplianceReport::csvColumns());
+            $out[] = $cells;
+        }
 
-            foreach ($rows as $row) {
-                // The report carries complaint subjects and reporter-supplied
-                // text. This file goes to the Compliance Committee and, on
-                // request, to a regulator — both of whom open it in a
-                // spreadsheet, where a cell starting `=` is a formula.
-                fputcsv($handle, array_map(
-                    static function (string $column) use ($row): string {
-                        $value = $row[$column] ?? '';
-
-                        // median_resolution_days is a ?float (days, one decimal
-                        // place at source); render it to a fixed 2 dp rather
-                        // than passing the raw float through.
-                        if (is_float($value)) {
-                            $value = number_format($value, 2, '.', '');
-                        }
-
-                        return Csv::safe($value);
-                    },
-                    GrievanceComplianceReport::csvColumns()
-                ));
-            }
-
-            fclose($handle);
-        }, $filename, ['Content-Type' => 'text/csv']);
+        return ReportExport::respond($request, 'grievance-compliance-'.$month->format('Y-m'), $columns, $out);
     }
 
     /**

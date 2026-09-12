@@ -7,14 +7,15 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * MSB "Input & Output Per Day" calculation report (KP 2026-07-30).
@@ -64,7 +65,7 @@ final class AdminMsbInputOutputController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(MentorshipBonusFeature::class), 404);
 
@@ -76,7 +77,23 @@ final class AdminMsbInputOutputController extends Controller
             $pools->map(fn (MsbDailyPool $p) => $p->cutoff_date->toDateString())->all(),
         ));
 
-        $csv = "Day,Week,Date,Day Total Received BV,MSB Pool (Rs),Sponsor ADN,Sponsor Name,MSB Points,Point Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Computed At\n";
+        $columns = [
+            ['key' => 'day',           'label' => 'Day'],
+            ['key' => 'week',          'label' => 'Week'],
+            ['key' => 'date',          'label' => 'Date'],
+            ['key' => 'day_total_bv',  'label' => 'Day Total Received BV'],
+            ['key' => 'msb_pool',      'label' => 'MSB Pool (Rs)'],
+            ['key' => 'sponsor_adn',   'label' => 'Sponsor ADN'],
+            ['key' => 'sponsor_name',  'label' => 'Sponsor Name'],
+            ['key' => 'msb_points',    'label' => 'MSB Points'],
+            ['key' => 'point_value',   'label' => 'Point Value (Rs)'],
+            ['key' => 'income',        'label' => 'Income (Rs)'],
+            ['key' => 'deduction',     'label' => 'Repurchase Deduction (Rs)'],
+            ['key' => 'credited',      'label' => 'Credited to Wallet (Rs)'],
+            ['key' => 'computed_at',   'label' => 'Computed At'],
+        ];
+
+        $out = [];
 
         foreach ($pools as $pool) {
             $dateStr = $pool->cutoff_date->toDateString();
@@ -94,44 +111,41 @@ final class AdminMsbInputOutputController extends Controller
                 $totalDeduction += (int) $row->deduction_paise;
                 $totalCredited += (int) $row->credited_paise;
 
-                $csv .= implode(',', [
-                    $dayNo ?? '',
-                    $weekNo ?? '',
-                    $dateStr,
-                    number_format($pool->company_bv_paise / 100, 2, '.', ''),
-                    number_format($pool->pool_paise / 100, 2, '.', ''),
-                    $this->csvStr((string) ($row->adn ?? '')),
-                    $this->csvStr((string) ($row->full_name ?? '')),
-                    (int) $row->msb_points,
-                    number_format(((int) $row->point_value_paise) / 100, 2, '.', ''),
-                    number_format($row->income_paise / 100, 2, '.', ''),
-                    number_format($row->deduction_paise / 100, 2, '.', ''),
-                    number_format($row->credited_paise / 100, 2, '.', ''),
-                    $computedAt,
-                ])."\n";
+                $out[] = [
+                    'day' => $dayNo ?? '',
+                    'week' => $weekNo ?? '',
+                    'date' => $dateStr,
+                    'day_total_bv' => $pool->company_bv_paise / 100,
+                    'msb_pool' => $pool->pool_paise / 100,
+                    'sponsor_adn' => (string) ($row->adn ?? ''),
+                    'sponsor_name' => (string) ($row->full_name ?? ''),
+                    'msb_points' => (int) $row->msb_points,
+                    'point_value' => ((int) $row->point_value_paise) / 100,
+                    'income' => $row->income_paise / 100,
+                    'deduction' => $row->deduction_paise / 100,
+                    'credited' => $row->credited_paise / 100,
+                    'computed_at' => $computedAt,
+                ];
             }
 
-            $csv .= implode(',', [
-                $dayNo ?? '',
-                $weekNo ?? '',
-                $dateStr,
-                number_format($pool->company_bv_paise / 100, 2, '.', ''),
-                number_format($pool->pool_paise / 100, 2, '.', ''),
-                '',
-                $this->csvStr('DAY TOTAL'),
-                $totalPoints,
-                number_format($pool->point_value_paise / 100, 2, '.', ''),
-                number_format($totalIncome / 100, 2, '.', ''),
-                number_format($totalDeduction / 100, 2, '.', ''),
-                number_format($totalCredited / 100, 2, '.', ''),
-                $computedAt,
-            ])."\n";
+            $out[] = [
+                'day' => $dayNo ?? '',
+                'week' => $weekNo ?? '',
+                'date' => $dateStr,
+                'day_total_bv' => $pool->company_bv_paise / 100,
+                'msb_pool' => $pool->pool_paise / 100,
+                'sponsor_adn' => '',
+                'sponsor_name' => 'DAY TOTAL',
+                'msb_points' => $totalPoints,
+                'point_value' => $pool->point_value_paise / 100,
+                'income' => $totalIncome / 100,
+                'deduction' => $totalDeduction / 100,
+                'credited' => $totalCredited / 100,
+                'computed_at' => $computedAt,
+            ];
         }
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="msb-input-output-'.now()->toDateString().'.csv"',
-        ]);
+        return ReportExport::respond($request, 'msb-input-output-'.now()->toDateString(), $columns, $out);
     }
 
     /**
@@ -227,15 +241,5 @@ final class AdminMsbInputOutputController extends Controller
             ->groupBy(fn (\stdClass $row) => Carbon::parse($row->cutoff_date)->toDateString())
             ->map(fn ($rows) => array_values($rows->all()))
             ->all();
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 }

@@ -89,7 +89,10 @@
     {{-- Wallet ledger --}}
     <div class="flex items-center justify-between mb-3">
         <h2 class="text-base font-semibold text-gray-800">Wallet Ledger</h2>
-        <a href="{{ route('income.wallet.export') }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">&#11015; CSV</a>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('income.wallet.export', ['format' => 'xlsx']) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">&#11015; Excel</a>
+            <a href="{{ route('income.wallet.export', ['format' => 'csv']) }}" class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">CSV</a>
+        </div>
     </div>
 
     @if($ledgerRows->isEmpty())

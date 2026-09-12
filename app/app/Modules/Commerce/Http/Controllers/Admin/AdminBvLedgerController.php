@@ -10,14 +10,16 @@ use App\Modules\Commerce\Support\Bv;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Support\ReportExport;
+use Generator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Admin BV-ledger report (ADR-0006). Read-only reporting over the append-only
@@ -129,7 +131,7 @@ final class AdminBvLedgerController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         $request->validate([
             'tab' => ['nullable', 'in:summary,entries'],
@@ -140,41 +142,44 @@ final class AdminBvLedgerController extends Controller
 
         $tab = $request->query('tab') === 'entries' ? 'entries' : 'summary';
         [$from, $to] = $this->dateRange($request);
-
         $q = $request->query('q');
+        $q = is_string($q) ? $q : null;
 
         if ($tab === 'summary') {
-            $rows = $this->summaryQuery($from, $to, $q)->get();
-            $csv = "ADN,Name,Accrued BV,Reversed BV,Net BV,Orders,Last Activity\n";
-            foreach ($rows as $r) {
-                $csv .= $this->csvRow([
-                    $r->adn, $r->full_name,
-                    Bv::points((int) $r->accrued), Bv::points((int) $r->reversed), Bv::points((int) $r->net),
-                    $r->orders, $r->last_at,
-                ]);
-            }
+            // Grouped-aggregate query, so the row count is bounded by distinct
+            // distributors, not ledger entries — but it can still be tens of
+            // thousands of rows, so this is streamed via cursor() the same as
+            // the entries branch rather than materialised with ->get().
+            $count = (int) DB::query()->fromSub($this->summaryQuery($from, $to, $q), 't')->count();
+            $columns = [
+                ['key' => 'adn', 'label' => 'ADN'],
+                ['key' => 'name', 'label' => 'Name'],
+                ['key' => 'accrued', 'label' => 'Accrued BV'],
+                ['key' => 'reversed', 'label' => 'Reversed BV'],
+                ['key' => 'net', 'label' => 'Net BV'],
+                ['key' => 'orders', 'label' => 'Orders'],
+                ['key' => 'last_activity', 'label' => 'Last Activity'],
+            ];
+            $rows = $this->summaryRows($from, $to, $q);
         } else {
-            $rows = BvLedgerEntry::query()
-                ->with(['distributor.user', 'order'])
-                ->dateRange($from, $to)
-                ->orderByDesc('effective_at')
-                ->orderByDesc('id')
-                ->get();
-            $csv = "Effective At,ADN,Name,Order No,Type,BV\n";
-            foreach ($rows as $e) {
-                $csv .= $this->csvRow([
-                    $e->effective_at, $e->distributor?->adn, $e->distributor?->user?->full_name,
-                    $e->order?->order_no, $e->type, Bv::points($e->bv_paise),
-                ]);
-            }
+            $count = (int) BvLedgerEntry::query()->dateRange($from, $to)->count();
+            $columns = [
+                ['key' => 'effective_at', 'label' => 'Effective At'],
+                ['key' => 'adn', 'label' => 'ADN'],
+                ['key' => 'name', 'label' => 'Name'],
+                ['key' => 'order_no', 'label' => 'Order No'],
+                ['key' => 'type', 'label' => 'Type'],
+                ['key' => 'bv', 'label' => 'BV'],
+            ];
+            $rows = $this->entriesRows($from, $to);
         }
 
-        $this->auditExport($tab, $rows->count(), $from, $to, is_string($q) ? $q : null);
+        $this->auditExport($tab, $count, $from, $to, $q);
 
-        return $this->csvResponse($csv, "bv-ledger-{$tab}");
+        return ReportExport::respond($request, "bv-ledger-{$tab}", $columns, $rows);
     }
 
-    public function exportShow(Distributor $distributor, Request $request): Response
+    public function exportShow(Distributor $distributor, Request $request): StreamedResponse
     {
         $request->validate([
             'from' => ['nullable', 'date'],
@@ -183,26 +188,24 @@ final class AdminBvLedgerController extends Controller
 
         [$from, $to] = $this->dateRange($request);
 
-        $rows = BvLedgerEntry::query()
-            ->forDistributor($distributor->id)
-            ->dateRange($from, $to)
-            ->with('order')
-            ->orderBy('effective_at')
-            ->orderBy('id')
-            ->get();
+        $count = (int) BvLedgerEntry::query()->forDistributor($distributor->id)->dateRange($from, $to)->count();
 
-        $running = 0;
-        $csv = "Effective At,Order No,Type,BV,Running Balance BV\n";
-        foreach ($rows as $e) {
-            $running += $e->bv_paise;
-            $csv .= $this->csvRow([
-                $e->effective_at, $e->order?->order_no, $e->type, Bv::points($e->bv_paise), Bv::points($running),
-            ]);
-        }
+        $columns = [
+            ['key' => 'effective_at', 'label' => 'Effective At'],
+            ['key' => 'order_no', 'label' => 'Order No'],
+            ['key' => 'type', 'label' => 'Type'],
+            ['key' => 'bv', 'label' => 'BV'],
+            ['key' => 'running_balance', 'label' => 'Running Balance BV'],
+        ];
 
-        $this->auditExport("distributor:{$distributor->adn}", $rows->count(), $from, $to);
+        $this->auditExport("distributor:{$distributor->adn}", $count, $from, $to);
 
-        return $this->csvResponse($csv, "bv-ledger-{$distributor->adn}");
+        return ReportExport::respond(
+            $request,
+            "bv-ledger-{$distributor->adn}",
+            $columns,
+            $this->exportShowRows($distributor->id, $from, $to),
+        );
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
@@ -249,24 +252,120 @@ final class AdminBvLedgerController extends Controller
     }
 
     /**
-     * @param  array<int, mixed>  $cells
+     * Streams the summary tab row-by-row (S6b: lazy/cursor iteration instead
+     * of ->get(), so this no longer hydrates Eloquent models or builds an
+     * in-memory CSV/XLSX document for the whole ledger regardless of how many
+     * distributors have accrued BV). Note this is a constant-factor
+     * improvement, not an unbounded-safe stream: the mysql PDO connection
+     * still buffers the result set (MYSQL_ATTR_USE_BUFFERED_QUERY is on), so
+     * a multi-million-row export retains a memory ceiling from buffering
+     * alone — see docs/compliance/risk-register.md R-84.
+     *
+     * @return Generator<int, array<string, mixed>>
      */
-    private function csvRow(array $cells): string
+    private function summaryRows(?Carbon $from, ?Carbon $to, ?string $q): Generator
     {
-        return implode(',', array_map(
-            static fn ($v): string => '"'.str_replace('"', '""', (string) ($v ?? '')).'"',
-            $cells,
-        ))."\n";
+        foreach ($this->summaryQuery($from, $to, $q)->cursor() as $r) {
+            yield [
+                'adn' => $r->adn,
+                'name' => $r->full_name,
+                'accrued' => Bv::points((int) $r->accrued),
+                'reversed' => Bv::points((int) $r->reversed),
+                'net' => Bv::points((int) $r->net),
+                'orders' => (int) $r->orders,
+                'last_activity' => $r->last_at,
+            ];
+        }
     }
 
-    private function csvResponse(string $csv, string $namePrefix): Response
+    /**
+     * The raw chronological feed, streamed via cursor() so the row count —
+     * unbounded, one entry per accrual/reversal across every distributor —
+     * never has to fit in memory (S6b). Distributor and order identity are
+     * pulled in via join rather than ->with(), because cursor() does not
+     * eager-load relations and would otherwise N+1 per row.
+     *
+     * @return Generator<int, array<string, mixed>>
+     */
+    private function entriesRows(?Carbon $from, ?Carbon $to): Generator
     {
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="'.$namePrefix.'-'.now()->format('Y-m-d').'.csv"',
-        ]);
+        $query = BvLedgerEntry::query()
+            ->dateRange($from, $to)
+            ->join('distributors', 'distributors.id', '=', 'bv_ledger_entries.distributor_id')
+            ->join('users', 'users.id', '=', 'distributors.user_id')
+            ->leftJoin('orders', 'orders.id', '=', 'bv_ledger_entries.order_id')
+            ->orderByDesc('bv_ledger_entries.effective_at')
+            ->orderByDesc('bv_ledger_entries.id')
+            ->select([
+                'bv_ledger_entries.effective_at',
+                'bv_ledger_entries.type',
+                'bv_ledger_entries.bv_paise',
+                'distributors.adn',
+                'users.full_name',
+                'orders.order_no',
+            ])
+            ->toBase();
+
+        foreach ($query->cursor() as $e) {
+            yield [
+                'effective_at' => $e->effective_at,
+                'adn' => $e->adn,
+                'name' => $e->full_name,
+                'order_no' => $e->order_no,
+                'type' => $e->type,
+                'bv' => Bv::points((int) $e->bv_paise),
+            ];
+        }
     }
 
+    /**
+     * Per-distributor feed for exportShow(). Must preserve the query's own
+     * effective_at/id order exactly — the running balance is only correct
+     * in-order — so this uses cursor() rather than lazy(), which chunks (and
+     * therefore reorders) by primary key.
+     *
+     * @return Generator<int, array<string, mixed>>
+     */
+    private function exportShowRows(int $distributorId, ?Carbon $from, ?Carbon $to): Generator
+    {
+        $query = BvLedgerEntry::query()
+            ->forDistributor($distributorId)
+            ->dateRange($from, $to)
+            ->leftJoin('orders', 'orders.id', '=', 'bv_ledger_entries.order_id')
+            ->orderBy('bv_ledger_entries.effective_at')
+            ->orderBy('bv_ledger_entries.id')
+            ->select([
+                'bv_ledger_entries.effective_at',
+                'bv_ledger_entries.type',
+                'bv_ledger_entries.bv_paise',
+                'orders.order_no',
+            ])
+            ->toBase();
+
+        $running = 0;
+
+        foreach ($query->cursor() as $e) {
+            $running += (int) $e->bv_paise;
+
+            yield [
+                'effective_at' => $e->effective_at,
+                'order_no' => $e->order_no,
+                'type' => $e->type,
+                'bv' => Bv::points((int) $e->bv_paise),
+                'running_balance' => Bv::points($running),
+            ];
+        }
+    }
+
+    /**
+     * S6b: row_count is a count() taken immediately before the cursor-backed
+     * stream starts, not a count of rows actually written — the ledger is
+     * append-only, so a row written between the count and the stream (or a
+     * client that aborts the download mid-stream) can make the true streamed
+     * count differ from what's logged here. 'row_count_basis' records that
+     * so a reviewer reading this audit row later doesn't take row_count as an
+     * exact post-hoc tally.
+     */
     private function auditExport(string $scope, int $rowCount, ?Carbon $from, ?Carbon $to, ?string $search = null): void
     {
         AuditLog::create([
@@ -274,12 +373,11 @@ final class AdminBvLedgerController extends Controller
             'action' => 'bv.report.exported',
             'subject_type' => 'system',
             'subject_id' => null,
-            // An export changes nothing; the after digest pins exactly which
-            // slice of the ledger left the building.
             'before_hash' => null,
             'after_hash' => AuditDigests::of([
                 'scope' => $scope,
                 'row_count' => $rowCount,
+                'row_count_basis' => 'pre_stream',
                 'from' => $from?->toDateString(),
                 'to' => $to?->toDateString(),
                 'search' => $search,
@@ -287,6 +385,7 @@ final class AdminBvLedgerController extends Controller
             'details' => [
                 'scope' => $scope,
                 'row_count' => $rowCount,
+                'row_count_basis' => 'pre_stream',
                 'from' => $from?->toDateString(),
                 'to' => $to?->toDateString(),
                 'search' => $search,

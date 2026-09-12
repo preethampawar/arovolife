@@ -14,7 +14,7 @@ use App\Modules\Inventory\Models\StockTransfer;
 use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\InventoryAlertService;
 use App\Modules\Returns\Models\ReturnRequest;
-use App\Modules\Shared\Support\Csv;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -28,7 +28,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Plan §7.2 — ten stock/finance/ops reports, one method each, all filterable
  * by warehouse (and date range where the report has a time dimension) and
- * CSV-exportable via `?export=csv`.
+ * exportable as Excel or CSV via `?format=xlsx|csv` (`?export=` still honoured).
  *
  * Every report renders through the same generic table view: the reports
  * differ in what they query, not in how a filtered table is drawn, and a
@@ -569,8 +569,8 @@ final class AdminInventoryReportController extends Controller
      */
     private function render(Request $request, string $title, string $slug, array $columns, iterable $rows, bool $dated = false): View|StreamedResponse
     {
-        if ($request->query('export') === 'csv') {
-            return $this->exportCsv($slug, $columns, $rows);
+        if ($request->query('export') !== null || $request->query('format') !== null) {
+            return ReportExport::respond($request, "inventory-{$slug}", $columns, $rows);
         }
 
         return view('admin.inventory.reports.show', [
@@ -584,40 +584,5 @@ final class AdminInventoryReportController extends Controller
             'dateFrom' => (string) $request->query('date_from', ''),
             'dateTo' => (string) $request->query('date_to', ''),
         ]);
-    }
-
-    /**
-     * @param  list<array{key: string, label: string, align?: string}>  $columns
-     * @param  iterable<int, array<string, mixed>>  $rows
-     */
-    private function exportCsv(string $slug, array $columns, iterable $rows): StreamedResponse
-    {
-        return response()->streamDownload(function () use ($columns, $rows): void {
-            $handle = fopen('php://output', 'wb');
-
-            if ($handle === false) {
-                return;
-            }
-
-            fputcsv($handle, array_map(fn (array $c): string => $c['label'], $columns));
-
-            foreach ($rows as $row) {
-                fputcsv($handle, array_map(function (array $c) use ($row): string {
-                    $value = $row[$c['key']] ?? '';
-
-                    if ($value instanceof Carbon) {
-                        $value = $value->toDateTimeString();
-                    } elseif (is_bool($value)) {
-                        $value = $value ? '1' : '0';
-                    } elseif (! is_scalar($value)) {
-                        $value = (string) $value;
-                    }
-
-                    return Csv::safe($value);
-                }, $columns));
-            }
-
-            fclose($handle);
-        }, "inventory-{$slug}.csv", ['Content-Type' => 'text/csv']);
     }
 }

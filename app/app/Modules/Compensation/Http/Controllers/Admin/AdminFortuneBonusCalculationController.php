@@ -9,15 +9,16 @@ use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * FB Monthly Calculation report — KP's 2026-08-07 mock, one row per
@@ -81,7 +82,7 @@ final class AdminFortuneBonusCalculationController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(FortuneBonusFeature::class), 404);
 
@@ -102,35 +103,45 @@ final class AdminFortuneBonusCalculationController extends Controller
         $areteCenterMap = $this->batchAreteCenters($distributorIds);
         $this->attachMonthlyRanks($rows);
 
-        // Numbers stay ungrouped in CSV (project convention) — the grouped
-        // Indian format is a display concern of the on-screen report.
-        $csv = "SNo,ADN,Arete Center,Name,Title,Rank,Date,Level,FB Points,Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status\n";
+        $columns = [
+            ['key' => 'sno',         'label' => 'SNo'],
+            ['key' => 'adn',        'label' => 'ADN'],
+            ['key' => 'arete_center', 'label' => 'Arete Center'],
+            ['key' => 'name',       'label' => 'Name'],
+            ['key' => 'title',      'label' => 'Title'],
+            ['key' => 'rank',       'label' => 'Rank'],
+            ['key' => 'date',       'label' => 'Date'],
+            ['key' => 'level',      'label' => 'Level'],
+            ['key' => 'fb_points',  'label' => 'FB Points'],
+            ['key' => 'value',      'label' => 'Value (Rs)'],
+            ['key' => 'income',     'label' => 'Income (Rs)'],
+            ['key' => 'deduction',  'label' => 'Repurchase Deduction (Rs)'],
+            ['key' => 'credited',   'label' => 'Credited to Wallet (Rs)'],
+            ['key' => 'status',     'label' => 'Status'],
+        ];
 
-        foreach ($rows as $i => $row) {
+        $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap, $areteCenterMap): array {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
 
-            $csv .= implode(',', [
-                $i + 1,
-                $this->csvStr($row->adn),
-                $this->csvStr($areteCenterMap[$row->distributor_id] ?? ''),
-                $this->csvStr($row->full_name ?? ''),
-                $this->csvStr($title),
-                $this->csvStr($row->rank_name ?? ''),
-                $row->first_gsb_date !== null ? Carbon::parse($row->first_gsb_date)->format('d/m/y') : '',
-                $row->matrix_level,
-                $row->points ?? '',
-                $row->point_value_paise !== null ? number_format($row->point_value_paise / 100, 2, '.', '') : '',
-                number_format($row->gross_paise / 100, 2, '.', ''),
-                number_format($row->repurchase_deduction_paise / 100, 2, '.', ''),
-                number_format($row->net_paise / 100, 2, '.', ''),
-                $this->csvStr($row->status),
-            ])."\n";
-        }
+            return [
+                'sno' => $i + 1,
+                'adn' => (string) $row->adn,
+                'arete_center' => (string) ($areteCenterMap[$row->distributor_id] ?? ''),
+                'name' => (string) ($row->full_name ?? ''),
+                'title' => $title,
+                'rank' => (string) ($row->rank_name ?? ''),
+                'date' => $row->first_gsb_date !== null ? Carbon::parse($row->first_gsb_date)->format('d/m/y') : '',
+                'level' => $row->matrix_level,
+                'fb_points' => $row->points ?? '',
+                'value' => $row->point_value_paise !== null ? $row->point_value_paise / 100 : '',
+                'income' => $row->gross_paise / 100,
+                'deduction' => $row->repurchase_deduction_paise / 100,
+                'credited' => $row->net_paise / 100,
+                'status' => (string) $row->status,
+            ];
+        })->all();
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="fortune-bonus-'.now()->format('Y-m').'.csv"',
-        ]);
+        return ReportExport::respond($request, 'fortune-bonus-'.now()->format('Y-m'), $columns, $out);
     }
 
     private function buildQuery(string $q, ?string $month, ?string $status): Builder
@@ -166,16 +177,6 @@ final class AdminFortuneBonusCalculationController extends Controller
             ->orderByDesc('fbr.month_start')
             ->orderBy('fbr.matrix_level')
             ->orderByDesc('fbr.id');
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 
     /**

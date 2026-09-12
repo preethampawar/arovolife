@@ -7,14 +7,15 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 use App\Modules\Compensation\Services\BonusCalculationSnapshots;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
+use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class AdminAwRwCalculationController extends Controller
 {
@@ -64,7 +65,7 @@ final class AdminAwRwCalculationController extends Controller
         ]);
     }
 
-    public function export(Request $request): Response
+    public function export(Request $request): StreamedResponse
     {
         abort_unless(Feature::for(null)->active(LifetimeAwardsFeature::class), 404);
 
@@ -85,31 +86,40 @@ final class AdminAwRwCalculationController extends Controller
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
 
-        $csv = "SNo,ADN,Name,Title,Rank,Month,Type,Award Description,Cash Reward (Rs),Status\n";
+        $columns = [
+            ['key' => 'sno',    'label' => 'SNo'],
+            ['key' => 'adn',   'label' => 'ADN'],
+            ['key' => 'name',  'label' => 'Name'],
+            ['key' => 'title', 'label' => 'Title'],
+            ['key' => 'rank',  'label' => 'Rank'],
+            ['key' => 'month', 'label' => 'Month'],
+            ['key' => 'type',  'label' => 'Type'],
+            ['key' => 'award', 'label' => 'Award Description'],
+            ['key' => 'cash_reward', 'label' => 'Cash Reward (Rs)'],
+            ['key' => 'status', 'label' => 'Status'],
+        ];
 
-        foreach ($rows as $i => $row) {
+        $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap): array {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
             $cashReward = ($row->disbursement_type === 'cash' && $row->net_paise)
-                ? number_format($row->net_paise / 100, 2, '.', '')
+                ? $row->net_paise / 100
                 : '—';
-            $csv .= implode(',', [
-                $i + 1,
-                $this->csvStr($row->adn),
-                $this->csvStr($row->full_name ?? ''),
-                $this->csvStr($title),
-                $this->csvStr($row->rank_name ?? 'Rank '.$row->rank_number),
-                Carbon::parse($row->triggered_month)->format('Y-m'),
-                $row->disbursement_type ?? '—',
-                $this->csvStr($row->award_description ?? '—'),
-                $cashReward,
-                $this->csvStr($row->status),
-            ])."\n";
-        }
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="aw-rw-'.now()->format('Y-m').'.csv"',
-        ]);
+            return [
+                'sno' => $i + 1,
+                'adn' => (string) $row->adn,
+                'name' => (string) ($row->full_name ?? ''),
+                'title' => $title,
+                'rank' => (string) ($row->rank_name ?? 'Rank '.$row->rank_number),
+                'month' => Carbon::parse($row->triggered_month)->format('Y-m'),
+                'type' => (string) ($row->disbursement_type ?? '—'),
+                'award' => (string) ($row->award_description ?? '—'),
+                'cash_reward' => $cashReward,
+                'status' => (string) $row->status,
+            ];
+        })->all();
+
+        return ReportExport::respond($request, 'aw-rw-'.now()->format('Y-m'), $columns, $out);
     }
 
     private function buildQuery(string $q, ?string $month, ?string $status, ?string $type): Builder
@@ -142,16 +152,6 @@ final class AdminAwRwCalculationController extends Controller
             ->orderByDesc('lam.triggered_month')
             ->orderBy('lam.rank_number')
             ->orderByDesc('lam.id');
-    }
-
-    private function csvStr(string $value): string
-    {
-        $value = str_replace('"', '""', $value);
-        if (preg_match('/^[=+\-@]/', $value)) {
-            $value = "\t".$value;
-        }
-
-        return '"'.$value.'"';
     }
 
     /**

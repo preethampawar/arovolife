@@ -33,8 +33,8 @@
 
         {{-- Left column: the four headline numbers. Each card is a button —
              clicking it opens a modal with the underlying roster (S.No, ADN,
-             name, state, status) and a Download CSV button. JSON +
-             CSV come from TeamRosterController. --}}
+             name, state, status) and Download Excel / CSV buttons. JSON +
+             Excel / CSV come from TeamRosterController. --}}
         <div class="lg:pr-6">
             <p class="text-[11px] text-gray-700 uppercase tracking-wider font-semibold mb-3">Team size</p>
             <div class="grid grid-cols-2 gap-3">
@@ -98,8 +98,8 @@
 </div>
 
 {{-- Roster modal: shared by all four stat-card buttons. Populated on
-     click via /dashboard/team-roster/{scope}; download button hits the
-     CSV endpoint with the same scope. Uses a native <dialog> element so
+     click via /dashboard/team-roster/{scope}; download buttons hit the
+     Excel / CSV endpoint with the same scope. Uses a native <dialog> element so
      it always renders in the browser's top layer with a real ::backdrop
      — sidesteps any ancestor stacking-context / transform that would
      otherwise trap a div-based modal. --}}
@@ -133,7 +133,11 @@
                 <a id="team-roster-download" href="#"
                     class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold transition">
                     <x-lucide-download class="w-4 h-4" />
-                    Download CSV
+                    Download Excel
+                </a>
+                <a id="team-roster-download-csv" href="#"
+                    class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
+                    CSV
                 </a>
                 <button type="button" id="team-roster-close"
                     class="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-600">
@@ -167,6 +171,7 @@
     const titleEl    = document.getElementById('team-roster-title');
     const subEl      = document.getElementById('team-roster-subtitle');
     const dlEl       = document.getElementById('team-roster-download');
+    const dlCsvEl    = document.getElementById('team-roster-download-csv');
     const closeEl    = document.getElementById('team-roster-close');
     const loadingEl  = document.getElementById('team-roster-loading');
     const emptyEl    = document.getElementById('team-roster-empty');
@@ -192,7 +197,8 @@
         tbodyEl.innerHTML = '';
         titleEl.textContent = 'Loading…';
         subEl.textContent = '—';
-        dlEl.setAttribute('href', `/dashboard/team-roster/${scope}/download`);
+        dlEl.setAttribute('href', `/dashboard/team-roster/${scope}/download?format=xlsx`);
+        dlCsvEl.setAttribute('href', `/dashboard/team-roster/${scope}/download?format=csv`);
         modal.showModal();
 
         fetch(`/dashboard/team-roster/${scope}`, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
