@@ -11,21 +11,68 @@ declare(strict_types=1);
 use App\Modules\ActionCenter\Services\ActionCenterService;
 use App\Modules\ActionCenter\Support\ActionGroup;
 use App\Modules\ActionCenter\Support\Severity;
+use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Tests\Feature\ActionCenter\Helpers;
 
 uses(RefreshDatabase::class);
 
+/**
+ * A succeeded run for every scheduled engine's expected period as at the
+ * frozen clock below — the same fixture `EngineHealthDigestTest` uses.
+ * `platform.engine_runs_failed` reads real engine schedules via
+ * `EngineHealthService`, which reports a scheduled engine "missing" the
+ * moment it has no `engine_runs` row for its period — true of every engine
+ * in a fresh test database regardless of the clock. Seeded here so this
+ * file's tests, which are about summary/cache behaviour and not platform
+ * health, aren't at the mercy of that.
+ */
+function seedHealthyEngineRunsForSummaryCacheTest(): void
+{
+    $periods = [
+        'repurchase.evaluate' => '2026-09-08',
+        'gsb.daily-cutoff' => '2026-09-07',
+        'gsb.weekly-payout' => '2026-09-08',
+        'gbb.monthly' => '2026-08-01',
+        'rank.check' => '2026-08-01',
+        'rank.bonus' => '2026-08-01',
+        'adc.bonus' => '2026-08-01',
+        'offers.monthly' => '2026-08-01',
+        'fortune.enroll' => '2026-08-01',
+        'fortune.payout' => '2026-08-01',
+        'payout.monthly' => '2026-09-01',
+    ];
+
+    foreach ($periods as $key => $period) {
+        EngineRun::create([
+            'engine_key' => $key,
+            'period_start' => $period,
+            'status' => EngineRun::STATUS_SUCCEEDED,
+            'trigger' => 'console',
+            'started_at' => '2026-09-08 04:30:00',
+            'finished_at' => '2026-09-08 04:30:00',
+        ]);
+    }
+}
+
 beforeEach(function (): void {
     disableTestForeignKeys();
+    Carbon::setTestNow('2026-09-08 08:00:00');
     $this->seed(RolesAndPermissionsSeeder::class);
+    Helpers::publishRequiredContentPages();
+    seedHealthyEngineRunsForSummaryCacheTest();
     $this->service = app(ActionCenterService::class);
 
     $this->operations = User::factory()->create(['status' => 'active']);
     $this->operations->assignRole('admin-operations');
+});
+
+afterEach(function (): void {
+    Carbon::setTestNow();
 });
 
 it('summarises a group with its count, derived severity and oldest age', function (): void {

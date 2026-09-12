@@ -4572,6 +4572,78 @@ parameters:
 		-
 			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
 			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/AdcApplicationsPendingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/ContentRequiredPageUnpublishedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/CoolingOffExpiringProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/DistributorRequestsOpenProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/EngineRunsFailedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/FailedJobsProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/FrozenStaleProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 8
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/GrievanceSlaDueOrBreachedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/GrievanceThirdPartyOverdueProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/KycPendingReviewProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/LineChangePendingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/MessagingReportedPendingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
 			count: 4
 			path: /home/claude/aro/app/tests/Feature/ActionCenter/ShippedNotDeliveredProviderTest.php
 

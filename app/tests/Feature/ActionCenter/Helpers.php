@@ -7,6 +7,7 @@ namespace Tests\Feature\ActionCenter;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Content\Models\ContentPage;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Inventory\Models\PurchaseInvoice;
 use App\Modules\Inventory\Models\PurchaseOrder;
@@ -278,5 +279,23 @@ final class Helpers
             'sent_at' => $sentAt,
             'expected_at' => $expectedAt,
         ]);
+    }
+
+    /**
+     * Publish the four consent-linked pages `ContentRequiredPageUnpublishedProvider`
+     * checks, so tests unrelated to that provider start from a clean slate —
+     * matching a real instance, which seeds these before taking registrations.
+     */
+    public static function publishRequiredContentPages(): void
+    {
+        foreach (['terms', 'ethics', 'compensation', 'privacy'] as $slug) {
+            ContentPage::create([
+                'slug' => $slug,
+                'title' => ucfirst($slug),
+                'body' => "{$slug} body",
+                'status' => ContentPage::STATUS_PUBLISHED,
+                'published_at' => now(),
+            ]);
+        }
     }
 }

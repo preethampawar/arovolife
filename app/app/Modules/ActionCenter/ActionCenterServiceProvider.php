@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\ActionCenter;
 
 use App\Modules\ActionCenter\Contracts\ActionProvider;
+use App\Modules\ActionCenter\Providers\Compliance\ContentRequiredPageUnpublishedProvider;
+use App\Modules\ActionCenter\Providers\Compliance\GrievanceSlaDueOrBreachedProvider;
+use App\Modules\ActionCenter\Providers\Compliance\GrievanceThirdPartyOverdueProvider;
+use App\Modules\ActionCenter\Providers\Compliance\MessagingReportedPendingProvider;
 use App\Modules\ActionCenter\Providers\Money\PaymentsUnreconciledProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutBatchAwaitingApprovalProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutBatchPartiallyFailedProvider;
@@ -18,6 +22,14 @@ use App\Modules\ActionCenter\Providers\Orders\PaidNotPackedProvider;
 use App\Modules\ActionCenter\Providers\Orders\RestockNotReconciledProvider;
 use App\Modules\ActionCenter\Providers\Orders\ShippedNotDeliveredProvider;
 use App\Modules\ActionCenter\Providers\Orders\UnpaidExpiringProvider;
+use App\Modules\ActionCenter\Providers\People\AdcApplicationsPendingProvider;
+use App\Modules\ActionCenter\Providers\People\CoolingOffExpiringProvider;
+use App\Modules\ActionCenter\Providers\People\DistributorRequestsOpenProvider;
+use App\Modules\ActionCenter\Providers\People\FrozenStaleProvider;
+use App\Modules\ActionCenter\Providers\People\KycPendingReviewProvider;
+use App\Modules\ActionCenter\Providers\People\LineChangePendingProvider;
+use App\Modules\ActionCenter\Providers\Platform\EngineRunsFailedProvider;
+use App\Modules\ActionCenter\Providers\Platform\FailedJobsProvider;
 use App\Modules\ActionCenter\Providers\Returns\AwaitingInspectionProvider;
 use App\Modules\ActionCenter\Providers\Returns\AwaitingReceiptProvider;
 use App\Modules\ActionCenter\Providers\Stock\ExpiredOnHandProvider;
@@ -67,6 +79,18 @@ final class ActionCenterServiceProvider extends ServiceProvider
         PayoutBatchPartiallyFailedProvider::class,
         PayoutsBankDetailsMissingProvider::class,
         PaymentsUnreconciledProvider::class,
+        KycPendingReviewProvider::class,
+        DistributorRequestsOpenProvider::class,
+        LineChangePendingProvider::class,
+        AdcApplicationsPendingProvider::class,
+        CoolingOffExpiringProvider::class,
+        FrozenStaleProvider::class,
+        GrievanceSlaDueOrBreachedProvider::class,
+        GrievanceThirdPartyOverdueProvider::class,
+        MessagingReportedPendingProvider::class,
+        ContentRequiredPageUnpublishedProvider::class,
+        EngineRunsFailedProvider::class,
+        FailedJobsProvider::class,
     ];
 
     public function register(): void
