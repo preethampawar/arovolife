@@ -54,7 +54,7 @@ Each action has a stable `key` used in routes and snooze rows. Severity is deriv
 | | `refunds.past_promise` | Refund sent/queued >7 business days | `finance.record` | **CRITICAL** | 7 business days | Admin refunds list | **Yes** (statutory) |
 | | `payouts.batch_awaiting_approval` | Payout batch created, pending approval | `finance.approve` | WARNING | — | Admin payout batch detail | No |
 | | `payouts.batch_partially_failed` | Payout batch has failed or held lines | `finance.approve` | **CRITICAL** | — | Admin payout batch detail | No |
-| | `payouts.bank_details_missing` | Distributor has balance but no usable bank record | `finance.approve` | WARNING | — | Distributor detail | No |
+| | `payouts.bank_details_missing` | Distributor has unswept payable income, passes the BV and KYC gates, and has no bank record on file | `finance.record` | WARNING | — | Distributor detail | No |
 | | `payments.unreconciled` | Payment captured but order not marked paid | `finance.record` | **CRITICAL** | — | Admin payments list | No |
 | **People** | `kyc.pending_review` | KYC submission awaiting review | `kyc.review` | WARNING | 48h | Admin KYC queue | No |
 | | `distributor_requests.open` | Registration/update request submitted | `distributor.request.handle` | WARNING | — | Admin request detail | No |

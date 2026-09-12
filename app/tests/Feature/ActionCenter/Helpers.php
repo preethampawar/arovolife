@@ -7,6 +7,7 @@ namespace Tests\Feature\ActionCenter;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Content\Models\ContentPage;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Inventory\Models\PurchaseInvoice;
@@ -238,6 +239,47 @@ final class Helpers
     public static function distributorWithoutBank(): Distributor
     {
         return Distributor::factory()->create();
+    }
+
+    /**
+     * An unswept payable credit of a type a payout batch would sweep.
+     * `reference_id`/`reference_type` are unique per call so distinct entries
+     * never collide on `uniq_wallet_ledger_source (type, reference_type, reference_id)`.
+     */
+    public static function payableIncome(
+        int $distributorId,
+        int $amountPaise = 100000,
+        string $type = 'gsb_credit',
+        ?CarbonInterface $createdAt = null,
+    ): WalletLedgerEntry {
+        $entry = WalletLedgerEntry::create([
+            'distributor_id' => $distributorId,
+            'type' => $type,
+            'amount_paise' => $amountPaise,
+            'reference_type' => 'test_bonus',
+            'reference_id' => random_int(1, PHP_INT_MAX),
+            'swept_by_payout_batch_id' => null,
+        ]);
+
+        if ($createdAt !== null) {
+            $entry->forceFill(['created_at' => $createdAt])->saveQuietly();
+        }
+
+        return $entry->fresh();
+    }
+
+    /** One personal-BV accrual for the distributor, so `neftMinBvPaise()` gate can clear. */
+    public static function personalBv(int $distributorId, int $bvPaise = 300000): void
+    {
+        DB::table('bv_ledger_entries')->insert([
+            'distributor_id' => $distributorId,
+            'order_id' => random_int(1, PHP_INT_MAX),
+            'bv_paise' => $bvPaise,
+            'type' => 'accrual',
+            'effective_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     /** @param array<string, mixed> $overrides */

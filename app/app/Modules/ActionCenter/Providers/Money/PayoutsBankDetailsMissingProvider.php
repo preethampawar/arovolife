@@ -8,27 +8,41 @@ use App\Modules\ActionCenter\Providers\AbstractProvider;
 use App\Modules\ActionCenter\Support\ActionGroup;
 use App\Modules\ActionCenter\Support\ActionItem;
 use App\Modules\ActionCenter\Support\Severity;
-use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * A distributor whose most recent payout line item was held for having no
- * usable bank record (plan §4, Money) — `PayoutLineItem::STATUS_NO_BANK_ACCOUNT`,
- * the exact status `PayoutService::hasBankAccountOnFile()` assigns when the
- * distributor's `bank_account_enc` is empty or still the pre-encryption
- * 'stub' placeholder that will never decrypt to a real account number.
+ * A distributor with unswept payable income and no bank record on file.
  *
- * "No usable bank record" is read off the platform's own most recent
- * judgement of that distributor rather than re-summing every wallet ledger:
- * a distributor whose LATEST line item (across every batch, by id) still
- * carries this status has payable or held income sitting behind it with
- * nothing to pay it into. A distributor who has since added bank details and
- * been paid or held for a different reason drops out the moment a newer line
- * item is written for them.
+ * Mirrors, in SQL, the candidate set `PayoutService::sweepWeeklyBatch()` /
+ * `sweepMonthlyBatch()` pull from `wallet_ledger_entries` (the four payable
+ * GROUP type lists, unswept, positive, not reversed) and the same hold ladder
+ * `PayoutService::holdStatusFor()` applies ahead of its bank-on-file check:
+ * KYC must be active and personal BV must clear the NEFT minimum. A
+ * distributor held for either of those reasons is not unblocked by adding a
+ * bank record, so is deliberately left off this list — `kyc.pending_review`
+ * already covers the KYC case elsewhere in the Action Center.
+ *
+ * If `holdStatusFor()` ever gains another gate ahead of its bank check, this
+ * query must gain it too, or the two ladders silently drift.
+ *
+ * `PayoutService::hasBankAccountOnFile()` treats the pre-encryption `'stub'`
+ * placeholder as present; everywhere else in the codebase (including this
+ * provider) treats it as missing, because a stub can never decrypt to a real
+ * account and will never be paid. No production row currently holds `'stub'`
+ * — the discrepancy in `hasBankAccountOnFile()` itself is a separate,
+ * out-of-scope fix.
+ *
+ * Identified by ADN only — the query never selects `bank_account_enc` or any
+ * other PII column, only tests it in `WHERE` (CLAUDE.md PII discipline).
  */
 final class PayoutsBankDetailsMissingProvider extends AbstractProvider
 {
+    public function __construct(private readonly CompensationPlanSettingsService $plan) {}
+
     public function key(): string
     {
         return 'payouts.bank_details_missing';
@@ -46,7 +60,7 @@ final class PayoutsBankDetailsMissingProvider extends AbstractProvider
 
     public function description(): string
     {
-        return 'Distributors with income held for want of a usable bank record. Capture their bank details from the distributor screen.';
+        return 'Distributors with payable income and no bank record on file. Bank details are self-service (profile → bank) or captured by an admin — ask the distributor to add theirs, or escalate for manual capture.';
     }
 
     public function permission(): string
@@ -71,46 +85,72 @@ final class PayoutsBankDetailsMissingProvider extends AbstractProvider
 
     public function count(): int
     {
-        return $this->baseQuery()->toBase()->count();
+        return $this->baseQuery()->toBase()->distinct()->count('wallet_ledger_entries.distributor_id');
     }
 
     /** @return Collection<int, ActionItem> */
     public function items(int $limit = 50): Collection
     {
         return $this->baseQuery()
-            ->join('distributors', 'distributors.id', '=', 'payout_line_items.distributor_id')
-            ->orderBy('payout_line_items.created_at')
+            ->selectRaw('wallet_ledger_entries.distributor_id, distributors.adn, '
+                .'MIN(wallet_ledger_entries.created_at) as waiting_since, '
+                .'SUM(wallet_ledger_entries.amount_paise) as unswept_gross_paise')
+            ->groupBy('wallet_ledger_entries.distributor_id', 'distributors.id', 'distributors.adn')
+            ->orderBy('waiting_since')
             ->limit($limit)
-            ->get(['payout_line_items.id', 'payout_line_items.distributor_id', 'payout_line_items.gross_paise', 'payout_line_items.created_at', 'distributors.adn'])
-            ->map(function (PayoutLineItem $line): ActionItem {
+            ->toBase()
+            ->get()
+            ->map(function (object $row): ActionItem {
+                $waitingSince = Carbon::parse($row->waiting_since);
+
                 return new ActionItem(
                     subjectType: $this->subjectType(),
-                    subjectId: (int) $line->distributor_id,
-                    title: $line->getAttribute('adn') ?? "Distributor #{$line->distributor_id}",
-                    subtitle: 'Income held '.$this->ageLabel($line->created_at).' ago, no usable bank record on file',
-                    occurredAt: $line->created_at,
+                    subjectId: (int) $row->distributor_id,
+                    title: $row->adn ?? "Distributor #{$row->distributor_id}",
+                    subtitle: 'Income waiting '.$this->ageLabel($waitingSince).' ago, no bank record on file',
+                    occurredAt: $waitingSince,
                     dueAt: null,
                     severity: $this->severity(),
-                    url: route($this->targetRoute(), ['id' => $line->distributor_id]),
-                    meta: ['gross_paise' => (int) $line->gross_paise],
+                    url: route($this->targetRoute(), ['id' => $row->distributor_id]),
+                    meta: [
+                        'adn' => $row->adn,
+                        'unswept_gross_paise' => (int) $row->unswept_gross_paise,
+                    ],
                 );
             })
             ->values();
     }
 
-    /** @return Builder<PayoutLineItem> */
+    /** @return Builder<WalletLedgerEntry> */
     private function baseQuery(): Builder
     {
-        $query = PayoutLineItem::query()
-            ->where('payout_line_items.status', PayoutLineItem::STATUS_NO_BANK_ACCOUNT)
-            ->whereNotExists(function ($sub): void {
-                $sub->selectRaw('1')
-                    ->from('payout_line_items as later')
-                    ->whereColumn('later.distributor_id', 'payout_line_items.distributor_id')
-                    ->whereColumn('later.id', '>', 'payout_line_items.id');
-            });
+        $payableTypes = array_merge(
+            CompensationPlanSettingsService::GROUP_A_TYPES,
+            CompensationPlanSettingsService::GROUP_B_TYPES,
+            CompensationPlanSettingsService::GROUP_C_TYPES,
+            CompensationPlanSettingsService::GROUP_D_TYPES,
+        );
 
-        $this->excludeSnoozed($query->getQuery(), 'payout_line_items.distributor_id');
+        $query = WalletLedgerEntry::query()
+            ->whereIn('wallet_ledger_entries.type', $payableTypes)
+            ->whereNull('wallet_ledger_entries.swept_by_payout_batch_id')
+            ->where('wallet_ledger_entries.amount_paise', '>', 0)
+            ->notReversed()
+            ->join('distributors', 'distributors.id', '=', 'wallet_ledger_entries.distributor_id')
+            ->join('users', 'users.id', '=', 'distributors.user_id')
+            ->where('users.status', 'active')
+            ->where(function (Builder $bank): void {
+                $bank->whereNull('distributors.bank_account_enc')
+                    ->orWhere('distributors.bank_account_enc', '')
+                    ->orWhere('distributors.bank_account_enc', 'stub');
+            })
+            ->whereRaw(
+                '(select coalesce(sum(bv_paise), 0) from bv_ledger_entries '
+                .'where bv_ledger_entries.distributor_id = distributors.id) >= ?',
+                [$this->plan->neftMinBvPaise()],
+            );
+
+        $this->excludeSnoozed($query->getQuery(), 'distributors.id');
 
         return $query;
     }

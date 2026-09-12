@@ -763,6 +763,10 @@ final class PayoutService
      *
      * In every case the wallet is neither debited nor swept, so the first batch
      * after the block clears pays the balance out.
+     *
+     * The Action Center's `PayoutsBankDetailsMissingProvider` mirrors the
+     * web_only → kyc_pending → no_bank_account portion of this ladder in SQL,
+     * against unswept ledger credits rather than line items — change both.
      */
     private function holdStatusFor(int $distributorId): ?string
     {
