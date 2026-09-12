@@ -1,6 +1,6 @@
 @extends('admin.layouts.admin')
 @section('title', 'ADC Applications')
-@section('heading', 'Arete Development Centre applications')
+@section('heading', 'Applications')
 
 @section('content')
 @include('admin.arete-centres._tabs')

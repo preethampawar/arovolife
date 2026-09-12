@@ -51,7 +51,7 @@ export const test = base.extend({
         // exists fails as a login timeout, which reads like a broken page
         // instead of a missing fixture. Set A11Y_ADN / A11Y_PASSWORD to point
         // at whichever distributor your dev database actually has.
-        const adn = process.env.A11Y_ADN ?? '394325128';
+        const adn = process.env.A11Y_ADN ?? '360801433';
         const password = process.env.A11Y_PASSWORD ?? 'Test1234!';
         await loginAsDistributor(page, adn, password);
         await use(page);
