@@ -146,7 +146,12 @@ final class AdminNavigation
             ...(Feature::for(null)->active(PurchaseOffersFeature::class)
                 ? [['route' => 'admin.commerce.offers.index', 'label' => 'Offers', 'icon' => 'gift', 'prefix' => 'admin.commerce.offers']]
                 : []),
-            ['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger',      'icon' => 'chart-column', 'prefix' => 'admin.commerce.bv-ledger'],
+            // The BV ledger route is `can:audit.read`, same as Payments. Every
+            // scoped role holds that today, so gating the item changes nothing
+            // visible now — it just keeps the item and its route in step.
+            ...($user?->can('audit.read')
+                ? [['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger', 'icon' => 'chart-column', 'prefix' => 'admin.commerce.bv-ledger']]
+                : []),
         ];
     }
 
@@ -209,9 +214,17 @@ final class AdminNavigation
             ['route' => 'admin.catalog.products.index',   'label' => 'Products',       'icon' => 'package', 'prefix' => 'admin.catalog.products'],
             ['route' => 'admin.catalog.categories.index', 'label' => 'Categories',     'icon' => 'folder-tree', 'prefix' => 'admin.catalog.categories'],
             ['route' => 'admin.catalog.banners.index',    'label' => 'Banners',        'icon' => 'image', 'prefix' => 'admin.catalog.banners'],
-            ['route' => 'admin.content.index',            'label' => 'Content Pages',  'icon' => 'file-text', 'prefix' => 'admin.content'],
-            ...(Feature::for(null)->active(AnnouncementsFeature::class)
-                ? [['route' => 'admin.announcements.index', 'label' => 'Announcements', 'icon' => 'megaphone', 'prefix' => 'admin.announcements']]
+            // Both Content Pages and Announcements are gated `can:content.publish`
+            // on their routes (R-17 excludes admin-finance). Hiding them rather
+            // than letting them 403 is the §6.1 fix: a link a role cannot open
+            // must not be rendered for that role.
+            ...($user?->can('content.publish')
+                ? [
+                    ['route' => 'admin.content.index', 'label' => 'Content Pages', 'icon' => 'file-text', 'prefix' => 'admin.content'],
+                    ...(Feature::for(null)->active(AnnouncementsFeature::class)
+                        ? [['route' => 'admin.announcements.index', 'label' => 'Announcements', 'icon' => 'megaphone', 'prefix' => 'admin.announcements']]
+                        : []),
+                ]
                 : []),
         ];
     }
