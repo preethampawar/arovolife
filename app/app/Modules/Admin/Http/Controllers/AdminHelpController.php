@@ -106,6 +106,11 @@ final class AdminHelpController extends Controller
             'description' => 'Every status / lifecycle value across the platform — accounts, KYC, genealogy, catalog, orders, payments, returns and more — with plain-English explanations.',
             'file' => 'status-reference.md',
         ],
+        'action-center' => [
+            'title' => 'Action Center',
+            'description' => 'What the six action groups watch, how severity and SLA promotion work, snooze and why statutory items refuse it, the 60-second summary cache, and the deep link on every row.',
+            'file' => 'action-center.md',
+        ],
         'inventory-management' => [
             'title' => 'Inventory Management',
             'description' => 'How stock is recorded — the append-only movement ledger, batches, opening stock, adjustments and write-offs, reorder levels, and what to do when inventory:verify reports drift.',
