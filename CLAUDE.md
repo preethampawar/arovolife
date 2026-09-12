@@ -81,16 +81,27 @@ If a user request would break one of these rules, stop and reply with:
 
 ## Files you should read before your first non-trivial change
 
-1. `README.md` — map of the repo
-2. `CLAUDE.md` — this file
-3. `docs/phase-1-prd.md` — the PRD the Product Owner approved
-4. `docs/compliance/dsr-2021-mapping.md` — statutory obligations → module
-5. `docs/compliance/risk-register.md` — standing risks that never go away
-6. `docs/architecture/adr-0001-closure-table.md`
-7. `docs/architecture/adr-0002-placement-strategy-setting.md`
-8. `docs/architecture/data-model.md`
-9. `docs/architecture/events.md`
-10. `placement-engine-spec/README.md` — current sprint's "walking-skeleton" slice
+**Before running ANY command against this project — test, lint, migration,
+asset build — read `docs/local-dev-environment.md` first.** It is not optional
+background: a bare `php artisan test` or `make test` runs against the real dev
+database instead of `arovolife_test`, because docker-compose's OS-level env vars
+silently override both `phpunit.xml` and `.env.testing`. That file gives the
+exact `-e` overrides, and the other environment traps that are invisible from
+the source alone (Tailwind needs `npm run build`, not `view:clear`; the app is
+http on :8084, never https). This applies especially to a cloud or fresh
+session, which has none of that as local knowledge.
+
+1. `docs/local-dev-environment.md` — stack, ports, and the test-DB isolation trap
+2. `README.md` — map of the repo
+3. `CLAUDE.md` — this file
+4. `docs/phase-1-prd.md` — the PRD the Product Owner approved
+5. `docs/compliance/dsr-2021-mapping.md` — statutory obligations → module
+6. `docs/compliance/risk-register.md` — standing risks that never go away
+7. `docs/architecture/adr-0001-closure-table.md`
+8. `docs/architecture/adr-0002-placement-strategy-setting.md`
+9. `docs/architecture/data-model.md`
+10. `docs/architecture/events.md`
+11. `placement-engine-spec/README.md` — current sprint's "walking-skeleton" slice
 
 ---
 
