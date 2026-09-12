@@ -24,6 +24,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $created_by
  * @property int|null $approved_by
  * @property Carbon|null $approved_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
  */
 final class PayoutBatch extends Model
 {

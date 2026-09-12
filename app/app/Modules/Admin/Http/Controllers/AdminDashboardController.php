@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\ActionCenter\Services\ActionCenterService;
 use App\Modules\Compliance\Services\AuditLogPresenter;
 use App\Modules\Inventory\Services\InventoryAlertService;
 use App\Modules\Inventory\Services\InventorySettings;
@@ -14,7 +15,7 @@ use Illuminate\View\View;
 
 final class AdminDashboardController extends Controller
 {
-    public function index(Request $request, AuditLogPresenter $presenter, InventoryAlertService $inventoryAlerts, InventorySettings $inventorySettings): View
+    public function index(Request $request, AuditLogPresenter $presenter, InventoryAlertService $inventoryAlerts, InventorySettings $inventorySettings, ActionCenterService $actionCenter): View
     {
         // Each stat below is JOINed against distributors where the
         // dashboard tile claims to be about distributors. A previous
@@ -91,6 +92,15 @@ final class AdminDashboardController extends Controller
             ];
         }
 
-        return view('admin.dashboard', compact('stats', 'recentAudit', 'recentDistributors', 'inventoryCard'));
+        // Five oldest critical items across every Action Center group this
+        // viewer may see (plan §7). Empty for a viewer who holds no provider
+        // permission at all, or when nothing critical is outstanding — no
+        // card content is rendered for either case (silence means nothing to
+        // do, plan §10.5).
+        $actionCenterItems = $request->user()?->can('action.center.view')
+            ? $actionCenter->oldestCriticalItems($request->user(), 5)
+            : collect();
+
+        return view('admin.dashboard', compact('stats', 'recentAudit', 'recentDistributors', 'inventoryCard', 'actionCenterItems'));
     }
 }

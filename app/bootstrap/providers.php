@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\ActionCenter\ActionCenterServiceProvider;
 use App\Modules\Admin\AdminServiceProvider;
 use App\Modules\Analytics\AnalyticsServiceProvider;
 use App\Modules\Catalog\CatalogServiceProvider;
@@ -48,4 +49,5 @@ return [
     PublicServiceProvider::class,
     MessagingServiceProvider::class,
     AnalyticsServiceProvider::class,
+    ActionCenterServiceProvider::class,
 ];

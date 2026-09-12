@@ -112,6 +112,28 @@
 </a>
 @endif
 
+@if($actionCenterItems->isNotEmpty())
+<div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm mb-8">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold text-gray-800">Action Center — oldest critical items</h3>
+        <a href="{{ route('admin.action-center.index') }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">View all →</a>
+    </div>
+    <ul class="divide-y divide-gray-100">
+        @foreach($actionCenterItems as $item)
+        <li class="py-2.5 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-900 truncate">{{ $item->title }}</p>
+                <p class="text-xs text-gray-600 truncate">{{ $item->subtitle }} · {{ $item->ageHours() }}h old</p>
+            </div>
+            @if($item->url)
+            <a href="{{ $item->url }}" class="shrink-0 text-sm text-brand-700 hover:text-brand-800 font-medium">Fix →</a>
+            @endif
+        </li>
+        @endforeach
+    </ul>
+</div>
+@endif
+
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
     {{-- Recent Distributors --}}

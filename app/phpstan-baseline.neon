@@ -1520,6 +1520,54 @@ parameters:
 			path: tests/Feature/Compensation/PayoutAdminPagesTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/ActionCenterScreensTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Feature/ActionCenter/ActionCenterScreensTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:assertNotNull\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/ActionCenterScreensTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/BadgeCountTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: tests/Feature/ActionCenter/BadgeCountTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/SnoozeUiTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$operations\.$#'
+			identifier: property.notFound
+			count: 12
+			path: tests/Feature/ActionCenter/SnoozeUiTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 12
+			path: tests/Feature/ActionCenter/SnoozeUiTest.php
+
+		-
 			message: '#^Call to an undefined static method Illuminate\\Support\\Facades\\Log\:\:shouldHaveReceived\(\)\.$#'
 			identifier: staticMethod.notFound
 			count: 1
@@ -4490,3 +4538,261 @@ parameters:
 			identifier: argument.templateType
 			count: 1
 			path: /home/claude/aro/app/tests/Feature/Inventory/ReturnSaleableRestocksTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 9
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PaidNotPackedProviderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PaidNotPackedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/AwaitingInspectionProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 8
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/AwaitingReceiptProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/ExpiredOnHandProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/ExpiringProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/GrnDraftStaleProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/InvoiceMissingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/LedgerDriftProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/LowStockProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 4
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PackedNotShippedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 8
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PoOverdueProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/RestockNotReconciledTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/AdcApplicationsPendingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/ContentRequiredPageUnpublishedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/CoolingOffExpiringProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/DistributorRequestsOpenProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/EngineRunsFailedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/FailedJobsProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/FrozenStaleProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 8
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/GrievanceSlaDueOrBreachedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/GrievanceThirdPartyOverdueProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/KycPendingReviewProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/LineChangePendingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/MessagingReportedPendingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 4
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/ShippedNotDeliveredProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/TransferInTransitProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 4
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/UnpaidExpiringProviderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/RegistryPermissionScopingTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$actor\.$#'
+			identifier: property.notFound
+			count: 10
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SnoozeTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$service\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SnoozeTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SnoozeTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$operations\.$#'
+			identifier: property.notFound
+			count: 12
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$service\.$#'
+			identifier: property.notFound
+			count: 11
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PaymentsUnreconciledProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PayoutBatchAwaitingApprovalProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 4
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PayoutBatchPartiallyFailedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PayoutsBankDetailsMissingProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/RefundsFailedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/RefundsManualOwedProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 7
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/RefundsPastPromiseProviderTest.php

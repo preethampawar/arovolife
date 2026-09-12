@@ -567,6 +567,30 @@ See `docs/compliance/risk-register.md` for both.
 
 ---
 
+## Action Center — ops dashboard ✅
+
+One screen that aggregates "what needs a human right now" across all modules: orders awaiting pack, refunds overdue, KYC pending review, grievance SLAs, stock expiring. **Shipped 2026-09-12** (five build slices: A1–A5).
+
+**Architecture (ADR-0013):** read-only provider registry with live queries (no sync job, no materialised alert table). Each provider names its own permission and feature flag; the registry filters per viewer. Summary cached 60 seconds per user; items never cached. Snooze is the only write — managers defer known items with a reason and an expiry.
+
+**Providers (34 across six groups):**
+
+- **Orders & fulfilment:** paid not packed, packed not shipped, shipped not delivered, unpaid expiring, restock not reconciled, invoice missing (statutory), returns awaiting inspection, awaiting receipt (statutory).
+- **Stock:** low, expiring, expired on-hand, ledger drift, transfer in-transit, GRN draft stale, PO overdue (all hidden when `InventoryFeature` is OFF).
+- **Money:** refunds failed, refunds manual owed, refunds past promise (statutory), payouts batch awaiting approval, partially failed, bank details missing, payments unreconciled.
+- **People:** KYC pending review, distributor requests open, line-change pending, ADC applications pending, cooling-off expiring, frozen stale.
+- **Compliance & platform:** grievance SLA due or breached (statutory), grievance third-party overdue, messaging reported pending, consent-linked page unpublished (statutory), compensation engine runs failed, failed jobs.
+
+**UI:** `/admin/action-center` (index by group, click to type page), `/admin/action-center/{key}` (items list with severity badge, age, due-at, deep link to fix, snooze control). Sidebar badge showing critical count. Dashboard card with five oldest critical items. All behind `ActionCenterFeature` (default ON, killswitch if needed).
+
+**Snooze:** `POST /admin/action-center/{key}/snooze` — body reason (≥10 chars), days (1..max_snooze_days, default 30). Requires the provider's own permission. Writes an audit entry (`action_center.snoozed`). Un-snooze (`DELETE`) also audited. Statutory items return 422. Expiry is automatic (query filters `snoozed_until > now()`, no sweep job).
+
+**Settings:** Eight tunable SLA windows and snooze cap, prefixed `action_center.` — pack hours, ship hours, delivery chase days, transfer transit days, GRN draft days, PO overdue days, KYC review hours, max snooze days.
+
+**Deliberately deferred:** email digest (intended feature, deferred by KP on 2026-09-12; the settings key `action_center.digest_recipients` will join the registry when scheduled). Per-provider exclusions/blacklists (e.g. "never alert on this warehouse"), compliance fraud scoring, courier API exceptions, E-way bill expiry. 147 tests.
+
+---
+
 ## Phase 12 — Production hardening ⏸ deferred
 
 Explicitly out of scope for the current sprint (PO decision 2026-08-16:
