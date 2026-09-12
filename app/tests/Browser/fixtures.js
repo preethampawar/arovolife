@@ -58,4 +58,38 @@ export const test = base.extend({
     },
 });
 
+/**
+ * Confirmation-dialog helper.
+ *
+ * The platform-wide confirm modal (resources/views/components/confirm-modal.blade.php)
+ * only intercepts a submit when the form carries `data-confirm` — a form
+ * marked with only `data-confirm-impact` (most of the inventory module's
+ * archive/send/dispatch/receive actions) submits natively with no dialog at
+ * all. Use this helper for any submit button so both cases work: it clicks
+ * the button, and if the modal appears, clicks its Confirm button too.
+ */
+export async function submitAndConfirm(page, submitLocator) {
+    await submitLocator.click();
+    const confirmButton = page.locator('#confirm-modal-ok');
+    if (await confirmButton.isVisible().catch(() => false)) {
+        await confirmButton.click();
+    }
+}
+
+/**
+ * Reads the "On hand" quantity for a given SKU + warehouse code from the
+ * admin Stock screen (/admin/inventory/stock). Returns null if no matching
+ * row is found (e.g. the variant has never had stock at that warehouse).
+ */
+export async function readStockOnHand(page, sku, warehouseCode) {
+    await page.goto(`/admin/inventory/stock?q=${encodeURIComponent(sku)}&warehouse_code=${encodeURIComponent(warehouseCode)}`);
+    const row = page.locator('tbody tr.hover\\:bg-gray-50').filter({ hasText: sku }).filter({ hasText: warehouseCode }).first();
+    if ((await row.count()) === 0) {
+        return null;
+    }
+    const onHandText = (await row.locator('td').nth(2).textContent())?.trim() ?? '';
+    const value = parseInt(onHandText.replace(/[^\d-]/g, ''), 10);
+    return Number.isFinite(value) ? value : null;
+}
+
 export { expect } from '@playwright/test';
