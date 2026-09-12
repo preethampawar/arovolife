@@ -51,32 +51,32 @@
             }
         }
 
-        /* Admin sidebar: hide scrollbar by default, reveal a slim slate-tinted
-           one on hover so the nav looks clean but stays usable when the
-           viewport is short. Firefox uses scrollbar-width; WebKit uses
-           the ::-webkit-scrollbar pseudo. */
+        /* Admin sidebar: keep the scrollbar track reserved at a constant width
+           at all times (transparent by default) and only fade the thumb in on
+           hover, so revealing it never changes the content box width — that
+           reflow was shifting every nav item ~15px left on hover. Firefox uses
+           scrollbar-width/scrollbar-color; WebKit uses the ::-webkit-scrollbar
+           pseudo. */
         .admin-sidebar-scroll {
-            scrollbar-width: none;
+            scrollbar-width: thin;
             scrollbar-color: transparent transparent;
             transition: scrollbar-color 0.2s ease;
         }
         .admin-sidebar-scroll::-webkit-scrollbar {
-            width: 0;
+            width: 6px;
             background: transparent;
+        }
+        .admin-sidebar-scroll::-webkit-scrollbar-thumb {
+            background-color: transparent;
+            border-radius: 4px;
         }
         .admin-sidebar-scroll:hover,
         .admin-sidebar-scroll:focus-within {
-            scrollbar-width: thin;
             scrollbar-color: rgba(148, 163, 184, 0.4) transparent; /* slate-400 @ 40% */
-        }
-        .admin-sidebar-scroll:hover::-webkit-scrollbar,
-        .admin-sidebar-scroll:focus-within::-webkit-scrollbar {
-            width: 6px;
         }
         .admin-sidebar-scroll:hover::-webkit-scrollbar-thumb,
         .admin-sidebar-scroll:focus-within::-webkit-scrollbar-thumb {
             background-color: rgba(148, 163, 184, 0.4); /* slate-400 @ 40% */
-            border-radius: 4px;
         }
         .admin-sidebar-scroll::-webkit-scrollbar-track {
             background: transparent;
@@ -255,7 +255,7 @@
                     <button type="button" data-nav-group-toggle
                             aria-expanded="true"
                             aria-controls="nav-group-{{ $group['key'] }}"
-                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400/80 px-4 pt-5 pb-1.5 mt-1 border-t border-slate-800/80 first:mt-0 first:border-t-0 hover:text-slate-300 transition-colors">
+                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-300 bg-slate-700/60 rounded-lg px-4 py-2 mt-4 first:mt-0 border-t border-slate-800/80 first:border-t-0 hover:bg-slate-700/80 hover:text-white transition-colors">
                         <span class="text-left">{{ $group['label'] }}</span>
                         <span data-nav-group-chevron="down">{{ svg('lucide-chevron-down', 'w-3 h-3') }}</span>
                         <span data-nav-group-chevron="right" hidden>{{ svg('lucide-chevron-right', 'w-3 h-3') }}</span>
