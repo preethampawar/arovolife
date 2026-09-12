@@ -83,9 +83,7 @@ final class AdminNavigation
      */
     private static function overviewItems(?User $user, array $badges): array
     {
-        // Temporarily dev-only while the screen beds in; explicit product decision 2026-09-12.
-        $actionCenterOn = ($user?->can('action.center.view') ?? false)
-            && ($user?->hasRole('developer') ?? false);
+        $actionCenterOn = $user?->can('action.center.view') ?? false;
 
         return [
             ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => 'layout-dashboard'],

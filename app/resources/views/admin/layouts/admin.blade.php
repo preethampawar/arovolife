@@ -206,8 +206,7 @@
                 // this adds no extra query beyond what `ActionCenterService`
                 // already computes. Zero renders no badge, not a grey zero
                 // (plan §7, §10.5).
-                $actionCenterOn = (auth()->user()?->can('action.center.view') ?? false)
-                    && (auth()->user()?->hasRole('developer') ?? false);
+                $actionCenterOn = auth()->user()?->can('action.center.view') ?? false;
                 $actionCenterCriticalCount = $actionCenterOn
                     ? app(\App\Modules\ActionCenter\Services\ActionCenterService::class)->criticalCount(auth()->user())
                     : 0;
