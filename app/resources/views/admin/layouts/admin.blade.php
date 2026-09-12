@@ -347,8 +347,6 @@
             </div>
             <div class="flex items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-slate-300 font-medium whitespace-nowrap">
                 <span class="hidden sm:inline">{{ now()->format('d M Y, H:i') }} IST</span>
-                <span class="hidden sm:inline text-slate-500">|</span>
-                <a href="{{ route('dashboard') }}" class="text-white hover:text-sunrise-300 transition-colors">← Distributor view</a>
             </div>
         </header>
 

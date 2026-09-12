@@ -112,7 +112,7 @@
     ]
   },
   "enabledPlugins": {
-    "code-review@claude-plugins-official": true,
+    "code-review@claude-plugins-official": false,
     "github@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "chrome-devtools-mcp@claude-plugins-official": true
