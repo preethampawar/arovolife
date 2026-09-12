@@ -500,6 +500,73 @@ design.
 
 ---
 
+## Inventory, Warehouse & Order Management ✅ shipped 2026-09-12
+
+**Modules:** Inventory (new) · Commerce (order sync hooks).
+
+Five-slice build (S1–S5) implementing stock tracking, warehouse operations, goods receipt notes (GRNs), transfers, adjustments, and order packing with FEFO batch allocation.
+
+### Shipped
+
+**Foundation (S1):**
+
+- Append-only `stock_movements` ledger with `inventory_levels` (variant × warehouse) and `stock_batches` (FIFO ageing) as projections (ADR-0012).
+- Seven tables: warehouses, suppliers, purchase orders, purchase invoices (GRNs), stock batches, movements, transfers, adjustments.
+- `StockLedger` service — only writer, locks level and batch rows, refuses anything that would go negative.
+- `warehouse_code` (string) as the key, not an int FK, to avoid backfilling 3000+ existing `inventory_levels` rows.
+- `InventoryFeature` killswitch (default OFF — gates enforcement and alerts, never recording).
+- Commands: `inventory:backfill-opening` (idempotent pre-ledger on_hand → opening movement), `inventory:verify` (reconciliation check; exits non-zero on drift).
+
+**Purchasing (S2):**
+
+- `SupplierService`, `PurchaseOrderService`, `PurchaseInvoiceService` (GRN is the goods receipt + supplier invoice in one document).
+- `InventoryNumbering` for GRN/PO/transfer/adjustment sequences.
+- Admin screens for suppliers, POs, GRNs with multi-line edit and live totals.
+- GRN posting creates/merges stock batches and writes `purchase_in` movements. Posting rolls the linked PO to `partially_received` / `received`. Cancellation refuses if any line has sold and otherwise writes `purchase_reversal` movements.
+
+**Warehouses, transfers, adjustments (S3):**
+
+- `WarehouseService` (CRUD, default, fulfilling, assertActive).
+- `StockTransferService` (createDraft / dispatch / receive / cancel). Dispatch writes `transfer_out` immediately. Receive writes `transfer_in` at destination; short receipt writes explicit `write_off` (reason `transit_shortage`). No in-transit warehouse (simplification, ADR-0012).
+- `StockAdjustmentService` for count corrections and damage write-offs. Damaged / expired / theft_loss reasons write `write_off` (not plain adjustments).
+- Stock on-hand screen (warehouse filter, SKU search, batch expansion, inline adjust link).
+
+**Order sync (S4):**
+
+- `OrderFulfilmentService::pack()` — FEFO allocation (earliest non-expired batch first), one `sale_out` movement per (item, batch), reserve release, shipment row creation, `ready_to_ship` status + `packed_at` timestamp.
+- Hooks in Commerce: H1 checkout availability check (flag-gated), H2 cart qty clamp to available, H3 legacy one-click ship auto-packs first, H4 cancel after pack returns stock, H5/H6/H7 admin pack action + pick list + shipment timeline, H8 product form now sets reorder_level (read-only on_hand), H9 catalogue seeder opens stock via the ledger, H13 customer timeline partial.
+- Returns integration: `InspectReturn::record()` calls `restockReturn()` for `saleable` condition; `damaged` / `non_saleable` are never restocked (food supplements — nothing questionable goes back on shelf).
+
+**Reports & alerts (S5):**
+
+- Ten reports in `admin/inventory/reports`: stock on hand, movement ledger, batch & expiry, low stock, valuation, purchase register, transfer register, order fulfilment, returns & restock, stock in/out summary (reconciliation: closing == on_hand).
+- All reports filterable (warehouse, date range where applicable) and CSV-exportable.
+- `InventoryAlertService`: lowStock / expiring / expired. Daily command at 08:30 IST (flag-gated), throttled to once per 7 days per level/batch.
+- Dashboard card and sidebar badge with low-stock and expiring count.
+- Storefront out-of-stock (tracked variant with `available <= 0` shows plain "Out of stock", hides Add to Cart; flag-gated, no scarcity copy).
+
+### Behind InventoryFeature (default OFF)
+
+1. **Availability enforcement** — checkout locks the `inventory_levels` row and refuses oversell. Off = no check, the legacy flow.
+2. **Alert job** — `inventory:alerts` runs but sends nothing when the flag is OFF.
+
+All stock movements record regardless of flag state. No data loss; ledger is append-only and permanent.
+
+### Deliberately not built (deferred or blocked)
+
+- **S7: Financial postings** (deferred) — GRN post writes Dr asset.inventory / Cr liability.supplier_payable; pack writes Dr expense.cogs / Cr asset.inventory at batch cost. Accounts are seeded; postings await accountant guidance on valuation method.
+- **R-46: Franchise consignment stock tracking** — The franchise module (Operations build-out) has entity and commission but **no stock ledger**. A `franchises` table exists but is not a warehouse; transfers cannot route there. A `franchise_stock` tracking ledger was deferred pending the franchise fulfilment pipeline.
+- **R-47: Franchise order fulfilment** — The checkout collection-point picker was removed pre-merge (2026-08-17); offering a buyer a choice the system cannot honour is misrepresentation. Until shipment routes to a franchise, returns appear on the admin order screen, and the buyer sees their pickup point in My Orders / confirmation / invoice, no order can reach a franchise.
+
+### Risks
+
+- **R-46** — stock record now exists for warehouses and transfers; franchise still not a fulfilling warehouse (status: Open, unblocks with S7 + franchise fulfilment).
+- **R-47** — fulfilment not wired (status: Open, blocks franchise flag-on and R-24 sign-off).
+
+See `docs/compliance/risk-register.md` for both.
+
+---
+
 ## Phase 12 — Production hardening ⏸ deferred
 
 Explicitly out of scope for the current sprint (PO decision 2026-08-16:
