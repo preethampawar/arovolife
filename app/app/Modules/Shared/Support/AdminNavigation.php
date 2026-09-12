@@ -73,10 +73,7 @@ final class AdminNavigation
      */
     private static function items(?User $user, array $badges): array
     {
-        // Action Center is developer-only while it beds in: the permission
-        // exists, but the screen is not yet meant for the wider admin family.
-        $actionCenterOn = ($user?->can('action.center.view') ?? false)
-            && ($user?->hasRole('developer') ?? false);
+        $actionCenterOn = $user?->can('action.center.view') ?? false;
 
         $messagingOn = Feature::for(null)->active(MessagingFeature::class);
 
