@@ -106,6 +106,26 @@ final class AdminHelpController extends Controller
             'description' => 'Every status / lifecycle value across the platform — accounts, KYC, genealogy, catalog, orders, payments, returns and more — with plain-English explanations.',
             'file' => 'status-reference.md',
         ],
+        'inventory-management' => [
+            'title' => 'Inventory Management',
+            'description' => 'How stock is recorded — the append-only movement ledger, batches, opening stock, adjustments and write-offs, reorder levels, and what to do when inventory:verify reports drift.',
+            'file' => 'inventory-management.md',
+        ],
+        'warehouse-management' => [
+            'title' => 'Warehouse Management',
+            'description' => 'Warehouses, suppliers, purchase orders, goods receipts (GRN) and stock transfers — statuses, what posting a GRN does to stock, and why a warehouse code can never be renamed.',
+            'file' => 'warehouse-management.md',
+        ],
+        'order-management' => [
+            'title' => 'Order Management',
+            'description' => 'The order lifecycle from placed to delivered — packing (FEFO), shipping, cancellation and restocking, and where the cooling-off clock starts.',
+            'file' => 'order-management.md',
+        ],
+        'stock-reports' => [
+            'title' => 'Stock & Inventory Reports',
+            'description' => 'Every report on Admin → Insights — what each one counts, its filters, and how to read the stock in/out summary against on-hand.',
+            'file' => 'stock-reports.md',
+        ],
     ];
 
     public function index(): View
