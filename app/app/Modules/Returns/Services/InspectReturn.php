@@ -7,6 +7,7 @@ namespace App\Modules\Returns\Services;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
+use App\Modules\Inventory\Services\OrderFulfilmentService;
 use App\Modules\Returns\Models\BuybackDecision;
 use App\Modules\Returns\Models\ReturnInspection;
 use App\Modules\Returns\Models\ReturnRequest;
@@ -33,6 +34,7 @@ final class InspectReturn
         private readonly DatabaseManager $db,
         private readonly BuybackMatrix $matrix,
         private readonly RefundOrder $refundOrder,
+        private readonly OrderFulfilmentService $fulfilment,
     ) {}
 
     /**
@@ -77,6 +79,12 @@ final class InspectReturn
                     'notes' => $notes,
                 ],
             );
+
+            // Inventory plan H6: only saleable goods go back on the shelf.
+            // A consequence of inspection, never a condition of the refund.
+            if ($condition === 'saleable') {
+                $this->fulfilment->restockReturn($returnRequest, $inspectorUserId);
+            }
 
             BuybackDecision::updateOrCreate(
                 ['return_request_id' => $returnRequest->id],

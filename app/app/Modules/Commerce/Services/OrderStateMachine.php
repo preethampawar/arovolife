@@ -10,6 +10,7 @@ use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Inventory\Services\OrderFulfilmentService;
 use App\Modules\Ledger\Models\LedgerEntry;
 use App\Modules\Ledger\Models\LedgerTx;
 use App\Modules\Ledger\Services\LedgerPoster;
@@ -35,6 +36,7 @@ final class OrderStateMachine
         private readonly BvLedgerService $bvLedger,
         private readonly WalletService $wallet,
         private readonly RazorpayRefundService $refunds,
+        private readonly OrderFulfilmentService $fulfilment,
     ) {}
 
     /**
@@ -97,12 +99,18 @@ final class OrderStateMachine
         $oldStatus = $order->status;
 
         $this->db->transaction(function () use ($order, $actorUserId, $carrier, $trackingNo): void {
+            // Legacy one-click ship packs first (inventory plan H3).
+            if ($order->getAttribute('packed_at') === null) {
+                $this->fulfilment->packForShipment($order, $actorUserId);
+            }
+
             $order->update([
                 'status' => Order::STATUS_SHIPPED,
                 'shipped_at' => Carbon::now(),
                 'ship_carrier' => $carrier,
                 'ship_tracking_no' => $trackingNo,
             ]);
+            $this->fulfilment->markDispatched($order, $carrier, $trackingNo);
 
             // Revenue recognition: move customer_prepayment → sales + gst_output.
             if ($order->subtotal_paise > 0) {
@@ -216,6 +224,7 @@ final class OrderStateMachine
                 'status' => Order::STATUS_DELIVERED,
                 'delivered_at' => $deliveredAt,
             ]);
+            $this->fulfilment->markDelivered($order);
 
             // Open the per-order cooling-off clock (ADR-0005)
             $coolingOff = OrderCoolingOff::create([
@@ -409,14 +418,20 @@ final class OrderStateMachine
 
             // Release the inventory reserved at placement so the stock is
             // available again (tracked variants only; mirrors CheckoutService).
-            $order->loadMissing('items.variant.inventory');
-            foreach ($order->items as $item) {
-                /** @var OrderItem $item */
-                $variant = $item->variant;
-                if ($variant !== null && $variant->inventory_policy === 'track' && $variant->inventory !== null) {
-                    $release = min($item->qty, (int) $variant->inventory->reserved);
-                    if ($release > 0) {
-                        $variant->inventory->decrement('reserved', $release);
+            // A packed order has no reservation left: its picked units go
+            // back into their batches instead (inventory plan H4).
+            if ($order->getAttribute('packed_at') !== null) {
+                $this->fulfilment->unpackForCancel($order, $actorUserId);
+            } else {
+                $order->loadMissing('items.variant.inventory');
+                foreach ($order->items as $item) {
+                    /** @var OrderItem $item */
+                    $variant = $item->variant;
+                    if ($variant !== null && $variant->inventory_policy === 'track' && $variant->inventory !== null) {
+                        $release = min($item->qty, (int) $variant->inventory->reserved);
+                        if ($release > 0) {
+                            $variant->inventory->decrement('reserved', $release);
+                        }
                     }
                 }
             }

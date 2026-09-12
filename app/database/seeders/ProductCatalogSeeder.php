@@ -9,7 +9,13 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductAttribute;
 use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Catalog\Models\ProductVariant;
+use App\Modules\Inventory\Console\Commands\BackfillOpeningStockCommand;
+use App\Modules\Inventory\Models\StockBatch;
+use App\Modules\Inventory\Models\StockMovement;
+use App\Modules\Inventory\Models\Warehouse;
+use App\Modules\Inventory\Services\StockLedger;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 final class ProductCatalogSeeder extends Seeder
 {
@@ -142,10 +148,7 @@ final class ProductCatalogSeeder extends Seeder
                 ],
             );
 
-            InventoryLevel::updateOrCreate(
-                ['product_variant_id' => $variant->id, 'warehouse_code' => 'DEFAULT'],
-                ['on_hand' => 500, 'reserved' => 0],
-            );
+            $this->openStock($variant, 500);
 
             // Rich product-information sections. Replace-in-place so re-seeding
             // stays idempotent (mirrors AdminProductController::syncAttributes).
@@ -163,5 +166,47 @@ final class ProductCatalogSeeder extends Seeder
         }
 
         $this->command->info('Seeded '.count($products).' products.');
+    }
+
+    /**
+     * Seed stock through the ledger (inventory plan H9) so on_hand is always
+     * Σ movements: an OPENING batch plus an `opening` movement, exactly what
+     * `inventory:backfill-opening` would write. A variant that already has
+     * movements keeps its stock — re-seeding must not double it.
+     */
+    private function openStock(ProductVariant $variant, int $qty): void
+    {
+        DB::transaction(function () use ($variant, $qty): void {
+            $level = InventoryLevel::updateOrCreate(
+                ['product_variant_id' => $variant->id, 'warehouse_code' => Warehouse::DEFAULT_CODE],
+                ['reserved' => 0],
+            );
+
+            $hasMovements = StockMovement::query()
+                ->where('product_variant_id', $variant->id)
+                ->where('warehouse_code', Warehouse::DEFAULT_CODE)
+                ->exists();
+            if ($hasMovements) {
+                return;
+            }
+
+            $level->update(['on_hand' => 0]);
+
+            $unitCost = (int) $variant->getAttribute('cost_paise');
+            $batch = StockBatch::query()->firstOrCreate(
+                ['product_variant_id' => $variant->id, 'warehouse_code' => Warehouse::DEFAULT_CODE, 'batch_no' => BackfillOpeningStockCommand::OPENING_BATCH_NO],
+                ['unit_cost_paise' => $unitCost, 'qty_on_hand' => 0, 'received_at' => now(), 'source_type' => 'adjustment'],
+            );
+
+            app(StockLedger::class)->post([
+                'type' => StockMovement::TYPE_OPENING,
+                'variant_id' => $variant->id,
+                'warehouse_code' => Warehouse::DEFAULT_CODE,
+                'batch_id' => $batch->id,
+                'qty' => $qty,
+                'unit_cost_paise' => $unitCost,
+                'reason' => 'Opening stock',
+            ]);
+        });
     }
 }

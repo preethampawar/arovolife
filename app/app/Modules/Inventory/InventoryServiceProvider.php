@@ -8,6 +8,7 @@ use App\Modules\Inventory\Console\Commands\BackfillOpeningStockCommand;
 use App\Modules\Inventory\Console\Commands\VerifyStockLedgerCommand;
 use App\Modules\Inventory\Services\InventoryNumbering;
 use App\Modules\Inventory\Services\InventorySettings;
+use App\Modules\Inventory\Services\OrderFulfilmentService;
 use App\Modules\Inventory\Services\PurchaseInvoiceService;
 use App\Modules\Inventory\Services\PurchaseOrderService;
 use App\Modules\Inventory\Services\StockLedger;
@@ -20,6 +21,7 @@ final class InventoryServiceProvider extends ServiceProvider
     {
         $this->app->singleton(InventorySettings::class);
         $this->app->singleton(StockLedger::class);
+        $this->app->singleton(OrderFulfilmentService::class);
         $this->app->singleton(InventoryNumbering::class);
         $this->app->singleton(SupplierService::class);
         $this->app->singleton(PurchaseOrderService::class);

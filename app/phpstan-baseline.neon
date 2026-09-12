@@ -574,7 +574,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$qty\.$#'
 			identifier: property.notFound
-			count: 1
+			count: 2
 			path: app/Modules/Commerce/Services/CartService.php
 
 		-
@@ -604,7 +604,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$qty\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 4
 			path: app/Modules/Commerce/Services/CheckoutService.php
 
 		-
@@ -4322,3 +4322,159 @@ parameters:
 			identifier: method.alreadyNarrowedType
 			count: 1
 			path: tests/Unit/ExampleTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/CancelAfterPackRestocksTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/CancelAfterPackRestocksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/CancelAfterPackRestocksTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/CheckoutAvailabilityTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$awb_no\.$#'
+			identifier: property.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$carrier_code\.$#'
+			identifier: property.notFound
+			count: 2
+			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$delivered_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$dispatched_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\<0, max\>\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 4
+			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TValue in call to function expect$#'
+			identifier: argument.templateType
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/LegacyShipAutoPacksTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Fulfilment\\Models\\Shipment\:\:\$warehouse_code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\|null\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/OrderPackFefoTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: /home/claude/aro/app/tests/Feature/Inventory/ProductFormNoLongerWritesOnHandTest.php
+
+		-
+			message: '#^Function pfnPayload\(\) has parameter \$overrides with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/ProductFormNoLongerWritesOnHandTest.php
+
+		-
+			message: '#^Access to an undefined property App\\Modules\\Returns\\Models\\BuybackDecision\:\:\$net_refund_paise\.$#'
+			identifier: property.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/ReturnSaleableRestocksTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/ReturnSaleableRestocksTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/ReturnSaleableRestocksTest.php
+
+		-
+			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<int\>\:\:and\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/Inventory/ReturnSaleableRestocksTest.php

@@ -37,6 +37,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $buyer_legal_name
  * @property string|null $ship_carrier
  * @property string|null $ship_tracking_no
+ * @property string|null $warehouse_code
+ * @property Carbon|null $packed_at
+ * @property int|null $packed_by_user_id
  */
 final class Order extends Model
 {
@@ -77,6 +80,7 @@ final class Order extends Model
         'ship_city', 'ship_state', 'ship_pincode', 'ship_carrier', 'ship_tracking_no',
         'placed_at', 'paid_at', 'shipped_at', 'delivered_at', 'cancelled_at', 'refund_approved_at', 'refunded_at',
         'idempotency_key', 'tnc_of_sale_consent_id',
+        'warehouse_code', 'packed_at', 'packed_by_user_id',
     ];
 
     protected function casts(): array
@@ -95,6 +99,8 @@ final class Order extends Model
             'cancelled_at' => 'datetime',
             'refund_approved_at' => 'datetime',
             'refunded_at' => 'datetime',
+            'packed_at' => 'datetime',
+            'packed_by_user_id' => 'int',
         ];
     }
 

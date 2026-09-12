@@ -19,13 +19,14 @@ final class InventoryLevel extends Model
 {
     protected $table = 'inventory_levels';
 
-    protected $fillable = ['product_variant_id', 'warehouse_code', 'on_hand', 'reserved'];
+    protected $fillable = ['product_variant_id', 'warehouse_code', 'on_hand', 'reserved', 'reorder_level'];
 
     protected function casts(): array
     {
         return [
             'on_hand' => 'int',
             'reserved' => 'int',
+            'reorder_level' => 'int',
         ];
     }
 

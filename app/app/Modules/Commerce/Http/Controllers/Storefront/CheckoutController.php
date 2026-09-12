@@ -20,6 +20,7 @@ use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
+use App\Modules\Inventory\Services\Exceptions\InsufficientStockException;
 use App\Modules\Payments\Services\PaymentConfirmationService;
 use App\Modules\Payments\Services\PaymentGatewayResolver;
 use App\Modules\Payments\Services\StubGateway;
@@ -328,6 +329,10 @@ final class CheckoutController extends Controller
                     : null,
                 buyerLegalName: $validated['buyer_legal_name'] ?? null,
             );
+        } catch (InsufficientStockException $e) {
+            // Only raised while inventory enforcement is on; the message names
+            // the product and the plain number left (no scarcity copy).
+            return back()->withErrors(['checkout' => $e->getMessage()])->withInput();
         } catch (Throwable $e) {
             // Placement failed before any money moved: the cart is intact, so
             // send the buyer back with a retryable message instead of a 500.

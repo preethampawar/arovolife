@@ -169,7 +169,8 @@ final class AdminProductController extends Controller
     /**
      * Create or update the product's single default variant (Epic-1 MVP:
      * one variant per product) from the rupee/percent form inputs, and
-     * reconcile its DEFAULT-warehouse inventory level.
+     * set its DEFAULT-warehouse reorder level. Stock on hand is never written
+     * here — it is a projection of the stock ledger (inventory plan H8).
      *
      * @param  array<string, mixed>  $data
      */
@@ -199,7 +200,7 @@ final class AdminProductController extends Controller
 
         InventoryLevel::updateOrCreate(
             ['product_variant_id' => $variant->id, 'warehouse_code' => 'DEFAULT'],
-            ['on_hand' => (int) ($data['on_hand'] ?? 0)],
+            ['reorder_level' => (int) ($data['reorder_level'] ?? 0)],
         );
     }
 

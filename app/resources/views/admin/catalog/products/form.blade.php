@@ -17,7 +17,12 @@
     $action = $isEdit ? route('admin.catalog.products.update', $product) : route('admin.catalog.products.store');
     // Leave number fields empty (not "0") on a NEW product so typing doesn't
     // produce a leading-zero value like "075" that fails integer validation.
-    $onHand = old('on_hand', $isEdit ? ($variant->inventory?->on_hand ?? 0) : null);
+    // Stock on hand is read-only here (inventory plan H8): it moves only
+    // through goods receipts, orders, transfers and adjustments.
+    $stockLevels = $variant->exists
+        ? \App\Modules\Catalog\Models\InventoryLevel::where('product_variant_id', $variant->id)->orderBy('warehouse_code')->get()
+        : collect();
+    $reorderLevel = old('reorder_level', $isEdit ? ($stockLevels->firstWhere('warehouse_code', 'DEFAULT')?->reorder_level ?? 0) : null);
 @endphp
 
 <form method="POST" action="{{ $action }}" enctype="multipart/form-data" class="max-w-4xl space-y-6">
@@ -144,10 +149,27 @@
                 </select>
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Stock on hand <x-help-tip text="Current quantity available to sell. Decreases as orders are placed." /></span>
-                <input type="number" step="1" min="0" name="on_hand" value="{{ $onHand }}"
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Reorder level <x-help-tip text="When available stock at the default warehouse falls to this number, the product is flagged as low stock. 0 turns the alert off." /></span>
+                <input type="number" step="1" min="0" name="reorder_level" value="{{ $reorderLevel }}"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
+            <div class="block sm:col-span-2">
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Stock on hand</span>
+                @if($stockLevels->isEmpty())
+                <p class="text-sm text-gray-600">No stock recorded yet.</p>
+                @else
+                <ul class="text-sm text-gray-800 space-y-0.5">
+                    @foreach($stockLevels as $level)
+                    <li><span class="font-mono text-xs text-gray-600">{{ $level->warehouse_code }}</span> · {{ $level->on_hand }} on hand · {{ $level->reserved }} reserved</li>
+                    @endforeach
+                </ul>
+                @endif
+                @if($variant->exists)
+                @can('inventory.manage')
+                <a href="{{ route('admin.inventory.adjustments.create', ['product_variant_id' => $variant->id]) }}" class="inline-block mt-1 text-sm font-medium text-brand-700 hover:text-brand-800">Adjust stock →</a>
+                @endcan
+                @endif
+            </div>
         </div>
     </div>
 

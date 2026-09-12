@@ -10,6 +10,8 @@ use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Services\DTOs\CouponResult;
 use App\Modules\Identity\Models\User;
+use App\Modules\Inventory\Services\OrderFulfilmentService;
+use App\Modules\Inventory\Services\StockLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -18,6 +20,8 @@ final class CartService
     public function __construct(
         private readonly AttributionService $attribution,
         private readonly CouponService $coupons,
+        private readonly StockLedger $stockLedger,
+        private readonly OrderFulfilmentService $fulfilment,
     ) {}
 
     public function currentCart(Request $request): Cart
@@ -92,7 +96,7 @@ final class CartService
 
         $existing = $cart->items()->where('product_variant_id', $variantId)->first();
         if ($existing !== null) {
-            $existing->qty += $qty;
+            $existing->qty = $this->clampToAvailable($variant, $existing->qty + $qty);
             $existing->save();
 
             return $existing;
@@ -101,7 +105,7 @@ final class CartService
         return CartItem::create([
             'cart_id' => $cart->id,
             'product_variant_id' => $variant->id,
-            'qty' => $qty,
+            'qty' => $this->clampToAvailable($variant, $qty),
             'unit_price_paise' => $this->unitPricePaise($variant, $buyer),
             'bv_paise' => $variant->bv_paise,
             'gst_rate_bp' => $variant->gst_rate_bp,
@@ -167,8 +171,35 @@ final class CartService
 
             return;
         }
-        $item->qty = $qty;
+        $item->qty = $this->fulfilment->availabilityEnforced() && $item->variant !== null
+            ? $this->clampToAvailable($item->variant, $qty)
+            : $qty;
         $item->save();
+    }
+
+    /**
+     * Inventory plan H2 — non-blocking: while enforcement is on, a tracked
+     * line is cut down to what is available and the buyer is told the plain
+     * number. Nothing is refused here; checkout (H1) is the hard stop, which
+     * is also what an out-of-stock line (nothing to clamp to) runs into.
+     */
+    private function clampToAvailable(ProductVariant $variant, int $qty): int
+    {
+        if ($variant->inventory_policy !== 'track' || ! $this->fulfilment->availabilityEnforced()) {
+            return $qty;
+        }
+
+        $available = $this->stockLedger->available($variant->id);
+        if ($available >= $qty) {
+            return $qty;
+        }
+
+        $name = $variant->product->name ?? $variant->variant_sku;
+        session()->flash('stock_notice', $available > 0
+            ? "Only {$available} available of {$name}."
+            : "{$name} is out of stock.");
+
+        return $available > 0 ? $available : $qty;
     }
 
     public function remove(CartItem $item): void

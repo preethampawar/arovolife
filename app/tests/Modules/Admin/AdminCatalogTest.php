@@ -73,7 +73,7 @@ function acatProductPayload(int $categoryId, array $overrides = []): array
         'gst_rate' => '18',
         'weight_g' => '250',
         'inventory_policy' => 'track',
-        'on_hand' => '40',
+        'reorder_level' => '40',
         // Rich, sortable product attributes (label + WYSIWYG value + sort).
         'attr_labels' => ['Storage', 'Ingredients'],
         'attr_values_html' => ['<p>Keep cool &amp; dry.</p>', '<table><tbody><tr><td>Water</td><td>90%</td></tr></tbody></table>'],
@@ -108,7 +108,9 @@ it('ACAT-01: admin creates a product with pricing tiers + attributes + inventory
     expect($variant->landing_price_paise)->toBe(35000);
     expect($variant->bv_paise)->toBe(50000);
     expect($variant->gst_rate_bp)->toBe(1800);           // 18% → 1800 bp
-    expect($variant->inventory->on_hand)->toBe(40);
+    // Inventory plan H8: the form sets the reorder level, never on_hand.
+    expect($variant->inventory->reorder_level)->toBe(40)
+        ->and($variant->inventory->on_hand)->toBe(0);
 
     // Rich product attributes persisted and ordered by submitted sort.
     $attrs = $product->productAttributes;

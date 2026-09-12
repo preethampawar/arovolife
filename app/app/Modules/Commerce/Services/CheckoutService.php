@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Commerce\Services;
 
+use App\Modules\Catalog\Models\InventoryLevel;
 use App\Modules\Commerce\Events\OrderPlaced;
 use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\Customer;
@@ -12,6 +13,10 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Inventory\Models\Warehouse;
+use App\Modules\Inventory\Services\Exceptions\InsufficientStockException;
+use App\Modules\Inventory\Services\OrderFulfilmentService;
+use App\Modules\Inventory\Services\StockLedger;
 use App\Modules\Ledger\Services\LedgerPoster;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
@@ -38,6 +43,8 @@ final class CheckoutService
         private readonly ShippingService $shipping,
         private readonly CustomerAddressService $addressBook,
         private readonly WalletService $walletService,
+        private readonly StockLedger $stockLedger,
+        private readonly OrderFulfilmentService $fulfilment,
     ) {}
 
     /**
@@ -285,7 +292,22 @@ final class CheckoutService
 
                 // Reserve inventory (simple decrement for Phase 2)
                 if ($variant->inventory_policy === 'track') {
-                    $variant->inventory?->increment('reserved', $ci->qty);
+                    // Inventory plan H1: lock the level (created at DEFAULT
+                    // when missing) and, only while enforcement is on, refuse
+                    // more than is available. The throw rolls the whole order
+                    // back, so nothing stays reserved.
+                    $level = $variant->inventory()->lockForUpdate()->first()
+                        ?? InventoryLevel::query()->firstOrCreate(
+                            ['product_variant_id' => $variant->id, 'warehouse_code' => Warehouse::DEFAULT_CODE],
+                            ['on_hand' => 0, 'reserved' => 0],
+                        );
+                    if ($this->fulfilment->availabilityEnforced()) {
+                        $available = $this->stockLedger->available($variant->id);
+                        if ($available < $ci->qty) {
+                            throw new InsufficientStockException(sprintf('Only %d left of %s.', max(0, $available), $variant->product->name));
+                        }
+                    }
+                    $level->increment('reserved', $ci->qty);
                 }
             }
 

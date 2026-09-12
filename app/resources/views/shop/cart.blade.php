@@ -21,6 +21,10 @@
     @endif
 </div>
 
+@if(session('stock_notice'))
+<div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{{ session('stock_notice') }}</div>
+@endif
+
 @if($cart->items->isEmpty())
 <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
     <p class="text-gray-600 mb-4">Your cart is empty.</p>

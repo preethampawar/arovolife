@@ -60,7 +60,28 @@
             <h3 class="font-semibold text-gray-900 mb-3">Fulfilment Actions</h3>
             @error('cancel')<p class="mb-3 text-sm text-red-600">{{ $message }}</p>@enderror
             <div class="flex flex-wrap items-end gap-3">
-                @if($order->status === 'paid')
+                @if($order->status === 'paid' && $order->packed_at === null)
+                @can('commerce.order.manage')
+                {{-- Pack: pick FEFO batches from a warehouse (inventory plan H7). --}}
+                <form method="POST" action="{{ route('admin.commerce.orders.pack', $order) }}"
+                    class="flex flex-wrap items-end gap-3 w-full pb-3 mb-1 border-b border-gray-100"
+                    data-confirm="Pack this order?"
+                    data-confirm-title="Confirm packing"
+                    data-confirm-impact="Impact: takes the items out of stock from the earliest-expiring batches in the chosen warehouse and sets the order to READY TO SHIP. Cancelling afterwards puts the same units back.">@csrf
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Pack from warehouse</label>
+                        <select name="warehouse_code" class="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            @foreach($packWarehouses as $wh)
+                            <option value="{{ $wh->code }}" @selected($wh->code === $defaultWarehouseCode)>{{ $wh->name }} ({{ $wh->code }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button class="px-4 py-2 rounded-lg border border-brand-300 text-brand-800 hover:bg-brand-50 text-sm font-medium">Pack order</button>
+                </form>
+                @endcan
+                @endif
+
+                @if(in_array($order->status, ['paid', 'ready_to_ship'], true))
                 {{-- Ship: capture courier + tracking, then confirm. --}}
                 <form method="POST" action="{{ route('admin.commerce.orders.ship', $order) }}"
                     class="flex flex-wrap items-end gap-3"
@@ -90,8 +111,8 @@
                 </form>
                 @endif
 
-                {{-- Cancel: only before shipment (placed / paid). --}}
-                @if(in_array($order->status, ['placed', 'paid'], true))
+                {{-- Cancel: only before shipment (placed / paid / packed). --}}
+                @if(in_array($order->status, ['placed', 'paid', 'ready_to_ship'], true))
                 <form method="POST" action="{{ route('admin.commerce.orders.cancel', $order) }}"
                     data-confirm="Cancel this order?"
                     data-confirm-title="Cancel order"
@@ -100,14 +121,62 @@
                 </form>
                 @endif
 
-                @if(! in_array($order->status, ['placed', 'paid', 'shipped'], true))
+                @if(! in_array($order->status, ['placed', 'paid', 'ready_to_ship', 'shipped'], true))
                 <p class="text-sm text-gray-600">No fulfilment actions available in status <strong>{{ $order->status }}</strong>.</p>
+                @endif
+            </div>
+        </div>
+
+        {{-- Pick list + shipment (inventory plan H7) --}}
+        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+            <div class="flex flex-wrap items-baseline justify-between gap-2 mb-4">
+                <h3 class="font-semibold text-gray-900">Pick list</h3>
+                <p class="text-xs text-gray-600">
+                    Warehouse: <span class="font-mono text-gray-900">{{ $order->warehouse_code ?? '—' }}</span>
+                    @if($order->packed_at) · Packed {{ $order->packed_at->format('d M Y H:i') }}@endif
+                </p>
+            </div>
+            <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200">
+                        <th class="text-left py-2 text-xs font-medium text-gray-600 uppercase">SKU</th>
+                        <th class="text-left py-2 text-xs font-medium text-gray-600 uppercase">Product</th>
+                        <th class="text-right py-2 text-xs font-medium text-gray-600 uppercase">Qty</th>
+                        <th class="text-left py-2 pl-4 text-xs font-medium text-gray-600 uppercase">Batch</th>
+                        <th class="text-left py-2 text-xs font-medium text-gray-600 uppercase">Expiry</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach($pickList as $line)
+                    <tr>
+                        <td class="py-2 font-mono text-xs text-gray-700">{{ $line['sku'] }}</td>
+                        <td class="py-2 text-gray-900">{{ $line['name'] }}</td>
+                        <td class="py-2 text-right tabular-nums">{{ $line['qty'] }}</td>
+                        <td class="py-2 pl-4 font-mono text-xs">{{ $line['batch_no'] ?? '—' }}</td>
+                        <td class="py-2 text-xs">{{ $line['expiry'] ?? '—' }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-600">
+                @if($shipment)
+                Shipment #{{ $shipment->id }} · <span class="capitalize">{{ str_replace('_', ' ', $shipment->status) }}</span>
+                · {{ $shipment->carrier_code }}@if($shipment->awb_no) · AWB <span class="font-mono">{{ $shipment->awb_no }}</span>@endif
+                @else
+                No shipment recorded for this order.
                 @endif
             </div>
         </div>
     </div>
 
     <div class="space-y-6">
+        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+            <p class="text-xs uppercase tracking-wider text-gray-600 mb-3">Timeline</p>
+            @include('shop.orders._timeline', ['order' => $order])
+        </div>
+
         <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
             <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Status</p>
             <p class="text-lg font-semibold text-gray-900 capitalize">{{ str_replace('_', ' ', $order->status) }}</p>

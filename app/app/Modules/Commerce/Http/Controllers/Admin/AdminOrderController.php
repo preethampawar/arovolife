@@ -6,6 +6,10 @@ namespace App\Modules\Commerce\Http\Controllers\Admin;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Fulfilment\Models\Shipment;
+use App\Modules\Inventory\Models\Warehouse;
+use App\Modules\Inventory\Services\InventorySettings;
+use App\Modules\Inventory\Services\OrderFulfilmentService;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Tax\Models\Invoice;
 use Illuminate\Contracts\View\View;
@@ -16,7 +20,11 @@ use Illuminate\Support\Facades\Log;
 
 final class AdminOrderController extends Controller
 {
-    public function __construct(private readonly OrderStateMachine $stateMachine) {}
+    public function __construct(
+        private readonly OrderStateMachine $stateMachine,
+        private readonly OrderFulfilmentService $fulfilment,
+        private readonly InventorySettings $inventorySettings,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -51,7 +59,34 @@ final class AdminOrderController extends Controller
             'order' => $order,
             'invoice' => Invoice::where('order_id', $order->id)->latest('id')->first(),
             'paymentIntent' => PaymentIntent::where('order_id', $order->id)->latest('id')->first(),
+            // Inventory plan H7: pick list, shipment and pack warehouses.
+            'pickList' => $this->fulfilment->pickList($order),
+            'shipment' => Shipment::where('order_id', $order->id)->latest('id')->first(),
+            'packWarehouses' => Warehouse::query()->fulfilling()->orderBy('name')->get(),
+            'defaultWarehouseCode' => $this->inventorySettings->defaultWarehouseCode(),
         ]);
+    }
+
+    /** Inventory plan H7: pick FEFO batches for a paid order and mark it packed. */
+    public function pack(Request $request, Order $order): RedirectResponse
+    {
+        $validated = $request->validate([
+            'warehouse_code' => ['nullable', 'string', 'max:32'],
+        ]);
+
+        try {
+            $this->fulfilment->pack($order, $validated['warehouse_code'] ?? null, (int) auth()->id());
+        } catch (\RuntimeException $e) {
+            Log::warning('Order pack refused', [
+                'order_id' => $order->id,
+                'order_no' => $order->order_no,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['pack' => $e->getMessage()]);
+        }
+
+        return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} packed.");
     }
 
     public function markShipped(Request $request, Order $order): RedirectResponse

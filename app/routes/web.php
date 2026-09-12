@@ -393,6 +393,7 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // `commerce.order.manage` (admin-operations, R-17). Viewing stays open to
     // the whole admin family — support has to be able to look.
     Route::middleware('can:commerce.order.manage')->group(function (): void {
+        Route::post('/commerce/orders/{order}/pack', [AdminOrderController::class, 'pack'])->name('commerce.orders.pack');
         Route::post('/commerce/orders/{order}/ship', [AdminOrderController::class, 'markShipped'])->name('commerce.orders.ship');
         Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
         Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');

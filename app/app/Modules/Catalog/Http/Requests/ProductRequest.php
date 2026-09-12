@@ -52,7 +52,9 @@ final class ProductRequest extends FormRequest
             'gst_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'weight_g' => ['nullable', 'integer', 'min:0'],
             'inventory_policy' => ['required', Rule::in(['track', 'no_track'])],
-            'on_hand' => ['nullable', 'integer', 'min:0'],
+            // on_hand is a projection of the stock ledger now (inventory
+            // plan H8); the form sets only the reorder level.
+            'reorder_level' => ['nullable', 'integer', 'min:0'],
 
             // ── Product attributes (rich, sortable repeater) ─────────
             // Each row: a short label + a WYSIWYG value that may carry a

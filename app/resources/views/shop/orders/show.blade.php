@@ -83,6 +83,12 @@
     </div>
     @endif
 
+    {{-- Order timeline (derived from the order's own timestamps) --}}
+    <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+        <h2 class="font-semibold text-gray-900 mb-3">Order progress</h2>
+        @include('shop.orders._timeline', ['order' => $order])
+    </div>
+
     {{-- Shipping --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
         <h2 class="font-semibold text-gray-900 mb-3">Shipping to</h2>
