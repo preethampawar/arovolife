@@ -271,15 +271,20 @@ test.describe('Returns: saleable inspection restocks and settles a refund', () =
         await page.waitForURL('**/admin/returns/**');
 
         const inspectForm = page.locator('form').filter({ has: page.locator('select[name="condition"]') });
-        if ((await inspectForm.count()) === 0) {
-            test.skip(true, 'This return is not awaiting inspection (already inspected, or is a cooling-off cancellation which never needs one).');
+        if ((await inspectForm.count()) > 0) {
+            await inspectForm.locator('select[name="condition"]').selectOption('saleable');
+            await inspectForm.locator('textarea[name="notes"]').fill('Playwright UI test: unopened, resealed box, saleable.');
+            await submitAndConfirm(page, inspectForm.getByRole('button', { name: 'Record inspection' }));
+
+            await expect(page.getByText('Saleable', { exact: true })).toBeVisible();
+        } else {
+            // Already inspected on a prior run against this same dev-DB return
+            // (or a cooling-off cancellation, which never gets one) — carry on
+            // to the approval step below rather than treating this as nothing
+            // to verify.
+            const alreadyInspected = await page.locator('dt', { hasText: 'Condition' }).count();
+            test.skip(alreadyInspected === 0, 'This return is not awaiting inspection and has no inspection recorded (likely a cooling-off cancellation, which never needs one).');
         }
-
-        await inspectForm.locator('select[name="condition"]').selectOption('saleable');
-        await inspectForm.locator('textarea[name="notes"]').fill('Playwright UI test: unopened, resealed box, saleable.');
-        await submitAndConfirm(page, inspectForm.getByRole('button', { name: 'Record inspection' }));
-
-        await expect(page.locator('dd').filter({ hasText: /Saleable/i })).toBeVisible();
 
         const approveButton = page.getByRole('button', { name: /Approve refund/ });
         test.skip((await approveButton.count()) === 0, 'No approve action available — check the `finance.record` permission on the admin fixture.');
