@@ -202,111 +202,29 @@
                     ? app(\App\Modules\ActionCenter\Services\ActionCenterService::class)->criticalCount(auth()->user())
                     : 0;
 
-                $navItems = [
-                    ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => 'layout-dashboard'],
-                    ...($actionCenterOn
-                        ? [['route' => 'admin.action-center.index', 'label' => 'Action Center', 'icon' => 'siren', 'prefix' => 'admin.action-center', 'badge' => $actionCenterCriticalCount]]
-                        : []),
-                    ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => 'users'],
-                    // Staff register is super-staff only (route enforces role:admin|developer).
-                    ...(auth()->user()?->isSuperStaff()
-                        ? [['route' => 'admin.staff.index',       'label' => 'Staff users',    'icon' => 'users-round', 'prefix' => 'admin.staff']]
-                        : []),
-                    ['route' => 'admin.tree.show',                'label' => 'Genealogy tree', 'icon' => 'network', 'prefix' => 'admin.tree'],
-                    // KYC is gated on `kyc.review` (R-17). Hiding the item
-                    // rather than letting it 403 keeps admin-finance from
-                    // walking into a wall on every shift.
-                    ...(auth()->user()?->can('kyc.review')
-                        ? [['route' => 'admin.kyc.index',            'label' => 'KYC review',     'icon' => 'file-check', 'prefix' => 'admin.kyc']]
-                        : []),
-                    ['route' => 'admin.line-changes.index',       'label' => 'Line changes',   'icon' => 'arrow-right-left', 'prefix' => 'admin.line-changes'],
-                    ...($distributorRequestsOn
-                        ? [['route' => 'admin.distributor-requests.index', 'label' => 'Distributor requests', 'icon' => 'clipboard-list', 'prefix' => 'admin.distributor-requests', 'badge' => $openDistributorRequestCount]]
-                        : []),
-                    ['route' => 'admin.contact-inquiries.index',  'label' => 'Contact Inbox',  'icon' => 'mail', 'prefix' => 'admin.contact-inquiries', 'badge' => $unhandledContactCount],
-                    // Grievances are gated on `grievance.handle` (R-17: not
-                    // admin-finance). Hiding the item rather than letting it
-                    // 403 also keeps the open-complaint count out of view.
-                    ...(auth()->user()?->can('grievance.handle')
-                        ? [['route' => 'admin.grievances.index', 'label' => 'Grievances', 'icon' => 'megaphone', 'prefix' => 'admin.grievances', 'badge' => $openGrievanceCount]]
-                        : []),
-                    ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AnnouncementsFeature::class)
-                        ? [['route' => 'admin.announcements.index', 'label' => 'Announcements', 'icon' => 'megaphone', 'prefix' => 'admin.announcements']]
-                        : []),
-                    // Reported messages. Same R-17 exclusion as grievances, and
-                    // hidden rather than 403 for the same reason: the count of
-                    // open reports is itself information.
-                    ...(auth()->user()?->can('messaging.moderate') && $messagingOn
-                        ? [['route' => 'admin.messaging.reports.index', 'label' => 'Reported messages', 'icon' => 'message-square-warning', 'prefix' => 'admin.messaging', 'badge' => $openMessageReportCount]]
-                        : []),
-                    // Agreement §21 dormancy. Account discipline, so it follows
-                    // the same permission as freeze / terminate.
-                    ...(auth()->user()?->can('compliance.discipline')
-                        ? [['route' => 'admin.dormancy.index', 'label' => 'Dormancy (§21)', 'icon' => 'hourglass', 'prefix' => 'admin.dormancy']]
-                        : []),
-                    ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => 'shopping-cart', 'prefix' => 'admin.commerce.orders'],
-                    // Inventory: stock, warehouses, suppliers, purchase orders,
-                    // goods receipts, transfers, adjustments. Reports land here
-                    // in a later slice of the same module. Stock is `inventory.view`
-                    // (also open to admin-finance); everything else moves stock
-                    // or commits spend and stays behind `inventory.manage`.
-                    ...(auth()->user()?->can('inventory.view')
-                        ? [
-                            ['route' => 'admin.inventory.stock.index', 'label' => 'Stock', 'icon' => 'boxes', 'prefix' => 'admin.inventory.stock'],
-                            ['route' => 'admin.inventory.reports.index', 'label' => 'Reports', 'icon' => 'file-bar-chart', 'prefix' => 'admin.inventory.reports',
-                                'badge' => \Illuminate\Support\Facades\Cache::remember('admin.inventory.alert_count', 60, fn () => app(\App\Modules\Inventory\Services\InventoryAlertService::class)->lowStock()->count() + app(\App\Modules\Inventory\Services\InventoryAlertService::class)->expired()->count())],
-                        ]
-                        : []),
-                    ...(auth()->user()?->can('inventory.manage')
-                        ? [
-                            ['route' => 'admin.inventory.warehouses.index', 'label' => 'Warehouses', 'icon' => 'warehouse', 'prefix' => 'admin.inventory.warehouses'],
-                            ['route' => 'admin.inventory.suppliers.index', 'label' => 'Suppliers', 'icon' => 'truck', 'prefix' => 'admin.inventory.suppliers'],
-                            ['route' => 'admin.inventory.purchase-orders.index', 'label' => 'Purchase Orders', 'icon' => 'clipboard-list', 'prefix' => 'admin.inventory.purchase-orders'],
-                            ['route' => 'admin.inventory.grns.index', 'label' => 'Goods Receipts (GRN)', 'icon' => 'package-check', 'prefix' => 'admin.inventory.grns'],
-                            ['route' => 'admin.inventory.transfers.index', 'label' => 'Transfers', 'icon' => 'arrow-left-right', 'prefix' => 'admin.inventory.transfers'],
-                            ['route' => 'admin.inventory.adjustments.index', 'label' => 'Adjustments', 'icon' => 'sliders-horizontal', 'prefix' => 'admin.inventory.adjustments'],
-                        ]
-                        : []),
-                    // Payments and the unsettled-refunds worklist. Monitoring
-                    // (`audit.read`), so every scoped role sees it; the badge
-                    // is refunds needing a human — failed, or held past the
-                    // 10-day return-receipt alert.
-                    ...(auth()->user()?->can('audit.read')
-                        ? [['route' => 'admin.payments.index', 'label' => 'Payments', 'icon' => 'credit-card', 'prefix' => 'admin.payments',
-                            'badge' => \Illuminate\Support\Facades\Cache::remember('admin.payments.attention_count', 60, fn () => app(\App\Modules\Payments\Support\RefundWorklist::class)->attentionCount() + app(\App\Modules\Payments\Support\InvoiceGapWorklist::class)->count())]]
-                        : []),
-                    ['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger',      'icon' => 'chart-column', 'prefix' => 'admin.commerce.bv-ledger'],
-                    ...(auth()->user()?->can('audit.read')
-                        ? [['route' => 'admin.analytics.index',      'label' => 'Analytics',      'icon' => 'chart-line', 'prefix' => 'admin.analytics']]
-                        : []),
-                    ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => 'banknote', 'prefix' => 'admin.compensation'],
-                    // Only rendered while something is actually broken, so a
-                    // healthy console carries no extra item.
-                    ...($failedEngineRunCount > 0
-                        ? [['route' => 'admin.compensation.engine-runs.events', 'params' => ['status' => 'failed'], 'label' => 'Engine failures', 'icon' => 'triangle-alert', 'badge' => $failedEngineRunCount]]
-                        : []),
-                    // Arete Development Centres are entities in their own right
-                    // (Step 11, profile, member directory); the ADC bonus is a
-                    // layer on top and lives under Compensation.
-                    ['route' => 'admin.arete-centres.index',      'label' => 'Arete Centres',  'icon' => 'landmark', 'prefix' => 'admin.arete-centres', 'badge' => $openAdcApplicationCount],
-                    ['route' => 'admin.commerce.coupons.index',   'label' => 'Coupons',        'icon' => 'tag', 'prefix' => 'admin.commerce.coupons'],
-                    ...(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class)
-                        ? [['route' => 'admin.commerce.offers.index', 'label' => 'Offers', 'icon' => 'gift', 'prefix' => 'admin.commerce.offers']]
-                        : []),
-                    ['route' => 'admin.catalog.products.index',   'label' => 'Products',       'icon' => 'package', 'prefix' => 'admin.catalog.products'],
-                    ['route' => 'admin.catalog.categories.index', 'label' => 'Categories',     'icon' => 'folder-tree', 'prefix' => 'admin.catalog.categories'],
-                    ['route' => 'admin.catalog.banners.index',    'label' => 'Banners',        'icon' => 'image', 'prefix' => 'admin.catalog.banners'],
-                    ['route' => 'admin.content.index',            'label' => 'Content Pages',  'icon' => 'file-text', 'prefix' => 'admin.content'],
-                    ['route' => 'admin.compliance-documents.index','label' => 'Compliance Docs', 'icon' => 'shield-check', 'prefix' => 'admin.compliance-documents'],
-                    ['route' => 'admin.settings',                 'label' => 'Settings',       'icon' => 'settings'],
-                    ['route' => 'admin.feature-flags.index',      'label' => 'Feature flags',  'icon' => 'flag', 'prefix' => 'admin.feature-flags'],
-                    ...(auth()->user()?->can('audit.read')
-                        ? [['route' => 'admin.audit-log',            'label' => 'Audit Log',      'icon' => 'scroll-text']]
-                        : []),
-                    ['route' => 'admin.help.index',               'label' => 'Help & Reference', 'icon' => 'circle-help', 'prefix' => 'admin.help'],
+                $badges = [
+                    'action-center' => $actionCenterCriticalCount,
+                    'contact' => $unhandledContactCount,
+                    'grievances' => $openGrievanceCount,
+                    'message-reports' => $openMessageReportCount,
+                    'distributor-requests' => $openDistributorRequestCount,
+                    'adc-applications' => $openAdcApplicationCount,
+                    'engine-failures' => $failedEngineRunCount,
+                    // Inventory alerts and the payments worklist keep their own
+                    // 60s caches here rather than inside AdminNavigation, which
+                    // stays free of queries.
+                    'inventory-reports' => auth()->user()?->can('inventory.view')
+                        ? \Illuminate\Support\Facades\Cache::remember('admin.inventory.alert_count', 60, fn () => app(\App\Modules\Inventory\Services\InventoryAlertService::class)->lowStock()->count() + app(\App\Modules\Inventory\Services\InventoryAlertService::class)->expired()->count())
+                        : 0,
+                    'payments' => auth()->user()?->can('audit.read')
+                        ? \Illuminate\Support\Facades\Cache::remember('admin.payments.attention_count', 60, fn () => app(\App\Modules\Payments\Support\RefundWorklist::class)->attentionCount() + app(\App\Modules\Payments\Support\InvoiceGapWorklist::class)->count())
+                        : 0,
                 ];
+
+                $navGroups = \App\Modules\Shared\Support\AdminNavigation::groups(auth()->user(), $badges);
             @endphp
-            @foreach($navItems as $item)
+            @foreach($navGroups as $group)
+            @foreach($group['items'] as $item)
                 @php
                     $active = request()->routeIs($item['route'])
                         || (isset($item['prefix']) && request()->routeIs($item['prefix'].'*'));
@@ -325,6 +243,7 @@
                         <span class="admin-nav-badge inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-sunrise-800 text-white text-[10px] font-bold leading-none">{{ $item['badge'] }}</span>
                     @endif
                 </a>
+            @endforeach
             @endforeach
         </nav>
 
