@@ -6,6 +6,7 @@ namespace App\Modules\Inventory\Http\Controllers\Admin;
 
 use App\Modules\Catalog\Models\InventoryLevel;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Identity\Models\User;
 use App\Modules\Inventory\Models\PurchaseInvoice;
 use App\Modules\Inventory\Models\StockBatch;
 use App\Modules\Inventory\Models\StockMovement;
@@ -113,6 +114,10 @@ final class AdminInventoryReportController extends Controller
             ->whereIn('id', $movements->pluck('stock_batch_id')->filter()->unique())
             ->pluck('batch_no', 'id');
 
+        $actorNames = User::query()
+            ->whereIn('id', $movements->pluck('actor_user_id')->filter()->unique())
+            ->pluck('full_name', 'id');
+
         $rows = $movements->map(fn (StockMovement $m): array => [
             'occurred_at' => $m->occurred_at,
             'sku' => $m->getAttribute('variant_sku'),
@@ -121,7 +126,7 @@ final class AdminInventoryReportController extends Controller
             'qty' => $m->qty,
             'batch' => $m->stock_batch_id !== null ? ($batchNos[$m->stock_batch_id] ?? '') : '',
             'reference' => $m->reference_type !== null ? "{$m->reference_type}#{$m->reference_id}" : '',
-            'actor' => $m->actor_user_id !== null ? "user#{$m->actor_user_id}" : '',
+            'actor' => $m->actor_user_id !== null ? ($actorNames[$m->actor_user_id] ?? "user#{$m->actor_user_id}") : '',
         ]);
 
         return $this->render($request, 'Stock movement ledger', 'movement-ledger', [
