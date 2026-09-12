@@ -4490,3 +4490,63 @@ parameters:
 			identifier: argument.templateType
 			count: 1
 			path: /home/claude/aro/app/tests/Feature/Inventory/ReturnSaleableRestocksTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 9
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PaidNotPackedProviderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/PaidNotPackedProviderTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/RegistryPermissionScopingTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$actor\.$#'
+			identifier: property.notFound
+			count: 10
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SnoozeTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$service\.$#'
+			identifier: property.notFound
+			count: 6
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SnoozeTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SnoozeTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$operations\.$#'
+			identifier: property.notFound
+			count: 12
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$service\.$#'
+			identifier: property.notFound
+			count: 11
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:travel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: /home/claude/aro/app/tests/Feature/ActionCenter/SummaryCacheTest.php

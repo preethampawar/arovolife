@@ -112,6 +112,13 @@ final class RolesAndPermissionsSeeder extends Seeder
         // separated from moving (`inventory.manage`) so finance can reconcile
         // and report without being able to write off a shortage it found.
         'inventory.view' => ['admin-operations', 'admin-finance'],
+
+        // Added 2026-09-12 with the Action Center. The screen itself only
+        // aggregates what each viewer can already see: the rows inside it are
+        // scoped per provider by that provider's own permission, so this grant
+        // opens the page, not the queues on it. All three scoped roles hold it
+        // because every one of them has work that lands there.
+        'action.center.view' => ['admin-operations', 'admin-finance', 'admin-compliance'],
     ];
 
     /**
