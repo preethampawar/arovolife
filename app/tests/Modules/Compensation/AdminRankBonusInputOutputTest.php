@@ -14,6 +14,7 @@ use Database\Seeders\RankTiersSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -191,14 +192,14 @@ it('exports a CSV with per-rank rows, the AO-GO line and a month total', functio
         ->get(route('admin.compensation.rb-input-output.export'))
         ->assertOk();
 
-    $csv = $res->getContent();
+    $rows = XlsxReader::rows($res->streamedContent());
 
-    expect($csv)->toContain('Month Turnover');
-    expect($csv)->toContain('14000.00');       // Rank 1 pool, ungrouped in CSV
-    expect($csv)->toContain('AO-GO (Rank 1 pool)');
-    expect($csv)->toContain('"MONTH TOTAL"');
-    expect($csv)->toContain('Computed At');
-    expect($csv)->toContain('20800.00');       // grand total income
+    expect(XlsxReader::anyCellContains($rows, 'Month Turnover'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, '14000'))->toBeTrue();       // Rank 1 pool, ungrouped
+    expect(XlsxReader::anyCellContains($rows, 'AO-GO (Rank 1 pool)'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, 'MONTH TOTAL'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, 'Computed At'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, '20800'))->toBeTrue();       // grand total income
 });
 
 it('shows the empty state before any rank month exists', function () {
@@ -345,14 +346,16 @@ it('carries the deduction and credited columns into the rank bonus I&O CSV', fun
     $row = rbIoResult($dist->id, '2026-07-01', 2, 1_400_000, 1, 1_400_000);
     $row->update(['repurchase_deduction_paise' => 140_000, 'net_paise' => 1_260_000]);
 
-    $csv = $this->actingAs(rbIoAdmin())
+    $rows = XlsxReader::rows($this->actingAs(rbIoAdmin())
         ->get(route('admin.compensation.rb-input-output.export'))
         ->assertOk()
-        ->getContent();
+        ->streamedContent());
 
-    expect($csv)->toContain('Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs)');
-    expect($csv)->toContain('1400.00');
-    expect($csv)->toContain('12600.00');
+    expect($rows[0])->toContain('Income (Rs)')
+        ->and($rows[0])->toContain('Repurchase Deduction (Rs)')
+        ->and($rows[0])->toContain('Credited to Wallet (Rs)');
+    expect(XlsxReader::anyCellContains($rows, '1400'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, '12600'))->toBeTrue();
 });
 
 it('counts qualifiers blocked by the repurchase wallet gate so their unspent share is explained', function () {
@@ -381,14 +384,27 @@ it('carries the blocked count into the rank bonus I&O CSV', function () {
         'status' => RankBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
     ]);
 
-    $csv = $this->actingAs(rbIoAdmin())
+    $rows = XlsxReader::rows($this->actingAs(rbIoAdmin())
         ->get(route('admin.compensation.rb-input-output.export'))
         ->assertOk()
-        ->getContent();
+        ->streamedContent());
 
-    expect($csv)->toContain('Qualifiers,Held,Repurchase Blocked,Total Points');
+    expect($rows[0])->toContain('Qualifiers')
+        ->and($rows[0])->toContain('Held')
+        ->and($rows[0])->toContain('Repurchase Blocked')
+        ->and($rows[0])->toContain('Total Points');
+
+    $qualifiersCol = array_search('Qualifiers', $rows[0], true);
+    $heldCol = array_search('Held', $rows[0], true);
+    $blockedCol = array_search('Repurchase Blocked', $rows[0], true);
+    $totalCol = array_search('Total Points', $rows[0], true);
+
     // qualifiers, held, blocked — the rank-2 row.
-    expect($csv)->toContain(',1,0,1,');
+    $rank2Row = collect($rows)->first(fn (array $row): bool => ($row[$qualifiersCol] ?? null) === '1'
+        && ($row[$heldCol] ?? null) === '0'
+        && ($row[$blockedCol] ?? null) === '1');
+    expect($rank2Row)->not->toBeNull();
+    expect($totalCol)->not->toBeFalse();
 });
 
 it('F91: rank-bonus tiles use the stored qualifier count and never truncate the pool/credited paise', function () {

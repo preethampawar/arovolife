@@ -10,6 +10,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -185,13 +186,14 @@ it('exports a CSV with a grand-total row', function () {
         ->get(route('admin.compensation.msb-calculation.export'));
 
     $res->assertOk();
-    $csv = $res->getContent();
-    expect($csv)->toContain('SNo,Sponsor ADN,Sponsor Name,Title,Date,Sponsee ADN,Sponsee Name,MSB Points,Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status');
-    expect($csv)->toContain('"TOTAL"');
-    expect($csv)->toContain('5250.00');   // gross income total
+    $rows = XlsxReader::rows($res->streamedContent());
+
+    expect($rows[0])->toBe(['SNo', 'Sponsor ADN', 'Sponsor Name', 'Title', 'Date', 'Sponsee ADN', 'Sponsee Name', 'MSB Points', 'Value (Rs)', 'Income (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status']);
+    expect(XlsxReader::anyCellContains($rows, 'TOTAL'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, '5250'))->toBeTrue();   // gross income total
     // F33: MSB is the fifth repurchase-deduction source (client 2026-09-10).
-    expect($csv)->toContain('525.00');    // deduction total
-    expect($csv)->toContain('4725.00');   // credited to wallet
+    expect(XlsxReader::anyCellContains($rows, '525'))->toBeTrue();    // deduction total
+    expect(XlsxReader::anyCellContains($rows, '4725'))->toBeTrue();   // credited to wallet
 });
 
 it('shows the credited amount with its gross and repurchase deduction beneath it', function () {

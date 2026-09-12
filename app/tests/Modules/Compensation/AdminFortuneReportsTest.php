@@ -13,6 +13,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -181,11 +182,17 @@ it('exports the FB calculation report with the points columns ungrouped', functi
         ->get(route('admin.compensation.fb-calculation.export'));
 
     $res->assertOk();
-    $csv = $res->getContent();
+    $rows = XlsxReader::rows($res->streamedContent());
 
-    expect($csv)->toContain('SNo,ADN,Arete Center,Name,Title,Rank,Date,Level,FB Points,Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status');
-    expect($csv)->toContain('"SILVER PARTNER",14/07/26,0,36,2.00,72.00,7.20,64.80,'); // rank, points × value → income, deduction, credited
-    expect($csv)->toContain(',"",,0,,,51.00,0.00,51.00,');                            // legacy row: no rank, date, points or value; nothing deducted
+    expect($rows[0])->toBe(['SNo', 'ADN', 'Arete Center', 'Name', 'Title', 'Rank', 'Date', 'Level', 'FB Points', 'Value (Rs)', 'Income (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status']);
+
+    // rank, points × value → income, deduction, credited
+    $aliceRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'FBAAA1');
+    expect($aliceRow)->toBe(['2', 'FBAAA1', '', 'Alice', '', 'SILVER PARTNER', '14/07/26', '0', '36', '2', '72', '7.2', '64.8', 'credited']);
+
+    // legacy row: no rank, date, points or value; nothing deducted
+    $legacyRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'FBBBB2');
+    expect($legacyRow)->toBe(['1', 'FBBBB2', '', 'Bob', '', '', '', '0', '', '', '51', '0', '51', 'credited']);
 });
 
 it('surfaces the frozen fortune pool on the month screen', function () {

@@ -17,6 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -509,20 +510,33 @@ it('renders wallet page with empty state', function (): void {
         ->assertDontSee('cooling-off');
 });
 
-it('streams gsb history csv for authenticated distributor', function (): void {
+it('streams gsb history xlsx for authenticated distributor', function (): void {
     ['user' => $user] = incomeDistributor();
     $this->actingAs($user);
 
     $this->get(route('income.gsb-history.export'))
         ->assertOk()
-        ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 });
 
-it('streams wallet ledger csv for authenticated distributor', function (): void {
+it('streams wallet ledger xlsx for authenticated distributor', function (): void {
     ['user' => $user] = incomeDistributor();
     $this->actingAs($user);
 
     $this->get(route('income.wallet.export'))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+});
+
+it('honours the legacy CSV fallback for the gsb history and wallet ledger exports', function (): void {
+    ['user' => $user] = incomeDistributor();
+    $this->actingAs($user);
+
+    $this->get(route('income.gsb-history.export', ['format' => 'csv']))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+
+    $this->get(route('income.wallet.export', ['format' => 'csv']))
         ->assertOk()
         ->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
 });
@@ -650,13 +664,13 @@ it('streams the same friendly wallet ledger type labels in the CSV export (F64)'
         ['distributor_id' => $id, 'type' => 'gsb_credit', 'amount_paise' => 200_000, 'created_at' => now()],
     ]);
 
-    $csv = $this->actingAs($user)
+    $rows = XlsxReader::rows($this->actingAs($user)
         ->get(route('income.wallet.export'))
         ->assertOk()
-        ->streamedContent();
+        ->streamedContent());
 
-    expect($csv)->toContain('Genos Sales Bonus')
-        ->and($csv)->not->toContain('gsb_credit');
+    expect(XlsxReader::anyCellContains($rows, 'Genos Sales Bonus'))->toBeTrue();
+    expect(XlsxReader::noCellContains($rows, 'gsb_credit'))->toBeTrue();
 });
 
 it('labels a "no bank account on file" payout hold instead of the raw enum (F64)', function (): void {
@@ -824,11 +838,11 @@ it('shows the repurchase deduction and the credited amount on the gsb history pa
         ->assertDontSee('TDS 5%')
         ->assertDontSee('Admin 3%');
 
-    $csv = $this->get(route('income.gsb-history.export'))->assertOk()->streamedContent();
-    expect($csv)->toContain('Repurchase Deduction (₹)')
-        ->toContain('Credited to Wallet (₹)')
-        ->toContain('2000.00,200.00,1800.00')
-        ->not->toContain('TDS');
+    $rows = XlsxReader::rows($this->get(route('income.gsb-history.export'))->assertOk()->streamedContent());
+
+    expect($rows[0])->toBe(['Date', 'Left BV matched', 'Right BV matched', 'Slab', 'Gross GSB (₹)', 'Repurchase Deduction (₹)', 'Credited to Wallet (₹)', 'Status']);
+    expect($rows[1])->toBe([today()->toDateString(), '20000', '16000', '1', '2000', '200', '1800', 'credited']);
+    expect(XlsxReader::noCellContains($rows, 'TDS'))->toBeTrue();
 });
 
 it('shows the repurchase alert traffic-light on the wallet page while a balance is outstanding', function (): void {
@@ -904,9 +918,11 @@ it('shows a forfeited day on the gsb history page and csv, with no slab badge an
     // row renders an em dash, never an empty "Slab " badge.
     expect(substr_count($html, 'bg-indigo-100 text-indigo-700">Slab '))->toBe(1);
 
-    $csv = $this->get(route('income.gsb-history.export'))->assertOk()->streamedContent();
-    expect($csv)->toContain('repurchase_forfeited')
-        ->toContain('9000,7000,,0.00,0.00,0.00,repurchase_forfeited');
+    $rows = XlsxReader::rows($this->get(route('income.gsb-history.export'))->assertOk()->streamedContent());
+
+    expect(XlsxReader::anyCellContains($rows, 'repurchase_forfeited'))->toBeTrue();
+    $forfeitedRow = collect($rows)->first(fn (array $row): bool => ($row[7] ?? null) === 'repurchase_forfeited');
+    expect($forfeitedRow)->toBe([today()->toDateString(), '9000', '7000', '', '0', '0', '0', 'repurchase_forfeited']);
 });
 
 it('keeps every other cut-off status out of the distributor gsb history', function (): void {
@@ -1312,12 +1328,14 @@ it('dates the wallet ledger by when the money was earned, and names its bonus mo
         ->assertSee('Weekly · 08 Sep 2026');     // payout batch column
 
     // …and the export says exactly the same things.
-    $csv = $this->actingAs($user)->get(route('income.wallet.export'))->assertOk()->streamedContent();
+    $rows = XlsxReader::rows($this->actingAs($user)->get(route('income.wallet.export'))->assertOk()->streamedContent());
 
-    expect($csv)->toContain('Bonus Month')
-        ->and($csv)->toContain('Paid In Batch')
-        ->and($csv)->toContain('2026-09-06,2026-09-07')
-        ->and($csv)->toContain('Weekly · 08 Sep 2026');
+    expect(XlsxReader::anyCellContains($rows, 'Bonus Month'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, 'Paid In Batch'))->toBeTrue();
+    $gsbRow = collect($rows)->first(fn (array $row): bool => in_array('2026-09-06', $row, true));
+    expect($gsbRow)->not->toBeNull();
+    expect(in_array('2026-09-07', $gsbRow, true))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, 'Weekly · 08 Sep 2026'))->toBeTrue();
 });
 
 it('keeps the payout-week and 8th-of-month cadence off every distributor surface while the compensation page is unpublished (F53/R-75)', function (): void {

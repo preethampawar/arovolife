@@ -8,6 +8,7 @@ use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -61,17 +62,19 @@ it('hides the Arete Center column on page and CSV while the ADC flag is off', fu
         ->get(route('admin.compensation.rb-calculation.index'))
         ->assertOk()
         ->assertDontSee('Arete Center');
-    $this->actingAs(rbCalcReportAdmin())
+    $withoutAdc = $this->actingAs(rbCalcReportAdmin())
         ->get(route('admin.compensation.rb-calculation.export'))
         ->assertOk()
-        ->assertDontSee('Arete Center');
+        ->streamedContent();
+    expect(XlsxReader::anyCellContains(XlsxReader::rows($withoutAdc), 'Arete Center'))->toBeFalse();
 
-    // ADC flag on — the column returns (asserted on the CSV, whose header
+    // ADC flag on — the column returns (asserted on the XLSX header, which
     // renders even with zero result rows; the HTML tables don't).
     Feature::for(null)->activate(AreteDevelopmentCenterBonusFeature::class);
 
-    $this->actingAs(rbCalcReportAdmin())
+    $withAdc = $this->actingAs(rbCalcReportAdmin())
         ->get(route('admin.compensation.rb-calculation.export'))
         ->assertOk()
-        ->assertSee('Arete Center');
+        ->streamedContent();
+    expect(XlsxReader::anyCellContains(XlsxReader::rows($withAdc), 'Arete Center'))->toBeTrue();
 });

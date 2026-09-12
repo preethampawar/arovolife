@@ -96,8 +96,14 @@ it('produces csv byte-identical to the exporter it replaced', function (): void 
         ['name' => 'Plain, quoted "value"', 'qty' => 0, 'amount' => '', 'created_at' => null],
     ];
 
-    $before = "Name,Qty,Amount (Rs),Created At\n"
-        ."\"'=HYPERLINK(\"\"http://evil\"\")\",7,1234.50,2026-09-12 08:30:00\n"
+    /**
+     * Header labels containing a space ("Amount (Rs)", "Created At") are
+     * quoted by PHP 8.4's fputcsv() even though they contain no delimiter,
+     * enclosure or newline — the same as the deleted controller method
+     * produced on this PHP version, since both call fputcsv() identically.
+     */
+    $before = "Name,Qty,\"Amount (Rs)\",\"Created At\"\n"
+        ."\"'=HYPERLINK(\"\"http://evil\"\")\",7,1234.50,\"2026-09-12 08:30:00\"\n"
         ."\"Plain, quoted \"\"value\"\"\",0,,\n";
 
     expect(sheetCapture(Csv::stream('inventory-stock-on-hand', $columns, $rows)))->toBe($before);

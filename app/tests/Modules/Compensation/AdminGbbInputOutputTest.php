@@ -12,6 +12,7 @@ use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -191,13 +192,16 @@ it('exports a CSV with per-earner rows and a month total', function () {
         ->get(route('admin.compensation.gbb-input-output.export'))
         ->assertOk();
 
-    $csv = $res->getContent();
+    $rows = XlsxReader::rows($res->streamedContent());
 
-    expect($csv)->toContain('Month Total BV');
-    expect($csv)->toContain('"200000040"');
-    expect($csv)->toContain('3000.00');       // 60 × ₹50, ungrouped in CSV
-    expect($csv)->toContain('"MONTH TOTAL"');
-    expect($csv)->toContain('Computed At');
+    expect($rows[0])->toBe(['Month', 'Month Total BV', 'GBB Pool (Rs)', 'Total AGP', 'Point Value (Rs)', 'Distributor ADN', 'Distributor Name', 'AGP', 'Income (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status', 'Computed At']);
+
+    $earnerRow = collect($rows)->first(fn (array $row): bool => ($row[5] ?? null) === '200000040');
+    expect($earnerRow[6])->toBe('Csv Earner')
+        ->and($earnerRow[8])->toBe('3000');   // 60 × ₹50, ungrouped
+
+    $totalRow = collect($rows)->first(fn (array $row): bool => ($row[6] ?? null) === 'MONTH TOTAL');
+    expect($totalRow)->not->toBeNull();
 });
 
 it('is hidden behind the Growth Booster flag', function () {
@@ -277,14 +281,16 @@ it('carries the deduction and credited columns into the GBB per-month CSV', func
         'gbb_net_paise' => 270_000,
     ]);
 
-    $csv = $this->actingAs(gbbIoAdmin())
+    $rows = XlsxReader::rows($this->actingAs(gbbIoAdmin())
         ->get(route('admin.compensation.gbb-input-output.export'))
         ->assertOk()
-        ->getContent();
+        ->streamedContent());
 
-    expect($csv)->toContain('Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs)');
-    expect($csv)->toContain('300.00');
-    expect($csv)->toContain('2700.00');
+    expect($rows[0])->toBe(['Month', 'Month Total BV', 'GBB Pool (Rs)', 'Total AGP', 'Point Value (Rs)', 'Distributor ADN', 'Distributor Name', 'AGP', 'Income (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status', 'Computed At']);
+
+    $earnerRow = collect($rows)->first(fn (array $row): bool => ($row[5] ?? null) === '200000041');
+    expect($earnerRow[9])->toBe('300')
+        ->and($earnerRow[10])->toBe('2700');
 });
 
 it('lists a repurchase-wallet-blocked earner so the blocked AGP is visible on the month', function () {

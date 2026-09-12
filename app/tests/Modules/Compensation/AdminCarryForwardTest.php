@@ -18,6 +18,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -103,13 +104,17 @@ it('F91: exports the carry-forwards CSV with BV points and explicit side labels'
         'slab1_weaker_bv_paise' => 500_000,
     ]);
 
-    $csv = $this->actingAs(cfAdmin())
-        ->get(route('admin.compensation.carry-forwards.export'))
-        ->assertOk()
-        ->getContent();
+    $rows = XlsxReader::rows(
+        $this->actingAs(cfAdmin())
+            ->get(route('admin.compensation.carry-forwards.export'))
+            ->assertOk()
+            ->streamedContent()
+    );
 
-    expect($csv)->toContain('ADN,Power-side CF BV,Power Side,Slab-1 Weaker CF BV,Weaker Side')
-        // BV in a CSV is ungrouped points, never a rupee figure: 30,000,000
-        // paise = 3,00,000 BV → 300000.
-        ->toContain('CFAAA1,300000,Right,5000,Left');
+    expect($rows[0])->toBe(['ADN', 'Power-side CF BV', 'Power Side', 'Slab-1 Weaker CF BV', 'Weaker Side']);
+
+    // BV in the export is ungrouped points, never a rupee figure: 30,000,000
+    // paise = 3,00,000 BV → 300000.
+    $dataRow = collect($rows)->first(fn (array $row): bool => ($row[0] ?? null) === 'CFAAA1');
+    expect($dataRow)->toBe(['CFAAA1', '300000', 'Right', '5000', 'Left']);
 });

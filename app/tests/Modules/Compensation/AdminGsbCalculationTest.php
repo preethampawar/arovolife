@@ -10,6 +10,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -175,10 +176,11 @@ it('exports a CSV with a grand-total row', function () {
         ->get(route('admin.compensation.gsb-calculation.export'));
 
     $res->assertOk();
-    $csv = $res->getContent();
-    expect($csv)->toContain('SNo,ADN,Name,Title,Date,Slab,Score,Score Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Status');
-    expect($csv)->toContain('"TOTAL"');
-    expect($csv)->toContain('2000.00');   // income total
+    $rows = XlsxReader::rows($res->streamedContent());
+
+    expect($rows[0])->toBe(['SNo', 'ADN', 'Name', 'Title', 'Date', 'Slab', 'Score', 'Score Value (Rs)', 'Income (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status']);
+    expect(XlsxReader::anyCellContains($rows, 'TOTAL'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, '2000'))->toBeTrue();   // income total
 });
 
 it('hides every GSB admin surface while the feature is off', function (): void {

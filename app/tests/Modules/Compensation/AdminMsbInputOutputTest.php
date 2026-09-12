@@ -11,6 +11,7 @@ use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -186,12 +187,12 @@ it('exports a CSV with per-earner rows and a day total', function () {
         ->get(route('admin.compensation.msb-input-output.export'))
         ->assertOk();
 
-    $csv = $res->getContent();
+    $rows = XlsxReader::rows($res->streamedContent());
 
-    expect($csv)->toContain('Day Total Received BV');
-    expect($csv)->toContain('"200000020"');
-    expect($csv)->toContain('1050.00');       // 21 × ₹50
-    expect($csv)->toContain('"DAY TOTAL"');
+    expect(XlsxReader::anyCellContains($rows, 'Day Total Received BV'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, '200000020'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, '1050'))->toBeTrue();       // 21 × ₹50
+    expect(XlsxReader::anyCellContains($rows, 'DAY TOTAL'))->toBeTrue();
 });
 
 it('is reachable by the business admin roles but not by an unprivileged user', function () {

@@ -9,6 +9,7 @@ use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -120,15 +121,16 @@ it('exports the per-day CSV with sections, day totals and the leftover', functio
         ->get(route('admin.compensation.gsb-input-output.export'));
 
     $res->assertOk();
-    $csv = $res->getContent();
+    $rows = XlsxReader::rows($res->streamedContent());
+
     // F88: BV never carries a currency sign — the column is BV, not rupees.
-    expect($csv)->toContain('Day,Week,Date,Day Total BV,GSB Pool (Rs),Slab,Section,Achievers,Total Score,Score Value (Rs),Income (Rs),Repurchase Deduction (Rs),Credited to Wallet (Rs),Variance (Rs)');
-    expect($csv)->toContain('"Fixed"');
-    expect($csv)->toContain('"Variable"');
-    expect($csv)->toContain('220.00');       // pro-rated score value
-    expect($csv)->toContain('-30.00');       // variance vs the ₹250 cap
-    expect($csv)->toContain('"DAY TOTAL"');
-    expect($csv)->toContain('leftover');
+    expect($rows[0])->toBe(['Day', 'Week', 'Date', 'Day Total BV', 'GSB Pool (Rs)', 'Slab', 'Section', 'Achievers', 'Total Score', 'Score Value (Rs)', 'Income (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Variance (Rs)', 'Computed At']);
+    expect(XlsxReader::anyCellContains($rows, 'Fixed'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, 'Variable'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, '220'))->toBeTrue();   // pro-rated score value
+    expect(XlsxReader::anyCellContains($rows, '-30'))->toBeTrue();   // variance vs the ₹250 cap
+    expect(XlsxReader::anyCellContains($rows, 'DAY TOTAL'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, 'leftover'))->toBeTrue();
 });
 
 it('shows the empty state before any pooled day exists', function () {
@@ -192,11 +194,11 @@ it('carries the deduction and credited columns into the per-day CSV', function (
         'net_gsb_paise' => DB::raw('gross_gsb_paise - 20000'),
     ]);
 
-    $csv = $this->actingAs(ioAdmin())
+    $rows = XlsxReader::rows($this->actingAs(ioAdmin())
         ->get(route('admin.compensation.gsb-input-output.export'))
         ->assertOk()
-        ->getContent();
+        ->streamedContent());
 
-    expect($csv)->toContain('200.00');    // deduction column
-    expect($csv)->toContain('1800.00');   // credited column
+    expect(XlsxReader::anyCellContains($rows, '200'))->toBeTrue();    // deduction column
+    expect(XlsxReader::anyCellContains($rows, '1800'))->toBeTrue();   // credited column
 });

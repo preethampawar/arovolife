@@ -62,6 +62,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -687,7 +688,8 @@ it('GRV-029: the compliance-report CSV export renders a fractional median withou
     $response = $this->actingAs($staff)->get(route('admin.grievances.report.export'));
 
     $response->assertOk();
-    expect($response->streamedContent())->toContain('1.50');
+    $rows = XlsxReader::rows($response->streamedContent());
+    expect(XlsxReader::anyCellContains($rows, '1.50'))->toBeTrue();
 });
 
 it('GRV-020: an attachment whose bytes are not what it claims is rejected', function () {

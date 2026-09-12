@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Number;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -201,10 +202,17 @@ it('exports the point value column', function () {
         ->get(route('admin.compensation.gbb-calculation.export'));
 
     $res->assertOk();
-    $csv = $res->getContent();
-    expect($csv)->toContain('AGP Points,Point Value (Rs),AGP Value Per Point (Rs)');
-    expect($csv)->toContain(',250.00,250.00,');   // frozen value then realised value
-    expect($csv)->toContain(',5,,200.00,');       // legacy row: empty frozen value
+    $rows = XlsxReader::rows($res->streamedContent());
+
+    expect($rows[0])->toBe(['SNo', 'ADN', 'Name', 'Title', 'Month', 'AGP Points', 'Point Value (Rs)', 'AGP Value Per Point (Rs)', 'Gross GBB (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status']);
+
+    // frozen value then realised value
+    $aliceRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'GBBAAA');
+    expect($aliceRow)->toBe(['2', 'GBBAAA', 'Alice', '', '2026-07', '12', '250', '250', '3000', '0', '3000', 'credited']);
+
+    // legacy row: empty frozen value
+    $legacyRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'GBBBBB');
+    expect($legacyRow)->toBe(['1', 'GBBBBB', 'Bob', '', '2026-07', '5', '', '200', '1000', '0', '1000', 'credited']);
 });
 
 it('surfaces the frozen monthly pool on the GBB month screen', function () {
