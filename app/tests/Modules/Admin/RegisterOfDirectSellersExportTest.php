@@ -7,6 +7,7 @@ use App\Modules\Kyc\Models\KycDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -101,14 +102,15 @@ it('RDSE-02: non-admin user gets 403', function () {
     $response->assertForbidden();
 });
 
-it('RDSE-03: admin export returns CSV and writes an audit_log row', function () {
+it('RDSE-03: admin export returns XLSX and writes an audit_log row', function () {
     $admin = rdseAdmin();
     rdseSeedDistributor('AROROOT001', 'root@test.com');
 
     $this->actingAs($admin);
     $response = $this->get('/admin/distributors/export');
     $response->assertOk();
-    expect($response->headers->get('Content-Type'))->toContain('text/csv');
+    expect($response->headers->get('Content-Type'))
+        ->toContain('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
     $audit = DB::table('audit_log')
         ->where('action', 'admin.register.exported')
@@ -117,19 +119,31 @@ it('RDSE-03: admin export returns CSV and writes an audit_log row', function () 
     expect($audit)->not->toBeNull();
 });
 
+it('RDSE-03b: admin export honours the legacy CSV fallback', function () {
+    $admin = rdseAdmin();
+    rdseSeedDistributor('AROROOT001B', 'root-csv@test.com');
+
+    $this->actingAs($admin);
+    $response = $this->get('/admin/distributors/export?format=csv');
+    $response->assertOk();
+    expect($response->headers->get('Content-Type'))->toContain('text/csv');
+    expect($response->streamedContent())->toContain('AROROOT001B');
+});
+
 it('RDSE-04: export NEVER contains full PAN, full Aadhaar, or encrypted bank value', function () {
     $admin = rdseAdmin();
     rdseSeedDistributor('AROROOT002', 'leak-check@test.com');
 
     $this->actingAs($admin);
-    $body = $this->get('/admin/distributors/export')->getContent();
+    $body = $this->get('/admin/distributors/export')->streamedContent();
+    $rows = XlsxReader::rows($body);
 
     // No raw 32-byte hash should leak (check for hex form too just in case).
-    expect($body)->not->toContain(bin2hex(str_repeat("\xAA", 32)));
-    // Encrypted bank sentinel must not be in the CSV.
-    expect($body)->not->toContain('eyJzZWNyZXQiOiJzaG91bGQtbm90LWxlYWsifQ==');
+    expect(XlsxReader::noCellContains($rows, bin2hex(str_repeat("\xAA", 32))))->toBeTrue();
+    // Encrypted bank sentinel must not be in the workbook.
+    expect(XlsxReader::noCellContains($rows, 'eyJzZWNyZXQiOiJzaG91bGQtbm90LWxlYWsifQ=='))->toBeTrue();
     // The Aadhaar ref (a vendor-issued opaque id) is not regulator-shareable.
-    expect($body)->not->toContain('STUB-REF-XYZ');
+    expect(XlsxReader::noCellContains($rows, 'STUB-REF-XYZ'))->toBeTrue();
 });
 
 it('RDSE-05: export includes sponsor ADN and KYC verified date', function () {
@@ -149,9 +163,10 @@ it('RDSE-05: export includes sponsor ADN and KYC verified date', function () {
     ]);
 
     $this->actingAs($admin);
-    $body = $this->get('/admin/distributors/export')->getContent();
+    $body = $this->get('/admin/distributors/export')->streamedContent();
+    $rows = XlsxReader::rows($body);
 
-    expect($body)->toContain('Sponsor ADN')
-        ->and($body)->toContain('KYC Verified')
-        ->and($body)->toContain('AROROOT003'); // child's sponsor ADN appears in child's row
+    expect(XlsxReader::anyCellContains($rows, 'Sponsor ADN'))->toBeTrue()
+        ->and(XlsxReader::anyCellContains($rows, 'KYC Verified'))->toBeTrue()
+        ->and(XlsxReader::anyCellContains($rows, 'AROROOT003'))->toBeTrue(); // child's sponsor ADN appears in child's row
 });

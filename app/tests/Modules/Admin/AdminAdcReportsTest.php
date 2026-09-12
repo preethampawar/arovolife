@@ -11,6 +11,7 @@ use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Pennant\Feature;
+use Tests\Support\XlsxReader;
 
 uses(RefreshDatabase::class);
 
@@ -144,7 +145,7 @@ it('matches a pincode prefix so an area can be swept', function (): void {
         ->assertDontSee('ADCBBB');
 });
 
-it('exports the centre and address columns to CSV', function (): void {
+it('exports the centre and address columns to XLSX', function (): void {
     adcReportCenterWithResult('Medak Center', 'ADCAAA', 'Alice', [
         'pincode' => '502001', 'district' => 'Medak', 'state' => 'Telangana',
     ]);
@@ -153,12 +154,53 @@ it('exports the centre and address columns to CSV', function (): void {
         ->get(route('admin.compensation.adc-calculation.export'));
 
     $res->assertOk();
-    $csv = $res->getContent();
-    expect($csv)->toContain('SNo,ADN,Arete Center,Name,');
+    expect($res->headers->get('Content-Type'))
+        ->toContain('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $rows = XlsxReader::rows($res->streamedContent());
+    $header = $rows[0];
+    expect($header)->toContain('Arete Center')
+        ->and($header)->toContain('Status')
+        ->and(array_slice($header, -4))->toBe(['Location', 'Pincode', 'District', 'State']);
+
+    $centerColumnFound = array_search('Arete Center', $header, true);
+    $pincodeColumnFound = array_search('Pincode', $header, true);
+    $districtColumnFound = array_search('District', $header, true);
+    $stateColumnFound = array_search('State', $header, true);
+    expect($centerColumnFound)->not->toBeFalse()
+        ->and($pincodeColumnFound)->not->toBeFalse()
+        ->and($districtColumnFound)->not->toBeFalse()
+        ->and($stateColumnFound)->not->toBeFalse();
+
+    $centerColumn = is_int($centerColumnFound) ? $centerColumnFound : 0;
+    $pincodeColumn = is_int($pincodeColumnFound) ? $pincodeColumnFound : 0;
+    $districtColumn = is_int($districtColumnFound) ? $districtColumnFound : 0;
+    $stateColumn = is_int($stateColumnFound) ? $stateColumnFound : 0;
+
+    $dataRow = collect($rows)->first(fn (array $row): bool => ($row[$centerColumn] ?? null) === 'Medak Center');
+
+    expect($dataRow)->not->toBeNull();
+    expect($dataRow[$pincodeColumn])->toBe('502001')
+        ->and($dataRow[$districtColumn])->toBe('Medak')
+        ->and($dataRow[$stateColumn])->toBe('Telangana');
+});
+
+it('exports the centre and address columns to CSV via the legacy fallback', function (): void {
+    adcReportCenterWithResult('Medak Center', 'ADCAAA', 'Alice', [
+        'pincode' => '502001', 'district' => 'Medak', 'state' => 'Telangana',
+    ]);
+
+    $res = $this->actingAs(adcReportAdmin())
+        ->get(route('admin.compensation.adc-calculation.export', ['format' => 'csv']));
+
+    $res->assertOk();
+    expect($res->headers->get('Content-Type'))->toContain('text/csv');
+    $csv = $res->streamedContent();
+    expect($csv)->toContain('SNo,ADN,"Arete Center",Name,');
     expect($csv)->toContain('Status,Location,Pincode,District,State');
     expect($csv)->toContain('"Medak Center"');
     // Ungrouped plain numbers in CSV — the address parts stay separate columns.
-    expect($csv)->toContain('"502001","Medak","Telangana"');
+    expect($csv)->toContain('502001,Medak,Telangana');
 });
 
 it('stores a centre with its pincode, district and state', function (): void {
