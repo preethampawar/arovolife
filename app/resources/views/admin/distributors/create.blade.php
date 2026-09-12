@@ -4,9 +4,6 @@
 
 @section('content')
 
-<div class="mb-6 flex items-center justify-between gap-3 flex-wrap">
-    <a href="{{ route('admin.distributors.index') }}" class="text-sm text-gray-700 hover:text-gray-900">← Back to Distributors</a>
-</div>
 
 <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
     <p class="font-semibold mb-1">Admin-attested registration</p>

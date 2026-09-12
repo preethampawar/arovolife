@@ -109,7 +109,6 @@
 </div>
 
 <div class="flex items-center justify-between mt-6 pt-5 border-t border-gray-200">
-    <a href="{{ route('admin.content.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to list</a>
     <button type="submit"
         class="px-6 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
         {{ $submitLabel ?? 'Save' }}

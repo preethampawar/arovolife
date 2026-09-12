@@ -4,10 +4,6 @@
 
 @section('content')
 
-<div class="mb-4">
-    <a href="{{ route('admin.commerce.orders.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to orders</a>
-</div>
-
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 space-y-6">
         {{-- Items --}}

@@ -3,7 +3,6 @@
 @section('heading', 'Grievance '.$ticket->ticket_no)
 
 @section('content')
-<a href="{{ route('admin.grievances.index') }}" class="text-sm text-brand-700 underline hover:text-brand-800">← Grievance queue</a>
 
 @if (session('status'))
     <div class="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">

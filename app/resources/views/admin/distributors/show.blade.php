@@ -5,7 +5,6 @@
 @section('content')
 
 <div class="mb-6 flex items-center justify-between gap-3 flex-wrap">
-    <a href="{{ route('admin.distributors.index') }}" class="text-sm text-gray-700 hover:text-gray-900">← Back to Distributors</a>
 
     <div class="flex items-center gap-2">
         <a href="{{ route('admin.distributors.edit', $distributor->id) }}"

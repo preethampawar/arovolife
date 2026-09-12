@@ -19,7 +19,6 @@
 @endphp
 
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.arete-centres.applications.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← All applications</a>
     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $badge[$application->status] ?? 'bg-gray-100 text-gray-600' }}">{{ $application->statusLabel() }}</span>
 </div>
 

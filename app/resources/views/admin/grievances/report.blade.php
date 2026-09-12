@@ -3,7 +3,6 @@
 @section('heading', 'Grievance compliance report')
 
 @section('content')
-<a href="{{ route('admin.grievances.index') }}" class="text-sm text-brand-700 underline hover:text-brand-800">← Grievance queue</a>
 
 <div class="mt-4 mb-6 flex flex-wrap items-end justify-between gap-4">
     <div class="max-w-2xl text-sm leading-relaxed text-gray-600">

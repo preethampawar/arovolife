@@ -3,7 +3,6 @@
 @section('heading', 'Record a complaint')
 
 @section('content')
-<a href="{{ route('admin.grievances.index') }}" class="text-sm text-brand-700 underline hover:text-brand-800">← Grievance queue</a>
 
 {{-- Form-purpose note. --}}
 <div class="mt-4 mb-6 max-w-2xl rounded-xl border border-gray-200 bg-white shadow-sm px-5 py-4 text-sm leading-relaxed text-gray-700">

@@ -17,9 +17,6 @@
 @section('content')
 @include('admin.arete-centres._tabs')
 
-<div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.arete-centres.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← Registry</a>
-</div>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-2xl">
     <div class="mb-4 text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
