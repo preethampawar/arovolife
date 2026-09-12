@@ -744,19 +744,21 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             // TESTING ONLY — gated by RecomputeGuard (never production, requires
             // COMP_RECOMPUTE_ENABLED). Removed with the recompute scaffold at
             // client sign-off.
-            // `role:developer`, not a permission (QA F26): a full wipe-and-replay
-            // of every BV-derived table is the testing scaffold, and the one
-            // role that must never touch compensation state is the one that
-            // held it before — admin-finance. The controller's RecomputeGuard
-            // is an environment gate (never production), not a role gate.
-            Route::post('recompute-all', [AdminEngineRunsController::class, 'recomputeAll'])->name('recompute-all')->middleware('role:developer');
+            // `role:developer|admin`, not a permission (QA F26): a full
+            // wipe-and-replay of every BV-derived table is the testing
+            // scaffold, and the roles that must never touch compensation
+            // state are the scoped ones that held it before —
+            // admin-finance, admin-compliance, admin-operations. The
+            // controller's RecomputeGuard is an environment gate (never
+            // production), not a role gate.
+            Route::post('recompute-all', [AdminEngineRunsController::class, 'recomputeAll'])->name('recompute-all')->middleware('role:developer|admin');
             // The poller keeps the controller's 404 instead of a role gate: a
             // 403 here would tell a reader that a role they do not hold exists,
             // and the developer role is never surfaced (F84 covers the check).
             Route::get('recompute-progress', [AdminEngineRunsController::class, 'recomputeProgress'])->name('recompute-progress');
             // TESTING ONLY — wipes the purchases as well, for a clean-slate test
             // cycle. Same guard, same scaffold, removed at the same sign-off.
-            Route::post('reset-purchase-data', [AdminEngineRunsController::class, 'resetPurchaseData'])->name('reset-purchase-data')->middleware('role:developer');
+            Route::post('reset-purchase-data', [AdminEngineRunsController::class, 'resetPurchaseData'])->name('reset-purchase-data')->middleware('role:developer|admin');
         });
     });
 

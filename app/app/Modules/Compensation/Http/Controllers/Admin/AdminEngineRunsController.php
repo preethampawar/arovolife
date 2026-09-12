@@ -97,11 +97,12 @@ final class AdminEngineRunsController extends Controller
             ];
         }
 
-        // The destructive testing cards are developer-only ON TOP of the guard.
-        // The guard answers for the environment; it cannot answer for the
-        // reader, and `admin`, `admin-finance`, `admin-compliance` and
-        // `admin-operations` all reach this page. A route-level `role:developer`
-        // gate covers the POSTs; this decides whether the cards — and the
+        // The destructive testing cards are super-staff-only (`developer` or
+        // `admin`) ON TOP of the guard. The guard answers for the environment;
+        // it cannot answer for the reader, and the scoped roles —
+        // `admin-finance`, `admin-compliance`, `admin-operations` — all reach
+        // this page too. A route-level `role:developer|admin` gate covers the
+        // POSTs; this decides whether the cards — and the
         // database name and row counts printed on them — exist at all.
         $destructiveToolsVisible = $this->destructiveToolsAllowed($request);
 
@@ -390,7 +391,7 @@ final class AdminEngineRunsController extends Controller
     private function destructiveToolsAllowed(Request $request): bool
     {
         return $this->recomputeGuard->isPermitted()
-            && $request->user()?->hasRole('developer') === true;
+            && $request->user()?->hasAnyRole(['developer', 'admin']) === true;
     }
 
     public function events(Request $request): View

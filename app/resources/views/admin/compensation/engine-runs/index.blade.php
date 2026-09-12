@@ -108,8 +108,8 @@
 @endif
 
 {{-- TESTING-ONLY full recompute. Rendered only when RecomputeGuard permits it
-     AND the reader holds the developer role, so on any environment where it is
-     off — or for any other admin — there is no trace of it here. --}}
+     AND the reader holds the developer or admin role, so on any environment
+     where it is off — or for a scoped admin role — there is no trace of it here. --}}
 @if($destructiveToolsVisible)
 @php $recomputeTotal = array_sum($recomputeRowCounts); @endphp
 <div class="mb-6 rounded-xl border-2 border-red-300 bg-red-50 p-4">

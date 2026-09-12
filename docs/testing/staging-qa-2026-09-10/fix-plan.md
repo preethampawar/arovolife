@@ -13,6 +13,7 @@ Files: `Compensation/Listeners/RecordEngineRun.php`, `Compensation/Support/Engin
 - [x] F30 (design half) Health digest gets an item when the premature-freeze self-heal *kept* a funded row (`premature_freeze_kept` log line today): write an `engine_runs`-independent signal (audit_log row `compensation.premature_freeze_kept`) and list it in the digest.
 - [x] F83 Engine Runs page: render summary as labelled fields (rows processed / already processed / exit code), show "Already processed — nothing to do" when the run changed nothing; confirm modal names engine + period.
 - [x] F84 Recompute-all / reset-purchase-data cards and routes: require `role:developer` in addition to `RecomputeGuard::isPermitted()`; plain `admin`/`admin-finance` never see them. Test: admin gets 404/403 and no HTML trace.
+  - 2026-09-13 amendment (user decision, compliance-approved): gate widened to `role:developer|admin`. `admin` now sees/uses both tools; `admin-finance`/`admin-compliance`/`admin-operations` remain forbidden (still 404/403, no HTML trace).
 - [x] F85 Events page shows duration in ms below 10 s; `repurchase.snapshot` gets a registry label (retired) or is filtered from the page.
 - [x] F121 Register `grievance:sla-sweep` in `EngineRegistry` (writes `engine_runs`, summary = tickets checked/escalated), or at minimum log a structured no-op line each run.
 - [x] F12 `PropagateGroupBvJob` / `ReverseGroupBvJob`: `$tries = 1` (ADR-0011); add the deviation note to `docs/compliance/risk-register.md` only if you keep 3 (do not keep 3).

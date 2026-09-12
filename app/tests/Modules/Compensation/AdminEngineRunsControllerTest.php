@@ -433,32 +433,36 @@ it('hides the recompute card entirely when the gate is closed', function (): voi
     $response->assertDontSee('recompute-all');
 });
 
-it('shows the recompute card to the developer when the gate is open', function (): void {
+it('shows the recompute card to the developer and to admin when the gate is open', function (): void {
     config(['arovolife.recompute.enabled' => true]);
 
-    $response = $this->actingAs(engineRunsUser('developer'))
-        ->get(route('admin.compensation.engine-runs.index'));
+    foreach (['developer', 'admin'] as $role) {
+        $response = $this->actingAs(engineRunsUser($role))
+            ->get(route('admin.compensation.engine-runs.index'));
 
-    $response->assertOk();
-    $response->assertSee('Testing tool — recompute everything from scratch', false);
-    $response->assertSee('Run recompute');
-    // The window controls and the engine picker are what make a partial
-    // replay reachable from the page at all.
-    $response->assertSee('Keep earlier history (rebuild only the window)');
-    $response->assertSee('name="engines[]"', false);
-    // ...and the purchase-data reset lives behind the same gate.
-    $response->assertSee('Testing tool — reset purchase data (start a fresh test cycle)', false);
+        $response->assertOk();
+        $response->assertSee('Testing tool — recompute everything from scratch', false);
+        $response->assertSee('Run recompute');
+        // The window controls and the engine picker are what make a partial
+        // replay reachable from the page at all.
+        $response->assertSee('Keep earlier history (rebuild only the window)');
+        $response->assertSee('name="engines[]"', false);
+        // ...and the purchase-data reset lives behind the same gate.
+        $response->assertSee('Testing tool — reset purchase data (start a fresh test cycle)', false);
+    }
 });
 
-it('keeps both testing tools away from every admin who is not the developer', function (): void {
+it('keeps both testing tools away from every scoped admin role', function (): void {
     // F84: the cards rendered on RecomputeGuard alone, so `admin`,
     // `admin-finance`, `admin-compliance` and `admin-operations` all saw two
     // destructive buttons — with the target database name and its row counts
     // printed beside them. The guard answers for the environment, never for
-    // the reader.
+    // the reader. `admin` was later deliberately let back in alongside
+    // `developer`; the scoped roles — admin-finance, admin-compliance,
+    // admin-operations — stay locked out.
     config(['arovolife.recompute.enabled' => true]);
 
-    foreach (['admin', 'admin-finance', 'admin-compliance', 'admin-operations'] as $role) {
+    foreach (['admin-finance', 'admin-compliance', 'admin-operations'] as $role) {
         $user = engineRunsUser($role);
 
         $this->actingAs($user)

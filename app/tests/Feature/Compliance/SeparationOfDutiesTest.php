@@ -22,7 +22,7 @@ declare(strict_types=1);
  * SOD-09: no scoped role can both mark a return received and settle its refund — the two halves of a cooling-off refund sit with different people
  * SOD-10: admin-finance cannot read a reported private message
  * SOD-11: admin-finance cannot publish a content page or an announcement
- * SOD-12: no admin-family role can trigger the recompute scaffold — developer only
+ * SOD-12: no scoped admin-family role can trigger the recompute scaffold — developer/admin only
  */
 
 use App\Modules\Commerce\Models\Customer;
@@ -212,7 +212,7 @@ it('SOD-11: admin-finance cannot publish a content page or an announcement', fun
     }
 });
 
-it('SOD-12: the recompute scaffold is developer-only, whatever a finance role holds', function () {
+it('SOD-12: the recompute scaffold stays out of reach for scoped admin roles', function () {
     // recompute-all wipes and replays every BV-derived table. It was gated on
     // `finance.record`, so the one role that must never touch compensation
     // state could run it (QA F26). RecomputeGuard in the controller is an
