@@ -59,14 +59,131 @@ function adminNavItems(?User $user, array $badges = []): array
         ->all();
 }
 
-it('returns a single unlabelled group in this slice', function () {
+it('returns the nine groups in the documented IA order', function () {
+    adminNavActivateFlags();
+
+    $groups = AdminNavigation::groups(adminNavDeveloper(), ['engine-failures' => 1]);
+
+    expect(array_column($groups, 'key'))->toBe([
+        'overview',
+        'network',
+        'commerce',
+        'inventory',
+        'compensation',
+        'catalog',
+        'support',
+        'insights',
+        'system',
+    ]);
+
+    expect(array_column($groups, 'label'))->toBe([
+        null,
+        'Network',
+        'Commerce',
+        'Inventory',
+        'Compensation',
+        'Catalog & Content',
+        'Support & Compliance',
+        'Insights',
+        'System',
+    ]);
+
+    expect(array_column($groups, 'icon'))->toBe([
+        'layout-dashboard',
+        'users',
+        'shopping-cart',
+        'boxes',
+        'banknote',
+        'package',
+        'life-buoy',
+        'chart-line',
+        'settings',
+    ]);
+});
+
+it('renders Overview flat, with no label', function () {
     $groups = AdminNavigation::groups(adminNavDeveloper());
 
-    expect($groups)->toHaveCount(1);
-    expect($groups[0]['key'])->toBe('all');
+    expect($groups[0]['key'])->toBe('overview');
     expect($groups[0]['label'])->toBeNull();
-    expect($groups[0]['icon'])->toBeNull();
-    expect($groups[0]['items'])->not->toBeEmpty();
+});
+
+it('keys every group with a stable lowercase slug', function () {
+    adminNavActivateFlags();
+
+    foreach (AdminNavigation::groups(adminNavDeveloper(), ['engine-failures' => 1]) as $group) {
+        expect($group['key'])->toMatch('/^[a-z][a-z0-9-]*$/');
+    }
+});
+
+it('never returns an empty group', function () {
+    adminNavActivateFlags();
+
+    foreach ([adminNavDeveloper(), null] as $viewer) {
+        foreach (AdminNavigation::groups($viewer) as $group) {
+            expect($group['items'])->not->toBeEmpty("group {$group['key']} rendered empty");
+        }
+    }
+});
+
+it('places every item in exactly one group', function () {
+    adminNavActivateFlags();
+
+    $seen = [];
+    foreach (AdminNavigation::groups(adminNavDeveloper(), ['engine-failures' => 1]) as $group) {
+        foreach ($group['items'] as $item) {
+            $seen[$item['label']][] = $group['key'];
+        }
+    }
+
+    foreach ($seen as $label => $groupKeys) {
+        expect($groupKeys)->toHaveCount(1, "{$label} appears in ".implode(', ', $groupKeys));
+    }
+
+    // Every item the flat S1 list carried is still here, none dropped.
+    expect(count($seen))->toBe(count(adminNavItems(adminNavDeveloper(), ['engine-failures' => 1])));
+});
+
+it('groups the items as the IA table says', function () {
+    adminNavActivateFlags();
+
+    $map = [];
+    foreach (AdminNavigation::groups(adminNavDeveloper(), ['engine-failures' => 1]) as $group) {
+        $map[$group['key']] = array_column($group['items'], 'label');
+    }
+
+    expect($map)->toBe([
+        'overview' => ['Dashboard', 'Action Center'],
+        'network' => ['Distributors', 'Genealogy tree', 'KYC review', 'Line changes', 'Distributor requests', 'Dormancy (§21)', 'Arete Centres'],
+        'commerce' => ['Orders', 'Payments', 'Coupons', 'Offers', 'BV Ledger'],
+        'inventory' => ['Stock', 'Reports', 'Warehouses', 'Suppliers', 'Purchase Orders', 'Goods Receipts (GRN)', 'Transfers', 'Adjustments'],
+        'compensation' => ['Compensation', 'Engine failures'],
+        'catalog' => ['Products', 'Categories', 'Banners', 'Content Pages', 'Announcements'],
+        'support' => ['Contact Inbox', 'Grievances', 'Reported messages', 'Compliance Docs'],
+        'insights' => ['Analytics', 'Audit Log'],
+        'system' => ['Staff users', 'Settings', 'Feature flags', 'Help & Reference'],
+    ]);
+});
+
+it('shows a scoped role fewer groups, and no empty one', function () {
+    adminNavActivateFlags();
+
+    $compliance = User::factory()->create();
+    $compliance->assignRole('admin-compliance');
+
+    $developerGroups = AdminNavigation::groups(adminNavDeveloper());
+    $complianceGroups = AdminNavigation::groups($compliance);
+
+    expect(count($complianceGroups))->toBeLessThan(count($developerGroups));
+
+    foreach ($complianceGroups as $group) {
+        expect($group['items'])->not->toBeEmpty("group {$group['key']} rendered empty for admin-compliance");
+    }
+
+    // admin-compliance holds neither inventory.view nor inventory.manage, so
+    // the whole Inventory section disappears rather than leaving a bare header.
+    expect(array_column($complianceGroups, 'key'))->not->toContain('inventory');
+    expect(array_column($complianceGroups, 'key'))->toContain('support');
 });
 
 it('gives every item a non-empty route, label and icon', function () {
@@ -105,17 +222,17 @@ it('renders exactly this ordered list for a developer', function () {
         'Dashboard',
         'Action Center',
         'Distributors',
-        'Staff users',
         'Genealogy tree',
         'KYC review',
         'Line changes',
         'Distributor requests',
-        'Contact Inbox',
-        'Grievances',
-        'Announcements',
-        'Reported messages',
         'Dormancy (§21)',
+        'Arete Centres',
         'Orders',
+        'Payments',
+        'Coupons',
+        'Offers',
+        'BV Ledger',
         'Stock',
         'Reports',
         'Warehouses',
@@ -124,21 +241,21 @@ it('renders exactly this ordered list for a developer', function () {
         'Goods Receipts (GRN)',
         'Transfers',
         'Adjustments',
-        'Payments',
-        'BV Ledger',
-        'Analytics',
         'Compensation',
-        'Arete Centres',
-        'Coupons',
-        'Offers',
         'Products',
         'Categories',
         'Banners',
         'Content Pages',
+        'Announcements',
+        'Contact Inbox',
+        'Grievances',
+        'Reported messages',
         'Compliance Docs',
+        'Analytics',
+        'Audit Log',
+        'Staff users',
         'Settings',
         'Feature flags',
-        'Audit Log',
         'Help & Reference',
     ]);
 });

@@ -43,12 +43,15 @@ use Laravel\Pennant\Feature;
 final class AdminNavigation
 {
     /**
-     * The sidebar, as a list of groups.
+     * The sidebar, as a list of groups in the documented IA order:
+     * what you watch → who is in the network → what they buy → what we hold
+     * → what we pay → what we publish → what we answer → what we measure
+     * → what we configure.
      *
-     * Today there is exactly one group (`all`, unlabelled) so the rendered
-     * sidebar is byte-for-byte what the flat `$navItems` loop produced.
-     * Grouping is a later slice; the shape is already group-aware so that
-     * change touches only this method.
+     * Overview carries a `null` label: it is the landing context and renders
+     * flat, with no header and no collapse control. A group whose items are
+     * all hidden from this viewer is dropped entirely, so an empty section
+     * leaves neither a header nor a divider behind.
      *
      * @param  array<string, int>  $badges  Pre-computed counts keyed by slug:
      *                                      `action-center`, `contact`, `grievances`,
@@ -59,39 +62,50 @@ final class AdminNavigation
      */
     public static function groups(?User $user, array $badges = []): array
     {
-        return [[
-            'key' => 'all',
-            'label' => null,
-            'icon' => null,
-            'items' => self::items($user, $badges),
-        ]];
+        $groups = [
+            ['key' => 'overview', 'label' => null, 'icon' => 'layout-dashboard', 'items' => self::overviewItems($user, $badges)],
+            ['key' => 'network', 'label' => 'Network', 'icon' => 'users', 'items' => self::networkItems($user, $badges)],
+            ['key' => 'commerce', 'label' => 'Commerce', 'icon' => 'shopping-cart', 'items' => self::commerceItems($user, $badges)],
+            ['key' => 'inventory', 'label' => 'Inventory', 'icon' => 'boxes', 'items' => self::inventoryItems($user, $badges)],
+            ['key' => 'compensation', 'label' => 'Compensation', 'icon' => 'banknote', 'items' => self::compensationItems($user, $badges)],
+            ['key' => 'catalog', 'label' => 'Catalog & Content', 'icon' => 'package', 'items' => self::catalogItems($user, $badges)],
+            ['key' => 'support', 'label' => 'Support & Compliance', 'icon' => 'life-buoy', 'items' => self::supportItems($user, $badges)],
+            ['key' => 'insights', 'label' => 'Insights', 'icon' => 'chart-line', 'items' => self::insightsItems($user, $badges)],
+            ['key' => 'system', 'label' => 'System', 'icon' => 'settings', 'items' => self::systemItems($user, $badges)],
+        ];
+
+        return array_values(array_filter($groups, fn (array $group): bool => $group['items'] !== []));
     }
 
     /**
      * @param  array<string, int>  $badges
      * @return list<NavItem>
      */
-    private static function items(?User $user, array $badges): array
+    private static function overviewItems(?User $user, array $badges): array
     {
-        $actionCenterOn = $user?->can('action.center.view') ?? false;
-
-        $messagingOn = Feature::for(null)->active(MessagingFeature::class);
-
-        $distributorRequestsOn = Feature::for(null)->active(DistributorRequestsFeature::class)
-            && ($user?->can('distributor.request.handle') ?? false);
-
-        $failedEngineRunCount = $badges['engine-failures'] ?? 0;
+        // Temporarily dev-only while the screen beds in; explicit product decision 2026-09-12.
+        $actionCenterOn = ($user?->can('action.center.view') ?? false)
+            && ($user?->hasRole('developer') ?? false);
 
         return [
             ['route' => 'admin.dashboard',                'label' => 'Dashboard',      'icon' => 'layout-dashboard'],
             ...($actionCenterOn
                 ? [['route' => 'admin.action-center.index', 'label' => 'Action Center', 'icon' => 'siren', 'prefix' => 'admin.action-center', 'badge' => $badges['action-center'] ?? 0]]
                 : []),
+        ];
+    }
+
+    /**
+     * @param  array<string, int>  $badges
+     * @return list<NavItem>
+     */
+    private static function networkItems(?User $user, array $badges): array
+    {
+        $distributorRequestsOn = Feature::for(null)->active(DistributorRequestsFeature::class)
+            && ($user?->can('distributor.request.handle') ?? false);
+
+        return [
             ['route' => 'admin.distributors.index',       'label' => 'Distributors',   'icon' => 'users'],
-            // Staff register is super-staff only (route enforces role:admin|developer).
-            ...($user?->isSuperStaff()
-                ? [['route' => 'admin.staff.index',       'label' => 'Staff users',    'icon' => 'users-round', 'prefix' => 'admin.staff']]
-                : []),
             ['route' => 'admin.tree.show',                'label' => 'Genealogy tree', 'icon' => 'network', 'prefix' => 'admin.tree'],
             // KYC is gated on `kyc.review` (R-17). Hiding the item
             // rather than letting it 403 keeps admin-finance from
@@ -103,33 +117,53 @@ final class AdminNavigation
             ...($distributorRequestsOn
                 ? [['route' => 'admin.distributor-requests.index', 'label' => 'Distributor requests', 'icon' => 'clipboard-list', 'prefix' => 'admin.distributor-requests', 'badge' => $badges['distributor-requests'] ?? 0]]
                 : []),
-            ['route' => 'admin.contact-inquiries.index',  'label' => 'Contact Inbox',  'icon' => 'mail', 'prefix' => 'admin.contact-inquiries', 'badge' => $badges['contact'] ?? 0],
-            // Grievances are gated on `grievance.handle` (R-17: not
-            // admin-finance). Hiding the item rather than letting it
-            // 403 also keeps the open-complaint count out of view.
-            ...($user?->can('grievance.handle')
-                ? [['route' => 'admin.grievances.index', 'label' => 'Grievances', 'icon' => 'megaphone', 'prefix' => 'admin.grievances', 'badge' => $badges['grievances'] ?? 0]]
-                : []),
-            ...(Feature::for(null)->active(AnnouncementsFeature::class)
-                ? [['route' => 'admin.announcements.index', 'label' => 'Announcements', 'icon' => 'megaphone', 'prefix' => 'admin.announcements']]
-                : []),
-            // Reported messages. Same R-17 exclusion as grievances, and
-            // hidden rather than 403 for the same reason: the count of
-            // open reports is itself information.
-            ...($user?->can('messaging.moderate') && $messagingOn
-                ? [['route' => 'admin.messaging.reports.index', 'label' => 'Reported messages', 'icon' => 'message-square-warning', 'prefix' => 'admin.messaging', 'badge' => $badges['message-reports'] ?? 0]]
-                : []),
             // Agreement §21 dormancy. Account discipline, so it follows
             // the same permission as freeze / terminate.
             ...($user?->can('compliance.discipline')
                 ? [['route' => 'admin.dormancy.index', 'label' => 'Dormancy (§21)', 'icon' => 'hourglass', 'prefix' => 'admin.dormancy']]
                 : []),
+            // Arete Development Centres are entities in their own right
+            // (Step 11, profile, member directory); the ADC bonus is a
+            // layer on top and lives under Compensation.
+            ['route' => 'admin.arete-centres.index',      'label' => 'Arete Centres',  'icon' => 'landmark', 'prefix' => 'admin.arete-centres', 'badge' => $badges['adc-applications'] ?? 0],
+        ];
+    }
+
+    /**
+     * @param  array<string, int>  $badges
+     * @return list<NavItem>
+     */
+    private static function commerceItems(?User $user, array $badges): array
+    {
+        return [
             ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => 'shopping-cart', 'prefix' => 'admin.commerce.orders'],
-            // Inventory: stock, warehouses, suppliers, purchase orders,
-            // goods receipts, transfers, adjustments. Reports land here
-            // in a later slice of the same module. Stock is `inventory.view`
-            // (also open to admin-finance); everything else moves stock
-            // or commits spend and stays behind `inventory.manage`.
+            // Payments and the unsettled-refunds worklist. Monitoring
+            // (`audit.read`), so every scoped role sees it; the badge
+            // is refunds needing a human — failed, or held past the
+            // 10-day return-receipt alert.
+            ...($user?->can('audit.read')
+                ? [['route' => 'admin.payments.index', 'label' => 'Payments', 'icon' => 'credit-card', 'prefix' => 'admin.payments', 'badge' => $badges['payments'] ?? 0]]
+                : []),
+            ['route' => 'admin.commerce.coupons.index',   'label' => 'Coupons',        'icon' => 'tag', 'prefix' => 'admin.commerce.coupons'],
+            ...(Feature::for(null)->active(PurchaseOffersFeature::class)
+                ? [['route' => 'admin.commerce.offers.index', 'label' => 'Offers', 'icon' => 'gift', 'prefix' => 'admin.commerce.offers']]
+                : []),
+            ['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger',      'icon' => 'chart-column', 'prefix' => 'admin.commerce.bv-ledger'],
+        ];
+    }
+
+    /**
+     * Inventory: stock, reports, warehouses, suppliers, purchase orders,
+     * goods receipts, transfers, adjustments. Stock and Reports are
+     * `inventory.view` (also open to admin-finance); everything else moves
+     * stock or commits spend and stays behind `inventory.manage`.
+     *
+     * @param  array<string, int>  $badges
+     * @return list<NavItem>
+     */
+    private static function inventoryItems(?User $user, array $badges): array
+    {
+        return [
             ...($user?->can('inventory.view')
                 ? [
                     ['route' => 'admin.inventory.stock.index', 'label' => 'Stock', 'icon' => 'boxes', 'prefix' => 'admin.inventory.stock'],
@@ -146,41 +180,99 @@ final class AdminNavigation
                     ['route' => 'admin.inventory.adjustments.index', 'label' => 'Adjustments', 'icon' => 'sliders-horizontal', 'prefix' => 'admin.inventory.adjustments'],
                 ]
                 : []),
-            // Payments and the unsettled-refunds worklist. Monitoring
-            // (`audit.read`), so every scoped role sees it; the badge
-            // is refunds needing a human — failed, or held past the
-            // 10-day return-receipt alert.
-            ...($user?->can('audit.read')
-                ? [['route' => 'admin.payments.index', 'label' => 'Payments', 'icon' => 'credit-card', 'prefix' => 'admin.payments', 'badge' => $badges['payments'] ?? 0]]
-                : []),
-            ['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger',      'icon' => 'chart-column', 'prefix' => 'admin.commerce.bv-ledger'],
-            ...($user?->can('audit.read')
-                ? [['route' => 'admin.analytics.index',      'label' => 'Analytics',      'icon' => 'chart-line', 'prefix' => 'admin.analytics']]
-                : []),
+        ];
+    }
+
+    /**
+     * @param  array<string, int>  $badges
+     * @return list<NavItem>
+     */
+    private static function compensationItems(?User $user, array $badges): array
+    {
+        $failedEngineRunCount = $badges['engine-failures'] ?? 0;
+
+        return [
             ['route' => 'admin.compensation.overview',    'label' => 'Compensation',   'icon' => 'banknote', 'prefix' => 'admin.compensation'],
             // Only rendered while something is actually broken, so a
             // healthy console carries no extra item.
             ...($failedEngineRunCount > 0
                 ? [['route' => 'admin.compensation.engine-runs.events', 'params' => ['status' => 'failed'], 'label' => 'Engine failures', 'icon' => 'triangle-alert', 'badge' => $failedEngineRunCount]]
                 : []),
-            // Arete Development Centres are entities in their own right
-            // (Step 11, profile, member directory); the ADC bonus is a
-            // layer on top and lives under Compensation.
-            ['route' => 'admin.arete-centres.index',      'label' => 'Arete Centres',  'icon' => 'landmark', 'prefix' => 'admin.arete-centres', 'badge' => $badges['adc-applications'] ?? 0],
-            ['route' => 'admin.commerce.coupons.index',   'label' => 'Coupons',        'icon' => 'tag', 'prefix' => 'admin.commerce.coupons'],
-            ...(Feature::for(null)->active(PurchaseOffersFeature::class)
-                ? [['route' => 'admin.commerce.offers.index', 'label' => 'Offers', 'icon' => 'gift', 'prefix' => 'admin.commerce.offers']]
-                : []),
+        ];
+    }
+
+    /**
+     * @param  array<string, int>  $badges
+     * @return list<NavItem>
+     */
+    private static function catalogItems(?User $user, array $badges): array
+    {
+        return [
             ['route' => 'admin.catalog.products.index',   'label' => 'Products',       'icon' => 'package', 'prefix' => 'admin.catalog.products'],
             ['route' => 'admin.catalog.categories.index', 'label' => 'Categories',     'icon' => 'folder-tree', 'prefix' => 'admin.catalog.categories'],
             ['route' => 'admin.catalog.banners.index',    'label' => 'Banners',        'icon' => 'image', 'prefix' => 'admin.catalog.banners'],
             ['route' => 'admin.content.index',            'label' => 'Content Pages',  'icon' => 'file-text', 'prefix' => 'admin.content'],
+            ...(Feature::for(null)->active(AnnouncementsFeature::class)
+                ? [['route' => 'admin.announcements.index', 'label' => 'Announcements', 'icon' => 'megaphone', 'prefix' => 'admin.announcements']]
+                : []),
+        ];
+    }
+
+    /**
+     * @param  array<string, int>  $badges
+     * @return list<NavItem>
+     */
+    private static function supportItems(?User $user, array $badges): array
+    {
+        $messagingOn = Feature::for(null)->active(MessagingFeature::class);
+
+        return [
+            ['route' => 'admin.contact-inquiries.index',  'label' => 'Contact Inbox',  'icon' => 'mail', 'prefix' => 'admin.contact-inquiries', 'badge' => $badges['contact'] ?? 0],
+            // Grievances are gated on `grievance.handle` (R-17: not
+            // admin-finance). Hiding the item rather than letting it
+            // 403 also keeps the open-complaint count out of view.
+            ...($user?->can('grievance.handle')
+                ? [['route' => 'admin.grievances.index', 'label' => 'Grievances', 'icon' => 'megaphone', 'prefix' => 'admin.grievances', 'badge' => $badges['grievances'] ?? 0]]
+                : []),
+            // Reported messages. Same R-17 exclusion as grievances, and
+            // hidden rather than 403 for the same reason: the count of
+            // open reports is itself information.
+            ...($user?->can('messaging.moderate') && $messagingOn
+                ? [['route' => 'admin.messaging.reports.index', 'label' => 'Reported messages', 'icon' => 'message-square-warning', 'prefix' => 'admin.messaging', 'badge' => $badges['message-reports'] ?? 0]]
+                : []),
             ['route' => 'admin.compliance-documents.index', 'label' => 'Compliance Docs', 'icon' => 'shield-check', 'prefix' => 'admin.compliance-documents'],
+        ];
+    }
+
+    /**
+     * @param  array<string, int>  $badges
+     * @return list<NavItem>
+     */
+    private static function insightsItems(?User $user, array $badges): array
+    {
+        return [
+            ...($user?->can('audit.read')
+                ? [
+                    ['route' => 'admin.analytics.index',      'label' => 'Analytics',      'icon' => 'chart-line', 'prefix' => 'admin.analytics'],
+                    ['route' => 'admin.audit-log',            'label' => 'Audit Log',      'icon' => 'scroll-text'],
+                ]
+                : []),
+        ];
+    }
+
+    /**
+     * @param  array<string, int>  $badges
+     * @return list<NavItem>
+     */
+    private static function systemItems(?User $user, array $badges): array
+    {
+        return [
+            // Staff register is super-staff only (route enforces role:admin|developer).
+            ...($user?->isSuperStaff()
+                ? [['route' => 'admin.staff.index',       'label' => 'Staff users',    'icon' => 'users-round', 'prefix' => 'admin.staff']]
+                : []),
             ['route' => 'admin.settings',                 'label' => 'Settings',       'icon' => 'settings'],
             ['route' => 'admin.feature-flags.index',      'label' => 'Feature flags',  'icon' => 'flag', 'prefix' => 'admin.feature-flags'],
-            ...($user?->can('audit.read')
-                ? [['route' => 'admin.audit-log',            'label' => 'Audit Log',      'icon' => 'scroll-text']]
-                : []),
             ['route' => 'admin.help.index',               'label' => 'Help & Reference', 'icon' => 'circle-help', 'prefix' => 'admin.help'],
         ];
     }

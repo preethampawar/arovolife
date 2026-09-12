@@ -35,6 +35,15 @@
             html.admin-nav-collapsed .admin-nav-expand-icon { display: block; }
             html.admin-nav-collapsed .admin-nav-head { justify-content: center; padding-left: 0.75rem; padding-right: 0.75rem; }
             html.admin-nav-collapsed .admin-nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
+            /* Rail mode: the group toggles are unreachable, so headers go away
+               and each section becomes a hairline-separated block of icons. */
+            html.admin-nav-collapsed .admin-nav-group-header { display: none; }
+            html.admin-nav-collapsed [data-nav-group] + [data-nav-group] .admin-nav-group-list {
+                border-top: 1px solid #1e293b; /* slate-800 */
+                padding-top: 0.25rem;
+                margin-top: 0.25rem;
+            }
+            html.admin-nav-collapsed .admin-nav-group-list { display: block; }
             html.admin-nav-collapsed .admin-nav-badge {
                 position: absolute; top: 0.375rem; right: 0.625rem;
                 min-width: 0.5rem; width: 0.5rem; height: 0.5rem; padding: 0;
@@ -197,7 +206,8 @@
                 // this adds no extra query beyond what `ActionCenterService`
                 // already computes. Zero renders no badge, not a grey zero
                 // (plan §7, §10.5).
-                $actionCenterOn = auth()->user()?->can('action.center.view') ?? false;
+                $actionCenterOn = (auth()->user()?->can('action.center.view') ?? false)
+                    && (auth()->user()?->hasRole('developer') ?? false);
                 $actionCenterCriticalCount = $actionCenterOn
                     ? app(\App\Modules\ActionCenter\Services\ActionCenterService::class)->criticalCount(auth()->user())
                     : 0;
@@ -224,6 +234,31 @@
                 $navGroups = \App\Modules\Shared\Support\AdminNavigation::groups(auth()->user(), $badges);
             @endphp
             @foreach($navGroups as $group)
+                @php
+                    // Forced-open-on-active, computed server-side with the same
+                    // routeIs logic the items use, so the section holding the
+                    // current page is never rendered collapsed and never flashes.
+                    $groupActive = false;
+                    foreach ($group['items'] as $groupItem) {
+                        if (request()->routeIs($groupItem['route'])
+                            || (isset($groupItem['prefix']) && request()->routeIs($groupItem['prefix'].'*'))) {
+                            $groupActive = true;
+                            break;
+                        }
+                    }
+                @endphp
+                <div data-nav-group="{{ $group['key'] }}" @if($groupActive) data-nav-group-active="1" @endif>
+                @if($group['label'] !== null)
+                    <button type="button" data-nav-group-toggle
+                            aria-expanded="true"
+                            aria-controls="nav-group-{{ $group['key'] }}"
+                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 px-4 pt-4 pb-1 hover:text-slate-300 transition-colors">
+                        <span>{{ $group['label'] }}</span>
+                        <span data-nav-group-chevron="down">{{ svg('lucide-chevron-down', 'w-3 h-3') }}</span>
+                        <span data-nav-group-chevron="right" hidden>{{ svg('lucide-chevron-right', 'w-3 h-3') }}</span>
+                    </button>
+                @endif
+                    <div id="nav-group-{{ $group['key'] }}" class="admin-nav-group-list space-y-1">
             @foreach($group['items'] as $item)
                 @php
                     $active = request()->routeIs($item['route'])
@@ -244,8 +279,31 @@
                     @endif
                 </a>
             @endforeach
+                    </div>
+                </div>
             @endforeach
         </nav>
+        {{-- Re-apply stored per-group collapse state during parse, before the
+             sidebar paints. Groups holding the active route are skipped: the
+             server already rendered them open and stored state must not win. --}}
+        <script>
+            (() => {
+                try {
+                    const stored = JSON.parse(localStorage.getItem('arovolife_admin_nav_groups') || '{}');
+                    document.querySelectorAll('[data-nav-group]').forEach((group) => {
+                        if (group.hasAttribute('data-nav-group-active')) return;
+                        if (stored[group.getAttribute('data-nav-group')] !== 0) return;
+                        const btn = group.querySelector('[data-nav-group-toggle]');
+                        const list = group.querySelector('.admin-nav-group-list');
+                        if (! btn || ! list) return;
+                        list.hidden = true;
+                        btn.setAttribute('aria-expanded', 'false');
+                        btn.querySelector('[data-nav-group-chevron="down"]').hidden = true;
+                        btn.querySelector('[data-nav-group-chevron="right"]').hidden = false;
+                    });
+                } catch (e) { /* private-browsing — leave every group open */ }
+            })();
+        </script>
 
             <div class="mt-auto px-3 py-4 border-t border-slate-800">
                 <p class="admin-nav-label text-xs text-slate-600 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
@@ -378,6 +436,36 @@
                 render();
             });
             render();
+        })();
+
+        // Sidebar group collapse. The stored state is applied during parse by
+        // the snippet next to the nav; this only toggles and persists it.
+        (function () {
+            const KEY = 'arovolife_admin_nav_groups';
+
+            const read = () => {
+                try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }
+                catch (e) { return {}; }
+            };
+
+            document.querySelectorAll('[data-nav-group]').forEach((group) => {
+                const key = group.getAttribute('data-nav-group');
+                const btn = group.querySelector('[data-nav-group-toggle]');
+                const list = group.querySelector('.admin-nav-group-list');
+                if (! btn || ! list) return;
+
+                btn.addEventListener('click', () => {
+                    const open = btn.getAttribute('aria-expanded') !== 'true';
+                    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    list.hidden = ! open;
+                    btn.querySelector('[data-nav-group-chevron="down"]').hidden = ! open;
+                    btn.querySelector('[data-nav-group-chevron="right"]').hidden = open;
+
+                    const state = read();
+                    state[key] = open ? 1 : 0;
+                    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
+                });
+            });
         })();
     </script>
 
