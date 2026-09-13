@@ -169,7 +169,7 @@ it('DSH-04: dashboard keeps every legacy element alongside the new KPI strip and
     foreach ([
         // Legacy elements that must survive the redesign.
         'Manage my KYC documents', 'My Referral Link', 'Personal invite', 'Copy',
-        'Profile Stats', 'Download PDF', 'Placement', 'My Business', 'Request line-change',
+        'Profile Stats', 'Download PDF', 'My Business', 'Request line-change',
         'Cooling-Off Period', 'Cancel registration', 'Messages', 'Documents', 'Membership Card',
         'My Team', 'data-team-roster="total"', 'data-team-roster="direct"',
         'data-team-roster="left"', 'data-team-roster="right"', 'id="team-roster-modal"',
@@ -323,7 +323,7 @@ it('DSH-08: shows the repurchase alert even with the repurchase engine flag off'
         ->assertSee('Bring this to ₹0 by');
 });
 
-it('DOC-01: the documents page renders the repurchase card for an unqualified distributor', function () {
+it('DOC-01: the dashboard hero renders the repurchase card for an unqualified distributor', function () {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $user = dshUser('active');
@@ -332,7 +332,7 @@ it('DOC-01: the documents page renders the repurchase card for an unqualified di
     // A fresh distributor is below the BV gate, so the card must show what
     // opens the cycle rather than an empty window.
     $this->actingAs($user)
-        ->get(route('dashboard.documents'))
+        ->get(route('dashboard'))
         ->assertOk()
         ->assertSee('Repurchase cycle', false)
         ->assertSee('Not started yet', false);
@@ -345,7 +345,49 @@ it('DOC-02: the repurchase card leaves no trace when the engine is off', functio
     dshDistributor($user);
 
     $this->actingAs($user)
-        ->get(route('dashboard.documents'))
+        ->get(route('dashboard'))
         ->assertOk()
         ->assertDontSee('Repurchase cycle', false);
+});
+
+it('DOC-03: the documents page no longer carries the repurchase card', function () {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $user = dshUser('active');
+    dshDistributor($user);
+
+    // It moved to the dashboard hero. Two copies of a deadline is one copy
+    // too many, and this page is about documents.
+    $this->actingAs($user)
+        ->get(route('dashboard.documents'))
+        ->assertOk()
+        ->assertSee('My KYC documents', false)
+        ->assertDontSee('Repurchase cycle', false);
+});
+
+it('DOC-04: the sidenav shows the Genos group a distributor is placed in', function () {
+    $user = dshUser('active');
+    $id = dshDistributor($user);
+
+    // Placed on the left: the sidenav states it, in the Left/Right words the
+    // rest of the platform uses.
+    DB::table('distributors')->where('id', $id)->update(['placement_side' => 'L']);
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('data-nav-position="L"', false)
+        ->assertSee('← Left group', false);
+});
+
+it('DOC-05: a distributor with no placement side gets no Position row', function () {
+    $user = dshUser('active');
+    dshDistributor($user); // placement_side is null — the root account.
+
+    // Defaulting a null side to "Right" would state a placement that does
+    // not exist, so the row is omitted entirely.
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('data-nav-position', false);
 });

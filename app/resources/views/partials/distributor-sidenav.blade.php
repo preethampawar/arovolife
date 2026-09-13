@@ -10,6 +10,30 @@
     $announcementsOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AnnouncementsFeature::class);
     $faqOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FaqLibraryFeature::class);
 
+    // Position and line-change came out of the dashboard's Placement card,
+    // which was removed. Both are standing account facts a distributor wants
+    // from wherever they happen to be, not only from the dashboard.
+    $navDistributor = auth()->user()?->distributor;
+
+    // 'L' | 'R' | null. Null is the root account, which sits in no group at
+    // all — skipped rather than defaulted, because defaulting to Right would
+    // state a placement that does not exist.
+    $navSide = $navDistributor?->placement_side;
+
+    // Line-change is a one-shot, 5-business-day window from effective_date
+    // (mirrors LineChangeController::show and the service-side guard in
+    // RequestLineChange). Once it closes the entry disappears: a permanently
+    // struck-through row in a nav list is noise, and the route would reject
+    // the request anyway.
+    $lcRemaining = 0;
+    $lcAvailable = false;
+
+    if ($navDistributor !== null) {
+        $lcBusinessDaysSince = (int) $navDistributor->effective_date->diffInWeekdays(now());
+        $lcRemaining = max(0, 5 - $lcBusinessDaysSince);
+        $lcAvailable = $lcBusinessDaysSince <= 5;
+    }
+
     $groups = [
         'Overview' => [
             ['label' => 'Dashboard',          'route' => 'dashboard',           'icon' => 'house', 'prefix' => 'dashboard'],
@@ -47,6 +71,9 @@
             ['label' => 'My Grievances',      'route' => 'my.grievances.index', 'icon' => 'megaphone', 'prefix' => 'my.grievances.'],
             ...($faqOn
                 ? [['label' => 'FAQ',         'route' => 'faq.index',           'icon' => 'circle-question-mark', 'prefix' => 'faq.']]
+                : []),
+            ...($lcAvailable
+                ? [['label' => 'Request line-change', 'route' => 'line-change.show', 'icon' => 'arrow-left-right', 'badge' => $lcRemaining.'d left']]
                 : []),
         ],
     ];

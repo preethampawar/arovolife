@@ -9,8 +9,9 @@
     The ring geometry matches resources/views/dashboard/_cooling-off.blade.php
     so the platform has one visual language for "time remaining".
 
-    Expects: $card (RepurchaseCycleCard|null). Null means the engine flag is
-    off or the income tables are unreadable — either way, render nothing.
+    Rendered in the dashboard hero. Expects: $card (RepurchaseCycleCard|null).
+    Null means the engine flag is off or the income tables are unreadable —
+    either way, render nothing.
 
     @see \App\Modules\Compensation\Services\DTOs\RepurchaseCycleCard
     @see docs/plans/repurchase-cycle-visual-2026-09-13.md
@@ -33,7 +34,9 @@
         };
     @endphp
 
-    <section class="mb-8 rounded-2xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 to-white p-5 shadow-sm"
+    {{-- No outer margin: the card sits in the hero's grid cell, which owns
+         the spacing around it. --}}
+    <section class="rounded-2xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 to-white p-5 shadow-sm"
              aria-labelledby="repurchase-heading">
 
         <div class="flex items-center justify-between gap-3 flex-wrap mb-4">

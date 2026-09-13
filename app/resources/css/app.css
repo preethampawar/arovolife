@@ -388,6 +388,13 @@ html.dark .text-blue-700 { color: #93c5fd; }
 html.dark .text-blue-800 { color: #bfdbfe; }
 html.dark .text-blue-900 { color: #dbeafe; }
 
+/* sky — the Left group's colour everywhere Left/Right is shown */
+html.dark .bg-sky-50 { background-color: #0b2333; }
+html.dark .border-sky-200 { border-color: #1c5375; }
+html.dark .text-sky-600 { color: #7dd3fc; }
+html.dark .text-sky-700 { color: #7dd3fc; }
+html.dark .text-sky-800 { color: #bae6fd; }
+
 /* indigo */
 html.dark .bg-indigo-50 { background-color: #171a33; }
 html.dark .bg-indigo-100 { background-color: #1f2447; }

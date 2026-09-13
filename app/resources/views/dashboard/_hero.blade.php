@@ -1,15 +1,21 @@
 {{-- Dashboard hero — welcome, account status, identity chips and the
-     referral-link widget. Renders for every signed-in user; the chips and
-     referral card only for distributors. --}}
+     repurchase-cycle panel. Renders for every signed-in user; the chips and
+     the panel only for distributors. --}}
 @php
     $initials = collect(explode(' ', trim((string) ($user->full_name ?? $user->email))))
         ->filter()->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('');
+
+    // The hero's right-hand panel is the repurchase cycle card. It is null
+    // when the engine flag is off or the income tables are unreadable, and
+    // then the hero must collapse to one column rather than leave a 440px
+    // hole where the panel used to be.
+    $heroAside = $hasDistributorBlock && ($repurchaseCard ?? null) !== null;
 @endphp
 <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 via-brand-800 to-brand-950 text-white shadow-lg mb-6">
     <div class="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-400/30 blur-3xl"></div>
     <div class="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-leaf-400/20 blur-3xl"></div>
 
-    <div class="relative grid grid-cols-1 lg:grid-cols-[1fr_minmax(0,440px)] gap-6 p-6 sm:p-8">
+    <div class="relative grid grid-cols-1 {{ $heroAside ? 'lg:grid-cols-[1fr_minmax(0,440px)]' : '' }} gap-6 p-6 sm:p-8">
         <div class="flex items-start gap-4 sm:gap-5 min-w-0">
             <div class="shrink-0">
                 @if($hasDistributorBlock && $idPhotoUrl)
@@ -67,58 +73,15 @@
             </div>
         </div>
 
-        @if($hasDistributorBlock)
-            {{-- Referral-link card — same source and behaviour as before,
-                 now on a glass panel inside the hero so distributors always
-                 see their invite URL at the very top of the dashboard. --}}
-            <div class="w-full rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-4 self-start">
-                <div class="flex items-center justify-between gap-3 mb-2">
-                    <p class="text-[11px] text-white/90 uppercase tracking-wider font-semibold">My Referral Link</p>
-                    <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-white text-brand-700">Personal invite</span>
-                </div>
-                <div class="flex items-stretch gap-2">
-                    <input type="text" readonly value="{{ $inviteUrl }}" aria-label="My referral link"
-                        class="flex-1 min-w-0 rounded-lg border border-white/30 bg-white px-2.5 py-1.5 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-sunrise-400"
-                        onclick="this.select()">
-                    <button type="button"
-                        onclick="navigator.clipboard.writeText('{{ $inviteUrl }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);"
-                        class="px-3 rounded-lg bg-sunrise-500 hover:bg-sunrise-600 text-white text-xs font-semibold transition-colors">
-                        Copy
-                    </button>
-                </div>
-                @if($bothFull)
-                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-sunrise-200">
-                        <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-sunrise-400"></span>Direct slots full.</span>
-                        <span class="inline-flex flex-wrap items-center gap-2">
-                        <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}"
-                           class="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-brand-800 shadow-md ring-2 ring-sunrise-400 hover:bg-sunrise-50 transition-colors">
-                            <x-lucide-network class="w-4 h-4 text-brand-600" />
-                            My Genos →
-                        </a>
-                        <a href="{{ route('tree.sponsorship') }}"
-                           class="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-brand-800 shadow-md ring-2 ring-leaf-400 hover:bg-leaf-50 transition-colors">
-                            <x-lucide-users class="w-4 h-4 text-leaf-600" />
-                            Direct referrals →
-                        </a>
-                        </span>
-                    </div>
-                @else
-                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-white/80">
-                        <span>Want a specific deeper slot?</span>
-                        <span class="inline-flex flex-wrap items-center gap-2">
-                        <a href="{{ route('tree.binary', ['levels' => max(1, $maxObservedDepth ?: 1)]) }}"
-                           class="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-brand-800 shadow-md ring-2 ring-sunrise-400 hover:bg-sunrise-50 transition-colors">
-                            <x-lucide-network class="w-4 h-4 text-brand-600" />
-                            My Genos →
-                        </a>
-                        <a href="{{ route('tree.sponsorship') }}"
-                           class="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-brand-800 shadow-md ring-2 ring-leaf-400 hover:bg-leaf-50 transition-colors">
-                            <x-lucide-users class="w-4 h-4 text-leaf-600" />
-                            Direct referrals →
-                        </a>
-                        </span>
-                    </div>
-                @endif
+        @if($heroAside)
+            {{-- Repurchase cycle. It sits where the referral-link card used
+                 to, because it is the one thing on the dashboard with a
+                 deadline attached and the hero is what a distributor reads
+                 first. The referral link moved to the right-hand column,
+                 which has no clock on it. The card brings its own light
+                 surface, so it stays legible against the dark hero. --}}
+            <div class="w-full self-start">
+                @include('dashboard._repurchase-cycle', ['card' => $repurchaseCard])
             </div>
         @endif
     </div>

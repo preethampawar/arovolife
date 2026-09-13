@@ -38,11 +38,21 @@
 @include('dashboard._hero')
 
 @if($distributor)
+    {{-- The right-hand column is the distributor's own standing facts:
+         their invite link, their inbox, their cooling-off clock, then the
+         documents they can print. Placement moved out entirely — position
+         and line-change now live in the left sidenav, which is reachable
+         from every page rather than only this one. --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div class="lg:col-span-2 min-w-0">
             @include('dashboard._profile-stats')
         </div>
-        <div class="min-w-0">
+        <div class="flex flex-col gap-6 min-w-0">
+            @include('dashboard._referral-link')
+            @if(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\MessagingFeature::class))
+                @include('dashboard._messages')
+            @endif
+            @include('dashboard._cooling-off')
             @include('dashboard._documents', ['docsLayout' => 'stacked'])
         </div>
     </div>
@@ -50,18 +60,9 @@
     @include('dashboard._kpi-strip')
     @include('dashboard._quick-actions')
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div class="lg:col-span-2 flex flex-col gap-6 min-w-0">
-            @include('dashboard._genos-balance')
-            @include('dashboard._team-growth')
-        </div>
-        <div class="flex flex-col gap-6 min-w-0">
-            @include('dashboard._placement')
-            @include('dashboard._cooling-off')
-            @if(\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\MessagingFeature::class))
-                @include('dashboard._messages')
-            @endif
-        </div>
+    <div class="flex flex-col gap-6 mb-6 min-w-0">
+        @include('dashboard._genos-balance')
+        @include('dashboard._team-growth')
     </div>
 
     @if($bonusSummary !== [])

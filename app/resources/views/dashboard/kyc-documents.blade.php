@@ -19,11 +19,6 @@
         <a href="{{ route('dashboard') }}" class="text-sm text-brand-700 hover:underline">← Back to dashboard</a>
     </div>
 
-    {{-- Repurchase status sits above the documents: it is the thing on this
-         page with a deadline attached, and a distributor who opens it to
-         check a document should not have to go looking for it. --}}
-    @include('dashboard._repurchase-cycle', ['card' => $repurchaseCard])
-
     <h1 class="text-2xl font-bold text-gray-900 mb-2">My KYC documents</h1>
     <p class="text-sm text-gray-600 mb-6">
         PAN, Aadhaar (front and back) and address proof (front and back) are

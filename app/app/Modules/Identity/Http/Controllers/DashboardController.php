@@ -90,6 +90,7 @@ final class DashboardController extends Controller
         $dailyBv = null;
         $slabProgress = null;
         $rankStatus = null;
+        $repurchaseCard = null;
         $bonusSummary = [];
         $keyDates = IncomeOverviewService::keyDates();
         $teamGrowth = [];
@@ -159,6 +160,13 @@ final class DashboardController extends Controller
                     ? app(RankStatusService::class)->forDistributor($distributor)
                     : null;
 
+                // The repurchase cycle card in the hero. Null when the engine
+                // flag is off — a flag that is down leaves no trace on the
+                // page, and the hero collapses to one column.
+                $repurchaseCard = Feature::for(null)->active(RepurchaseEngineFeature::class)
+                    ? app(RepurchaseCycleService::class)->cardFor($distributorId)
+                    : null;
+
                 $bonusSummary = $incomeOverview->bonusSummary($distributorId);
                 $teamGrowth = $teamStatsService->joinedPerDay($distributor, 30);
                 $creditsByMonth = app(WalletService::class)->creditTotalsByMonth($distributorId, 6);
@@ -172,6 +180,7 @@ final class DashboardController extends Controller
                 $dailyBv = null;
                 $slabProgress = null;
                 $rankStatus = null;
+                $repurchaseCard = null;
                 $bonusSummary = [];
                 $teamGrowth = [];
                 $creditsByMonth = [];
@@ -218,6 +227,7 @@ final class DashboardController extends Controller
             'dailyBv' => $dailyBv,
             'slabProgress' => $slabProgress,
             'rankStatus' => $rankStatus,
+            'repurchaseCard' => $repurchaseCard,
             'bonusSummary' => $bonusSummary,
             'keyDates' => $keyDates,
             'teamGrowth' => $teamGrowth,
