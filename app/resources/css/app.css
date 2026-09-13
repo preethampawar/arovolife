@@ -178,11 +178,27 @@ body.admin-shell {
        non-text UI). brand-600 clears it on all three light surfaces.  */
     --focus-ring:     #008cc7;   /* 3.77 white · 3.47 canvas · 3.60 gray-50 */
     --focus-contrast: #ffffff;   /* fills the 2px outline-offset gap */
+
+    /* --- Table chrome ------------------------------------------------
+       These must be their own variables rather than var(--color-gray-*).
+       The dark layer remaps the CLASS `.text-gray-500`, not the variable
+       `--color-gray-500`, so a rule written against the variable keeps
+       resolving to the light value in dark mode — which is exactly how
+       the dark thead ended up with 2.x:1 text the first time round. */
+    --admin-thead-bg:  #f8fafc;   /* gray-50  */
+    --admin-thead-fg:  #5d7083;   /* gray-500 */
+    --admin-hairline:  #e0e7ed;   /* gray-200 */
+    --admin-row-hover: #f8fafc;
 }
 
 html.dark body.admin-shell {
     --focus-ring:     #5fd2f8;   /* 9.32 on the dark card, 10.46 on the canvas */
     --focus-contrast: #0e161f;
+
+    --admin-thead-bg:  #232c36;   /* matches html.dark .bg-gray-50      */
+    --admin-thead-fg:  #97a1ad;   /* 5.40:1 on the dark header surface  */
+    --admin-hairline:  #303a46;   /* matches html.dark .border-gray-200 */
+    --admin-row-hover: #27313c;
 }
 
 /* Bare `.rounded` (115 uses) compiles to a literal .25rem — it comes from
@@ -231,6 +247,86 @@ body.admin-shell .focus\:outline-none:focus-visible {
 
 @media (prefers-reduced-motion: no-preference) {
     body.admin-shell :focus-visible { transition: outline-color 100ms linear; }
+}
+
+@layer components {
+/* =====================================================================
+   ADMIN TABLE CHROME — 92 of the 146 admin views, no markup changes.
+
+   In @layer components DELIBERATELY. Cascade layers are consulted BEFORE
+   specificity, so every utility in @layer utilities beats every rule
+   here whatever its selector weight: `#adminMain thead th` at (1,0,2)
+   loses to `.px-3` at (0,1,0). That makes per-page padding and density
+   safe by construction rather than by discipline — which matters,
+   because th padding alone is 456 py-2 + 283 py-3 and 379 px-4 + 298
+   px-3 across the console.
+
+   Layers do NOT rescue inheritance, though: a declaration on a
+   descendant defeats an inherited value from its parent at any
+   specificity, in any layer. That is the real hazard here, and it is
+   why several properties below sit on <thead> rather than on <th>.
+   See the FORBIDDEN list at the end.
+   ===================================================================== */
+
+    /* Header surface. Declared on <thead>, the same element the 79 existing
+       `bg-gray-50` theads carry it on, so those override with an identical
+       value and the remaining ~13 tables gain it. */
+    #adminMain thead { background-color: var(--admin-thead-bg); }
+
+    /* Header typography — inherited properties, so they MUST live on <thead>
+       and not on <th>, or the 28 theads that set `text-gray-600` on the
+       parent would lose it. */
+    #adminMain thead {
+        color: var(--admin-thead-fg);
+        text-transform: uppercase;
+        letter-spacing: 0.045em;
+    }
+
+    /* font-weight and text-align are the inverse case and must be on <th>:
+       the UA stylesheet declares both directly on th (bold / center), and a
+       UA declaration on the element outranks an inherited author value.
+       Utilities on th still win — font-medium x248, font-semibold x107,
+       text-left x319 / text-right x189 / text-center x67. */
+    #adminMain thead th {
+        font-weight: 600;
+        text-align: start;
+        white-space: nowrap;
+        border-bottom: 1px solid var(--admin-hairline);
+    }
+
+    /* Tabular figures across every data cell. Nothing in the 146 views sets
+       font-variant-numeric except `tabular-nums` (60 tds, same value) and
+       `font-mono` (105, already tabular). The highest-value line in this
+       block: every currency column in the console now aligns on the decimal
+       without a single markup change. */
+    #adminMain tbody td { font-variant-numeric: tabular-nums; }
+
+    /* Row hover for the tables that lack `hover:bg-gray-50`. The ones that
+       have it override with an identical value, and rows carrying a status
+       tint (bg-red-50 etc.) keep it, because the utilities layer beats this
+       one even on :hover. NOTE: the class stays in the markup —
+       tests/Browser/fixtures.js selects `tbody tr.hover\:bg-gray-50`. */
+    #adminMain tbody tr { transition: background-color 110ms linear; }
+    #adminMain tbody tr:hover { background-color: var(--admin-row-hover); }
+
+    #adminMain tfoot { border-top: 1px solid var(--admin-hairline); }
+
+/* FORBIDDEN in this block, each for a specific reason:
+     font-size on th/td — 91 of 92 tables set it on <table class="w-full
+       text-xs|text-sm"> and let it INHERIT. One declaration on a cell
+       collapses all 92 to a single density. If a default is ever wanted it
+       must go on `#adminMain table`, the same element the utility is on.
+     color on th — same inheritance trap; 28 theads set it on the parent.
+     padding on th/td — density is a per-page editorial choice, and ~20
+       cells declare only one axis and would inherit a mismatched other.
+     vertical-align on td — the UA's `vertical-align: inherit` is how the
+       `align-top` utilities on <tr> reach their cells; declaring it severs
+       that chain.
+     white-space on td — 31 tds carry whitespace-nowrap deliberately.
+     border-collapse — preflight sets `collapse`; changing it would alter
+       every hairline and the divide-y geometry for no gain.
+     position: sticky on thead th — needs a scroll-container guarantee the
+       markup does not make. */
 }
 
 /* The sticky topbar stack sits above page content. A hairline alone reads
