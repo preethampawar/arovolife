@@ -31,6 +31,19 @@ final class AdminDistributorController extends Controller
 {
     public function index(Request $request): View
     {
+        // The register validates rather than discards, which is the opposite of
+        // the ListFilters default. That is deliberate and predates the filter
+        // toolbar: this is the DSR 2021 Rule 3(g) register, and an admin who
+        // mistypes a filter should be told, not handed a full unfiltered list
+        // that looks like a filtered one. ListFilters still drives the toolbar
+        // and the query below; this guard just runs first.
+        $request->validate([
+            'q' => ['nullable', 'string', 'max:64'],
+            'status' => ['nullable', 'in:pending,active,frozen,terminated,rejected'],
+            'state' => ['nullable', 'regex:/^[A-Z]{2}$/'],
+            'cooling_off' => ['nullable', 'in:active,expiring'],
+        ]);
+
         $filters = ListFilters::make($request, $this->registerFilterFields());
 
         $query = DB::table('distributors')

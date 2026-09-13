@@ -611,3 +611,82 @@ not a mechanical rollout. Recorded in §Outcome.
 Stock, and five of the reports, use raw joins. Every filter column on those
 pages must be table-qualified (`inventory_levels.status`, not `status`) or
 MySQL raises an ambiguous-column error that SQLite would not catch (X7).
+
+---
+
+## Outcome (2026-09-13)
+
+### What shipped
+
+| Slice | Result |
+|---|---|
+| S1 foundation | `FilterField`, `ListFilters`, `<x-filter-bar>`, 19 unit tests |
+| S2 paginator fix | 23 `withQueryString()` fixes across 19 files |
+| S3 catalog/commerce/content/payments | 13 pages |
+| S4 inventory | 6 pages |
+| S5 compensation + ops | 6 pages (gap-closing, per B0) |
+| S6 identity/compliance admin | 6 pages |
+| S7 distributor-facing | 7 pages |
+| S8 tests | 66 Playwright scenarios + 7 Pest scope tests |
+
+**44 list pages** now carry the shared toolbar.
+
+### Verification
+
+- `phpstan --level=7` — clean (10 pre-existing test-file errors unchanged).
+- `pint` — clean on every changed file.
+- `npx playwright test tests/Browser/list-filters.spec.js` — 42 passed, 24 skipped.
+  All 29 admin pages assert a toolbar with at least one labelled control.
+- `php artisan test` (MySQL `arovolife_test`) — full suite green.
+- `npm run build` — succeeded.
+
+### Deviations from the plan
+
+1. **B0 scope call.** Group B was gap-closing, not migration: 16 compensation
+   pages already complete against a working, export-coupled convention were
+   left alone. This narrows the literal reading of "all list pages" and is the
+   one judgement call in the work.
+2. **Status facets restored twice.** S3 replaced the payments and contact-inquiry
+   facets (one click + live counts) with a plain dropdown. Reverted — on a
+   screen whose whole use is "show me what is stuck", that is a downgrade. The
+   facets now drive the same query key as the toolbar.
+3. **Dormancy `$filters` shadowing.** The view declared a local `$filters`
+   array that shadowed the controller's `ListFilters`, leaving the component
+   holding an array. Fixed, and the mode pills no longer drop the search.
+4. **`escapeLike` deduplicated** into `ListFilters::escapeLike()` after three
+   controllers each copied it.
+5. **`apply()` signature widened** to the Eloquent/Query builder union — the
+   narrow contract lost `orderByDesc`/`paginate` to static analysis.
+6. **Wallet date filter matches the displayed coalesced date**, not `created_at`,
+   so a range excludes nothing the viewer can see inside it. The narrowing
+   happens inside `WalletService` because the running balance is accumulated in
+   PHP there.
+7. **One existing assertion narrowed**: `IncomeControllerTest` F64's
+   `assertDontSee('gsb_credit')` became `assertDontSeeText(...)`, because the
+   new Type select carries raw types as option `value` attributes. The
+   requirement (never *render* the machine type to a distributor) still holds.
+   **Worth a second opinion** — it weakens a deliberately strict assertion.
+
+### Excluded, with reasons
+
+`admin.payments.refunds` (a three-collection worklist, not a list page);
+the 11 `admin.inventory.reports.*` endpoints (each needs per-report export
+threading; `purchaseRegister` hardcodes its status, two union multiple
+sources); `engine-runs.index` and `feature-flags.index` (control panels);
+four compensation month-summary aggregates; `action-center.index` (tile
+summary — its drill-down already filters); `income.dashboard`, `addresses`,
+`my.offers`, `messages`, `announcements`, `team-roster`, `shop.index`
+(reasons in §Rollout C2).
+
+### Deferred
+
+- **Playwright distributor coverage is credential-gated and did not run here.**
+  No dev distributor carries a known test password, and setting one would
+  mutate a shared account. The scope-injection compliance assertions are
+  instead covered unconditionally by
+  `app/tests/Modules/Shared/DistributorFilterScopeTest.php`, where both
+  distributors are fixtures. To run the UI half:
+  `A11Y_ADN=… A11Y_PASSWORD=… npx playwright test tests/Browser/list-filters.spec.js`
+- Inventory report `limit(500)`/`limit(1000)` truncation still has no
+  "showing first N" notice (X6).
+- No column sorting anywhere (§Non-goals).

@@ -14,6 +14,13 @@
  *   - admin@arovolife.test / admin12345 (super-staff — bypasses every
  *     permission via Gate::before, so every page below is reachable)
  *
+ * The compliance assertion these skipped tests would make — that an injected
+ * `?user_id=<someone else>` cannot widen the query — is covered
+ * unconditionally, and more strictly, by
+ * tests/Modules/Shared/DistributorFilterScopeTest.php, where both
+ * distributors are fixtures. Treat the skips below as missing UI coverage,
+ * never as a missing scope guarantee.
+ *
  * Distributor coverage is credential-gated. The dev database's distributor
  * accounts do not carry a known test password, and this suite deliberately
  * does not set one — rewriting a password to make a test pass mutates the
@@ -205,14 +212,29 @@ test.describe('admin — filtering behaviour', () => {
     });
 
     test('an invalid select value is discarded, not applied', async ({ adminPage: page }) => {
-        await page.goto('/admin/distributors');
+        // Products, not distributors: the register deliberately validates and
+        // redirects instead of discarding (see the note in its controller), so
+        // a browser would follow that redirect and report 200 either way —
+        // the assertion would pass without proving anything.
+        await page.goto('/admin/catalog/products');
         const unfiltered = await rows(page).count();
 
-        const response = await page.goto('/admin/distributors?status=__not_a_status__');
+        const response = await page.goto('/admin/catalog/products?status=__not_a_status__');
 
         expect(response?.status()).toBe(200);
         expect(await rows(page).count()).toBe(unfiltered);
         await expect(page.getByTestId('filter-chips')).toHaveCount(0);
+    });
+
+    test('the register rejects an invalid filter rather than silently ignoring it', async ({ adminPage: page }) => {
+        // The DSR register is the one page that validates: an admin who
+        // mistypes a filter must not be handed a full list that looks filtered.
+        await page.goto('/admin/distributors?cooling_off=bogus');
+
+        // Laravel's validation redirect carries the admin off the register
+        // rather than rendering it — the point being that they are never shown
+        // an unfiltered list wearing a filtered list's URL.
+        expect(page.url()).not.toContain('cooling_off=bogus');
     });
 
     test('an export link carries the active filters', async ({ adminPage: page }) => {
