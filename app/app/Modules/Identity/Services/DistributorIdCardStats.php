@@ -40,8 +40,11 @@ use Laravel\Pennant\Feature;
  * engine, total_withdrawal_income from the settled payout line items. No
  * placeholders remain.
  *
- * Rank and personal BV are own-data-only by default. While the developer
- * setting `genealogy.downline_stats_visible` is ON (client decision
+ * Rank, personal BV and the purchase mark are own-data-only by default. Two
+ * developer settings release them to the downline audience independently —
+ * `genealogy.downline_stats_visible` for rank and BV, and
+ * `genealogy.purchase_mark_visible` for the mark, which is three buckets
+ * rather than a figure and so can be released on its own (client decision
  * 2026-08-30, R-65, hard rule 3 as amended) they are ALSO shown to the
  * distributor's sponsor, their placement upline and admins — and to nobody
  * else. {@see self::compactMany()} enforces that per node, so every caller
@@ -53,6 +56,14 @@ use Laravel\Pennant\Feature;
 final class DistributorIdCardStats
 {
     public const string DOWNLINE_STATS_SETTING = 'genealogy.downline_stats_visible';
+
+    /**
+     * The purchase mark has its own switch because it is a far coarser
+     * disclosure than the BV figure it derives from: three buckets, no number.
+     * Both switches scope to the same audience by the same rules — this one
+     * only decides whether the mark travels with the number or without it.
+     */
+    public const string PURCHASE_MARK_SETTING = 'genealogy.purchase_mark_visible';
 
     /** Active, and personal BV at or above the qualifying gate. */
     public const string MARK_QUALIFIED = 'qualified';
@@ -79,6 +90,13 @@ final class DistributorIdCardStats
 
     /** Memoised {@see self::qualifyBvPaise()}; false until first resolved. */
     private int|false|null $qualifyBvPaise = false;
+
+    /**
+     * Memoised {@see self::switchOn()} values, keyed by settings key.
+     *
+     * @var array<string, string|null>|null
+     */
+    private ?array $switches = null;
 
     public function __construct(
         private readonly TeamStatsService $teamStats,
@@ -115,10 +133,16 @@ final class DistributorIdCardStats
         }
 
         $ids = array_keys($list);
-        $visible = $this->statsVisibleIds($ids);
+        // Two audiences, resolved together from one pair of queries: the stats
+        // rows and the purchase mark have separate switches, so a viewer can be
+        // entitled to the mark on a card whose BV figure stays hidden.
+        ['stats' => $visible, 'mark' => $markVisible] = $this->visibleIds($ids);
         $qualifyPaise = $this->qualifyBvPaise();
         $ranks = $this->rankLabels($visible);
-        $this->bvLedger->warmPersonalBvCache($visible);
+        // Personal BV feeds both, so warm their union — still one query.
+        $this->bvLedger->warmPersonalBvCache(
+            array_values(array_unique(array_merge($visible, $markVisible)))
+        );
 
         $out = [];
         foreach ($list as $id => $distributor) {
@@ -127,7 +151,8 @@ final class DistributorIdCardStats
             // nullsafe access here as unreachable. Read directly.
             $user = $distributor->user;
             $canSee = in_array($id, $visible, true);
-            $paise = $canSee ? $this->bvLedger->totalPersonalBvPaise($id) : 0;
+            $canSeeMark = in_array($id, $markVisible, true);
+            $paise = $canSee || $canSeeMark ? $this->bvLedger->totalPersonalBvPaise($id) : 0;
 
             $out[$id] = [
                 'name' => $user->full_name ?: $user->email,
@@ -138,11 +163,12 @@ final class DistributorIdCardStats
                 'verification_label' => $user->verificationLabel(),
                 'verification_class' => $user->verificationClass(),
                 'activation_date' => $user->activated_at,
-                'total_personal_bv' => $paise > 0 ? IndianNumber::format($paise / 100, 0).' BV' : null,
-                // Same R-65 gate as the BV row it is derived from: a coarser
-                // read of personal BV is still personal BV, so a viewer who
-                // may not see the number may not see the mark either.
-                'purchase_state' => $canSee && $qualifyPaise !== null
+                'total_personal_bv' => $canSee && $paise > 0 ? IndianNumber::format($paise / 100, 0).' BV' : null,
+                // Gated on its own switch. A three-bucket read of personal
+                // BV is still personal BV and still R-65 territory, but it is
+                // a small enough disclosure to release independently: the card
+                // can carry the mark while the BV figure stays hidden.
+                'purchase_state' => $canSeeMark && $qualifyPaise !== null
                     ? $this->purchaseState((string) $user->status, $paise, $qualifyPaise)
                     : null,
             ];
@@ -218,54 +244,103 @@ final class DistributorIdCardStats
     }
 
     /**
-     * Whether the downline-visibility switch is ON. Surfaces use this to
-     * decide whether to show the "visible to you as their upline" notice —
+     * Whether the downline rank / personal-BV switch is ON. Surfaces use this
+     * to decide whether to show the "visible to you as their upline" notice —
      * zero trace while OFF.
      */
     public function downlineStatsVisible(): bool
     {
-        try {
-            return DB::table('settings')
-                ->where('key', self::DOWNLINE_STATS_SETTING)
-                ->value('value') === 'true';
-        } catch (QueryException $e) {
-            Log::warning('DistributorIdCardStats::downlineStatsVisible query failed — treating switch as OFF', [
-                'exception' => $e,
-            ]);
-
-            return false;
-        }
+        return $this->switchOn(self::DOWNLINE_STATS_SETTING);
     }
 
     /**
-     * The subset of $ids whose rank and personal BV the authenticated user may
-     * see: always their own node; and, while the switch is ON, every node
-     * they sponsor or sit above in the Genos (closure descendants), or every
-     * node at all for super-staff. One closure query, one sponsor query.
+     * Whether the purchase mark may be shown on downline cards. Independent of
+     * {@see self::downlineStatsVisible()}: the mark is three buckets, not a
+     * figure, so the client can release it without releasing BV totals.
+     */
+    public function purchaseMarkVisible(): bool
+    {
+        return $this->switchOn(self::PURCHASE_MARK_SETTING);
+    }
+
+    /**
+     * Both visibility switches, read in one query and memoised for the life of
+     * the instance: a canvas asks up to four times (two audiences, plus the
+     * notice) and must not pay for each. An unreadable settings table is
+     * treated as OFF — a privacy switch fails closed, never open.
+     */
+    private function switchOn(string $key): bool
+    {
+        if ($this->switches === null) {
+            try {
+                $this->switches = DB::table('settings')
+                    ->whereIn('key', [self::DOWNLINE_STATS_SETTING, self::PURCHASE_MARK_SETTING])
+                    ->pluck('value', 'key')
+                    ->all();
+            } catch (QueryException $e) {
+                Log::warning('DistributorIdCardStats::downlineStatsVisible query failed — treating both visibility switches as OFF', [
+                    'exception' => $e,
+                ]);
+
+                $this->switches = [];
+            }
+        }
+
+        return ($this->switches[$key] ?? null) === 'true';
+    }
+
+    /**
+     * Who may see what on this canvas, as two subsets of $ids: `stats` for the
+     * rank / personal-BV rows, `mark` for the purchase mark. Each is the
+     * viewer's own node always, widened to the R-65 downline audience only
+     * while that subset's own switch is ON. The audience costs one closure
+     * query and one sponsor query, resolved once and shared by both — and not
+     * run at all while both switches are OFF.
      *
      * @param  int[]  $ids
-     * @return int[]
+     * @return array{stats: int[], mark: int[]}
      */
-    private function statsVisibleIds(array $ids): array
+    private function visibleIds(array $ids): array
     {
         $viewer = auth()->user();
         if ($viewer === null) {
-            return [];
+            return ['stats' => [], 'mark' => []];
         }
 
         $own = $viewer->distributor?->id;
-        $visible = $own !== null && in_array((int) $own, $ids, true) ? [(int) $own] : [];
+        $ownOnly = $own !== null && in_array((int) $own, $ids, true) ? [(int) $own] : [];
 
-        if (! $this->downlineStatsVisible()) {
-            return $visible;
+        $statsOn = $this->downlineStatsVisible();
+        $markOn = $this->purchaseMarkVisible();
+        if (! $statsOn && ! $markOn) {
+            return ['stats' => $ownOnly, 'mark' => $ownOnly];
         }
 
-        if ($viewer->isSuperStaff()) {
+        $audience = $this->downlineAudience($ids, $ownOnly, $own === null ? null : (int) $own);
+
+        return [
+            'stats' => $statsOn ? $audience : $ownOnly,
+            'mark' => $markOn ? $audience : $ownOnly,
+        ];
+    }
+
+    /**
+     * The R-65 audience within $ids: the viewer's own node, plus every node
+     * they sponsor or sit above in the Genos (closure descendants) — or every
+     * node on the canvas for super-staff.
+     *
+     * @param  int[]  $ids
+     * @param  int[]  $ownOnly
+     * @return int[]
+     */
+    private function downlineAudience(array $ids, array $ownOnly, ?int $own): array
+    {
+        if (auth()->user()?->isSuperStaff() === true) {
             return $ids;
         }
 
         if ($own === null) {
-            return $visible;
+            return $ownOnly;
         }
 
         $descendants = DB::table('genealogy_closure')
@@ -281,7 +356,7 @@ final class DistributorIdCardStats
             ->pluck('id');
 
         return array_values(array_unique(array_map('intval', array_merge(
-            $visible,
+            $ownOnly,
             $descendants->all(),
             $sponsored->all(),
         ))));

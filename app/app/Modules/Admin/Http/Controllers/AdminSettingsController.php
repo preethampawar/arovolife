@@ -540,6 +540,16 @@ final class AdminSettingsController extends Controller
                 'default' => 'false',
             ],
 
+            'genealogy.purchase_mark_visible' => [
+                'group' => 'placement',
+                'owner' => 'developer',
+                'label' => 'Show the purchase mark on downline tree cards',
+                'description' => 'The purchase mark is the coloured star on each Genos / Direct-referral card: red for an account that is not active or has never purchased, amber for one purchasing below the qualifying BV gate, green for one at or above it. When ON, a distributor sees it on their sponsored and downline cards as well as their own; when OFF it appears only on their own card and the legend disappears with it. Independent of "Show downline rank and personal BV" — the mark is three buckets, not a figure, so it can be released without releasing BV totals.',
+                'impact' => 'Turning this ON discloses whether a distributor is buying, and roughly how much, to their sponsor and upline. It is a coarser read of the same personal BV covered by the amended Privacy Policy §4/§7 and DSA §8.5, so the same 30-day DPDP §5 / DSA §16.2 notice must have elapsed before enabling it in production.',
+                'type' => 'bool',
+                'default' => 'false',
+            ],
+
             // ── Commerce — storefront ──────────────────────────────────────
             'commerce.storefront.enabled' => [
                 'group' => 'commerce',

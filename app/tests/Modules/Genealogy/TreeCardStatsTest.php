@@ -26,8 +26,18 @@ beforeEach(function (): void {
 
 function tcosDownlineStats(bool $on): void
 {
+    tcosSetting(DistributorIdCardStats::DOWNLINE_STATS_SETTING, $on);
+}
+
+function tcosPurchaseMarkVisible(bool $on): void
+{
+    tcosSetting(DistributorIdCardStats::PURCHASE_MARK_SETTING, $on);
+}
+
+function tcosSetting(string $key, bool $on): void
+{
     DB::table('settings')->updateOrInsert(
-        ['key' => DistributorIdCardStats::DOWNLINE_STATS_SETTING],
+        ['key' => $key],
         ['value' => $on ? 'true' : 'false', 'version' => 1, 'updated_at' => now()],
     );
 }
@@ -238,11 +248,13 @@ it('shows an admin every distributor\'s figures on the tree cards while the swit
 
 /**
  * The purchase mark — the red / amber / green star each card carries. It is a
- * coarser read of the same personal BV the card's BV row shows, so it inherits
- * the same R-65 gate: a viewer who may not see the number may not see the mark.
+ * coarser read of the same personal BV the card's BV row shows — three buckets
+ * rather than a figure — so it sits behind its own R-65 switch,
+ * `genealogy.purchase_mark_visible`, and can be released without releasing the
+ * BV totals.
  */
 it('marks each card from the account status and personal BV', function (): void {
-    tcosDownlineStats(true);
+    tcosPurchaseMarkVisible(true);
     $viewerUser = tcosUser('self');
     $rootId = tcosSeedDistributor($viewerUser->id);
     tcosAccrueBv($rootId, 60_000);                 // exactly 600 BV — on the gate
@@ -268,7 +280,7 @@ it('marks each card from the account status and personal BV', function (): void 
         ->and($stats[$blockedId]['purchase_state'])->toBe(DistributorIdCardStats::MARK_NONE);
 });
 
-it('leaves a downline card unmarked while the downline-stats switch is OFF', function (): void {
+it('leaves a downline card unmarked while the purchase-mark switch is OFF', function (): void {
     $viewerUser = tcosUser('self');
     $rootId = tcosSeedDistributor($viewerUser->id);
     tcosAccrueBv($rootId, 60_000);
@@ -282,6 +294,28 @@ it('leaves a downline card unmarked while the downline-stats switch is OFF', fun
 
     expect($stats[$rootId]['purchase_state'])->toBe(DistributorIdCardStats::MARK_QUALIFIED)
         ->and($stats[$childId]['purchase_state'])->toBeNull();
+});
+
+it('marks downline cards on its own switch, without releasing their BV figure', function (): void {
+    // The whole point of the second switch: the mark is three buckets, the BV
+    // row is a number. Releasing the first must not release the second.
+    tcosPurchaseMarkVisible(true);
+
+    $viewerUser = tcosUser('self');
+    $rootId = tcosSeedDistributor($viewerUser->id);
+    tcosAccrueBv($rootId, 60_000);
+    $childId = tcosSeedDistributor(tcosUser('child')->id, $rootId);
+    tcosAccrueBv($childId, 10_000);
+
+    $this->actingAs($viewerUser->refresh());
+    $stats = app(DistributorIdCardStats::class)->compactMany(
+        Distributor::query()->with('user')->whereIn('id', [$rootId, $childId])->get()
+    );
+
+    expect($stats[$childId]['purchase_state'])->toBe(DistributorIdCardStats::MARK_PURCHASED)
+        ->and($stats[$childId]['total_personal_bv'])->toBeNull()
+        ->and($stats[$childId]['current_rank'])->toBeNull()
+        ->and($stats[$rootId]['purchase_state'])->toBe(DistributorIdCardStats::MARK_QUALIFIED);
 });
 
 it('renders the purchase mark and its legend key on the Genos canvas', function (): void {

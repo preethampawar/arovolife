@@ -57,13 +57,21 @@
         $visibleNodes = collect($childByParentSide ?? [])->flatMap(fn ($sides) => array_values($sides))->push($self);
     }
     $cardStatsById = $cardStatsService->compactMany($visibleNodes->unique('id'));
-    $downlineStatsNotice = ! $adminContext && $cardStatsService->downlineStatsVisible();
 
-    // Purchase mark (red / amber / green star on each card). Derived from
-    // personal BV, so it inherits personal BV's R-65 gate: compactMany() sets
-    // purchase_state to null on every card whose BV row this viewer may not
-    // see. When that is every card, the legend key stays off the page too —
-    // no trace of a mark nobody can see.
+    // The R-65 disclosure notice names exactly what this viewer can see about
+    // other members, which is whichever of the two switches is ON. Admins get
+    // no notice — the copy addresses a distributor looking at their own team.
+    $downlineStatsSubjects = array_values(array_filter([
+        $cardStatsService->downlineStatsVisible() ? 'rank and personal BV' : null,
+        $cardStatsService->purchaseMarkVisible() ? 'purchase status' : null,
+    ]));
+    $downlineStatsNotice = ! $adminContext && $downlineStatsSubjects !== [];
+
+    // Purchase mark (red / amber / green star on each card). Own R-65 switch
+    // (genealogy.purchase_mark_visible): compactMany() sets purchase_state to
+    // null on every card this viewer may not see it for. When that is every
+    // card, the legend key stays off the page too — no trace of a mark nobody
+    // can see.
     $purchaseMarks = $cardStatsService->purchaseMarkMap();
     $purchaseMarksShown = $purchaseMarks !== []
         && collect($cardStatsById)->contains(fn (array $stats): bool => ($stats['purchase_state'] ?? null) !== null);
@@ -275,7 +283,7 @@
 @if($downlineStatsNotice)
 <p class="mb-3 text-xs text-gray-700 flex items-start gap-1.5">
     <x-lucide-lock class="w-4 h-4 shrink-0 text-brand-600" aria-hidden="true" />
-    <span>Each member's rank and personal BV are visible to you as their upline, to help you support their business. Do not share, screenshot or quote them outside the platform or in any recruitment or sales conversation (Code of Ethics §2.11).</span>
+    <span>What you can see here about each member &mdash; {{ implode(' and ', $downlineStatsSubjects) }} &mdash; is visible to you as their upline, to help you support their business. Do not share, screenshot or quote it outside the platform or in any recruitment or sales conversation (Code of Ethics §2.11).</span>
 </p>
 @endif
 
