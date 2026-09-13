@@ -4,7 +4,6 @@
 
 @section('content')
 
-{{-- Stats Grid --}}
 @php
     // Each tile click-throughs to the distributors list with the filter
     // pre-applied that matches the row count shown. "Audit Events Today"
@@ -70,127 +69,147 @@
             'icon'     => 'file-text',
         ],
     ];
-
-    $tones = [
-        'brand'  => ['bg' => 'bg-brand-50',  'fg' => 'text-brand-700'],
-        'green'  => ['bg' => 'bg-green-50',  'fg' => 'text-green-600'],
-        'amber'  => ['bg' => 'bg-amber-50',  'fg' => 'text-amber-700'],
-        'sky'    => ['bg' => 'bg-sky-50',    'fg' => 'text-sky-600'],
-        'red'    => ['bg' => 'bg-red-50',    'fg' => 'text-red-600'],
-        'slate'  => ['bg' => 'bg-slate-100', 'fg' => 'text-slate-600'],
-        'violet' => ['bg' => 'bg-violet-50', 'fg' => 'text-violet-600'],
-    ];
 @endphp
 
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-    @foreach($cards as $card)
-    @php $t = $tones[$card['tone']]; @endphp
-    <a href="{{ $card['href'] }}"
-       class="group block bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md hover:border-gray-300 transition-all cursor-pointer">
-        <div class="flex items-start justify-between mb-4">
-            <div class="flex h-10 w-10 items-center justify-center rounded-lg {{ $t['bg'] }} {{ $t['fg'] }}">
-                {{ svg('lucide-'.$card['icon'], 'w-5 h-5') }}
-            </div>
-            <span class="text-gray-600 group-hover:text-brand-800 transition-colors text-lg leading-none" aria-hidden="true">→</span>
-        </div>
-        <p class="text-xs uppercase tracking-wider text-gray-700 font-medium mb-1">{{ $card['label'] }}</p>
-        <p class="text-3xl font-bold text-gray-900 leading-none mb-2">{{ \App\Modules\Shared\Support\IndianNumber::format($card['value']) }}</p>
-        <p class="text-xs text-gray-600">{{ $card['hint'] }}</p>
-    </a>
-    @endforeach
-</div>
+<div class="space-y-6">
 
-@if($inventoryCard)
-<a href="{{ route('admin.inventory.reports.index') }}"
-   class="group block bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md hover:border-gray-300 transition-all mb-8">
-    <div class="flex items-center justify-between">
-        <p class="text-sm font-semibold text-gray-800">
-            Inventory — {{ $inventoryCard['low_stock'] }} low stock · {{ $inventoryCard['expiring'] }} expiring ≤ {{ $inventoryCard['expiry_days'] }} d · {{ $inventoryCard['expired'] }} expired
-        </p>
-        <span class="text-gray-600 group-hover:text-brand-800 transition-colors text-lg leading-none" aria-hidden="true">→</span>
-    </div>
-</a>
-@endif
-
-@if($actionCenterItems->isNotEmpty())
-<div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm mb-8">
-    <div class="flex items-center justify-between mb-3">
-        <h3 class="font-semibold text-gray-800">Action Center — oldest critical items</h3>
-        <a href="{{ route('admin.action-center.index') }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">View all →</a>
-    </div>
-    <ul class="divide-y divide-gray-100">
-        @foreach($actionCenterItems as $item)
-        <li class="py-2.5 flex items-center justify-between gap-3">
-            <div class="min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">{{ $item->title }}</p>
-                <p class="text-xs text-gray-600 truncate">{{ $item->subtitle }} · {{ $item->ageHours() }}h old</p>
-            </div>
-            @if($item->url)
-            <a href="{{ $item->url }}" class="shrink-0 text-sm text-brand-700 hover:text-brand-800 font-medium">Fix →</a>
-            @endif
-        </li>
+    {{-- Stat tiles. Two-up on a phone rather than one-up: the tiles are short
+         enough now that a single column just wasted the fold. --}}
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+        @foreach($cards as $card)
+            <x-ui.stat
+                :label="$card['label']"
+                :value="\App\Modules\Shared\Support\IndianNumber::format($card['value'])"
+                :hint="$card['hint']"
+                :icon="$card['icon']"
+                :tone="$card['tone']"
+                :href="$card['href']" />
         @endforeach
-    </ul>
-</div>
-@endif
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-    {{-- Recent Distributors --}}
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="font-semibold text-gray-800">Recent Registrations</h3>
-            <a href="{{ route('admin.distributors.index') }}" class="text-xs text-brand-700 hover:text-brand-800 font-medium">View all →</a>
-        </div>
-        <div class="divide-y divide-gray-100">
-            @forelse($recentDistributors as $d)
-            <div class="px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+        {{-- Inventory was a full-width rounded-2xl band holding a single
+             sentence — the worst density on the page, and it burned a whole
+             row to say three numbers nobody could scan. It is the 8th tile
+             now: same three figures, same destination, same inventory.view
+             gate. It also squares off the 2x4 grid. --}}
+        @if($inventoryCard)
+        <a href="{{ route('admin.inventory.reports.index') }}"
+           class="group col-span-2 flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:border-gray-300 hover:shadow-md md:col-span-1">
+            <div class="flex items-center gap-2">
+                <span class="shrink-0 text-amber-600">{{ svg('lucide-boxes', 'w-[18px] h-[18px]') }}</span>
+                <p class="min-w-0 truncate text-[13px] font-medium text-gray-600">Inventory alerts</p>
+                <span class="ml-auto shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-brand-600" aria-hidden="true">{{ svg('lucide-arrow-up-right', 'w-4 h-4') }}</span>
+            </div>
+            <div class="mt-3 grid grid-cols-3 gap-2">
                 <div>
-                    <a href="{{ route('admin.distributors.show', $d->id) }}"
-                       class="text-sm font-mono font-medium text-brand-700 hover:text-brand-800">{{ $d->adn }}</a>
-                    <p class="text-xs text-gray-700">{{ $d->full_name ?? $d->email }}</p>
+                    <p class="text-[11px] text-gray-500">Low stock</p>
+                    <p class="mt-0.5 text-xl font-semibold leading-none tabular-nums text-gray-900">{{ $inventoryCard['low_stock'] }}</p>
                 </div>
-                <div class="text-right">
-                    <span class="text-xs px-2 py-0.5 rounded-full
-                        {{ $d->status === 'active' ? 'bg-green-50 text-green-700 border border-green-200'
-                         : ($d->status === 'frozen' ? 'bg-red-50 text-red-700 border border-red-200'
-                         : 'bg-amber-50 text-amber-700 border border-amber-200') }}">
-                        {{ \App\Modules\Identity\Models\User::STATUS_LABELS[$d->status] ?? ucfirst((string) $d->status) }}
-                    </span>
-                    <p class="text-xs text-gray-600 mt-0.5">{{ \Carbon\Carbon::parse($d->effective_date)->format('d M Y, h:i A') }}</p>
+                <div>
+                    <p class="text-[11px] text-gray-500">Expiring &le;{{ $inventoryCard['expiry_days'] }}d</p>
+                    <p class="mt-0.5 text-xl font-semibold leading-none tabular-nums text-gray-900">{{ $inventoryCard['expiring'] }}</p>
+                </div>
+                <div>
+                    <p class="text-[11px] text-gray-500">Expired</p>
+                    <p class="mt-0.5 text-xl font-semibold leading-none tabular-nums text-gray-900">{{ $inventoryCard['expired'] }}</p>
                 </div>
             </div>
-            @empty
-            <p class="px-6 py-6 text-sm text-gray-700 text-center">No distributors yet.</p>
-            @endforelse
-        </div>
+        </a>
+        @endif
     </div>
 
-    {{-- Recent Audit Log --}}
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 class="font-semibold text-gray-800">Recent Audit Events</h3>
-            <a href="{{ route('admin.audit-log') }}" class="text-xs text-brand-700 hover:text-brand-800 font-medium">View all →</a>
+    {{-- Action Center. The whole card is absent when nothing is critical —
+         silence means nothing to do. That is existing behaviour, not styling,
+         so it stays, and it is why this block has no empty state. --}}
+    @if($actionCenterItems->isNotEmpty())
+    <x-ui.card flush>
+        {{-- The "View all" <a> MUST remain the h3's immediate next sibling:
+             action-center.spec.js selects it with
+             xpath=following-sibling::a[1]. Do not wrap either in a div. --}}
+        <div class="flex items-center gap-2 border-b border-gray-200 px-5 py-3.5">
+            <span class="shrink-0 text-red-600">{{ svg('lucide-siren', 'w-4 h-4') }}</span>
+            <h3 class="text-sm font-semibold text-gray-900">Action Center — oldest critical items</h3>
+            <a href="{{ route('admin.action-center.index') }}"
+               class="ml-auto inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-brand-700 transition-colors hover:bg-brand-50 hover:text-brand-800">
+                View all {{ svg('lucide-chevron-right', 'w-3 h-3') }}
+            </a>
         </div>
-        <div class="divide-y divide-gray-100">
-            @forelse($recentAudit as $log)
-            <div class="px-6 py-3 hover:bg-gray-50 transition-colors">
-                <div class="flex items-start justify-between gap-3">
-                    <p class="text-sm text-gray-800 leading-snug">{{ $log->display_title }}</p>
-                    <span class="text-[11px] text-gray-600 whitespace-nowrap shrink-0 pt-0.5">
-                        {{ \Carbon\Carbon::parse($log->created_at)->diffForHumans() }}
-                    </span>
+
+        <ul class="divide-y divide-gray-100">
+            @foreach($actionCenterItems as $item)
+            <li class="flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-gray-50">
+                <div class="min-w-0">
+                    <p class="truncate text-sm font-medium text-gray-900">{{ $item->title }}</p>
+                    <p class="truncate text-xs text-gray-500">{{ $item->subtitle }}</p>
                 </div>
-                @if($log->display_subtitle)
-                    <p class="text-xs text-gray-700 mt-1">{{ $log->display_subtitle }}</p>
-                @endif
-            </div>
-            @empty
-            <p class="px-6 py-6 text-sm text-gray-700 text-center">No audit events yet.</p>
-            @endforelse
-        </div>
-    </div>
+                <div class="flex shrink-0 items-center gap-3">
+                    {{-- Age is the sort key of this list, so it is a column now
+                         rather than a suffix buried in the subtitle string. --}}
+                    <span class="text-xs tabular-nums text-gray-500">{{ $item->ageHours() }}h</span>
+                    @if($item->url)
+                    <x-ui.button :href="$item->url" variant="secondary" size="sm" icon-trailing="chevron-right">Fix</x-ui.button>
+                    @endif
+                </div>
+            </li>
+            @endforeach
+        </ul>
+    </x-ui.card>
+    @endif
 
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+
+        <x-ui.card flush title="Recent Registrations">
+            <x-slot:actions>
+                <x-ui.button :href="route('admin.distributors.index')" variant="ghost" size="sm" icon-trailing="chevron-right">View all</x-ui.button>
+            </x-slot:actions>
+
+            <div class="divide-y divide-gray-100">
+                @forelse($recentDistributors as $d)
+                <div class="flex items-center justify-between gap-3 px-5 py-2.5 transition-colors hover:bg-gray-50">
+                    <div class="min-w-0">
+                        <a href="{{ route('admin.distributors.show', $d->id) }}"
+                           class="font-mono text-sm font-medium text-brand-700 transition-colors hover:text-brand-800">{{ $d->adn }}</a>
+                        <p class="truncate text-xs text-gray-500">{{ $d->full_name ?? $d->email }}</p>
+                    </div>
+                    <div class="shrink-0 text-right">
+                        <x-ui.badge :tone="match($d->status) { 'active' => 'success', 'frozen' => 'danger', default => 'warning' }" dot>
+                            {{ \App\Modules\Identity\Models\User::STATUS_LABELS[$d->status] ?? ucfirst((string) $d->status) }}
+                        </x-ui.badge>
+                        <p class="mt-1 text-[11px] tabular-nums text-gray-500">{{ \Carbon\Carbon::parse($d->effective_date)->format('d M Y, h:i A') }}</p>
+                    </div>
+                </div>
+                @empty
+                <x-ui.empty-state icon="user-plus" title="No distributors yet."
+                                  description="New registrations appear here as they complete signup." />
+                @endforelse
+            </div>
+        </x-ui.card>
+
+        <x-ui.card flush title="Recent Audit Events">
+            <x-slot:actions>
+                <x-ui.button :href="route('admin.audit-log')" variant="ghost" size="sm" icon-trailing="chevron-right">View all</x-ui.button>
+            </x-slot:actions>
+
+            <div class="divide-y divide-gray-100">
+                @forelse($recentAudit as $log)
+                <div class="px-5 py-2.5 transition-colors hover:bg-gray-50">
+                    <div class="flex items-start justify-between gap-3">
+                        <p class="text-sm leading-snug text-gray-800">{{ $log->display_title }}</p>
+                        <span class="shrink-0 whitespace-nowrap pt-0.5 text-[11px] tabular-nums text-gray-500">
+                            {{ \Carbon\Carbon::parse($log->created_at)->diffForHumans() }}
+                        </span>
+                    </div>
+                    @if($log->display_subtitle)
+                        <p class="mt-0.5 text-xs text-gray-500">{{ $log->display_subtitle }}</p>
+                    @endif
+                </div>
+                @empty
+                <x-ui.empty-state icon="file-text" title="No audit events yet."
+                                  description="Every privileged action is recorded here." />
+                @endforelse
+            </div>
+        </x-ui.card>
+
+    </div>
 </div>
 
 @endsection

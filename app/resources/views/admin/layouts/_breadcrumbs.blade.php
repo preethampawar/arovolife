@@ -111,7 +111,10 @@
                     @elseif ($crumb['url'])
                         <a href="{{ $crumb['url'] }}" class="text-gray-500 transition-colors hover:text-gray-900">{{ $crumb['label'] }}</a>
                     @else
-                        <span class="text-gray-400">{{ $crumb['label'] }}</span>
+                        {{-- gray-500, not 400: at 11px on the dark topbar
+                             gray-400 is 4.14:1, under the 4.5:1 AA floor for
+                             small text. axe catches this one. --}}
+                        <span class="text-gray-500">{{ $crumb['label'] }}</span>
                     @endif
                 </li>
             @endforeach
