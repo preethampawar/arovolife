@@ -5,7 +5,6 @@
 @section('content')
 @include('admin.arete-centres._tabs')
 @php
-    $inp = 'border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400';
     $badge = [
         'submitted' => 'bg-amber-100 text-amber-800', 'under_review' => 'bg-blue-100 text-blue-800',
         'needs_changes' => 'bg-orange-100 text-orange-800', 'approved' => 'bg-green-100 text-green-700',
@@ -22,33 +21,7 @@
     <p class="text-sm text-gray-600">{{ \App\Modules\Shared\Support\IndianNumber::format($openCount) }} open · {{ \App\Modules\Shared\Support\IndianNumber::format($counts['approved'] ?? 0) }} approved · {{ \App\Modules\Shared\Support\IndianNumber::format($counts['rejected'] ?? 0) }} rejected</p>
 </div>
 
-<form method="GET" class="mb-4 flex flex-wrap items-end gap-3 bg-white rounded-xl border border-gray-200 p-4">
-    <div>
-        <label class="block text-xs text-gray-600 mb-1">Status</label>
-        <select name="status" class="{{ $inp }}">
-            <option value="open" @selected($filters['status'] === 'open')>Open (needs action)</option>
-            <option value="all" @selected($filters['status'] === 'all')>All</option>
-            @foreach(\App\Modules\Compensation\Models\AreteCenterApplication::STATUSES as $key => $label)
-            <option value="{{ $key }}" @selected($filters['status'] === $key)>{{ $label }}</option>
-            @endforeach
-        </select>
-    </div>
-    <div>
-        <label class="block text-xs text-gray-600 mb-1">State</label>
-        <select name="state" class="{{ $inp }}">
-            <option value="">All states</option>
-            @foreach($states as $stateName)
-            <option value="{{ $stateName }}" @selected($filters['state'] === $stateName)>{{ $stateName }}</option>
-            @endforeach
-        </select>
-    </div>
-    <div>
-        <label class="block text-xs text-gray-600 mb-1">Search</label>
-        <input type="text" name="q" value="{{ $filters['q'] }}" placeholder="Centre name, city, pincode or ADN" class="{{ $inp }} w-64">
-    </div>
-    <button type="submit" class="px-4 py-1.5 rounded-lg bg-brand-700 text-white text-sm hover:bg-brand-800 transition-colors">Filter</button>
-    <a href="{{ route('admin.arete-centres.applications.index') }}" class="text-sm text-gray-600 hover:text-gray-800">Reset</a>
-</form>
+<x-filter-bar :filters="$filters" />
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($applications->isEmpty())

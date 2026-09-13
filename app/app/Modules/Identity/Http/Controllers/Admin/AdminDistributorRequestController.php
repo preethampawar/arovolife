@@ -11,6 +11,8 @@ use App\Modules\Identity\Models\DistributorRequestDocument;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\DistributorRequestService;
 use App\Modules\Shared\Features\DistributorRequestsFeature;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Http\RedirectResponse;
@@ -37,11 +39,22 @@ final class AdminDistributorRequestController extends Controller
     {
         $this->guardFeature();
 
-        $status = (string) $request->query('status', 'open');
-        $type = (string) $request->query('type', '');
-        $search = trim((string) $request->query('q', ''));
+        $filters = ListFilters::make($request, [
+            FilterField::select('status', 'Status', ['all' => 'All statuses'] + DistributorRequest::STATUSES, placeholder: 'Open (needs action)'),
+            FilterField::select('type', 'Type', array_map(
+                fn (array $type): string => $type['label'],
+                DistributorRequest::TYPES,
+            ), column: 'type', placeholder: 'All types'),
+            FilterField::text('q', 'Search', 'Request no, ADN or name'),
+            FilterField::dateRange('submitted_at', 'Submitted', 'submitted_at'),
+        ]);
 
-        $query = DistributorRequest::query()->with(['distributor.user']);
+        $query = $filters->apply(DistributorRequest::query()->with(['distributor.user']));
+
+        // Blank means "open" — the queue opens on what needs action, and the
+        // two pseudo-statuses ("open", "all") are not column values, so they
+        // stay out of the declarative mapping.
+        $status = $filters->value('status') ?? 'open';
 
         if ($status === 'open') {
             $query->open();
@@ -49,15 +62,13 @@ final class AdminDistributorRequestController extends Controller
             $query->where('status', $status);
         }
 
-        if ($type !== '' && array_key_exists($type, DistributorRequest::TYPES)) {
-            $query->where('type', $type);
-        }
+        if (($search = $filters->value('q')) !== null) {
+            $term = '%'.ListFilters::escapeLike($search).'%';
 
-        if ($search !== '') {
-            $query->where(function ($q) use ($search): void {
-                $q->where('request_no', 'like', "%{$search}%")
-                    ->orWhereHas('distributor', fn ($d) => $d->where('adn', 'like', "%{$search}%"))
-                    ->orWhereHas('distributor.user', fn ($u) => $u->where('full_name', 'like', "%{$search}%"));
+            $query->where(function ($q) use ($term): void {
+                $q->where('request_no', 'like', $term)
+                    ->orWhereHas('distributor', fn ($d) => $d->where('adn', 'like', $term))
+                    ->orWhereHas('distributor.user', fn ($u) => $u->where('full_name', 'like', $term));
             });
         }
 
@@ -71,7 +82,7 @@ final class AdminDistributorRequestController extends Controller
         return view('admin.distributor-requests.index', [
             'requests' => $items,
             'counts' => $counts,
-            'filters' => ['status' => $status, 'type' => $type, 'q' => $search],
+            'filters' => $filters,
         ]);
     }
 

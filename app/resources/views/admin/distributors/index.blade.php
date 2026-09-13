@@ -28,7 +28,7 @@
 <div class="flex items-center gap-3 mb-6 flex-wrap">
     @foreach($statusStyles as $s => $style)
         @php $isActive = request()->query('status') === $s; @endphp
-        <a href="{{ route('admin.distributors.index', array_merge(request()->query(), ['status' => $s])) }}"
+        <a href="{{ request()->fullUrlWithQuery(['status' => $s, 'page' => null]) }}"
            class="px-3 py-1 rounded-full text-xs font-medium border transition-colors
                   {{ $isActive ? $style['active'] : $style['inactive'] }}">
             {{ \App\Modules\Identity\Models\User::STATUS_LABELS[$s] ?? ucfirst($s) }}
@@ -36,42 +36,25 @@
         </a>
     @endforeach
     @if(request()->query('status'))
-    <a href="{{ route('admin.distributors.index') }}" class="text-xs text-gray-700 hover:text-gray-900">✕ Clear</a>
+    <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}" class="text-xs text-gray-700 hover:text-gray-900">✕ Clear</a>
     @endif
     <div class="ml-auto flex items-center gap-2">
         <a href="{{ route('admin.distributors.create') }}"
            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors shadow-sm">
             + Add Distributor
         </a>
-        <a href="{{ route('admin.distributors.export', ['format' => 'xlsx']) }}"
+        <a href="{{ route('admin.distributors.export', $filters->toQuery() + ['format' => 'xlsx']) }}"
            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
             ↓ Export Excel (DSR Register)
         </a>
-        <a href="{{ route('admin.distributors.export', ['format' => 'csv']) }}"
+        <a href="{{ route('admin.distributors.export', $filters->toQuery() + ['format' => 'csv']) }}"
            class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">
             CSV
         </a>
     </div>
 </div>
 
-{{-- Search --}}
-<form method="GET" action="{{ route('admin.distributors.index') }}" class="mb-6 flex gap-3">
-    @if(request()->query('status'))
-        <input type="hidden" name="status" value="{{ request()->query('status') }}">
-    @endif
-    <input name="q" type="text" value="{{ request()->query('q') }}"
-        placeholder="Search ADN, email, name…"
-        class="flex-1 max-w-sm rounded-lg bg-white border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
-        Search
-    </button>
-    @if(request()->query('q'))
-    <a href="{{ route('admin.distributors.index', array_diff_key(request()->query(), ['q'=>''])) }}"
-       class="px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-800 hover:text-white transition-colors">
-        Clear
-    </a>
-    @endif
-</form>
+<x-filter-bar :filters="$filters" />
 
 {{-- Table --}}
 <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">

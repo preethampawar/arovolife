@@ -14,7 +14,10 @@ use App\Modules\Compliance\Services\AuditLogPresenter;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\DistributorNominee;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Shared\Support\ReportExport;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,12 +31,7 @@ final class AdminDistributorController extends Controller
 {
     public function index(Request $request): View
     {
-        $request->validate([
-            'q' => ['nullable', 'string', 'max:64'],
-            'status' => ['nullable', 'in:pending,active,frozen,terminated,rejected'],
-            'state' => ['nullable', 'regex:/^[A-Z]{2}$/'],
-            'cooling_off' => ['nullable', 'in:active,expiring'],
-        ]);
+        $filters = ListFilters::make($request, $this->registerFilterFields());
 
         $query = DB::table('distributors')
             ->join('users', 'distributors.user_id', '=', 'users.id')
@@ -45,44 +43,7 @@ final class AdminDistributorController extends Controller
                 'users.email', 'users.full_name', 'users.status', 'users.phone_e164'
             );
 
-        if ($search = $request->query('q')) {
-            // Phone matches on digits only, so "98765 43210" and "9876543210"
-            // both find the stored +91 form — the same normalisation
-            // /admin/tree/search uses. Without it the register was the one
-            // search on the console that could not find someone by the number
-            // they called in from.
-            $phoneDigits = preg_replace('/\D+/', '', (string) $search) ?? '';
-
-            $query->where(function ($q) use ($search, $phoneDigits) {
-                $q->where('distributors.adn', 'like', "%{$search}%")
-                    ->orWhere('users.email', 'like', "%{$search}%")
-                    ->orWhere('users.full_name', 'like', "%{$search}%");
-
-                if ($phoneDigits !== '') {
-                    $q->orWhere('users.phone_e164', 'like', "%{$phoneDigits}%");
-                }
-            });
-        }
-
-        if ($status = $request->query('status')) {
-            $query->where('users.status', $status);
-        }
-
-        if ($state = $request->query('state')) {
-            $query->where('distributors.state', $state);
-        }
-
-        // Click-through filters from the dashboard "Cooling-Off Active" and
-        // "Expiring (7 days)" stat tiles. Both predicates mirror exactly the
-        // SQL used in AdminDashboardController::index so the row counts
-        // shown on the dashboard match the rows shown here.
-        if ($coolingOff = $request->query('cooling_off')) {
-            if ($coolingOff === 'active') {
-                $query->where('distributors.cooling_off_end_at', '>', now());
-            } elseif ($coolingOff === 'expiring') {
-                $query->whereBetween('distributors.cooling_off_end_at', [now(), now()->addDays(7)]);
-            }
-        }
+        $this->applyRegisterFilters($filters, $query);
 
         $distributors = $query->orderByDesc('distributors.id')->paginate(20)->withQueryString();
 
@@ -94,7 +55,70 @@ final class AdminDistributorController extends Controller
             ->groupBy('users.status')
             ->pluck('cnt', 'status');
 
-        return view('admin.distributors.index', compact('distributors', 'statusCounts'));
+        return view('admin.distributors.index', compact('distributors', 'statusCounts', 'filters'));
+    }
+
+    /**
+     * The register's filter set — declared once because the screen and the DSR
+     * 2021 Rule 3(g) export must narrow to exactly the same rows.
+     *
+     * @return list<FilterField>
+     */
+    private function registerFilterFields(): array
+    {
+        return [
+            FilterField::text('q', 'Search', 'ADN, name, email or phone'),
+            FilterField::select('status', 'Status', User::STATUS_LABELS, column: 'users.status', placeholder: 'All statuses'),
+            FilterField::select('state', 'State', AdminDistributorEditController::indianStates(), column: 'distributors.state', placeholder: 'All states'),
+            FilterField::select('cooling_off', 'Cooling-off', [
+                'active' => 'In cooling-off',
+                'expiring' => 'Expiring within 7 days',
+            ], placeholder: 'Any'),
+            FilterField::dateRange('effective_date', 'Effective date', 'distributors.effective_date'),
+        ];
+    }
+
+    /**
+     * Apply the register filters to a query already joined on `users`.
+     *
+     * `q` and `cooling_off` carry clauses the declarative mapping cannot
+     * express, so they are applied here rather than through a column:.
+     */
+    private function applyRegisterFilters(ListFilters $filters, QueryBuilder $query): void
+    {
+        $filters->apply($query);
+
+        if (($search = $filters->value('q')) !== null) {
+            // Phone matches on digits only, so "98765 43210" and "9876543210"
+            // both find the stored +91 form — the same normalisation
+            // /admin/tree/search uses. Without it the register was the one
+            // search on the console that could not find someone by the number
+            // they called in from.
+            $term = '%'.ListFilters::escapeLike($search).'%';
+            $phoneDigits = preg_replace('/\D+/', '', $search) ?? '';
+
+            $query->where(function ($q) use ($term, $phoneDigits) {
+                $q->where('distributors.adn', 'like', $term)
+                    ->orWhere('users.email', 'like', $term)
+                    ->orWhere('users.full_name', 'like', $term);
+
+                if ($phoneDigits !== '') {
+                    $q->orWhere('users.phone_e164', 'like', '%'.ListFilters::escapeLike($phoneDigits).'%');
+                }
+            });
+        }
+
+        // Click-through filters from the dashboard "Cooling-Off Active" and
+        // "Expiring (7 days)" stat tiles. Both predicates mirror exactly the
+        // SQL used in AdminDashboardController::index so the row counts
+        // shown on the dashboard match the rows shown here.
+        if (($coolingOff = $filters->value('cooling_off')) !== null) {
+            if ($coolingOff === 'active') {
+                $query->where('distributors.cooling_off_end_at', '>', now());
+            } elseif ($coolingOff === 'expiring') {
+                $query->whereBetween('distributors.cooling_off_end_at', [now(), now()->addDays(7)]);
+            }
+        }
     }
 
     public function show(Request $request, int $id, AuditLogPresenter $presenter): View
@@ -326,7 +350,12 @@ final class AdminDistributorController extends Controller
      */
     public function export(Request $request): StreamedResponse
     {
-        $distributors = DB::table('distributors')
+        // The register export is the DSR 2021 Rule 3(g) record: every column
+        // below stays, and the rows are exactly the rows the screen shows for
+        // the same query string.
+        $filters = ListFilters::make($request, $this->registerFilterFields());
+
+        $query = DB::table('distributors')
             ->join('users', 'distributors.user_id', '=', 'users.id')
             ->leftJoin('distributors AS sponsors', 'distributors.sponsor_id', '=', 'sponsors.id')
             ->leftJoin('distributors AS spouses', 'distributors.spouse_distributor_id', '=', 'spouses.id')
@@ -352,8 +381,11 @@ final class AdminDistributorController extends Controller
                 'distributors.spouse_distributor_id',
                 'spouses.adn AS spouse_adn',
             )
-            ->orderBy('distributors.id')
-            ->get();
+            ->orderBy('distributors.id');
+
+        $this->applyRegisterFilters($filters, $query);
+
+        $distributors = $query->get();
 
         AuditLog::create([
             'actor_id' => auth()->id(),
@@ -367,7 +399,10 @@ final class AdminDistributorController extends Controller
                 'row_count' => $distributors->count(),
                 'adns' => $distributors->pluck('adn')->all(),
             ]),
-            'details' => ['row_count' => $distributors->count()],
+            'details' => [
+                'row_count' => $distributors->count(),
+                'filters' => $filters->toQuery(),
+            ],
             'ip' => request()->ip(),
         ]);
 

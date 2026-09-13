@@ -14,6 +14,8 @@ use App\Modules\Genealogy\Services\Exceptions\LineChangeNotPendingError;
 use App\Modules\Genealogy\Services\Exceptions\LineChangePlacementSlotFullError;
 use App\Modules\Genealogy\Services\RejectLineChange;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -33,6 +35,11 @@ final class AdminLineChangeController extends Controller
     {
         $tab = $request->query('tab') === 'decided' ? 'decided' : 'pending';
 
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'ADN or name'),
+            FilterField::dateRange('requested_at', 'Requested', 'requested_at'),
+        ]);
+
         $query = LineChangeRequest::query()
             ->with(['distributor.user', 'fromPlacementParent', 'toPlacementParent'])
             ->when($tab === 'pending',
@@ -40,6 +47,17 @@ final class AdminLineChangeController extends Controller
                 fn ($q) => $q->whereIn('status', ['approved', 'rejected', 'expired']),
             )
             ->orderByDesc('requested_at');
+
+        $filters->apply($query);
+
+        if (($search = $filters->value('q')) !== null) {
+            $term = '%'.ListFilters::escapeLike($search).'%';
+
+            $query->where(function ($q) use ($term): void {
+                $q->whereHas('distributor', fn ($d) => $d->where('adn', 'like', $term))
+                    ->orWhereHas('distributor.user', fn ($u) => $u->where('full_name', 'like', $term));
+            });
+        }
 
         $rows = $query->paginate(50)->withQueryString();
 
@@ -51,6 +69,7 @@ final class AdminLineChangeController extends Controller
             'currentTab' => $tab,
             'pendingCount' => $pendingCount,
             'decidedCount' => $decidedCount,
+            'filters' => $filters,
         ]);
     }
 

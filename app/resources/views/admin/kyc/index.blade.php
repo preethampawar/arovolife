@@ -12,7 +12,7 @@
      resubmission). Rejected cases were previously hidden from the queue
      entirely, leaving no UI path back. --}}
 <div class="flex items-center gap-2 mb-6">
-    <a href="{{ route('admin.kyc.index', ['tab' => 'pending']) }}"
+    <a href="{{ request()->fullUrlWithQuery(['tab' => 'pending', 'page' => null]) }}"
         class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors
             {{ $currentTab === 'rejected' ? 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' : 'border-brand-500 bg-brand-700 text-white' }}">
         Pending review
@@ -21,7 +21,7 @@
             {{ $pendingCount }}
         </span>
     </a>
-    <a href="{{ route('admin.kyc.index', ['tab' => 'rejected']) }}"
+    <a href="{{ request()->fullUrlWithQuery(['tab' => 'rejected', 'page' => null]) }}"
         class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors
             {{ $currentTab === 'rejected' ? 'border-red-500 bg-red-500 text-white' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' }}">
         Rejected — awaiting resubmission
@@ -33,7 +33,7 @@
     {{-- Submissions parked on the applicant because one document was flagged.
          They sit at status 'pending' and were previously indistinguishable
          from a fresh submission, so nobody could see what was blocked. --}}
-    <a href="{{ route('admin.kyc.index', ['tab' => 'flagged']) }}"
+    <a href="{{ request()->fullUrlWithQuery(['tab' => 'flagged', 'page' => null]) }}"
         class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors
             {{ $currentTab === 'flagged' ? 'border-amber-500 bg-amber-500 text-white' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' }}">
         Awaiting re-upload
@@ -43,6 +43,8 @@
         </span>
     </a>
 </div>
+
+<x-filter-bar :filters="$filters" />
 
 <div class="rounded-2xl border border-gray-200 bg-white">
     @if($pending->isEmpty())

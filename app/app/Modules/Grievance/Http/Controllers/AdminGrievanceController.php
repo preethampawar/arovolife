@@ -21,6 +21,8 @@ use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use App\Modules\Shared\Rules\NoRawGovernmentId;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -50,30 +52,62 @@ final class AdminGrievanceController extends Controller
 
     public function index(Request $request): View
     {
-        $status = (string) $request->query('status', 'unsettled');
-        $category = (string) $request->query('category', '');
-        $level = (string) $request->query('level', '');
-        $search = trim((string) $request->query('q', ''));
+        $statusOptions = [
+            'unsettled' => 'Open',
+            'unacknowledged' => 'Unacknowledged',
+            'breached' => 'SLA breached',
+        ];
+
+        foreach (TicketStatus::cases() as $case) {
+            $statusOptions[$case->value] = $case->label();
+        }
+
+        $statusOptions['all'] = 'All';
+
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'Complaint number, subject, email or phone'),
+            FilterField::select('status', 'Queue', $statusOptions, placeholder: 'Open'),
+            FilterField::select('category', 'Category', array_reduce(
+                TicketCategory::cases(),
+                function (array $carry, TicketCategory $case): array {
+                    $carry[$case->value] = $case->label();
+
+                    return $carry;
+                },
+                [],
+            ), column: 'category', placeholder: 'All categories'),
+            FilterField::select('level', 'Escalation step', array_reduce(
+                EscalationLevel::cases(),
+                function (array $carry, EscalationLevel $case): array {
+                    $carry[(string) $case->value] = 'Step '.$case->value.' — '.$case->label();
+
+                    return $carry;
+                },
+                [],
+            ), column: 'escalation_level', placeholder: 'All escalation steps'),
+            FilterField::dateRange('created', 'Received', 'created_at'),
+        ]);
+
+        $status = $filters->value('status') ?? 'unsettled';
 
         $query = Ticket::query()->with('assignedTo');
 
+        // Visibility first, always: a category filter then intersects with what
+        // this viewer may see, so choosing a sensitive category returns nothing
+        // rather than confirming that such tickets exist.
         $this->applyVisibility($query);
         $this->applyStatusFilter($query, $status);
 
-        if ($category !== '' && TicketCategory::tryFrom($category) !== null) {
-            $query->where('category', $category);
-        }
+        $filters->apply($query);
 
-        if ($level !== '' && EscalationLevel::tryFrom((int) $level) !== null) {
-            $query->where('escalation_level', (int) $level);
-        }
+        if (($search = $filters->value('q')) !== null) {
+            $term = '%'.ListFilters::escapeLike($search).'%';
 
-        if ($search !== '') {
-            $query->where(function (Builder $q) use ($search): void {
-                $q->where('ticket_no', 'like', "%{$search}%")
-                    ->orWhere('subject', 'like', "%{$search}%")
-                    ->orWhere('reporter_email', 'like', "%{$search}%")
-                    ->orWhere('reporter_phone', 'like', "%{$search}%");
+            $query->where(function (Builder $q) use ($term): void {
+                $q->where('ticket_no', 'like', $term)
+                    ->orWhere('subject', 'like', $term)
+                    ->orWhere('reporter_email', 'like', $term)
+                    ->orWhere('reporter_phone', 'like', $term);
             });
         }
 
@@ -82,11 +116,7 @@ final class AdminGrievanceController extends Controller
                 ->paginate(20)
                 ->withQueryString(),
             'status' => $status,
-            'category' => $category,
-            'level' => $level,
-            'search' => $search,
-            'categories' => TicketCategory::cases(),
-            'levels' => EscalationLevel::cases(),
+            'filters' => $filters,
             'counts' => $this->queueCounts(),
         ]);
     }
