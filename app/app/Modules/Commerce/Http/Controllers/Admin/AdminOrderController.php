@@ -33,7 +33,7 @@ final class AdminOrderController extends Controller
 
         // `items` is eager-loaded so the BV column can call Order::bvTotalPaise()
         // (sum of line BV) without an N+1 across the page of orders.
-        $orders = Order::with(['customer', 'items'])
+        $orders = Order::with(['customer.distributor', 'distributor', 'items'])
             ->when($status, fn ($q) => $q->where('status', $status))
             ->orderByDesc('placed_at')
             ->paginate(25);

@@ -38,11 +38,19 @@
                 @forelse($orders as $o)
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-3 text-gray-600 tabular-nums">{{ ($orders->firstItem() ?? 1) + $loop->index }}</td>
-                    <td class="px-4 py-3 font-mono text-brand-700 font-medium">{{ $o->order_no }}</td>
-                    <td class="px-4 py-3 text-gray-700">{{ $o->customer->display_name ?? '—' }}</td>
+                    <td class="px-4 py-3 font-mono text-brand-700 font-medium">
+                        <a href="{{ route('admin.commerce.orders.show', $o) }}" class="hover:text-brand-800 hover:underline">{{ $o->order_no }}</a>
+                    </td>
+                    <td class="px-4 py-3 text-gray-700">
+                        @if($o->customer?->distributor_id)
+                            <a href="{{ route('admin.distributors.show', $o->customer->distributor_id) }}" class="text-brand-700 hover:text-brand-800 hover:underline">{{ $o->customer->display_name }}</a>
+                        @else
+                            {{ $o->customer->display_name ?? '—' }}
+                        @endif
+                    </td>
                     <td class="px-4 py-3 text-xs text-gray-600">
                         @if($o->attributed_distributor_id)
-                            <span class="font-mono">{{ $o->distributor->adn ?? '#' . $o->attributed_distributor_id }}</span>
+                            <a href="{{ route('admin.distributors.show', $o->attributed_distributor_id) }}" class="font-mono text-brand-700 hover:text-brand-800 hover:underline">{{ $o->distributor->adn ?? '#' . $o->attributed_distributor_id }}</a>
                         @else
                             <span class="italic text-gray-600">house</span>
                         @endif
