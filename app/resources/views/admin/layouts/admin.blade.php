@@ -41,9 +41,12 @@
                and each section becomes a hairline-separated block of icons. */
             html.admin-nav-collapsed .admin-nav-group-header { display: none; }
             html.admin-nav-collapsed [data-nav-group] + [data-nav-group] .admin-nav-group-list {
-                border-top: 1px solid #1e293b; /* slate-800 */
+                border-top: 1px solid #e5e7eb; /* gray-200 (light); dark override below */
                 padding-top: 0.25rem;
                 margin-top: 0.25rem;
+            }
+            html.dark.admin-nav-collapsed [data-nav-group] + [data-nav-group] .admin-nav-group-list {
+                border-top-color: #1e293b; /* slate-800 */
             }
             html.admin-nav-collapsed .admin-nav-group-list { display: block; }
             html.admin-nav-collapsed .admin-nav-badge {
@@ -105,20 +108,23 @@
     <div id="adminSidebarBackdrop" class="lg:hidden fixed inset-0 z-30 bg-gray-900/40 hidden"></div>
 
     <aside id="adminSidebar"
-        class="w-60 fixed top-0 bottom-0 left-0 z-40 bg-slate-900 border-r border-slate-800 flex flex-col
+        class="w-60 fixed top-0 bottom-0 left-0 z-40 bg-white border-r border-gray-200 flex flex-col
                -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out">
-        <div class="admin-nav-head px-5 py-5 border-b border-slate-800 shrink-0 flex items-start justify-between gap-2">
+        <div class="admin-nav-head px-5 py-5 border-b border-gray-200 shrink-0 flex items-start justify-between gap-2">
             <div class="admin-nav-brand min-w-0">
                 <a href="{{ route('admin.dashboard') }}" class="block">
-                    <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-10 w-auto">
+                    {{-- Two logo variants swap with the theme, same mechanism as the
+                         moon/sun toggle icons (see app.css, [data-theme-logo]). --}}
+                    <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" data-theme-logo="light" class="h-10 w-auto">
+                    <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" data-theme-logo="dark" class="h-10 w-auto">
                 </a>
-                <span class="block text-[11px] text-sunrise-400 mt-1.5 tracking-wider uppercase font-semibold">Admin Console</span>
+                <span class="block text-[11px] text-sunrise-800 mt-1.5 tracking-wider uppercase font-semibold">Admin Console</span>
             </div>
             {{-- Desktop-only collapse / expand toggle. State lives on <html>
                  (class admin-nav-collapsed) and persists in localStorage. --}}
             <button type="button" id="adminSidebarToggle"
                 aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"
-                class="hidden lg:inline-flex shrink-0 w-8 h-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                class="hidden lg:inline-flex shrink-0 w-8 h-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors">
                 <x-lucide-panel-left-close class="admin-nav-collapse-icon w-4 h-4" />
                 <x-lucide-panel-left-open class="admin-nav-expand-icon w-4 h-4" />
             </button>
@@ -257,7 +263,7 @@
                     <button type="button" data-nav-group-toggle
                             aria-expanded="true"
                             aria-controls="nav-group-{{ $group['key'] }}"
-                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 text-left text-[10px] font-bold uppercase tracking-widest text-slate-300 bg-slate-700/60 rounded-lg px-4 py-2 mt-4 first:mt-0 border-t border-slate-800/80 first:border-t-0 hover:bg-slate-700/80 hover:text-white transition-colors">
+                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 text-left text-[10px] font-bold uppercase tracking-widest text-gray-600 bg-gray-100 rounded-lg px-4 py-2 mt-4 first:mt-0 border-t border-gray-200 first:border-t-0 hover:bg-gray-200 hover:text-gray-900 transition-colors">
                         <span class="text-left">{{ $group['label'] }}</span>
                         <span data-nav-group-chevron="down">{{ svg('lucide-chevron-down', 'w-3 h-3') }}</span>
                         <span data-nav-group-chevron="right" hidden>{{ svg('lucide-chevron-right', 'w-3 h-3') }}</span>
@@ -272,12 +278,12 @@
                 <a href="{{ route($item['route'], $item['params'] ?? []) }}" title="{{ $item['label'] }}"
                    class="admin-nav-item relative flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-lg text-sm transition-colors
                           {{ $active
-                             ? 'bg-slate-800 text-white font-semibold'
-                             : 'text-slate-300 hover:bg-slate-800 hover:text-white font-medium' }}">
+                             ? 'bg-gray-100 text-gray-900 font-semibold'
+                             : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
                     @if($active)
                     <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-sunrise-500"></span>
                     @endif
-                    <span class="{{ $active ? 'text-sunrise-400' : 'text-slate-600' }}">{{ svg('lucide-'.$item['icon'], 'w-4 h-4') }}</span>
+                    <span class="{{ $active ? 'text-sunrise-600' : 'text-gray-400' }}">{{ svg('lucide-'.$item['icon'], 'w-4 h-4') }}</span>
                     <span class="admin-nav-label flex-1">{{ $item['label'] }}</span>
                     @if(!empty($item['badge']))
                         <span class="admin-nav-badge inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-sunrise-800 text-white text-[10px] font-bold leading-none">{{ $item['badge'] }}</span>
@@ -310,13 +316,13 @@
             })();
         </script>
 
-            <div class="mt-auto px-3 py-4 border-t border-slate-800">
-                <p class="admin-nav-label text-xs text-slate-600 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
+            <div class="mt-auto px-3 py-4 border-t border-gray-200">
+                <p class="admin-nav-label text-xs text-gray-500 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" title="Sign out"
-                        class="admin-nav-item w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 font-medium hover:bg-slate-800 hover:text-red-400 transition-colors">
-                        <span class="text-slate-600">⏻</span> <span class="admin-nav-label">Sign out</span>
+                        class="admin-nav-item w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 font-medium hover:bg-gray-100 hover:text-red-600 transition-colors">
+                        <span class="text-gray-400">⏻</span> <span class="admin-nav-label">Sign out</span>
                     </button>
                 </form>
             </div>

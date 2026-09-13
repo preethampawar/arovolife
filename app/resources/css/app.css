@@ -285,6 +285,19 @@ html.dark .bg-white { background-color: #19202c; }
 html.dark .bg-gray-50 { background-color: #212a38; }
 html.dark .bg-gray-100 { background-color: #2a3444; }
 html.dark .bg-gray-200 { background-color: #323d4f; }
+html.dark .bg-gray-50\/40 { background-color: rgb(33 42 56 / 0.4); }
+html.dark .bg-gray-50\/50 { background-color: rgb(33 42 56 / 0.5); }
+html.dark .bg-gray-50\/60 { background-color: rgb(33 42 56 / 0.6); }
+html.dark .bg-gray-50\/70 { background-color: rgb(33 42 56 / 0.7); }
+html.dark .bg-white\/10 { background-color: rgb(25 32 44 / 0.1); }
+html.dark .bg-white\/15 { background-color: rgb(25 32 44 / 0.15); }
+html.dark .bg-white\/25 { background-color: rgb(25 32 44 / 0.25); }
+html.dark .bg-white\/40 { background-color: rgb(25 32 44 / 0.4); }
+html.dark .bg-white\/50 { background-color: rgb(25 32 44 / 0.5); }
+html.dark .bg-white\/60 { background-color: rgb(25 32 44 / 0.6); }
+html.dark .bg-white\/70 { background-color: rgb(25 32 44 / 0.7); }
+html.dark .bg-white\/80 { background-color: rgb(25 32 44 / 0.8); }
+html.dark .bg-white\/95 { background-color: rgb(25 32 44 / 0.95); }
 html.dark .hover\:bg-white:hover { background-color: #212a38; }
 html.dark .hover\:bg-gray-50:hover { background-color: #232d3c; }
 html.dark .hover\:bg-gray-100:hover { background-color: #2d3849; }
@@ -434,3 +447,24 @@ html.dark .shadow-sm { --tw-shadow-color: rgba(0, 0, 0, 0.5); }
 [data-theme-icon="dark"] { display: none; }
 html.dark [data-theme-icon="light"] { display: none; }
 html.dark [data-theme-icon="dark"] { display: block; }
+
+/* Same swap for the sidebar logo (blue mark for light, white mark for dark —
+   a white logo is illegible on the white sidebar background). */
+[data-theme-logo="dark"] { display: none; }
+html.dark [data-theme-logo="light"] { display: none; }
+html.dark [data-theme-logo="dark"] { display: block; }
+
+/* --- Admin sidebar ---------------------------------------------------
+   The sidebar is authored light-first (white/gray) like the rest of the
+   admin console. These restore its original dark-navy rail — unchanged
+   from before the toggle existed — scoped to #adminSidebar so they never
+   leak into the generic .bg-gray-100 etc. overrides used by page content,
+   which use a lighter surface tone than this chrome always has. */
+html.dark #adminSidebar { background-color: #0f172a; border-color: #1e293b; }
+html.dark #adminSidebar .border-gray-200 { border-color: #1e293b; }
+html.dark #adminSidebar .bg-gray-100 { background-color: #1e293b; }
+html.dark #adminSidebar .hover\:bg-gray-100:hover { background-color: #1e293b; }
+html.dark #adminSidebar .hover\:bg-gray-200:hover { background-color: #334155; }
+html.dark #adminSidebar .text-sunrise-800,
+html.dark #adminSidebar .text-sunrise-600 { color: #f7a83e; }
+html.dark #adminSidebar .hover\:text-red-600:hover { color: #f87171; }
