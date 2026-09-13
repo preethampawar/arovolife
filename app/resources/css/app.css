@@ -247,10 +247,13 @@
    utilities regardless of specificity — no !important anywhere.
 
    Untouched by design: every bg-slate-* (the sidebar and header are
-   already dark in both themes), bg-sunrise-*, all ring-* focus rings,
-   and every solid bg-{brand,red,green,amber,blue}-600/700/800/900 fill,
+   already dark in both themes), all ring-* focus rings, and every solid
+   bg-{brand,red,green,amber,blue,leaf,sunrise}-500/600/700/800/900 fill,
    which already carries white text at AA and reads correctly on a dark
-   page.
+   page. Only the 50/100 tint end and the 500-900 text end of leaf and
+   sunrise are remapped below: User::statusTheme() paints every genealogy
+   tree card bg-leaf-50 / bg-sunrise-50, so leaving those two light while
+   text-gray-800 went light left the cards unreadable.
 
    Contrast (measured against the card surface #19202c):
      text-gray-900 14.6:1 · gray-800 13.0 · gray-700 10.9 · gray-600 9.6
@@ -301,6 +304,10 @@ html.dark .text-gray-600 { color: #bfc9d6; }
 html.dark .text-gray-500 { color: #9aa6b6; }
 html.dark .text-gray-400 { color: #8593a4; }
 html.dark .text-gray-300 { color: #93a1b2; }
+/* slate is gray's twin hue; a handful of views reach for it instead. */
+html.dark .text-slate-700 { color: #d3dbe6; }
+html.dark .text-slate-600 { color: #bfc9d6; }
+html.dark .text-slate-500 { color: #9aa6b6; }
 html.dark .hover\:text-gray-900:hover { color: #ffffff; }
 html.dark .hover\:text-gray-800:hover { color: #f1f5f9; }
 html.dark .hover\:text-gray-700:hover { color: #e6ebf2; }
@@ -312,6 +319,7 @@ html.dark .placeholder-gray-400::placeholder { color: #8593a4; }
 html.dark .border-gray-100 { border-color: #29323f; }
 html.dark .border-gray-200 { border-color: #303b4d; }
 html.dark .border-gray-300 { border-color: #3b485c; }
+html.dark .border-gray-400 { border-color: #4a5a71; }
 html.dark .hover\:border-gray-300:hover { border-color: #4a5a71; }
 html.dark .divide-gray-50 > *,
 html.dark .divide-gray-100 > * { border-color: #29323f; }
@@ -356,6 +364,7 @@ html.dark .bg-green-50 { background-color: #10251a; }
 html.dark .bg-green-100 { background-color: #16311f; }
 html.dark .border-green-200 { border-color: #235c38; }
 html.dark .border-green-300 { border-color: #2c7044; }
+html.dark .border-green-400 { border-color: #357f4f; }
 html.dark .text-green-600 { color: #86efac; }
 html.dark .text-green-700 { color: #86efac; }
 html.dark .text-green-800 { color: #bbf7d0; }
@@ -370,7 +379,9 @@ html.dark .hover\:bg-amber-100:hover { background-color: #45341a; }
 html.dark .hover\:bg-amber-200:hover { background-color: #4f3c1e; }
 html.dark .border-amber-200 { border-color: #6b4c1d; }
 html.dark .border-amber-300 { border-color: #7d5a25; }
+html.dark .border-amber-400 { border-color: #8e6a2c; }
 html.dark .border-yellow-200 { border-color: #6b4c1d; }
+html.dark .border-yellow-400 { border-color: #8e6a2c; }
 html.dark .text-amber-600 { color: #fcd34d; }
 html.dark .text-amber-700 { color: #fcd34d; }
 html.dark .text-amber-800 { color: #fde68a; }
@@ -431,6 +442,37 @@ html.dark .hover\:text-brand-800:hover { color: #cff1fd; }
 html.dark .group:hover .group-hover\:text-brand-800 { color: #cff1fd; }
 html.dark .border-brand-100 { border-color: #0d3244; }
 html.dark .border-brand-200 { border-color: #114a68; }
+
+/* leaf (logo green) — the Active tree card's surface, the depth/minimap
+   chips, the "expanded" pill. Solid leaf-500/600 fills stay put. */
+html.dark .bg-leaf-50 { background-color: #13260d; }
+html.dark .bg-leaf-50\/70 { background-color: rgb(19 38 13 / 0.7); }
+html.dark .bg-leaf-100 { background-color: #1a3312; }
+html.dark .hover\:bg-leaf-50:hover { background-color: #1a3312; }
+html.dark .hover\:bg-leaf-100:hover { background-color: #20401a; }
+html.dark .to-leaf-50 { --tw-gradient-to: #13260d; }
+html.dark .to-leaf-50\/40 { --tw-gradient-to: rgb(19 38 13 / 0.4); }
+html.dark .border-leaf-200 { border-color: #2f6323; }
+html.dark .border-leaf-300 { border-color: #3a7a2b; }
+html.dark .border-leaf-400 { border-color: #468f34; }
+html.dark .text-leaf-600 { color: #9fe07a; }
+html.dark .text-leaf-700 { color: #9fe07a; }
+html.dark .text-leaf-800 { color: #c4eda9; }
+
+/* sunrise (logo orange) — the Blocked tree card's surface and the
+   impersonate row. bg-sunrise-500/800 are CTA fills and stay. */
+html.dark .bg-sunrise-50 { background-color: #2b1f0c; }
+html.dark .bg-sunrise-50\/70 { background-color: rgb(43 31 12 / 0.7); }
+html.dark .bg-sunrise-100 { background-color: #3a2a10; }
+html.dark .hover\:bg-sunrise-50:hover { background-color: #3a2a10; }
+html.dark .border-sunrise-200 { border-color: #71501b; }
+html.dark .border-sunrise-300 { border-color: #845e20; }
+html.dark .border-sunrise-400 { border-color: #996e26; }
+html.dark .text-sunrise-500 { color: #f9bd66; }
+html.dark .text-sunrise-600 { color: #f9bd66; }
+html.dark .text-sunrise-700 { color: #f9bd66; }
+html.dark .text-sunrise-700\/80 { color: rgb(249 189 102 / 0.8); }
+html.dark .text-sunrise-800 { color: #fbd093; }
 
 /* --- Misc ----------------------------------------------------------- */
 /* Prose/markdown blocks inside admin pages. */
