@@ -4,7 +4,7 @@
     anything, and are they past the qualifying gate?
 
       red    — not active, or active with nothing purchased yet
-      amber  — active and buying, still under the gate
+      yellow — active and buying, still under the gate
       green  — active and at or above the gate (comp.gsb.min_bv_paise)
 
     It sits on the card's top edge, centred between the status dot (top-left)
@@ -17,12 +17,13 @@
     $state is null for any card whose BV row this viewer may not see, and the
     mark then renders nothing at all.
 
-    Expects: $state (string|null), $purchaseMarks (state => class/label/hint,
-    resolved once per canvas in tree/_content.blade.php).
+    Expects: $state (string|null), $purchaseMarks (state => class/icon/label/
+    hint, resolved once per canvas in tree/_content.blade.php).
 
-    Tailwind scans resources/**/*.blade.php, never app/**/*.php, so the three
-    fill classes the service hands over are listed literally here to keep them
-    in the build: bg-green-600 bg-amber-500 bg-red-600
+    Tailwind scans resources/**/*.blade.php, never app/**/*.php, so the fill
+    and glyph classes the service hands over are listed literally here to keep
+    them in the build: bg-green-600 bg-yellow-400 bg-red-600 text-white
+    text-yellow-950
 
     @see \App\Modules\Identity\Services\DistributorIdCardStats::purchaseMarkMap()
 --}}
@@ -35,7 +36,7 @@
              clobbers the other. --}}
         <span class="block origin-center" style="transform: scale(var(--tree-mark-scale, 1));">
             <span class="flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white shadow {{ $mark['class'] }}">
-                <x-lucide-star class="h-3 w-3 text-white" fill="currentColor" />
+                <x-lucide-star class="h-3 w-3 {{ $mark['icon'] }}" fill="currentColor" />
             </span>
         </span>
         <span class="sr-only">{{ $mark['hint'] }}</span>

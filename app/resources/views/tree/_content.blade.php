@@ -152,7 +152,7 @@
         @foreach($purchaseMarks as $mark)
             <span class="inline-flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-gray-700" title="{{ $mark['hint'] }}">
                 <span class="inline-flex h-4 w-4 items-center justify-center rounded-full ring-1 ring-black/5 {{ $mark['class'] }}">
-                    <x-lucide-star class="h-2.5 w-2.5 text-white" fill="currentColor" />
+                    <x-lucide-star class="h-2.5 w-2.5 {{ $mark['icon'] }}" fill="currentColor" />
                 </span>
                 {{ $mark['label'] }}
             </span>

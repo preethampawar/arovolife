@@ -80,12 +80,19 @@ final class DistributorIdCardStats
      * `:bv` interpolates the live gate: it is a plan setting the client can
      * move, not a constant 600.
      *
-     * @var array<string, array{class: string, label: string, hint: string}>
+     * The middle state is yellow-400 rather than an amber: amber sits close
+     * enough to red-600 in hue that at a zoomed-out dot the two read as one
+     * colour, and the whole point of the mark is being legible at that size.
+     * `icon` rides alongside `class` because the glyph cannot be white on a
+     * colour that bright — a white star on yellow all but disappears, so the
+     * bright fill takes a dark star and the two dark fills take a white one.
+     *
+     * @var array<string, array{class: string, icon: string, label: string, hint: string}>
      */
     private const PURCHASE_MARKS = [
-        self::MARK_QUALIFIED => ['class' => 'bg-green-600', 'label' => 'Qualified · :bv+ BV', 'hint' => 'Active, and has purchased :bv BV or more'],
-        self::MARK_PURCHASED => ['class' => 'bg-amber-500', 'label' => 'Buying · under :bv BV', 'hint' => 'Active and purchasing, but still under :bv BV'],
-        self::MARK_NONE => ['class' => 'bg-red-600', 'label' => 'No purchase yet', 'hint' => 'Nothing purchased yet, or the account is not active'],
+        self::MARK_QUALIFIED => ['class' => 'bg-green-600', 'icon' => 'text-white', 'label' => 'Qualified · :bv+ BV', 'hint' => 'Active, and has purchased :bv BV or more'],
+        self::MARK_PURCHASED => ['class' => 'bg-yellow-400', 'icon' => 'text-yellow-950', 'label' => 'Buying · under :bv BV', 'hint' => 'Active and purchasing, but still under :bv BV'],
+        self::MARK_NONE => ['class' => 'bg-red-600', 'icon' => 'text-white', 'label' => 'No purchase yet', 'hint' => 'Nothing purchased yet, or the account is not active'],
     ];
 
     /** Memoised {@see self::qualifyBvPaise()}; false until first resolved. */
@@ -183,7 +190,7 @@ final class DistributorIdCardStats
      * which suppresses the mark everywhere rather than colouring it from a
      * guess. `label` is the legend's short form, `hint` the card tooltip's.
      *
-     * @return array<string, array{class: string, label: string, hint: string}>
+     * @return array<string, array{class: string, icon: string, label: string, hint: string}>
      */
     public function purchaseMarkMap(): array
     {
@@ -197,6 +204,7 @@ final class DistributorIdCardStats
         return array_map(
             fn (array $mark): array => [
                 'class' => $mark['class'],
+                'icon' => $mark['icon'],
                 'label' => str_replace(':bv', $bv, $mark['label']),
                 'hint' => str_replace(':bv', $bv, $mark['hint']),
             ],
