@@ -50,6 +50,7 @@
     @endphp
     <div data-node-adn="{{ $node->adn }}" data-node-id="{{ $node->id }}"
         class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-2 py-2 text-center min-w-[150px] max-w-[168px] shadow-sm transition-shadow">
+        @include('tree._purchase-mark', ['state' => $cardStats['purchase_state'] ?? null])
         {{-- Status dot moved to top-LEFT so the 3-dots "more actions" menu
              can occupy the top-RIGHT corner, which is the conventional
              location and where the user expects it. Hovering the dot reveals

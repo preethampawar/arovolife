@@ -235,3 +235,63 @@ it('shows an admin every distributor\'s figures on the tree cards while the swit
         ->assertOk()
         ->assertSee('16,000 BV');
 });
+
+/**
+ * The purchase mark — the red / amber / green star each card carries. It is a
+ * coarser read of the same personal BV the card's BV row shows, so it inherits
+ * the same R-65 gate: a viewer who may not see the number may not see the mark.
+ */
+it('marks each card from the account status and personal BV', function (): void {
+    tcosDownlineStats(true);
+    $viewerUser = tcosUser('self');
+    $rootId = tcosSeedDistributor($viewerUser->id);
+    tcosAccrueBv($rootId, 60_000);                 // exactly 600 BV — on the gate
+
+    $buyingId = tcosSeedDistributor(tcosUser('buying')->id, $rootId, 'L');
+    tcosAccrueBv($buyingId, 10_000);               // 100 BV — under the gate
+
+    $silentId = tcosSeedDistributor(tcosUser('silent')->id, $rootId, 'R');  // active, never bought
+
+    $blockedUser = tcosUser('blocked');
+    $blockedId = tcosSeedDistributor($blockedUser->id, $buyingId, 'L');
+    tcosAccrueBv($blockedId, 90_000);              // past the gate, but not an active account
+    DB::table('users')->where('id', $blockedUser->id)->update(['status' => 'frozen']);
+
+    $this->actingAs($viewerUser->refresh());
+    $stats = app(DistributorIdCardStats::class)->compactMany(
+        Distributor::query()->with('user')->whereIn('id', [$rootId, $buyingId, $silentId, $blockedId])->get()
+    );
+
+    expect($stats[$rootId]['purchase_state'])->toBe(DistributorIdCardStats::MARK_QUALIFIED)
+        ->and($stats[$buyingId]['purchase_state'])->toBe(DistributorIdCardStats::MARK_PURCHASED)
+        ->and($stats[$silentId]['purchase_state'])->toBe(DistributorIdCardStats::MARK_NONE)
+        ->and($stats[$blockedId]['purchase_state'])->toBe(DistributorIdCardStats::MARK_NONE);
+});
+
+it('leaves a downline card unmarked while the downline-stats switch is OFF', function (): void {
+    $viewerUser = tcosUser('self');
+    $rootId = tcosSeedDistributor($viewerUser->id);
+    tcosAccrueBv($rootId, 60_000);
+    $childId = tcosSeedDistributor(tcosUser('child')->id, $rootId);
+    tcosAccrueBv($childId, 10_000);
+
+    $this->actingAs($viewerUser->refresh());
+    $stats = app(DistributorIdCardStats::class)->compactMany(
+        Distributor::query()->with('user')->whereIn('id', [$rootId, $childId])->get()
+    );
+
+    expect($stats[$rootId]['purchase_state'])->toBe(DistributorIdCardStats::MARK_QUALIFIED)
+        ->and($stats[$childId]['purchase_state'])->toBeNull();
+});
+
+it('renders the purchase mark and its legend key on the Genos canvas', function (): void {
+    $user = tcosUser('self');
+    $id = tcosSeedDistributor($user->id);
+    tcosAccrueBv($id, 60_000);
+
+    $this->actingAs($user->refresh())
+        ->get(route('tree.binary'))
+        ->assertOk()
+        ->assertSee('Qualified · 600+ BV')
+        ->assertSee('Active, and has purchased 600 BV or more');
+});

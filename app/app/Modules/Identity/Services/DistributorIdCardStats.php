@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\RankStatusService;
@@ -53,6 +54,32 @@ final class DistributorIdCardStats
 {
     public const string DOWNLINE_STATS_SETTING = 'genealogy.downline_stats_visible';
 
+    /** Active, and personal BV at or above the qualifying gate. */
+    public const string MARK_QUALIFIED = 'qualified';
+
+    /** Active and buying, but still short of the gate. */
+    public const string MARK_PURCHASED = 'purchased';
+
+    /** Not active, or active with nothing purchased yet. */
+    public const string MARK_NONE = 'none';
+
+    /**
+     * Presentation for the three purchase marks — the one source shared by the
+     * tree card's mark and the canvas legend, so the two can never drift.
+     * `:bv` interpolates the live gate: it is a plan setting the client can
+     * move, not a constant 600.
+     *
+     * @var array<string, array{class: string, label: string, hint: string}>
+     */
+    private const PURCHASE_MARKS = [
+        self::MARK_QUALIFIED => ['class' => 'bg-green-600', 'label' => 'Qualified · :bv+ BV', 'hint' => 'Active, and has purchased :bv BV or more'],
+        self::MARK_PURCHASED => ['class' => 'bg-amber-500', 'label' => 'Buying · under :bv BV', 'hint' => 'Active and purchasing, but still under :bv BV'],
+        self::MARK_NONE => ['class' => 'bg-red-600', 'label' => 'No purchase yet', 'hint' => 'Nothing purchased yet, or the account is not active'],
+    ];
+
+    /** Memoised {@see self::qualifyBvPaise()}; false until first resolved. */
+    private int|false|null $qualifyBvPaise = false;
+
     public function __construct(
         private readonly TeamStatsService $teamStats,
         private readonly BvLedgerService $bvLedger,
@@ -89,6 +116,7 @@ final class DistributorIdCardStats
 
         $ids = array_keys($list);
         $visible = $this->statsVisibleIds($ids);
+        $qualifyPaise = $this->qualifyBvPaise();
         $ranks = $this->rankLabels($visible);
         $this->bvLedger->warmPersonalBvCache($visible);
 
@@ -111,10 +139,82 @@ final class DistributorIdCardStats
                 'verification_class' => $user->verificationClass(),
                 'activation_date' => $user->activated_at,
                 'total_personal_bv' => $paise > 0 ? IndianNumber::format($paise / 100, 0).' BV' : null,
+                // Same R-65 gate as the BV row it is derived from: a coarser
+                // read of personal BV is still personal BV, so a viewer who
+                // may not see the number may not see the mark either.
+                'purchase_state' => $canSee && $qualifyPaise !== null
+                    ? $this->purchaseState((string) $user->status, $paise, $qualifyPaise)
+                    : null,
             ];
         }
 
         return $out;
+    }
+
+    /**
+     * The purchase-mark presentation map keyed by state, with the live BV gate
+     * interpolated into label and hint. Empty when the gate cannot be read,
+     * which suppresses the mark everywhere rather than colouring it from a
+     * guess. `label` is the legend's short form, `hint` the card tooltip's.
+     *
+     * @return array<string, array{class: string, label: string, hint: string}>
+     */
+    public function purchaseMarkMap(): array
+    {
+        $gate = $this->qualifyBvPaise();
+        if ($gate === null) {
+            return [];
+        }
+
+        $bv = IndianNumber::format($gate / 100, 0);
+
+        return array_map(
+            fn (array $mark): array => [
+                'class' => $mark['class'],
+                'label' => str_replace(':bv', $bv, $mark['label']),
+                'hint' => str_replace(':bv', $bv, $mark['hint']),
+            ],
+            self::PURCHASE_MARKS,
+        );
+    }
+
+    /**
+     * Which of the three marks a card carries. Red covers both halves of "no
+     * business yet" — an account that is not active, and an active one that
+     * has never accrued personal BV. Amber is buying but below the gate;
+     * green is at or above it.
+     */
+    private function purchaseState(string $status, int $personalBvPaise, int $qualifyBvPaise): string
+    {
+        if ($status !== 'active' || $personalBvPaise <= 0) {
+            return self::MARK_NONE;
+        }
+
+        return $personalBvPaise >= $qualifyBvPaise ? self::MARK_QUALIFIED : self::MARK_PURCHASED;
+    }
+
+    /**
+     * Lifetime personal BV (paise) at which a distributor counts as qualified
+     * — comp.gsb.min_bv_paise, the same gate the repurchase cycle card and the
+     * GSB engine read, never a hardcoded 600. Memoised: one canvas resolves it
+     * once for every card and the legend. Null when the settings table is
+     * unreadable.
+     */
+    private function qualifyBvPaise(): ?int
+    {
+        if ($this->qualifyBvPaise !== false) {
+            return $this->qualifyBvPaise;
+        }
+
+        try {
+            return $this->qualifyBvPaise = app(CompensationPlanSettingsService::class)->gsbMinBvPaise();
+        } catch (QueryException $e) {
+            Log::warning('DistributorIdCardStats::qualifyBvPaise query failed — hiding the purchase mark', [
+                'exception' => $e,
+            ]);
+
+            return $this->qualifyBvPaise = null;
+        }
     }
 
     /**

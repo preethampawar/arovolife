@@ -58,6 +58,15 @@
     }
     $cardStatsById = $cardStatsService->compactMany($visibleNodes->unique('id'));
     $downlineStatsNotice = ! $adminContext && $cardStatsService->downlineStatsVisible();
+
+    // Purchase mark (red / amber / green star on each card). Derived from
+    // personal BV, so it inherits personal BV's R-65 gate: compactMany() sets
+    // purchase_state to null on every card whose BV row this viewer may not
+    // see. When that is every card, the legend key stays off the page too —
+    // no trace of a mark nobody can see.
+    $purchaseMarks = $cardStatsService->purchaseMarkMap();
+    $purchaseMarksShown = $purchaseMarks !== []
+        && collect($cardStatsById)->contains(fn (array $stats): bool => ($stats['purchase_state'] ?? null) !== null);
 @endphp
 
 @if($contextNote)
@@ -129,6 +138,18 @@
             {{ $cfg['label'] }}
         </span>
     @endforeach
+
+    @if($purchaseMarksShown)
+        <span class="hidden sm:inline-block h-4 w-px bg-gray-200" aria-hidden="true"></span>
+        @foreach($purchaseMarks as $mark)
+            <span class="inline-flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-gray-700" title="{{ $mark['hint'] }}">
+                <span class="inline-flex h-4 w-4 items-center justify-center rounded-full ring-1 ring-black/5 {{ $mark['class'] }}">
+                    <x-lucide-star class="h-2.5 w-2.5 text-white" fill="currentColor" />
+                </span>
+                {{ $mark['label'] }}
+            </span>
+        @endforeach
+    @endif
 
     <span class="sm:ml-auto inline-flex items-center gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-brand-50 text-brand-700 text-[11px] sm:text-xs font-semibold border border-brand-100">
         <x-lucide-users class="w-3.5 h-3.5" />
@@ -399,6 +420,12 @@ window.treeStepDepth = (delta) => {
         viewport.scrollLeft = contentX * scale - fx;
         viewport.scrollTop  = contentY * scale - fy;
 
+        // Counter-scale the purchase mark so it stays readable as the canvas
+        // shrinks: below 55% it grows back toward a ~11px apparent size, up to
+        // 3x. Everything else is allowed to turn to mush — the mark is the one
+        // thing this view has to answer at a glance.
+        canvas.style.setProperty('--tree-mark-scale', String(Math.min(3, Math.max(1, 0.55 / scale))));
+
         const txt = Math.round(scale * 100) + '%';
         label.textContent = txt;
         if (fsLabel) fsLabel.textContent = txt;
@@ -609,6 +636,9 @@ window.copyAdn = (btn) => {
         content.appendChild(clone);
         const cw = clone.offsetWidth, ch = clone.offsetHeight;
         mapScale = (cw === 0 || ch === 0) ? 0.1 : Math.min(MAP_W / cw, MAP_H / ch);
+        // Same counter-scale the main canvas gets, sized for the minimap's own
+        // projection, so the purchase marks survive as colour dots there too.
+        clone.style.setProperty('--tree-mark-scale', String(Math.min(3, Math.max(1, 0.55 / mapScale))));
         content.style.transform = `scale(${mapScale})`;
         content.style.transformOrigin = 'top left';
         content.style.width = cw + 'px'; content.style.height = ch + 'px';
