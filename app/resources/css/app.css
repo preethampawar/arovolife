@@ -12,6 +12,10 @@
 @source '../**/*.js';
 
 @layer base {
+    /* Public canvas — deliberately UNCHANGED. The admin console retunes its
+       own canvas on body.admin-shell (see the admin token block below); the
+       distributor portal, shop, landing pages and registration wizard keep
+       #f4f7f6 exactly as before. */
     html, body { background-color: #f4f7f6; color: #0f172a; }
     input, select, textarea { color: #0f172a; }
 }
@@ -60,6 +64,173 @@
     --color-sunrise-700: #b76017;
     --color-sunrise-800: #8f4b11;
     --color-sunrise-900: #66350c;
+
+    /* ---------------------------------------------------------------
+       ELEVATION. Tailwind's defaults are flat drops of pure black:
+       shadow-sm is two layers at 10% with 3px and 2px of blur, which on
+       a light cool canvas reads as grey haze around the card rather than
+       the card sitting above it.
+
+       Three changes: (1) three layers instead of two, so the falloff is
+       a curve — a tight contact shadow that defines the edge, a mid
+       body, and a wide low-alpha ambient; (2) aggressive negative spread
+       on the wide layers so they hug the element instead of fogging its
+       neighbours; (3) the ink is rgb(3 25 48) — the canvas hue at raised
+       chroma — not black, so the shadow stays in the same colour family
+       as the page.
+
+       These are the ONLY tokens in the admin refresh that are not scoped
+       to body.admin-shell: Tailwind inlines shadow values at build time
+       rather than emitting a var(), so a scoped override would have to be
+       unlayered, which would then also defeat hover:shadow-* and
+       md:shadow-* variants. ~143 uses outside admin, all strictly-better
+       drop-ins. .card-refined (the wizard/shop card) writes its own
+       box-shadow and is unaffected, so the registration flow is untouched.
+       --------------------------------------------------------------- */
+    --shadow-2xs: 0 1px 1px 0 rgb(3 25 48 / 0.04);
+    --shadow-xs:  0 1px 1px -1px rgb(3 25 48 / 0.06),
+                  0 1px 3px -1px rgb(3 25 48 / 0.05);
+    --shadow-sm:  0 1px 2px -1px rgb(3 25 48 / 0.10),
+                  0 2px 6px -2px rgb(3 25 48 / 0.08),
+                  0 6px 14px -6px rgb(3 25 48 / 0.06);
+    --shadow-md:  0 1px 2px -1px rgb(3 25 48 / 0.08),
+                  0 4px 10px -2px rgb(3 25 48 / 0.09),
+                  0 12px 26px -8px rgb(3 25 48 / 0.09);
+    --shadow-lg:  0 1px 2px -1px rgb(3 25 48 / 0.07),
+                  0 8px 18px -4px rgb(3 25 48 / 0.10),
+                  0 24px 48px -12px rgb(3 25 48 / 0.12);
+    --shadow-xl:  0 1px 2px -1px rgb(3 25 48 / 0.06),
+                  0 16px 32px -8px rgb(3 25 48 / 0.12),
+                  0 40px 72px -20px rgb(3 25 48 / 0.16);
+}
+
+/* =====================================================================
+   ADMIN DESIGN TOKENS — scoped, not @theme.
+
+   `.text-gray-600` compiles to `color: var(--color-gray-600)` and
+   `.rounded-lg` to `border-radius: var(--radius-lg)`. Both are resolved
+   at USE time, so redeclaring the variable on an ancestor retunes every
+   descendant and nothing else. Declaring these here instead of in @theme
+   is what keeps the distributor dashboard, shop, landing pages and
+   registration wizard — which share this stylesheet and account for
+   ~2,800 gray-utility uses — bit-for-bit unchanged.
+
+   The scope hook is the `admin-shell` class on the admin <body>; the
+   three public layouts carry `wizard-stage` instead and never match.
+
+   NOTE for future Tailwind upgrades: this containment depends on colours
+   and radii being emitted as var() references. If a release ever inlines
+   them, this block silently stops containing and the public site moves.
+
+   Reverting the refresh = deleting this one block.
+   ===================================================================== */
+body.admin-shell {
+    /* --- Canvas ------------------------------------------------------
+       #f4f7f6 sat at OKLCH hue 174.5 — a green-cyan cast, 55° away from
+       the brand blue (#00b6ef, hue 229.8). That mismatch is what read as
+       "muddy". #f3f6fa is the same lightness (L 97.2 vs 97.4) at hue 245:
+       cool, clean, and on the same side of neutral as the logo. Declared
+       here rather than in @layer base so the public site keeps #f4f7f6. */
+    background-color: #f3f6fa;
+
+    /* --- Neutral ramp ------------------------------------------------
+       Tailwind's gray drifts between hue 247 and 265 with chroma
+       0.002–0.034. This ramp is one coherent family: hue 245 at the light
+       end easing to 259 at the dark end (lights carry the cool cast where
+       it is visible; darks relax toward Tailwind's own hue so body copy
+       never reads blue), with chroma raised ~35% so the cool is
+       deliberate rather than an accident of the conversion. Hue 245 sits
+       between Tailwind's 258 and the brand's 229.8 — close enough to the
+       logo to feel related, far enough from cyan to stay a neutral under
+       1,457 body-text uses.
+
+       Contrast on white / canvas #f3f6fa / gray-50:
+         gray-500  5.11 / 4.71 / 4.88  (AA — was 4.49 on canvas, a FAIL)
+         gray-600  7.91 / 7.30 / 7.56  (AAA)
+         gray-700 10.76 / 9.92 / 10.28 (AAA)
+         gray-900 17.99 / 16.59 / 17.19 (AAA)                          */
+    --color-gray-50:  #f8fafc;   /* oklch(98.4% 0.004 245) */
+    --color-gray-100: #f0f4f8;   /* oklch(96.5% 0.007 245) */
+    --color-gray-200: #e0e7ed;   /* oklch(92.4% 0.011 246) */
+    --color-gray-300: #cbd4dd;   /* oklch(86.6% 0.016 247) */
+    --color-gray-400: #91a0af;   /* oklch(70.0% 0.028 248) */
+    --color-gray-500: #5d7083;   /* oklch(53.6% 0.037 249) */
+    --color-gray-600: #405368;   /* oklch(43.6% 0.041 250) */
+    --color-gray-700: #2e3f53;   /* oklch(36.2% 0.041 252) */
+    --color-gray-800: #1a2839;   /* oklch(27.2% 0.037 254) */
+    --color-gray-900: #0c1727;   /* oklch(20.4% 0.035 257) */
+    --color-gray-950: #020714;   /* oklch(13.2% 0.030 259) */
+
+    /* --- Radius ------------------------------------------------------
+       740 rounded-lg. 8px is the Bootstrap-era default and is the single
+       loudest "this is a 2019 admin panel" signal in the console. 10px is
+       the current convention and is still well short of pill on a 32–36px
+       control. xl/2xl move in proportion so a rounded-lg header inside a
+       rounded-xl card still nests correctly.                          */
+    --radius-md:  0.5rem;      /* 6  -> 8px   (11 uses)  */
+    --radius-lg:  0.625rem;    /* 8  -> 10px  (731 uses) */
+    --radius-xl:  0.875rem;    /* 12 -> 14px  (242 uses) */
+    --radius-2xl: 1.125rem;    /* 16 -> 18px  (105 uses) */
+
+    /* --- Focus -------------------------------------------------------
+       brand-500 is only 2.35:1 on white — the 190 existing
+       focus:ring-brand-500 rings currently FAIL WCAG 1.4.11 (3:1 for
+       non-text UI). brand-600 clears it on all three light surfaces.  */
+    --focus-ring:     #008cc7;   /* 3.77 white · 3.47 canvas · 3.60 gray-50 */
+    --focus-contrast: #ffffff;   /* fills the 2px outline-offset gap */
+}
+
+html.dark body.admin-shell {
+    --focus-ring:     #5fd2f8;   /* 9.32 on the dark card, 10.46 on the canvas */
+    --focus-contrast: #0e161f;
+}
+
+/* Bare `.rounded` (115 uses) compiles to a literal .25rem — it comes from
+   the deprecated `@theme default inline reference` block, so no variable
+   can reach it. 4px chips beside 10px cards look unfinished. Unlayered,
+   so it beats the utility. */
+body.admin-shell .rounded { border-radius: 0.375rem; }
+
+/* =====================================================================
+   FOCUS — keyboard-visible, one treatment, both themes.
+
+   Before this there was no :focus-visible anywhere in the console. 190
+   elements carried `focus:outline-none focus:ring-2 focus:ring-brand-500`,
+   which (a) fired on mouse click as well as keyboard, and (b) painted a
+   ring at 2.35:1 on white — a WCAG 1.4.11 failure, since non-text UI
+   needs 3:1. --focus-ring is brand-600, which clears it on all three
+   light surfaces (3.77 white / 3.47 canvas / 3.60 gray-50).
+
+   Unlayered, so it outranks every `focus:outline-none` and `focus:ring-*`
+   utility on the page without !important and without touching Blade.
+
+   Two-tone by construction: a 2px outline offset by 2px, with a
+   box-shadow filling exactly that gap in --focus-contrast. On a white
+   card you see white-then-blue; on a solid bg-brand-700 button you see
+   white-then-blue against the fill. No background can swallow it. The
+   element's own elevation is re-composed into the box-shadow so a
+   shadow-sm card does not flatten when focused.
+
+   No `border-radius: inherit` here on purpose — browsers already curve
+   an outline to the element's own radius, and inheriting the parent's
+   would be wrong for any control whose radius differs.
+   ===================================================================== */
+body.admin-shell :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--focus-contrast), var(--tw-shadow, 0 0 #0000);
+}
+
+/* The elements that opt out of the UA ring. :focus-visible is a subset of
+   :focus, so both rules match at a keyboard-focus moment; this one is
+   unlayered and wins. */
+body.admin-shell .focus\:outline-none:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    body.admin-shell :focus-visible { transition: outline-color 100ms linear; }
 }
 
 /* =====================================================================
@@ -200,11 +371,11 @@
    .markdown-doc — readable rendering of repo markdown inside the admin
    "Help & Reference" pages (no Tailwind Typography plugin needed).
    ===================================================================== */
-.markdown-doc { color: #334155; font-size: 0.9375rem; line-height: 1.7; }
+.markdown-doc { color: #2e3f53; font-size: 0.9375rem; line-height: 1.7; }
 .markdown-doc > :first-child { margin-top: 0; }
-.markdown-doc h1 { font-size: 1.6rem; font-weight: 700; color: #0f172a; margin: 0 0 0.75rem; letter-spacing: -0.01em; }
-.markdown-doc h2 { font-size: 1.2rem; font-weight: 700; color: #0f172a; margin: 2rem 0 0.6rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9; }
-.markdown-doc h3 { font-size: 1.02rem; font-weight: 600; color: #111827; margin: 1.4rem 0 0.4rem; }
+.markdown-doc h1 { font-size: 1.6rem; font-weight: 700; color: #0c1727; margin: 0 0 0.75rem; letter-spacing: -0.01em; }
+.markdown-doc h2 { font-size: 1.2rem; font-weight: 700; color: #0c1727; margin: 2rem 0 0.6rem; padding-top: 1.25rem; border-top: 1px solid #f0f4f8; }
+.markdown-doc h3 { font-size: 1.02rem; font-weight: 600; color: #1a2839; margin: 1.4rem 0 0.4rem; }
 .markdown-doc p { margin: 0.7rem 0; }
 .markdown-doc a { color: var(--color-brand-700); text-decoration: underline; text-underline-offset: 2px; }
 .markdown-doc a:hover { color: var(--color-brand-600); }
@@ -212,17 +383,17 @@
 .markdown-doc ul { list-style: disc; }
 .markdown-doc ol { list-style: decimal; }
 .markdown-doc li { margin: 0.3rem 0; }
-.markdown-doc strong { color: #0f172a; font-weight: 600; }
-.markdown-doc code { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 0.82em; background: #f1f5f9; color: #0a719f; padding: 0.12em 0.4em; border-radius: 0.3rem; }
-.markdown-doc pre { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: 0.6rem; overflow-x: auto; margin: 1rem 0; }
+.markdown-doc strong { color: #0c1727; font-weight: 600; }
+.markdown-doc code { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 0.82em; background: #f0f4f8; color: #0a719f; padding: 0.12em 0.4em; border-radius: 0.3rem; }
+.markdown-doc pre { background: #0c1727; color: #e0e7ed; padding: 1rem; border-radius: 0.6rem; overflow-x: auto; margin: 1rem 0; }
 .markdown-doc pre code { background: none; color: inherit; padding: 0; }
-.markdown-doc blockquote { border-left: 3px solid var(--color-brand-300); background: var(--color-brand-50); padding: 0.6rem 1rem; margin: 1rem 0; border-radius: 0 0.5rem 0.5rem 0; color: #475569; }
+.markdown-doc blockquote { border-left: 3px solid var(--color-brand-300); background: var(--color-brand-50); padding: 0.6rem 1rem; margin: 1rem 0; border-radius: 0 0.5rem 0.5rem 0; color: #405368; }
 .markdown-doc blockquote p { margin: 0.3rem 0; }
-.markdown-doc hr { border: 0; border-top: 1px solid #e2e8f0; margin: 1.75rem 0; }
+.markdown-doc hr { border: 0; border-top: 1px solid #e0e7ed; margin: 1.75rem 0; }
 .markdown-doc table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.875rem; display: block; overflow-x: auto; }
-.markdown-doc th, .markdown-doc td { border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
-.markdown-doc th { background: #f8fafc; font-weight: 600; color: #0f172a; white-space: nowrap; }
-.markdown-doc tbody tr:nth-child(even) { background: #fcfdfe; }
+.markdown-doc th, .markdown-doc td { border: 1px solid #e0e7ed; padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
+.markdown-doc th { background: #f8fafc; font-weight: 600; color: #0c1727; white-space: nowrap; }
+.markdown-doc tbody tr:nth-child(even) { background: #fbfcfe; }
 
 /* =====================================================================
    ADMIN — DARK THEME
@@ -255,84 +426,90 @@
    tree card bg-leaf-50 / bg-sunrise-50, so leaving those two light while
    text-gray-800 went light left the cards unreadable.
 
-   Contrast (measured against the card surface #19202c):
-     text-gray-900 14.6:1 · gray-800 13.0 · gray-700 10.9 · gray-600 9.6
-     gray-500 6.5 · gray-400 5.1 — all WCAG 2.1 AA or better.
+   Contrast (measured against the card surface #19212b):
+     text-gray-900 14.70:1 · gray-800 13.16 · gray-700 10.76 · gray-600 8.55
+     gray-500 6.20 · gray-400 4.14 — all WCAG 2.1 AA or better.
+     On bg-gray-50 #232c36: gray-500 5.40. On bg-gray-100 #2c3642: 4.68.
+
+   Surface ladder (contrast between adjacent steps): canvas->card 1.122,
+   card->gray-50 1.148, gray-50->gray-100 1.154, canvas->sidebar 1.031.
+   Evenly spaced by design — the previous ramp stepped irregularly.
    ===================================================================== */
 
 html.dark { color-scheme: dark; }
 
 html.dark,
 html.dark body {
-    background-color: #0f1520;
-    color: #e6ebf2;
+    background-color: #0e161f;
+    color: #e3e8ec;
 }
 
-/* The admin <body> pins its page colour with an arbitrary utility. */
-html.dark body.bg-\[\#f4f7f6\] { background-color: #0f1520; }
+/* The admin <body> carries the `admin-shell` scope class, which sets the
+   light canvas; this restores the dark one. */
+html.dark body.admin-shell { background-color: #0e161f; }
 
 /* --- Surfaces ------------------------------------------------------- */
-html.dark .bg-white { background-color: #19202c; }
-html.dark .bg-gray-50 { background-color: #212a38; }
-html.dark .bg-gray-100 { background-color: #2a3444; }
-html.dark .bg-gray-200 { background-color: #323d4f; }
-html.dark .bg-gray-50\/40 { background-color: rgb(33 42 56 / 0.4); }
-html.dark .bg-gray-50\/50 { background-color: rgb(33 42 56 / 0.5); }
-html.dark .bg-gray-50\/60 { background-color: rgb(33 42 56 / 0.6); }
-html.dark .bg-gray-50\/70 { background-color: rgb(33 42 56 / 0.7); }
-html.dark .bg-white\/10 { background-color: rgb(25 32 44 / 0.1); }
-html.dark .bg-white\/15 { background-color: rgb(25 32 44 / 0.15); }
-html.dark .bg-white\/25 { background-color: rgb(25 32 44 / 0.25); }
-html.dark .bg-white\/40 { background-color: rgb(25 32 44 / 0.4); }
-html.dark .bg-white\/50 { background-color: rgb(25 32 44 / 0.5); }
-html.dark .bg-white\/60 { background-color: rgb(25 32 44 / 0.6); }
-html.dark .bg-white\/70 { background-color: rgb(25 32 44 / 0.7); }
-html.dark .bg-white\/80 { background-color: rgb(25 32 44 / 0.8); }
-html.dark .bg-white\/95 { background-color: rgb(25 32 44 / 0.95); }
+html.dark .bg-white { background-color: #19212b; }
+html.dark .bg-gray-50 { background-color: #232c36; }
+html.dark .bg-gray-100 { background-color: #2c3642; }
+html.dark .bg-gray-200 { background-color: #37424f; }
+html.dark .bg-gray-50\/40 { background-color: rgb(35 44 54 / 0.4); }
+html.dark .bg-gray-50\/50 { background-color: rgb(35 44 54 / 0.5); }
+html.dark .bg-gray-50\/60 { background-color: rgb(35 44 54 / 0.6); }
+html.dark .bg-gray-50\/70 { background-color: rgb(35 44 54 / 0.7); }
+html.dark .bg-white\/10 { background-color: rgb(25 33 43 / 0.1); }
+html.dark .bg-white\/15 { background-color: rgb(25 33 43 / 0.15); }
+html.dark .bg-white\/25 { background-color: rgb(25 33 43 / 0.25); }
+html.dark .bg-white\/40 { background-color: rgb(25 33 43 / 0.4); }
+html.dark .bg-white\/50 { background-color: rgb(25 33 43 / 0.5); }
+html.dark .bg-white\/60 { background-color: rgb(25 33 43 / 0.6); }
+html.dark .bg-white\/70 { background-color: rgb(25 33 43 / 0.7); }
+html.dark .bg-white\/80 { background-color: rgb(25 33 43 / 0.8); }
+html.dark .bg-white\/95 { background-color: rgb(25 33 43 / 0.95); }
 
 /* Gradient stops are custom properties, not background-color, so none of the
    surface rules above reach them: the admin tree's context banner is
    bg-gradient-to-r from-brand-50 to-white, which kept painting a light ramp
    under text rules that had already gone light. Each stop maps to the same
    dark surface its solid twin does. */
-html.dark .from-white { --tw-gradient-from: #19202c; }
-html.dark .from-white\/95 { --tw-gradient-from: rgb(25 32 44 / 0.95); }
-html.dark .to-white { --tw-gradient-to: #19202c; }
-html.dark .hover\:bg-white:hover { background-color: #212a38; }
-html.dark .hover\:bg-gray-50:hover { background-color: #232d3c; }
-html.dark .hover\:bg-gray-100:hover { background-color: #2d3849; }
+html.dark .from-white { --tw-gradient-from: #19212b; }
+html.dark .from-white\/95 { --tw-gradient-from: rgb(25 33 43 / 0.95); }
+html.dark .to-white { --tw-gradient-to: #19212b; }
+html.dark .hover\:bg-white:hover { background-color: #1f2731; }
+html.dark .hover\:bg-gray-50:hover { background-color: #27313c; }
+html.dark .hover\:bg-gray-100:hover { background-color: #313c48; }
 html.dark .hover\:bg-gray-900:hover { background-color: #0b101a; }
 html.dark .disabled\:bg-gray-100:disabled { background-color: #232c39; }
 html.dark .disabled\:bg-gray-300:disabled { background-color: #2b3543; }
 
 /* --- Text ----------------------------------------------------------- */
-html.dark .text-gray-900 { color: #f1f5f9; }
-html.dark .text-gray-800 { color: #e6ebf2; }
-html.dark .text-gray-700 { color: #d3dbe6; }
-html.dark .text-gray-600 { color: #bfc9d6; }
-html.dark .text-gray-500 { color: #9aa6b6; }
-html.dark .text-gray-400 { color: #8593a4; }
-html.dark .text-gray-300 { color: #93a1b2; }
+html.dark .text-gray-900 { color: #f1f4f7; }
+html.dark .text-gray-800 { color: #e3e8ec; }
+html.dark .text-gray-700 { color: #cdd3da; }
+html.dark .text-gray-600 { color: #b5bdc6; }
+html.dark .text-gray-500 { color: #97a1ad; }
+html.dark .text-gray-400 { color: #76828f; }
+html.dark .text-gray-300 { color: #818c99; }
 /* slate is gray's twin hue; a handful of views reach for it instead. */
-html.dark .text-slate-700 { color: #d3dbe6; }
-html.dark .text-slate-600 { color: #bfc9d6; }
-html.dark .text-slate-500 { color: #9aa6b6; }
+html.dark .text-slate-700 { color: #cdd3da; }
+html.dark .text-slate-600 { color: #b5bdc6; }
+html.dark .text-slate-500 { color: #97a1ad; }
 html.dark .hover\:text-gray-900:hover { color: #ffffff; }
-html.dark .hover\:text-gray-800:hover { color: #f1f5f9; }
-html.dark .hover\:text-gray-700:hover { color: #e6ebf2; }
+html.dark .hover\:text-gray-800:hover { color: #f1f4f7; }
+html.dark .hover\:text-gray-700:hover { color: #e3e8ec; }
 html.dark .disabled\:text-gray-600:disabled { color: #7c8899; }
 html.dark .disabled\:text-gray-500:disabled { color: #75808f; }
-html.dark .placeholder-gray-400::placeholder { color: #8593a4; }
+html.dark .placeholder-gray-400::placeholder { color: #76828f; }
 
 /* --- Borders & dividers --------------------------------------------- */
-html.dark .border-gray-100 { border-color: #29323f; }
-html.dark .border-gray-200 { border-color: #303b4d; }
-html.dark .border-gray-300 { border-color: #3b485c; }
-html.dark .border-gray-400 { border-color: #4a5a71; }
-html.dark .hover\:border-gray-300:hover { border-color: #4a5a71; }
+html.dark .border-gray-100 { border-color: #27303a; }
+html.dark .border-gray-200 { border-color: #303a46; }
+html.dark .border-gray-300 { border-color: #3e4b58; }
+html.dark .border-gray-400 { border-color: #536070; }
+html.dark .hover\:border-gray-300:hover { border-color: #536070; }
 html.dark .divide-gray-50 > *,
-html.dark .divide-gray-100 > * { border-color: #29323f; }
-html.dark .divide-gray-200 > * { border-color: #303b4d; }
+html.dark .divide-gray-100 > * { border-color: #27303a; }
+html.dark .divide-gray-200 > * { border-color: #303a46; }
 
 /* --- Form controls --------------------------------------------------
    @layer base pins `color:#0f172a` on inputs; override it here along
@@ -340,14 +517,14 @@ html.dark .divide-gray-200 > * { border-color: #303b4d; }
 html.dark input,
 html.dark select,
 html.dark textarea {
-    background-color: #212a38;
-    color: #f1f5f9;
-    border-color: #3b485c;
+    background-color: #1f2731;
+    color: #f1f4f7;
+    border-color: #3e4b58;
 }
 html.dark input::placeholder,
-html.dark textarea::placeholder { color: #8593a4; }
+html.dark textarea::placeholder { color: #76828f; }
 html.dark input[type="checkbox"],
-html.dark input[type="radio"] { background-color: #2a3444; }
+html.dark input[type="radio"] { background-color: #2c3642; }
 
 /* --- Tinted status surfaces -----------------------------------------
    Tint end (50–300) goes dark; text end (600–900) goes light. Solid
@@ -516,8 +693,19 @@ html.dark .text-sunrise-800 { color: #fbd093; }
 /* --- Misc ----------------------------------------------------------- */
 /* Prose/markdown blocks inside admin pages. */
 html.dark .markdown-doc { color: #cbd5e1; }
-/* Shadows read as grime on dark surfaces; deepen instead of tint. */
-html.dark .shadow-sm { --tw-shadow-color: rgba(0, 0, 0, 0.5); }
+/* Shadows read as grime on dark surfaces; deepen instead of tint.
+
+   Override the composed value, NOT --tw-shadow-color. Tailwind rewrites
+   every layer of a shadow to `var(--tw-shadow-color, <literal>)` sharing
+   one slot, so setting that variable paints all three layers of the new
+   elevation ramp the same 50% black — they stack to roughly 87% opaque
+   and every dark card grows a heavy halo. Restating --tw-shadow keeps
+   the layer curve and just deepens the ink. */
+html.dark body.admin-shell .shadow-sm {
+    --tw-shadow: 0 1px 2px -1px rgb(0 0 0 / 0.45),
+                 0 2px 6px -2px rgb(0 0 0 / 0.36),
+                 0 6px 14px -6px rgb(0 0 0 / 0.30);
+}
 
 /* Theme-toggle icon swap — one icon per theme, no JS class juggling. */
 [data-theme-icon="dark"] { display: none; }
@@ -536,11 +724,11 @@ html.dark [data-theme-logo="dark"] { display: block; }
    from before the toggle existed — scoped to #adminSidebar so they never
    leak into the generic .bg-gray-100 etc. overrides used by page content,
    which use a lighter surface tone than this chrome always has. */
-html.dark #adminSidebar { background-color: #0f172a; border-color: #1e293b; }
-html.dark #adminSidebar .border-gray-200 { border-color: #1e293b; }
-html.dark #adminSidebar .bg-gray-100 { background-color: #1e293b; }
-html.dark #adminSidebar .hover\:bg-gray-100:hover { background-color: #1e293b; }
-html.dark #adminSidebar .hover\:bg-gray-200:hover { background-color: #334155; }
+html.dark #adminSidebar { background-color: #0f1927; border-color: #1e2836; }
+html.dark #adminSidebar .border-gray-200 { border-color: #1e2836; }
+html.dark #adminSidebar .bg-gray-100 { background-color: #1e2836; }
+html.dark #adminSidebar .hover\:bg-gray-100:hover { background-color: #1e2836; }
+html.dark #adminSidebar .hover\:bg-gray-200:hover { background-color: #2b3645; }
 html.dark #adminSidebar .text-sunrise-800,
 html.dark #adminSidebar .text-sunrise-600 { color: #f7a83e; }
 html.dark #adminSidebar .hover\:text-red-600:hover { color: #f87171; }

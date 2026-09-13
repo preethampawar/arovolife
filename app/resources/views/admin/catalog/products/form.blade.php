@@ -4,9 +4,9 @@
 
 @push('styles')
 <style>
-    trix-editor { min-height: 14rem; background: #fff; border-radius: 0.5rem; border-color: #d1d5db; }
+    trix-editor { min-height: 14rem; background: #fff; border-radius: 0.5rem; border-color: #cbd4dd; }
     trix-editor h1 { font-size: 1.25rem; font-weight: 700; }
-    trix-toolbar .trix-button-group { border-color: #e5e7eb; }
+    trix-toolbar .trix-button-group { border-color: #e0e7ed; }
 </style>
 @endpush
 

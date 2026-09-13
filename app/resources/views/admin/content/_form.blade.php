@@ -117,15 +117,15 @@
 
 @push('styles')
 <style>
-    trix-toolbar { background: #f4f7f6; border: 1px solid #e5e7eb; border-bottom: 0; border-radius: 0.5rem 0.5rem 0 0; padding: 0.5rem; }
+    trix-toolbar { background: #f3f6fa; border: 1px solid #e0e7ed; border-bottom: 0; border-radius: 0.5rem 0.5rem 0 0; padding: 0.5rem; }
     trix-editor  { border-radius: 0 0 0.5rem 0.5rem !important; }
-    trix-editor:focus { box-shadow: 0 0 0 2px var(--color-brand-500, #2ab3a6); border-color: transparent; }
+    trix-editor:focus { box-shadow: 0 0 0 2px var(--color-brand-500); border-color: transparent; }
     .trix-content h1 { font-size: 1.75rem; font-weight: 700; margin: 1rem 0 0.5rem; }
     .trix-content h2 { font-size: 1.4rem; font-weight: 700; margin: 1rem 0 0.5rem; }
     .trix-content ul { list-style: disc; padding-left: 1.5rem; }
     .trix-content ol { list-style: decimal; padding-left: 1.5rem; }
-    .trix-content blockquote { border-left: 3px solid #2ab3a6; padding-left: 1rem; color: #4b5563; }
-    .trix-content a { color: #1f9a8e; text-decoration: underline; }
+    .trix-content blockquote { border-left: 3px solid var(--color-brand-300); padding-left: 1rem; color: #405368; }
+    .trix-content a { color: var(--color-brand-700); text-decoration: underline; }
 </style>
 @endpush
 

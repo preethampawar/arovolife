@@ -44,7 +44,7 @@ test.describe('admin theme toggle', () => {
 
         // The page surface is the light one, not merely "not dark".
         const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-        expect(bg).toBe('rgb(244, 247, 246)');
+        expect(bg).toBe('rgb(243, 246, 250)');
     });
 
     test('clicking the toggle turns the console dark and records the choice', async ({ adminPage: page }) => {
@@ -56,7 +56,7 @@ test.describe('admin theme toggle', () => {
         expect(await isDark(page)).toBe(true);
         expect(await stored(page)).toBe('dark');
         await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');
-        expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(15, 21, 32)');
+        expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(14, 22, 31)');
 
         await clearTheme(page);
     });

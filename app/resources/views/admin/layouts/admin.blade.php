@@ -41,12 +41,12 @@
                and each section becomes a hairline-separated block of icons. */
             html.admin-nav-collapsed .admin-nav-group-header { display: none; }
             html.admin-nav-collapsed [data-nav-group] + [data-nav-group] .admin-nav-group-list {
-                border-top: 1px solid #e5e7eb; /* gray-200 (light); dark override below */
+                border-top: 1px solid #e0e7ed; /* gray-200 (light); dark override below */
                 padding-top: 0.25rem;
                 margin-top: 0.25rem;
             }
             html.dark.admin-nav-collapsed [data-nav-group] + [data-nav-group] .admin-nav-group-list {
-                border-top-color: #1e293b; /* slate-800 */
+                border-top-color: #1e2836; /* dark sidebar border */
             }
             html.admin-nav-collapsed .admin-nav-group-list { display: block; }
             html.admin-nav-collapsed .admin-nav-badge {
@@ -89,7 +89,7 @@
     </style>
     @stack('styles')
 </head>
-<body class="min-h-full bg-[#f4f7f6] text-gray-900 antialiased flex overflow-x-hidden">
+<body class="admin-shell min-h-full text-gray-900 antialiased flex overflow-x-hidden">
 
     {{-- Sidebar — top-0/bottom-0 stretches the aside to the full viewport
          vertically (more robust than h-screen which can mis-resolve under
