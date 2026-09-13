@@ -51,27 +51,14 @@
     @endphp
 
     {{-- No outer margin: the card sits in the hero's grid cell, which owns
-         the spacing around it. --}}
-    <section class="rounded-2xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4 sm:p-5 shadow-sm"
+         the spacing around it. One row, not two: the heading sits on the same
+         line as the dates rather than on a band of its own, which is what the
+         wider hero column bought. The ring now sets the card's height. --}}
+    <section class="rounded-2xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4 shadow-sm"
              aria-labelledby="repurchase-heading">
 
-        <div class="flex items-center justify-between gap-3 flex-wrap mb-3">
-            <h2 id="repurchase-heading" class="text-base font-bold text-gray-900 flex items-center gap-2">
-                <x-lucide-repeat class="w-5 h-5 text-brand-700" />
-                Repurchase cycle
-            </h2>
-            @if($statusChip !== null)
-                <span class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold {{ $statusChip['class'] }}">
-                    {{ $statusChip['text'] }}
-                </span>
-            @endif
-        </div>
-
-        @if(! $card->qualified())
-            {{-- Nothing is owed yet. One sentence: the gate that opens the
-                 cycle and how far along they are — a distributor who sees an
-                 empty window cannot tell whether they are safe or unseen. --}}
-            <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4">
+            @if(! $card->qualified())
                 <svg viewBox="0 0 72 72" class="w-20 h-20 shrink-0" role="img"
                      aria-label="Personal BV {{ round($card->qualifyFraction() * 100) }} percent of the amount needed to start a repurchase cycle">
                     <circle cx="36" cy="36" r="{{ $ringRadius }}" fill="none" stroke="#e5e7eb" stroke-width="7"/>
@@ -83,16 +70,7 @@
                         {{ round($card->qualifyFraction() * 100) }}%
                     </text>
                 </svg>
-
-                <p class="flex-1 min-w-0 text-sm text-gray-700">
-                    Your cycle starts once your personal purchases reach
-                    <strong class="text-gray-900">@bv($card->qualifyBvPaise)</strong> — you have
-                    <strong class="text-gray-900">@bv($card->personalBvPaise)</strong>@if($card->qualifyRemainingPaise() > 0), <span class="text-gray-600">@bv($card->qualifyRemainingPaise()) to go</span>@endif.
-                    Nothing is due until then.
-                </p>
-            </div>
-        @else
-            <div class="flex items-center gap-4">
+            @else
                 <svg viewBox="0 0 72 72" class="w-20 h-20 shrink-0" role="img"
                      aria-label="{{ $card->daysLeft }} of {{ $card->daysTotal }} days remaining in this repurchase cycle">
                     <circle cx="36" cy="36" r="{{ $ringRadius }}" fill="none" stroke="#e5e7eb" stroke-width="7"/>
@@ -107,20 +85,45 @@
                         {{ \Illuminate\Support\Str::plural('day', $card->daysLeft) }} left
                     </text>
                 </svg>
+            @endif
 
-                <div class="flex-1 min-w-0 space-y-2">
-                    {{-- Dates plus the window length on one line. The anchor day
-                         is day 0 and due_date is inclusive, so the span reads as
-                         off-by-one unless the card says the last day counts —
-                         daysTotal counts both ends, so minus one is the DB-driven
-                         comp.repurchase.cycle_days length, never a hardcoded 30. --}}
-                    <p class="flex flex-wrap items-baseline gap-x-2 text-sm font-semibold text-gray-900">
-                        {{ $card->startDate?->format('d M') }}
-                        <span class="text-gray-400">&rarr;</span>
-                        {{ $card->endDate?->format('d M Y') }}
-                        <span class="text-xs font-normal text-gray-500">{{ $card->daysTotal - 1 }}-day window, last day counts</span>
+            <div class="flex-1 min-w-0 space-y-2">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <h2 id="repurchase-heading" class="flex items-center gap-2 text-sm font-bold text-gray-900">
+                        <x-lucide-repeat class="w-4 h-4 text-brand-700" />
+                        Repurchase cycle
+                    </h2>
+                    @if($statusChip !== null)
+                        <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold {{ $statusChip['class'] }}">
+                            {{ $statusChip['text'] }}
+                        </span>
+                    @endif
+                    @if($card->qualified())
+                        {{-- Dates plus the window length, kept to one line. The
+                             anchor day is day 0 and due_date is inclusive, so the
+                             span reads as off-by-one unless the card says the last
+                             day counts — daysTotal counts both ends, so minus one
+                             is the DB-driven comp.repurchase.cycle_days length,
+                             never a hardcoded 30. --}}
+                        <p class="ms-auto text-xs text-gray-500">
+                            <span class="font-semibold text-gray-900">{{ $card->startDate?->format('d M') }} &rarr; {{ $card->endDate?->format('d M Y') }}</span>
+                            &middot; {{ $card->daysTotal - 1 }}-day window, last day counts
+                        </p>
+                    @endif
+                </div>
+
+                @if(! $card->qualified())
+                    {{-- Nothing is owed yet. One sentence: the gate that opens the
+                         cycle and how far along they are — a distributor who sees
+                         an empty window cannot tell whether they are safe or
+                         simply unseen. --}}
+                    <p class="text-sm text-gray-700">
+                        Your cycle starts once your personal purchases reach
+                        <strong class="text-gray-900">@bv($card->qualifyBvPaise)</strong> — you have
+                        <strong class="text-gray-900">@bv($card->personalBvPaise)</strong>@if($card->qualifyRemainingPaise() > 0), <span class="text-gray-600">@bv($card->qualifyRemainingPaise()) to go</span>@endif.
+                        Nothing is due until then.
                     </p>
-
+                @else
                     {{-- The two conditions the engine actually checks at window end. --}}
                     <div>
                         <div class="flex items-center justify-between gap-2 text-xs mb-1">
@@ -153,14 +156,14 @@
                             @endunless
                         </span>
                     </p>
-                </div>
+                @endif
             </div>
+        </div>
 
-            @if($card->state === RepurchaseCycleCard::STATE_SUSPENDED && $card->failureLabel() !== null)
-                <p class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-                    {{ $card->failureLabel() }}
-                </p>
-            @endif
+        @if($card->state === RepurchaseCycleCard::STATE_SUSPENDED && $card->failureLabel() !== null)
+            <p class="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+                {{ $card->failureLabel() }}
+            </p>
         @endif
     </section>
 @endif

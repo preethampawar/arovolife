@@ -7,15 +7,15 @@
 
     // The hero's right-hand panel is the repurchase cycle card. It is null
     // when the engine flag is off or the income tables are unreadable, and
-    // then the hero must collapse to one column rather than leave a 440px
-    // hole where the panel used to be.
+    // then the hero must collapse to one column rather than leave a
+    // half-screen hole where the panel used to be.
     $heroAside = $hasDistributorBlock && ($repurchaseCard ?? null) !== null;
 @endphp
 <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 via-brand-800 to-brand-950 text-white shadow-lg mb-6">
     <div class="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-brand-400/30 blur-3xl"></div>
     <div class="pointer-events-none absolute -bottom-28 left-1/3 h-64 w-64 rounded-full bg-leaf-400/20 blur-3xl"></div>
 
-    <div class="relative grid grid-cols-1 {{ $heroAside ? 'lg:grid-cols-[1fr_minmax(0,420px)] lg:items-center' : '' }} gap-5 p-5 sm:p-6">
+    <div class="relative grid grid-cols-1 {{ $heroAside ? 'lg:grid-cols-[1fr_minmax(0,560px)] lg:items-center' : '' }} gap-5 p-5 sm:p-6">
         {{-- One identity row: avatar, name, then a single chip line carrying
              everything else — ADN, status, rank, title, join date and the KYC
              link. It used to stack four rows deep and still ended well above
