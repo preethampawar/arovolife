@@ -12,7 +12,9 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
+use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\IndianStates;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Http\RedirectResponse;
@@ -36,11 +38,18 @@ final class AdminAreteCenterApplicationController extends Controller
     {
         $this->guardFeature();
 
-        $status = (string) $request->query('status', 'open');
-        $state = (string) $request->query('state', '');
-        $search = trim((string) $request->query('q', ''));
+        $filters = ListFilters::make($request, [
+            FilterField::select('status', 'Status', ['all' => 'All statuses'] + AreteCenterApplication::STATUSES, placeholder: 'Open (needs action)'),
+            FilterField::select('state', 'State', array_combine(IndianStates::all(), IndianStates::all()), column: 'state', placeholder: 'All states'),
+            FilterField::text('q', 'Search', 'Centre, city, pincode or ADN'),
+            FilterField::dateRange('submitted_at', 'Submitted', 'submitted_at'),
+        ]);
 
         $query = AreteCenterApplication::query()->with(['distributor.user', 'center']);
+
+        // Blank means "open" — the queue opens on what needs action, and
+        // "open" is a scope rather than a column value.
+        $status = $filters->value('status') ?? 'open';
 
         if ($status === 'open') {
             $query->open();
@@ -48,16 +57,16 @@ final class AdminAreteCenterApplicationController extends Controller
             $query->where('status', $status);
         }
 
-        if ($state !== '' && in_array($state, IndianStates::all(), true)) {
-            $query->where('state', $state);
-        }
+        $filters->apply($query);
 
-        if ($search !== '') {
-            $query->where(function ($q) use ($search): void {
-                $q->where('centre_name', 'like', "%{$search}%")
-                    ->orWhere('city', 'like', "%{$search}%")
-                    ->orWhere('pincode', 'like', "{$search}%")
-                    ->orWhereHas('distributor', fn ($d) => $d->where('adn', 'like', "%{$search}%"));
+        if (($search = $filters->value('q')) !== null) {
+            $term = ListFilters::escapeLike($search);
+
+            $query->where(function ($q) use ($term): void {
+                $q->where('centre_name', 'like', "%{$term}%")
+                    ->orWhere('city', 'like', "%{$term}%")
+                    ->orWhere('pincode', 'like', "{$term}%")
+                    ->orWhereHas('distributor', fn ($d) => $d->where('adn', 'like', "%{$term}%"));
             });
         }
 
@@ -75,8 +84,7 @@ final class AdminAreteCenterApplicationController extends Controller
         return view('admin.arete-centres.applications.index', [
             'applications' => $applications,
             'counts' => $counts,
-            'filters' => ['status' => $status, 'state' => $state, 'q' => $search],
-            'states' => IndianStates::all(),
+            'filters' => $filters,
         ]);
     }
 

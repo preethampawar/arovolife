@@ -9,6 +9,8 @@ use App\Modules\Compliance\Services\ComplianceTerminationSettings;
 use App\Modules\Compliance\Services\InactivityTerminationService;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -38,6 +40,10 @@ final class AdminDormancyController extends Controller
         $now = Carbon::now();
         $cutoff = $now->copy()->subMonths($this->settings->inactivityMonths());
 
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'ADN or name'),
+        ]);
+
         $query = Distributor::query()->with('user');
 
         match ($filter) {
@@ -51,6 +57,18 @@ final class AdminDormancyController extends Controller
                 ->whereNull('terminated_at')
                 ->orderBy('inactivity_notice_expires_at'),
         };
+
+        // No column mapping declared: adn lives on distributors, full_name on
+        // the related user, so the term is applied here rather than through
+        // ListFilters::apply().
+        if (($search = $filters->value('q')) !== null) {
+            $term = '%'.ListFilters::escapeLike($search).'%';
+
+            $query->where(function ($sub) use ($term): void {
+                $sub->where('adn', 'like', $term)
+                    ->orWhereHas('user', fn ($u) => $u->where('full_name', 'like', $term));
+            });
+        }
 
         $distributors = $query->paginate(25)->withQueryString();
 
@@ -67,6 +85,7 @@ final class AdminDormancyController extends Controller
             'distributors' => $distributors,
             'assessments' => $assessments,
             'filter' => $filter,
+            'filters' => $filters,
             'sweepEnabled' => $this->settings->sweepEnabled(),
             'inactivityMonths' => $this->settings->inactivityMonths(),
             'noticeDays' => $this->settings->noticeDays(),

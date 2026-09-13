@@ -33,12 +33,16 @@ use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -442,11 +446,15 @@ final class IncomeController extends Controller
         abort_unless($distributor !== null, 403);
 
         $walletService = app(WalletService::class);
+        $filters = self::walletFilters($request);
 
         try {
-            $ledgerRows = $walletService->ledgerWithRunningBalance($distributor->id);
+            $ledgerRows = self::paginateLedger(
+                $request,
+                self::walletLedger($walletService, (int) $distributor->id, $filters),
+            );
         } catch (QueryException) {
-            $ledgerRows = collect();
+            $ledgerRows = self::paginateLedger($request, collect());
         }
 
         try {
@@ -494,7 +502,59 @@ final class IncomeController extends Controller
             'distributor', 'ledgerRows', 'repurchaseLedgerRows', 'payoutRows',
             'walletBalancePaise', 'repurchaseWalletBalancePaise', 'repurchaseWalletStatus',
             'totalPaidOutPaise', 'nextPayout', 'minThresholdPaise', 'payoutBatchLabels',
+            'filters',
         ));
+    }
+
+    /**
+     * The wallet ledger's filter set. Both controls narrow the signed-in
+     * distributor's own statement; neither names another distributor.
+     */
+    private static function walletFilters(Request $request): ListFilters
+    {
+        return ListFilters::make($request, [
+            FilterField::select(
+                'type',
+                'Type',
+                WalletLedgerEntry::typeLabels(),
+                placeholder: 'All types',
+            ),
+            FilterField::dateRange('date', 'Date'),
+        ]);
+    }
+
+    /**
+     * The filtered statement. The distributor id is the scope and comes from
+     * the session; the filters are passed separately and only narrow it.
+     *
+     * @return Collection<int, array{entry: WalletLedgerEntry, running_balance_paise: int}>
+     */
+    private static function walletLedger(WalletService $wallet, int $distributorId, ListFilters $filters): Collection
+    {
+        return $wallet->ledgerWithRunningBalance(
+            $distributorId,
+            type: $filters->value('type'),
+            from: $filters->value('date_from'),
+            to: $filters->value('date_to'),
+        );
+    }
+
+    /**
+     * @param  Collection<int, array{entry: WalletLedgerEntry, running_balance_paise: int}>  $rows
+     * @return LengthAwarePaginator<int, array{entry: WalletLedgerEntry, running_balance_paise: int}>
+     */
+    private static function paginateLedger(Request $request, Collection $rows): LengthAwarePaginator
+    {
+        $perPage = 25;
+        $page = max(1, (int) $request->query('page', '1'));
+
+        return new LengthAwarePaginator(
+            $rows->forPage($page, $perPage)->values(),
+            $rows->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()],
+        );
     }
 
     public function exportWallet(Request $request): StreamedResponse
@@ -504,8 +564,12 @@ final class IncomeController extends Controller
 
         $walletService = app(WalletService::class);
 
+        // Same filter declaration as the page, read from the same query string:
+        // the CSV a distributor downloads must be the table they are looking at.
+        $filters = self::walletFilters($request);
+
         try {
-            $ledgerRows = $walletService->ledgerWithRunningBalance($distributor->id);
+            $ledgerRows = self::walletLedger($walletService, (int) $distributor->id, $filters);
         } catch (QueryException) {
             $ledgerRows = collect();
         }

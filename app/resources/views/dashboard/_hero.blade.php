@@ -39,15 +39,24 @@
                             <x-lucide-id-card class="w-4 h-4 text-brand-600" />
                             ADN {{ $distributor->adn }}
                         </span>
-                        @if($rankOn && $rankStatus?->currentRankName())
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-sunrise-400/25 border border-sunrise-300/40 px-2.5 py-1 font-semibold">
+                        {{-- Rank. $rankStatus is null both when the feature is off
+                             and when the income queries failed, and in neither case
+                             do we know the rank — so "No Rank" is only shown once we
+                             have a real RankStatus whose currentRankName() is null,
+                             which means the rank is genuinely not yet achieved. --}}
+                        @if($rankOn && $rankStatus !== null)
+                            @php $currentRankName = $rankStatus->currentRankName(); @endphp
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold {{ $currentRankName ? 'bg-sunrise-400/25 border border-sunrise-300/40' : 'bg-white/10 border border-white/20 text-white/70' }}">
                                 <x-lucide-trophy class="w-3.5 h-3.5" />
-                                {{ $rankStatus->currentRankName() }}
+                                {{ $currentRankName ?? 'No Rank' }}
                             </span>
                         @endif
-                        @if($title?->title)
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-leaf-400/25 border border-leaf-300/40 px-2.5 py-1 font-semibold">
-                                {{ $title->title }}
+                        {{-- Title. Same rule: $title is null only when the income
+                             queries failed; a TitleResult with a null title is a
+                             distributor who has not reached the first threshold. --}}
+                        @if($title !== null)
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold {{ $title->title ? 'bg-leaf-400/25 border border-leaf-300/40' : 'bg-white/10 border border-white/20 text-white/70' }}">
+                                {{ $title->title ?? 'No Title' }}
                             </span>
                         @endif
                         <span class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-white/85">

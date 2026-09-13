@@ -12,6 +12,8 @@ use App\Modules\Commerce\Services\PurchaseOfferSettings;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -39,14 +41,25 @@ final class AdminOfferController extends Controller
 
         $month = $this->resolveMonth($request);
 
-        $grants = PurchaseOfferGrant::with(['distributor.user', 'variant.product'])
-            ->whereDate('month_start', $month->toDateString())
+        $filters = ListFilters::make($request, [
+            FilterField::month('month', 'Month'),
+            FilterField::select('offer_type', 'Offer type', [
+                PurchaseOfferType::HalfPriceProduct->value => PurchaseOfferType::HalfPriceProduct->label(),
+                PurchaseOfferType::RedeemPoints->value => PurchaseOfferType::RedeemPoints->label(),
+            ], column: 'offer_type', placeholder: 'All offer types'),
+        ]);
+
+        $grants = $filters->apply(
+            PurchaseOfferGrant::with(['distributor.user', 'variant.product'])
+                ->whereDate('month_start', $month->toDateString())
+        )
             ->orderBy('offer_type')
             ->paginate(25)
             ->withQueryString();
 
         return view('admin.commerce.offers.index', [
             'month' => $month,
+            'filters' => $filters,
             'announced' => MonthlyOfferProduct::with('variant.product')
                 ->whereDate('month_start', $month->toDateString())
                 ->first(),

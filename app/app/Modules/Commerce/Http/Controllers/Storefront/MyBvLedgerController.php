@@ -6,6 +6,8 @@ namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -30,8 +32,17 @@ final class MyBvLedgerController extends Controller
 
         $breakdown = $this->bvLedger->breakdownForDistributor($distributor->id);
 
-        $ordered = BvLedgerEntry::query()
-            ->forDistributor($distributor->id)
+        $filters = ListFilters::make($request, [
+            FilterField::dateRange('effective', 'Date', dateColumn: 'bv_ledger_entries.effective_at'),
+        ]);
+
+        // The filter is applied to `$ordered` BEFORE the opening-balance
+        // subquery is cloned off it, so the running balance below is computed
+        // over exactly the rows being shown. Apply it any later and every
+        // balance from page 2 onwards is wrong.
+        $ordered = $filters->apply(
+            BvLedgerEntry::query()->forDistributor($distributor->id)
+        )
             ->with('order')
             ->orderBy('effective_at')
             ->orderBy('id');
@@ -50,6 +61,7 @@ final class MyBvLedgerController extends Controller
             'breakdown' => $breakdown,
             'entries' => (clone $ordered)->paginate(self::ENTRIES_PER_PAGE)->withQueryString(),
             'openingBalance' => $openingBalance,
+            'filters' => $filters,
         ]);
     }
 }

@@ -7,6 +7,8 @@ namespace App\Modules\Admin\Http\Controllers;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Public\Models\ContactInquiry;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -25,10 +27,26 @@ final class AdminContactController extends Controller
 {
     public function index(Request $request): View
     {
-        $filter = (string) $request->query('filter', 'unhandled');
-        if (! in_array($filter, ['unhandled', 'handled', 'all'], true)) {
-            $filter = 'unhandled';
-        }
+        $filters = ListFilters::make($request, [
+            FilterField::select('filter', 'Handled', [
+                'unhandled' => 'Unhandled',
+                'handled' => 'Handled',
+                'all' => 'All',
+            ], placeholder: 'All'),
+            FilterField::select('purpose', 'Purpose', [
+                'become_distributor' => 'Become a Direct Seller',
+                'support' => 'Support',
+                'compliance' => 'Compliance',
+                'partnership' => 'Partnership',
+                'other' => 'Other',
+            ], column: 'contact_inquiries.purpose', placeholder: 'All purposes'),
+            FilterField::text('q', 'Search', 'Search by name, email, phone…', columns: [
+                'contact_inquiries.email', 'contact_inquiries.phone_e164', 'contact_inquiries.name',
+            ]),
+            FilterField::dateRange('created', 'Submitted', dateColumn: 'contact_inquiries.created_at'),
+        ]);
+
+        $filter = $filters->value('filter') ?? 'unhandled';
 
         $query = ContactInquiry::query()->orderByDesc('created_at');
 
@@ -38,22 +56,7 @@ final class AdminContactController extends Controller
             $query->whereNotNull('handled_at');
         }
 
-        $purpose = (string) $request->query('purpose', '');
-        if (in_array($purpose, ['become_distributor', 'support', 'compliance', 'partnership', 'other'], true)) {
-            $query->where('purpose', $purpose);
-        }
-
-        $search = trim((string) $request->query('q', ''));
-        if ($search !== '') {
-            $like = '%'.$search.'%';
-            $query->where(function ($q) use ($like): void {
-                $q->where('email', 'like', $like)
-                    ->orWhere('phone_e164', 'like', $like)
-                    ->orWhere('name', 'like', $like);
-            });
-        }
-
-        $inquiries = $query->paginate(25)->withQueryString();
+        $inquiries = $filters->apply($query)->paginate(25)->withQueryString();
 
         // Counts for the filter chips — single round trip via two GROUP BY queries
         $unhandledCount = ContactInquiry::query()->whereNull('handled_at')->count();
@@ -61,9 +64,7 @@ final class AdminContactController extends Controller
 
         return view('admin.contact-inquiries.index', [
             'inquiries' => $inquiries,
-            'filter' => $filter,
-            'purpose' => $purpose,
-            'search' => $search,
+            'filters' => $filters,
             'unhandledCount' => $unhandledCount,
             'handledCount' => $handledCount,
             'totalCount' => $unhandledCount + $handledCount,

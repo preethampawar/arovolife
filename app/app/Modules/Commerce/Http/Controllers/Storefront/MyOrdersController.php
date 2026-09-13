@@ -6,6 +6,8 @@ namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Tax\Models\Invoice;
 use App\Modules\Tax\Services\TaxSettings;
 use Illuminate\Contracts\View\View;
@@ -23,17 +25,52 @@ final class MyOrdersController extends Controller
 {
     public function index(Request $request): View
     {
-        $orders = Order::query()
-            ->whereHas('customer', fn ($q) => $q->where('user_id', $request->user()->id))
+        $filters = self::orderFilters($request);
+
+        // The ownership scope comes first and is built from the session user,
+        // never from a request parameter; the filters below can only narrow
+        // what it already returned (CLAUDE.md hard rule 3).
+        $orders = $filters->apply(
+            Order::query()
+                ->whereHas('customer', fn ($q) => $q->where('user_id', $request->user()->id))
+        )
             ->with(['items', 'coolingOff', 'bvLedgerEntries'])
             ->latest('placed_at')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('shop.orders.index', [
             'orders' => $orders,
+            'filters' => $filters,
             // BV is a distributor-only figure (hard rule #3) — a non-distributor
             // customer never sees it, consistent with cart/checkout/confirmation.
             'showBv' => $request->user()?->distributor !== null,
+        ]);
+    }
+
+    /**
+     * The filter set shared by "My Purchases" and "My Sales" — both are lists
+     * of the same model with the same columns, differing only in the scope
+     * they are applied to. Nothing here names a distributor, a user or an ADN.
+     */
+    private static function orderFilters(Request $request): ListFilters
+    {
+        return ListFilters::make($request, [
+            FilterField::text('q', 'Order number', 'e.g. AO-2026-000123', columns: ['orders.order_no']),
+            FilterField::select('status', 'Status', [
+                Order::STATUS_PLACED => 'Placed',
+                Order::STATUS_PAID => 'Paid',
+                Order::STATUS_READY_TO_SHIP => 'Ready to ship',
+                Order::STATUS_SHIPPED => 'Shipped',
+                Order::STATUS_DELIVERED => 'Delivered',
+                Order::STATUS_CONFIRMED => 'Confirmed',
+                Order::STATUS_CANCELLED => 'Cancelled',
+                Order::STATUS_REFUND_REQUESTED => 'Return requested',
+                Order::STATUS_REFUND_INSPECTION => 'Return under inspection',
+                Order::STATUS_REFUND_APPROVED => 'Refund approved',
+                Order::STATUS_REFUNDED => 'Refunded',
+            ], column: 'orders.status', placeholder: 'All statuses'),
+            FilterField::dateRange('placed', 'Placed', dateColumn: 'orders.placed_at'),
         ]);
     }
 
@@ -48,14 +85,22 @@ final class MyOrdersController extends Controller
 
         abort_unless($distributor !== null, 403);
 
-        $sales = Order::query()
-            ->where('attributed_distributor_id', $distributor->id)
-            ->where('self_consumption', false)
+        $filters = self::orderFilters($request);
+
+        // Attribution AND the self-consumption exclusion are both part of the
+        // scope, applied before the filters. No filter field names either
+        // column, so nothing a viewer submits can reach a self-consumption row.
+        $sales = $filters->apply(
+            Order::query()
+                ->where('attributed_distributor_id', $distributor->id)
+                ->where('self_consumption', false)
+        )
             ->with(['items', 'customer', 'bvLedgerEntries'])
             ->latest('placed_at')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
-        return view('shop.orders.sales', ['sales' => $sales]);
+        return view('shop.orders.sales', ['sales' => $sales, 'filters' => $filters]);
     }
 
     /**

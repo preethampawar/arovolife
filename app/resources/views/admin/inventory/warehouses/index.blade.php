@@ -11,6 +11,8 @@
     </a>
 </div>
 
+<x-filter-bar :filters="$filters" />
+
 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">

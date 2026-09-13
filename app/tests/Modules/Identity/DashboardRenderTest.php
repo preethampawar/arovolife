@@ -95,6 +95,35 @@ it('DSH-02: dashboard renders the ID-card panel for a distributor', function () 
         ->assertSee('Status', false);
 });
 
+it('DSH-03: a distributor with no rank and no title sees "No Rank" and "No Title", not empty space', function () {
+    Feature::for(null)->activate(RankBonusFeature::class);
+
+    $user = dshUser('active');
+    dshDistributor($user);
+
+    // A fresh distributor: zero personal BV, so below the first title
+    // threshold, and no rank ever achieved.
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('No Rank', false)
+        ->assertSee('No Title', false);
+});
+
+it('DSH-04: the rank pill stays absent entirely when the rank feature is off', function () {
+    Feature::for(null)->deactivate(RankBonusFeature::class);
+
+    $user = dshUser('active');
+    dshDistributor($user);
+
+    // Zero-trace gating: a flag that is off leaves no placeholder behind
+    // either. "No Rank" would still tell the viewer the feature exists.
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('No Rank', false);
+});
+
 it('PS-01: profile-stats prints the ID-card panel with the company header for a distributor', function () {
     $user = dshUser('active');
     dshDistributor($user);
@@ -292,4 +321,31 @@ it('DSH-08: shows the repurchase alert even with the repurchase engine flag off'
         ->assertOk()
         ->assertSee('Repurchase alert')
         ->assertSee('Bring this to ₹0 by');
+});
+
+it('DOC-01: the documents page renders the repurchase card for an unqualified distributor', function () {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $user = dshUser('active');
+    dshDistributor($user);
+
+    // A fresh distributor is below the BV gate, so the card must show what
+    // opens the cycle rather than an empty window.
+    $this->actingAs($user)
+        ->get(route('dashboard.documents'))
+        ->assertOk()
+        ->assertSee('Repurchase cycle', false)
+        ->assertSee('Not started yet', false);
+});
+
+it('DOC-02: the repurchase card leaves no trace when the engine is off', function () {
+    Feature::for(null)->deactivate(RepurchaseEngineFeature::class);
+
+    $user = dshUser('active');
+    dshDistributor($user);
+
+    $this->actingAs($user)
+        ->get(route('dashboard.documents'))
+        ->assertOk()
+        ->assertDontSee('Repurchase cycle', false);
 });

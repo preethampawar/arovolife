@@ -17,6 +17,9 @@ use App\Modules\Kyc\Models\KycDocument;
 use App\Modules\Kyc\Notifications\KycDocumentFlaggedNotification;
 use App\Modules\Kyc\Services\KycDocumentVault;
 use App\Modules\Shared\Http\Rules\ScannedForMalware;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -58,22 +61,15 @@ final class AdminKycController extends Controller
         $tab = $request->query('tab', 'pending');
         $tab = in_array($tab, ['pending', 'rejected', 'flagged'], true) ? $tab : 'pending';
 
-        $base = Distributor::query()
-            ->where(function ($q) {
-                $q->whereNull('spouse_distributor_id')
-                    ->orWhere('is_primary_couple', true);
-            })
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'ADN or name'),
+            FilterField::select('state', 'State', AdminDistributorEditController::indianStates(), column: 'distributors.state', placeholder: 'All states'),
+            FilterField::dateRange('created', 'Registered', 'distributors.created_at'),
+        ]);
+
+        $base = $this->kycQueue($tab, $filters)
             ->with('user')
             ->withCount('kycDocuments');
-
-        if ($tab === 'flagged') {
-            // Waiting on the applicant: at least one document was flagged for
-            // re-upload and has not been replaced — the re-upload clears
-            // `flagged_at`, so a non-null value is by definition unresolved.
-            $base->whereHas('kycDocuments', fn ($q) => $q->whereNotNull('flagged_at'));
-        } else {
-            $base->whereHas('user', fn ($q) => $q->where('status', $tab));
-        }
 
         $rows = $base->orderBy('created_at')->paginate(50)->withQueryString();
 
@@ -96,22 +92,12 @@ final class AdminKycController extends Controller
             ->pluck('distributor_id')
             ->unique();
 
-        // Counts for the tab buttons.
-        $pendingCount = Distributor::query()
-            ->whereHas('user', fn ($q) => $q->where('status', 'pending'))
-            ->where(function ($q) {
-                $q->whereNull('spouse_distributor_id')->orWhere('is_primary_couple', true);
-            })->count();
-        $rejectedCount = Distributor::query()
-            ->whereHas('user', fn ($q) => $q->where('status', 'rejected'))
-            ->where(function ($q) {
-                $q->whereNull('spouse_distributor_id')->orWhere('is_primary_couple', true);
-            })->count();
-        $flaggedCount = Distributor::query()
-            ->whereHas('kycDocuments', fn ($q) => $q->whereNotNull('flagged_at'))
-            ->where(function ($q) {
-                $q->whereNull('spouse_distributor_id')->orWhere('is_primary_couple', true);
-            })->count();
+        // Counts for the tab buttons. They run through the same builder as the
+        // rows, filters included — a badge that counted the unfiltered queue
+        // would contradict the list sitting underneath it.
+        $pendingCount = $this->kycQueue('pending', $filters)->count();
+        $rejectedCount = $this->kycQueue('rejected', $filters)->count();
+        $flaggedCount = $this->kycQueue('flagged', $filters)->count();
 
         return view('admin.kyc.index', [
             'pending' => $rows,
@@ -121,7 +107,48 @@ final class AdminKycController extends Controller
             'pendingCount' => $pendingCount,
             'rejectedCount' => $rejectedCount,
             'flaggedCount' => $flaggedCount,
+            'filters' => $filters,
         ]);
+    }
+
+    /**
+     * One tab's queue, filters applied.
+     *
+     * The tab selects the base query; the filters narrow whichever tab was
+     * selected. Both the rows and the three tab badges are built here so they
+     * can never disagree about what is being shown.
+     *
+     * @return Builder<Distributor>
+     */
+    private function kycQueue(string $tab, ListFilters $filters): Builder
+    {
+        $query = Distributor::query()
+            ->where(function ($q) {
+                $q->whereNull('spouse_distributor_id')
+                    ->orWhere('is_primary_couple', true);
+            });
+
+        if ($tab === 'flagged') {
+            // Waiting on the applicant: at least one document was flagged for
+            // re-upload and has not been replaced — the re-upload clears
+            // `flagged_at`, so a non-null value is by definition unresolved.
+            $query->whereHas('kycDocuments', fn ($q) => $q->whereNotNull('flagged_at'));
+        } else {
+            $query->whereHas('user', fn ($q) => $q->where('status', $tab));
+        }
+
+        $filters->apply($query);
+
+        if (($search = $filters->value('q')) !== null) {
+            $term = '%'.ListFilters::escapeLike($search).'%';
+
+            $query->where(function ($q) use ($term) {
+                $q->where('adn', 'like', $term)
+                    ->orWhereHas('user', fn ($u) => $u->where('full_name', 'like', $term));
+            });
+        }
+
+        return $query;
     }
 
     public function show(int $id): View

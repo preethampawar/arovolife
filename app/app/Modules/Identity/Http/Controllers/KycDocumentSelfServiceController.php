@@ -4,19 +4,23 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Http\Controllers;
 
+use App\Modules\Compensation\Services\RepurchaseCycleService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Kyc\Models\KycDocument;
 use App\Modules\Kyc\Services\KycDocumentVault;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use App\Modules\Shared\Http\Rules\ScannedForMalware;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Laravel\Pennant\Feature;
 
 /**
  * Customer-facing self-service for KYC documents post-registration.
@@ -73,10 +77,25 @@ final class KycDocumentSelfServiceController extends Controller
             ->get()
             ->keyBy('type');
 
+        // The repurchase card. Null when the engine is off — a flag that is
+        // down leaves no trace on the page — and null again if the income
+        // tables are mid-migration, because a half-read obligation is worse
+        // than none: this page must keep rendering the documents either way.
+        $repurchaseCard = null;
+
+        if (Feature::for(null)->active(RepurchaseEngineFeature::class)) {
+            try {
+                $repurchaseCard = app(RepurchaseCycleService::class)->cardFor((int) $distributor->id);
+            } catch (QueryException) {
+                $repurchaseCard = null;
+            }
+        }
+
         return view('dashboard.kyc-documents', [
             'distributor' => $distributor,
             'docsByType' => $docs,
             'selfServiceTypes' => self::SELF_SERVICE_TYPES,
+            'repurchaseCard' => $repurchaseCard,
         ]);
     }
 

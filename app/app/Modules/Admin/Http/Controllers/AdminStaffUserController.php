@@ -8,6 +8,8 @@ use App\Modules\Admin\Services\StaffAccountService;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,9 +44,20 @@ final class AdminStaffUserController extends Controller
         $viewer = $request->user();
         $visibleRoles = User::visibleRoleNames($viewer);
 
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'Name or email'),
+            FilterField::select('status', 'Status', [
+                'active' => 'Active',
+                'frozen' => 'Frozen',
+            ], column: 'status', placeholder: 'All statuses'),
+        ]);
+
+        // Already visibility-scoped by visibleStaffQuery(): the status filter
+        // is applied on top of it, never as a separate orWhere, so it cannot
+        // surface a hidden-role account that the scope already excluded.
         $query = $this->visibleStaffQuery($viewer);
 
-        if ($search = $request->query('q')) {
+        if ($search = $filters->value('q')) {
             $query->where(function ($q) use ($search) {
                 $q->where('email', 'like', "%{$search}%")
                     ->orWhere('full_name', 'like', "%{$search}%");
@@ -58,12 +71,15 @@ final class AdminStaffUserController extends Controller
             $query->whereHas('roles', fn ($q) => $q->where('name', $role));
         }
 
+        $filters->apply($query);
+
         $staff = $query->orderBy('full_name')->paginate(20)->withQueryString();
 
         return view('admin.staff.index', [
             'staff' => $staff,
             'roles' => collect($visibleRoles),
             'currentUserId' => $viewer?->id,
+            'filters' => $filters,
         ]);
     }
 

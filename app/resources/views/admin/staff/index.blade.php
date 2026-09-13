@@ -34,24 +34,8 @@
     @endif
 </div>
 
-{{-- Search --}}
-<form method="GET" action="{{ route('admin.staff.index') }}" class="mb-6 flex gap-3">
-    @if(request()->query('role'))
-        <input type="hidden" name="role" value="{{ request()->query('role') }}">
-    @endif
-    <input name="q" type="text" value="{{ request()->query('q') }}"
-        placeholder="Search name or email…"
-        class="flex-1 max-w-sm rounded-lg bg-white border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
-    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
-        Search
-    </button>
-    @if(request()->query('q'))
-    <a href="{{ route('admin.staff.index', array_diff_key(request()->query(), ['q'=>''])) }}"
-       class="px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-800 hover:text-white transition-colors">
-        Clear
-    </a>
-    @endif
-</form>
+{{-- Search + status --}}
+<x-filter-bar :filters="$filters" />
 
 {{-- Table --}}
 <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">

@@ -625,11 +625,32 @@ class WalletService
     /**
      * Running balance ledger with cumulative sum, ordered by created_at.
      * Capped at the most recent 500 entries to prevent unbounded memory use.
+     *
+     * The optional narrowing arguments exist so the wallet page and its export
+     * share one definition of a filtered statement: the running balance is
+     * accumulated over exactly the rows returned, so it can never disagree
+     * with the rows printed beside it. They narrow the distributor's own
+     * ledger and nothing else — `$distributorId` remains the only scope.
+     *
+     * `$from`/`$to` (both `Y-m-d`) are matched against the date the page
+     * displays — earned_on, else bonus_month, else created_at — not against
+     * created_at alone, which for a cut-off credited the next morning would
+     * exclude a row the viewer can see is in range.
      */
-    public function ledgerWithRunningBalance(int $distributorId, int $limit = 500): Collection
-    {
+    public function ledgerWithRunningBalance(
+        int $distributorId,
+        int $limit = 500,
+        ?string $type = null,
+        ?string $from = null,
+        ?string $to = null,
+    ): Collection {
+        $displayDate = 'COALESCE(earned_on, bonus_month, created_at)';
+
         $entries = WalletLedgerEntry::where('distributor_id', $distributorId)
             ->whereNotIn('type', self::REPURCHASE_TYPES)
+            ->when($type !== null, fn ($q) => $q->where('type', $type))
+            ->when($from !== null, fn ($q) => $q->whereRaw("DATE({$displayDate}) >= ?", [$from]))
+            ->when($to !== null, fn ($q) => $q->whereRaw("DATE({$displayDate}) <= ?", [$to]))
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->limit($limit)

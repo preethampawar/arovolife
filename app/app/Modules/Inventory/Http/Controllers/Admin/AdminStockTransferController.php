@@ -9,6 +9,8 @@ use App\Modules\Inventory\Models\StockBatch;
 use App\Modules\Inventory\Models\StockTransfer;
 use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\StockTransferService;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,11 +22,31 @@ final class AdminStockTransferController extends Controller
 {
     public function __construct(private readonly StockTransferService $transfers) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $transfers = StockTransfer::query()->orderByDesc('id')->paginate(25);
+        $filters = ListFilters::make($request, [
+            FilterField::select('status', 'Status', [
+                StockTransfer::STATUS_DRAFT => 'Draft',
+                StockTransfer::STATUS_DISPATCHED => 'Dispatched',
+                StockTransfer::STATUS_RECEIVED => 'Received',
+                StockTransfer::STATUS_CANCELLED => 'Cancelled',
+            ], column: 'stock_transfers.status', placeholder: 'All statuses'),
+            FilterField::select('warehouse_code', 'Warehouse', Warehouse::query()->orderBy('name')->get(['code', 'name'])->mapWithKeys(fn (Warehouse $w): array => [$w->code => $w->name])->all(), placeholder: 'All warehouses'),
+            FilterField::dateRange('created', 'Created', dateColumn: 'stock_transfers.created_at'),
+        ]);
 
-        return view('admin.inventory.transfers.index', ['transfers' => $transfers]);
+        $warehouseCode = $filters->value('warehouse_code');
+
+        $transfers = $filters->apply(StockTransfer::query())
+            ->when($warehouseCode !== null, fn ($q) => $q->where(function ($inner) use ($warehouseCode): void {
+                $inner->where('stock_transfers.from_warehouse_code', $warehouseCode)
+                    ->orWhere('stock_transfers.to_warehouse_code', $warehouseCode);
+            }))
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('admin.inventory.transfers.index', ['transfers' => $transfers, 'filters' => $filters]);
     }
 
     public function create(): View

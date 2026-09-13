@@ -15,6 +15,8 @@
     </a>
 </div>
 
+<x-filter-bar :filters="$filters" />
+
 <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">

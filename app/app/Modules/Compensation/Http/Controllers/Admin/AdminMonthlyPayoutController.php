@@ -9,8 +9,11 @@ use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PayoutGatewaySettings;
+use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\IndianNumber as Number;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
 final class AdminMonthlyPayoutController extends Controller
@@ -22,22 +25,38 @@ final class AdminMonthlyPayoutController extends Controller
         return 'admin.compensation.monthly-payouts.'.$action;
     }
 
-    public function index(CompensationPlanSettingsService $plan): View
+    public function index(Request $request, CompensationPlanSettingsService $plan): View
     {
+        $filters = ListFilters::make($request, [
+            FilterField::dateRange('batch_date', 'Batch date', dateColumn: 'batch_date'),
+            FilterField::select('status', 'Status', [
+                PayoutBatch::STATUS_PENDING => 'Pending',
+                PayoutBatch::STATUS_PROCESSING => 'Processing',
+                PayoutBatch::STATUS_APPROVED => 'Approved',
+                PayoutBatch::STATUS_DISPATCHED => 'Dispatched',
+                PayoutBatch::STATUS_COMPLETED => 'Completed',
+                PayoutBatch::STATUS_PARTIALLY_FAILED => 'Partially failed',
+                PayoutBatch::STATUS_FAILED => 'Failed',
+            ], column: 'status', placeholder: 'All statuses'),
+        ]);
+
         // distributor_count is the paying lines only; the held count sits
         // beside it so a batch full of KYC-pending income never reads as empty.
-        $batches = PayoutBatch::where('batch_type', PayoutBatch::TYPE_MONTHLY)
-            ->withCount(['lineItems as held_count' => fn ($q) => $q->whereIn('status', PayoutLineItem::HELD_STATUSES)])
+        $batches = $filters->apply(
+            PayoutBatch::where('batch_type', PayoutBatch::TYPE_MONTHLY)
+                ->withCount(['lineItems as held_count' => fn ($q) => $q->whereIn('status', PayoutLineItem::HELD_STATUSES)])
+        )
             ->orderByDesc('batch_date')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
         $minPayout = Number::format($plan->minPayoutPaise() / 100, 0);
 
-        return view('admin.compensation.monthly-payouts.index', compact('batches', 'minPayout'));
+        return view('admin.compensation.monthly-payouts.index', compact('batches', 'minPayout', 'filters'));
     }
 
     public function show(PayoutBatch $batch, PayoutGatewaySettings $settings): View
     {
-        $lines = $batch->lineItems()->with('distributor.user')->paginate(50);
+        $lines = $batch->lineItems()->with('distributor.user')->paginate(50)->withQueryString();
 
         $statusCounts = $batch->lineItems()
             ->selectRaw('status, COUNT(*) AS total')

@@ -5,6 +5,8 @@
 <h1 class="mb-1 text-xl font-bold text-gray-900">Notifications</h1>
 <p class="mb-6 text-sm text-gray-600">Updates about your account and orders. The newest are at the top.</p>
 
+<x-filter-bar :filters="$filters" />
+
 @if($notifications->isEmpty())
     <div class="rounded-xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-600">
         There are no notifications right now.

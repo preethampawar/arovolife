@@ -12,14 +12,14 @@
 {{-- Status flash is rendered once by the admin layout. --}}
 
 <div class="flex items-center gap-2 mb-6">
-    <a href="{{ route('admin.line-changes.index', ['tab' => 'pending']) }}"
+    <a href="{{ request()->fullUrlWithQuery(['tab' => 'pending', 'page' => null]) }}"
         class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors
             {{ $currentTab === 'decided' ? 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' : 'border-brand-500 bg-brand-700 text-white' }}">
         Pending
         <span class="inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold
             {{ $currentTab === 'decided' ? 'bg-gray-100 text-gray-700' : 'bg-brand-900 text-white' }}">{{ $pendingCount }}</span>
     </a>
-    <a href="{{ route('admin.line-changes.index', ['tab' => 'decided']) }}"
+    <a href="{{ request()->fullUrlWithQuery(['tab' => 'decided', 'page' => null]) }}"
         class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors
             {{ $currentTab === 'decided' ? 'border-brand-500 bg-brand-700 text-white' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' }}">
         Decided
@@ -27,6 +27,8 @@
             {{ $currentTab === 'decided' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-700' }}">{{ $decidedCount }}</span>
     </a>
 </div>
+
+<x-filter-bar :filters="$filters" />
 
 <div class="rounded-2xl border border-gray-200 bg-white">
     @if($rows->isEmpty())

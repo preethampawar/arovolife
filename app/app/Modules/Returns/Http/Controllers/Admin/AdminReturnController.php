@@ -7,6 +7,8 @@ namespace App\Modules\Returns\Http\Controllers\Admin;
 use App\Modules\Returns\Models\ReturnRequest;
 use App\Modules\Returns\Services\InspectReturn;
 use App\Modules\Returns\Services\ReturnReceiptService;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,10 +36,26 @@ final class AdminReturnController extends Controller
     {
         $status = $request->query('status');
 
-        $returns = ReturnRequest::with(['order.customer', 'inspection', 'buybackDecision'])
-            ->when($status, fn ($q) => $q->where('status', $status))
+        // `status` stays a tab, not a ListFilters field (A7): the tabs are
+        // kept and rebuilt to preserve the toolbar's own filters.
+        $filters = ListFilters::make($request, [
+            FilterField::select('reason', 'Reason', [
+                ReturnRequest::REASON_COOLING_OFF => 'Cooling-off',
+                ReturnRequest::REASON_DAMAGE => 'Damage',
+                ReturnRequest::REASON_DISSATISFACTION => 'Dissatisfaction',
+                ReturnRequest::REASON_GENERAL_BUYBACK => 'General buyback',
+                ReturnRequest::REASON_TERMINATION_BUYBACK => 'Termination buyback',
+            ], column: 'return_requests.reason', placeholder: 'All reasons'),
+            FilterField::dateRange('created', 'Opened', dateColumn: 'return_requests.created_at'),
+        ]);
+
+        $returns = $filters->apply(
+            ReturnRequest::with(['order.customer', 'inspection', 'buybackDecision'])
+                ->when($status, fn ($q) => $q->where('status', $status))
+        )
             ->orderByDesc('created_at')
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
         $statusCounts = ReturnRequest::selectRaw('status, COUNT(*) as c')
             ->groupBy('status')
@@ -46,6 +64,7 @@ final class AdminReturnController extends Controller
 
         return view('admin.returns.index', [
             'returns' => $returns,
+            'filters' => $filters,
             'statusCounts' => $statusCounts,
         ]);
     }

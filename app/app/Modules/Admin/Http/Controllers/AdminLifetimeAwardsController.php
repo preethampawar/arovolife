@@ -12,10 +12,13 @@ use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Pennant\Feature;
 
@@ -25,18 +28,54 @@ final class AdminLifetimeAwardsController extends Controller
     {
         abort_unless(Feature::for(null)->active(LifetimeAwardsFeature::class), 404);
 
-        $milestones = LifetimeAwardMilestone::with('distributor')
-            ->when(
-                $request->filled('status'),
-                fn ($q) => $q->where('status', $request->input('status')),
-            )
+        $plan = app(CompensationPlanSettingsService::class);
+        $rankNames = $plan->rankNames();
+
+        /** @var array<string, string> $rankOptions */
+        $rankOptions = array_combine(
+            array_map(strval(...), array_keys($rankNames)),
+            array_values($rankNames),
+        );
+
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'ADN or name'),
+            FilterField::select('status', 'Status', [
+                LifetimeAwardMilestone::STATUS_PENDING => 'Pending',
+                LifetimeAwardMilestone::STATUS_DELIVERED => 'Delivered',
+                LifetimeAwardMilestone::STATUS_CANCELLED => 'Cancelled',
+            ], column: 'status', placeholder: 'All statuses'),
+            FilterField::select('rank_number', 'Rank', $rankOptions, column: 'rank_number', placeholder: 'All ranks'),
+            FilterField::month('month', 'Month'),
+        ]);
+
+        $query = LifetimeAwardMilestone::with('distributor');
+
+        // No column mapping declared: adn lives on the distributor, full_name
+        // on its user, so the term is applied here rather than through
+        // ListFilters::apply().
+        if (($search = $filters->value('q')) !== null) {
+            $term = '%'.ListFilters::escapeLike($search).'%';
+
+            $query->where(function ($sub) use ($term): void {
+                $sub->whereHas('distributor', function ($d) use ($term): void {
+                    $d->where('adn', 'like', $term)
+                        ->orWhereHas('user', fn ($u) => $u->where('full_name', 'like', $term));
+                });
+            });
+        }
+
+        // triggered_month is stored as the month's start date, not `Y-m`, so
+        // the month field maps no column and is applied here as a range.
+        if (($month = $filters->value('month')) !== null) {
+            $start = Carbon::createFromFormat('!Y-m', $month)->startOfMonth();
+            $query->whereBetween('triggered_month', [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()]);
+        }
+
+        $milestones = $filters->apply($query)
             ->orderByDesc('triggered_month')
             ->orderBy('rank_number')
             ->paginate(50)
             ->withQueryString();
-
-        $plan = app(CompensationPlanSettingsService::class);
-        $rankNames = $plan->rankNames();
 
         // Per-rank reward catalogue (budget + itemised rewards) so the admin can
         // see exactly what each milestone's rank earns.
@@ -48,7 +87,7 @@ final class AdminLifetimeAwardsController extends Controller
             ];
         }
 
-        return view('admin.lifetime-awards.index', compact('milestones', 'rankNames', 'catalog'));
+        return view('admin.lifetime-awards.index', compact('milestones', 'rankNames', 'catalog', 'filters'));
     }
 
     /** Read-only-until-Edit catalogue editor for the per-rank reward items. */

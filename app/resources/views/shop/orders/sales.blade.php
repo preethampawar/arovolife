@@ -30,6 +30,8 @@
         Orders placed by your customers via your shared product links. Each customer sale accrues BV directly to your lifetime personal BV account — exactly the same as your own purchases. This BV counts toward your purchase title and GSB eligibility. You can view the full details of each sale and download the invoice.
     </div>
 
+    <x-filter-bar :filters="$filters" />
+
     @if($sales->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <p class="text-gray-600 mb-2">No customer sales yet.</p>

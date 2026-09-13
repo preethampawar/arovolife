@@ -90,10 +90,13 @@
     <div class="flex items-center justify-between mb-3">
         <h2 class="text-base font-semibold text-gray-800">Wallet Ledger</h2>
         <div class="flex items-center gap-2">
-            <a href="{{ route('income.wallet.export', ['format' => 'xlsx']) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">&#11015; Excel</a>
-            <a href="{{ route('income.wallet.export', ['format' => 'csv']) }}" class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">CSV</a>
+            {{-- The export carries the filters in force, so the file matches the table. --}}
+            <a href="{{ route('income.wallet.export', $filters->toQuery() + ['format' => 'xlsx']) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">&#11015; Excel</a>
+            <a href="{{ route('income.wallet.export', $filters->toQuery() + ['format' => 'csv']) }}" class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">CSV</a>
         </div>
     </div>
+
+    <x-filter-bar :filters="$filters" :action="route('income.wallet')" />
 
     @if($ledgerRows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-8 text-center mb-6">
@@ -151,7 +154,7 @@
                     @foreach($ledgerRows as $item)
                     @php $entry = $item['entry']; $runningBalance = $item['running_balance_paise']; @endphp
                     <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $ledgerRows->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 text-gray-700">
                             {{-- Dated by when it was EARNED, not when the row was
                                  written: a 06 Sep cut-off credited at 00:20 on
@@ -182,6 +185,7 @@
                 </tbody>
             </table>
         </div>
+        <div class="mb-6">{{ $ledgerRows->links() }}</div>
     @endif
 
     {{-- Repurchase wallet ledger --}}

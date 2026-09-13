@@ -4,7 +4,10 @@
 
 @section('content')
 @php
-    $filters = [
+    // Named $modes, not $filters: the controller passes a ListFilters object
+    // under that name and a local array here would shadow it, leaving
+    // <x-filter-bar> holding an array.
+    $modes = [
         'under_notice' => 'Under notice',
         'dormant' => 'Dormant, no notice yet',
         'terminated' => 'Terminated for dormancy',
@@ -46,14 +49,17 @@
 @endif
 
 <div class="mb-5 flex flex-wrap gap-2">
-    @foreach ($filters as $value => $label)
-        <a href="{{ route('admin.dormancy.index', ['filter' => $value]) }}"
+    @foreach ($modes as $value => $label)
+        {{-- fullUrlWithQuery, not route(): switching mode must keep the search. --}}
+        <a href="{{ request()->fullUrlWithQuery(['filter' => $value, 'page' => null]) }}"
            class="rounded-full px-3.5 py-1.5 text-xs font-semibold transition
                   {{ $filter === $value ? 'bg-slate-800 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100' }}">
             {{ $label }}
         </a>
     @endforeach
 </div>
+
+<x-filter-bar :filters="$filters" />
 
 @if ($distributors->isEmpty())
     <div class="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center text-gray-600">

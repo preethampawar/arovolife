@@ -10,18 +10,33 @@ use App\Modules\Commerce\Http\Requests\CouponRequest;
 use App\Modules\Commerce\Models\Coupon;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 
 final class AdminCouponController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $coupons = Coupon::query()->orderByDesc('id')->paginate(25);
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'Coupon code', columns: ['coupons.code']),
+            FilterField::select('status', 'Status', [
+                Coupon::STATUS_ACTIVE => 'Active',
+                Coupon::STATUS_ARCHIVED => 'Archived',
+            ], column: 'coupons.status', placeholder: 'All statuses'),
+            FilterField::select('type', 'Type', [
+                Coupon::TYPE_PERCENT => 'Percent',
+                Coupon::TYPE_FIXED => 'Fixed amount',
+            ], column: 'coupons.type', placeholder: 'All types'),
+        ]);
 
-        return view('admin.commerce.coupons.index', ['coupons' => $coupons]);
+        $coupons = $filters->apply(Coupon::query())->orderByDesc('id')->paginate(25)->withQueryString();
+
+        return view('admin.commerce.coupons.index', ['coupons' => $coupons, 'filters' => $filters]);
     }
 
     public function create(): View

@@ -11,6 +11,8 @@ use App\Modules\Inventory\Models\PurchaseOrder;
 use App\Modules\Inventory\Models\Supplier;
 use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\PurchaseInvoiceService;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,14 +26,23 @@ final class AdminPurchaseInvoiceController extends Controller
 
     public function index(Request $request): View
     {
-        $status = $request->query('status');
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'GRN no. or supplier invoice no.', columns: ['purchase_invoices.grn_no', 'purchase_invoices.supplier_invoice_no']),
+            FilterField::select('status', 'Status', [
+                PurchaseInvoice::STATUS_DRAFT => 'Draft',
+                PurchaseInvoice::STATUS_POSTED => 'Posted',
+                PurchaseInvoice::STATUS_CANCELLED => 'Cancelled',
+            ], column: 'purchase_invoices.status', placeholder: 'All statuses'),
+            FilterField::select('supplier_id', 'Supplier', Supplier::query()->orderBy('name')->get(['id', 'name'])->mapWithKeys(fn (Supplier $s): array => [(string) $s->id => $s->name])->all(), column: 'purchase_invoices.supplier_id', placeholder: 'All suppliers'),
+            FilterField::dateRange('supplier_invoice_date', 'Supplier invoice date', dateColumn: 'purchase_invoices.supplier_invoice_date'),
+        ]);
 
-        $invoices = PurchaseInvoice::with('supplier')
-            ->when($status, fn ($q) => $q->where('status', $status))
+        $invoices = $filters->apply(PurchaseInvoice::with('supplier'))
             ->orderByDesc('id')
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
-        return view('admin.inventory.grns.index', ['invoices' => $invoices]);
+        return view('admin.inventory.grns.index', ['invoices' => $invoices, 'filters' => $filters]);
     }
 
     public function create(Request $request): View

@@ -10,6 +10,8 @@ use App\Modules\Commerce\Support\Bv;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Shared\Support\ReportExport;
 use Generator;
 use Illuminate\Contracts\View\View;
@@ -53,7 +55,8 @@ final class AdminBvLedgerController extends Controller
         ]);
 
         $tab = $request->query('tab') === 'entries' ? 'entries' : 'summary';
-        [$from, $to] = $this->dateRange($request);
+        $filters = ListFilters::make($request, $this->filterFields());
+        [$from, $to] = $this->dateRangeFromFilters($filters);
 
         // Date-scoped headline cards (cheap aggregates over the whole ledger).
         $cardBase = BvLedgerEntry::query()->dateRange($from, $to);
@@ -69,7 +72,7 @@ final class AdminBvLedgerController extends Controller
         $entries = null;
 
         if ($tab === 'summary') {
-            $summary = $this->summaryQuery($from, $to, $request->query('q'))
+            $summary = $this->summaryQuery($from, $to, $filters->value('q'))
                 ->paginate(self::SUMMARY_PER_PAGE)
                 ->withQueryString();
         } else {
@@ -84,13 +87,32 @@ final class AdminBvLedgerController extends Controller
 
         return view('admin.commerce.bv-ledger.index', [
             'tab' => $tab,
+            'filters' => $filters,
             'cards' => $cards,
             'summary' => $summary,
             'entries' => $entries,
-            'from' => $request->query('from'),
-            'to' => $request->query('to'),
-            'q' => $request->query('q'),
+            'from' => $filters->value('from'),
+            'to' => $filters->value('to'),
+            'q' => $filters->value('q'),
         ]);
+    }
+
+    /**
+     * The q/from/to fields, shared by index() and export() (X1: `from`/`to`
+     * are the pre-existing keys, kept via fromKey/toKey rather than the
+     * default `{key}_from`/`{key}_to`). Neither field declares a column: `q`
+     * only applies inside the summary tab's join-built query, and the date
+     * range is applied through {@see BvLedgerEntry::scopeDateRange()}, not a
+     * plain `whereDate` — both are read via value() and applied by hand.
+     *
+     * @return list<FilterField>
+     */
+    private function filterFields(): array
+    {
+        return [
+            FilterField::text('q', 'Search', 'Search ADN or name…'),
+            FilterField::dateRange('date', 'Date', fromKey: 'from', toKey: 'to'),
+        ];
     }
 
     public function show(Distributor $distributor, Request $request): View
@@ -141,9 +163,9 @@ final class AdminBvLedgerController extends Controller
         ]);
 
         $tab = $request->query('tab') === 'entries' ? 'entries' : 'summary';
-        [$from, $to] = $this->dateRange($request);
-        $q = $request->query('q');
-        $q = is_string($q) ? $q : null;
+        $filters = ListFilters::make($request, $this->filterFields());
+        [$from, $to] = $this->dateRangeFromFilters($filters);
+        $q = $filters->value('q');
 
         if ($tab === 'summary') {
             // Grouped-aggregate query, so the row count is bounded by distinct
@@ -248,6 +270,24 @@ final class AdminBvLedgerController extends Controller
         return [
             is_string($from) && $from !== '' ? Carbon::parse($from)->startOfDay() : null,
             is_string($to) && $to !== '' ? Carbon::parse($to)->endOfDay() : null,
+        ];
+    }
+
+    /**
+     * Same as {@see self::dateRange()}, reading the already-validated
+     * ListFilters values instead of the raw request — used by index() and
+     * export(), the two actions this slice threads a ListFilters through.
+     *
+     * @return array{0: ?Carbon, 1: ?Carbon}
+     */
+    private function dateRangeFromFilters(ListFilters $filters): array
+    {
+        $from = $filters->value('from');
+        $to = $filters->value('to');
+
+        return [
+            $from !== null ? Carbon::parse($from)->startOfDay() : null,
+            $to !== null ? Carbon::parse($to)->endOfDay() : null,
         ];
     }
 

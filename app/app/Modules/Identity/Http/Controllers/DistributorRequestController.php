@@ -10,6 +10,8 @@ use App\Modules\Identity\Models\DistributorRequest;
 use App\Modules\Identity\Services\DistributorRequestService;
 use App\Modules\Shared\Features\DistributorRequestsFeature;
 use App\Modules\Shared\Http\Rules\ScannedForMalware;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -33,14 +35,33 @@ final class DistributorRequestController extends Controller
     {
         $distributor = $this->distributor($request);
 
-        $items = DistributorRequest::query()
-            ->where('distributor_id', $distributor->id)
+        $filters = ListFilters::make($request, [
+            FilterField::select('type', 'Request', array_map(
+                static fn (array $meta): string => (string) $meta['label'],
+                DistributorRequest::TYPES,
+            ), column: 'distributor_requests.type', placeholder: 'All requests'),
+            FilterField::select(
+                'status',
+                'Status',
+                DistributorRequest::STATUSES,
+                column: 'distributor_requests.status',
+                placeholder: 'All statuses',
+            ),
+        ]);
+
+        // Ownership scope first; the filters narrow this distributor's own
+        // requests and name no other distributor's identity.
+        $items = $filters->apply(
+            DistributorRequest::query()->where('distributor_id', $distributor->id)
+        )
             ->orderByDesc('id')
-            ->get();
+            ->paginate(25)
+            ->withQueryString();
 
         return view('my.requests.index', [
             'requests' => $items,
             'types' => DistributorRequest::TYPES,
+            'filters' => $filters,
         ]);
     }
 

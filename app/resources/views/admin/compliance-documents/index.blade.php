@@ -49,6 +49,8 @@
     </form>
 
     {{-- Document list --}}
+    <x-filter-bar :filters="$filters" />
+
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <table class="w-full text-sm">
             <thead>
@@ -107,6 +109,9 @@
             </tbody>
         </table>
     </div>
+    @if($documents->hasPages())
+    <div class="px-4 py-4 border-t border-gray-200">{{ $documents->links() }}</div>
+    @endif
 </div>
 
 @endsection

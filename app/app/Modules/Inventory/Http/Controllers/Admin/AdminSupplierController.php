@@ -7,8 +7,11 @@ namespace App\Modules\Inventory\Http\Controllers\Admin;
 use App\Modules\Inventory\Http\Requests\SupplierRequest;
 use App\Modules\Inventory\Models\Supplier;
 use App\Modules\Inventory\Services\SupplierService;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 
@@ -16,11 +19,22 @@ final class AdminSupplierController extends Controller
 {
     public function __construct(private readonly SupplierService $suppliers) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $suppliers = Supplier::query()->orderBy('name')->paginate(25);
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'Name', columns: ['suppliers.name']),
+            FilterField::select('status', 'Status', [
+                Supplier::STATUS_ACTIVE => 'Active',
+                Supplier::STATUS_ARCHIVED => 'Archived',
+            ], column: 'suppliers.status', placeholder: 'All statuses'),
+        ]);
 
-        return view('admin.inventory.suppliers.index', ['suppliers' => $suppliers]);
+        $suppliers = $filters->apply(Supplier::query())
+            ->orderBy('name')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('admin.inventory.suppliers.index', ['suppliers' => $suppliers, 'filters' => $filters]);
     }
 
     public function create(): View

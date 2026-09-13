@@ -16,6 +16,8 @@ use App\Modules\Payments\Services\RazorpayRefundService;
 use App\Modules\Payments\Support\InvoiceGapWorklist;
 use App\Modules\Payments\Support\RefundPayable;
 use App\Modules\Payments\Support\RefundWorklist;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -44,31 +46,48 @@ final class AdminPaymentController extends Controller
 
     public function index(Request $request): View
     {
-        $status = (string) $request->query('status', '');
-        $gateway = (string) $request->query('gateway', '');
-        $q = trim((string) $request->query('q', ''));
+        $filters = ListFilters::make($request, [
+            FilterField::select('status', 'Status', [
+                PaymentIntent::STATUS_CREATED => 'Awaiting payment',
+                PaymentIntent::STATUS_AUTHORISED => 'Authorised',
+                PaymentIntent::STATUS_CAPTURED => 'Captured',
+                PaymentIntent::STATUS_FAILED => 'Failed',
+                PaymentIntent::STATUS_CANCELLED => 'Cancelled / expired',
+            ], column: 'payment_intents.status', placeholder: 'All statuses'),
+            FilterField::select('gateway', 'Gateway', [
+                PaymentIntent::GATEWAY_RAZORPAY => 'Razorpay',
+                PaymentIntent::GATEWAY_STUB => 'Stub (dev)',
+            ], column: 'payment_intents.gateway', placeholder: 'Any gateway'),
+            FilterField::text('q', 'Search', 'Order no, order_… or pay_…'),
+            FilterField::dateRange('created', 'Created', dateColumn: 'payment_intents.created_at'),
+        ]);
 
-        $intents = PaymentIntent::query()
-            ->with(['order.customer'])
-            ->when($status !== '', fn ($query) => $query->where('status', $status))
-            ->when($gateway !== '', fn ($query) => $query->where('gateway', $gateway))
-            ->when($q !== '', function ($query) use ($q): void {
-                $query->where(function ($inner) use ($q): void {
-                    $inner->where('gateway_order_id', $q)
-                        ->orWhere('gateway_payment_id', $q)
-                        ->orWhereHas('order', fn ($o) => $o->where('order_no', $q));
-                });
-            })
+        $q = $filters->value('q');
+
+        $intents = $filters->apply(
+            PaymentIntent::query()
+                ->with(['order.customer'])
+                ->when($q !== null, function ($query) use ($q): void {
+                    $query->where(function ($inner) use ($q): void {
+                        $inner->where('gateway_order_id', $q)
+                            ->orWhere('gateway_payment_id', $q)
+                            ->orWhereHas('order', fn ($o) => $o->where('order_no', $q));
+                    });
+                })
+        )
             ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
 
+        // Restored alongside the toolbar: the status facets are how this page
+        // is actually used day to day — one click to "what is stuck awaiting
+        // payment", with the size of the queue visible before you click.
         $statusCounts = PaymentIntent::selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status')->all();
 
         return view('admin.payments.index', [
             'intents' => $intents,
             'statusCounts' => $statusCounts,
-            'filters' => ['status' => $status, 'gateway' => $gateway, 'q' => $q],
+            'filters' => $filters,
             'attention' => $this->worklist->attentionCount(),
             'invoiceGaps' => $this->invoiceGaps->orders(),
             'invoiceGapCount' => $this->invoiceGaps->count(),
