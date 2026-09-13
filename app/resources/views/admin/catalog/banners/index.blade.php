@@ -9,6 +9,8 @@
     <a href="{{ route('admin.catalog.banners.create') }}" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold">+ New banner</a>
 </div>
 
+<x-filter-bar :filters="$filters" />
+
 <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">

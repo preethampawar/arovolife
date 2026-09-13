@@ -16,7 +16,7 @@
 @endphp
 <div class="flex gap-2 flex-wrap mb-5">
     @foreach($tabs as $val => $label)
-    <a href="{{ route('admin.returns.index', $val ? ['status' => $val] : []) }}"
+    <a href="{{ request()->fullUrlWithQuery(['status' => $val ?: null, 'page' => null]) }}"
        class="px-3 py-1.5 rounded-full text-sm font-medium border
               {{ $current === $val
                   ? 'bg-brand-600 text-white border-brand-600'
@@ -26,6 +26,8 @@
     </a>
     @endforeach
 </div>
+
+<x-filter-bar :filters="$filters" />
 
 <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
     <table class="w-full text-sm">

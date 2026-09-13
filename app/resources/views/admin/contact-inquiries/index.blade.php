@@ -10,46 +10,30 @@
     (90 days for unhandled, 365 days from handled date for handled).
 </p>
 
-{{-- Filter chips + search --}}
-<form method="GET" action="{{ route('admin.contact-inquiries.index') }}" class="mb-4 flex flex-wrap items-center gap-2">
-    @php
-        $chips = [
-            'unhandled' => ['label' => 'Unhandled', 'count' => $unhandledCount, 'tone' => 'sunrise'],
-            'handled'   => ['label' => 'Handled',   'count' => $handledCount,   'tone' => 'leaf'],
-            'all'       => ['label' => 'All',       'count' => $totalCount,     'tone' => 'gray'],
-        ];
-    @endphp
-    @foreach($chips as $key => $cfg)
-        @php
-            $active = $filter === $key;
-            $toneCls = match($cfg['tone']) {
-                'sunrise' => $active ? 'bg-sunrise-800 text-white border-sunrise-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
-                'leaf'    => $active ? 'bg-leaf-500 text-white border-leaf-500'       : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
-                default   => $active ? 'bg-gray-700 text-white border-gray-700'       : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50',
-            };
-        @endphp
-        <a href="{{ route('admin.contact-inquiries.index', array_filter(['filter' => $key, 'purpose' => $purpose ?: null, 'q' => $search ?: null])) }}"
-           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors {{ $toneCls }}">
-            {{ $cfg['label'] }}
-            <span class="inline-flex items-center justify-center min-w-[22px] px-1.5 rounded-full {{ $active ? 'bg-white/25' : 'bg-gray-100 text-gray-600' }} text-[10px]">{{ $cfg['count'] }}</span>
+{{-- Handled/unhandled facets. These drive the same `filter` key as the
+     toolbar's select, so chip, dropdown and Clear stay in agreement — and the
+     queue size stays visible before you click, which is the whole point of
+     this screen. --}}
+@php
+    $inquiryFacets = [
+        'unhandled' => ['label' => 'Unhandled', 'count' => $unhandledCount, 'active' => 'bg-sunrise-800 text-white border-sunrise-500'],
+        'handled'   => ['label' => 'Handled',   'count' => $handledCount,   'active' => 'bg-leaf-500 text-white border-leaf-500'],
+        'all'       => ['label' => 'All',       'count' => $totalCount,     'active' => 'bg-gray-700 text-white border-gray-700'],
+    ];
+    $activeFilter = $filters->value('filter') ?? 'unhandled';
+@endphp
+<div class="mb-4 flex flex-wrap items-center gap-2">
+    @foreach($inquiryFacets as $key => $facet)
+        @php $isActive = $activeFilter === $key; @endphp
+        <a href="{{ request()->fullUrlWithQuery(['filter' => $key, 'page' => null]) }}"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors {{ $isActive ? $facet['active'] : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+            {{ $facet['label'] }}
+            <span class="inline-flex items-center justify-center min-w-[22px] px-1.5 rounded-full {{ $isActive ? 'bg-white/25' : 'bg-gray-100 text-gray-600' }} text-[10px]">{{ $facet['count'] }}</span>
         </a>
     @endforeach
+</div>
 
-    <select name="purpose" onchange="this.form.submit()"
-        class="ml-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
-        <option value="" {{ $purpose === '' ? 'selected' : '' }}>All purposes</option>
-        @foreach(['become_distributor' => 'Become a Direct Seller', 'support' => 'Support', 'compliance' => 'Compliance', 'partnership' => 'Partnership', 'other' => 'Other'] as $val => $label)
-            <option value="{{ $val }}" {{ $purpose === $val ? 'selected' : '' }}>{{ $label }}</option>
-        @endforeach
-    </select>
-    <input type="hidden" name="filter" value="{{ $filter }}">
-
-    <div class="flex-1 min-w-[200px] flex items-center gap-2">
-        <input type="search" name="q" value="{{ $search }}" placeholder="Search by name, email, phone…"
-            class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
-        <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold transition-colors">Search</button>
-    </div>
-</form>
+<x-filter-bar :filters="$filters" />
 
 {{-- Table --}}
 <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">

@@ -44,43 +44,14 @@
         @endforeach
     </div>
 
-    <form method="GET" action="{{ route('admin.commerce.bv-ledger.index') }}" class="flex items-center gap-2 ml-auto flex-wrap">
-        <input type="hidden" name="tab" value="{{ $tab }}">
-        @if($tab === 'summary' && $q)<input type="hidden" name="q" value="{{ $q }}">@endif
-        <label class="text-xs text-gray-600">From
-            <input type="date" name="from" value="{{ $from }}" class="ml-1 rounded-lg border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-        </label>
-        <label class="text-xs text-gray-600">To
-            <input type="date" name="to" value="{{ $to }}" class="ml-1 rounded-lg border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-        </label>
-        <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">Apply</button>
-        @if($from || $to)
-        <a href="{{ route('admin.commerce.bv-ledger.index', array_filter(['tab' => $tab, 'q' => $q])) }}" class="text-xs text-gray-600 hover:text-gray-900">✕ Clear dates</a>
-        @endif
-    </form>
-
-    <a href="{{ route('admin.commerce.bv-ledger.export', array_merge($baseQuery, ['tab' => $tab, 'format' => 'xlsx'])) }}"
-       class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors">
-        ⬇ Export Excel
-    </a>
-    <a href="{{ route('admin.commerce.bv-ledger.export', array_merge($baseQuery, ['tab' => $tab, 'format' => 'csv'])) }}"
-       class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors">
-        CSV
-    </a>
 </div>
 
-@if($tab === 'summary')
-{{-- Per-distributor search --}}
-<form method="GET" action="{{ route('admin.commerce.bv-ledger.index') }}" class="mb-4 flex gap-3">
-    <input type="hidden" name="tab" value="summary">
-    @if($from)<input type="hidden" name="from" value="{{ $from }}">@endif
-    @if($to)<input type="hidden" name="to" value="{{ $to }}">@endif
-    <input name="q" type="text" value="{{ $q }}" placeholder="Search ADN or name…"
-        class="flex-1 max-w-sm rounded-lg bg-white border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">Search</button>
-    @if($q)<a href="{{ route('admin.commerce.bv-ledger.index', array_filter(['tab' => 'summary', 'from' => $from, 'to' => $to])) }}" class="self-center text-xs text-gray-600 hover:text-gray-900">✕ Clear</a>@endif
-</form>
+<x-filter-bar :filters="$filters" :exports="[
+    ['label' => '⬇ Export Excel', 'url' => route('admin.commerce.bv-ledger.export', $filters->toQuery() + ['tab' => $tab, 'format' => 'xlsx'])],
+    ['label' => 'CSV', 'url' => route('admin.commerce.bv-ledger.export', $filters->toQuery() + ['tab' => $tab, 'format' => 'csv'])],
+]" />
 
+@if($tab === 'summary')
 <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">

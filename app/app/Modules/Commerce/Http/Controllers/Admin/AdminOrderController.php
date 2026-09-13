@@ -12,6 +12,8 @@ use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\InventorySettings;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
 use App\Modules\Payments\Models\PaymentIntent;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Tax\Models\Invoice;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -31,10 +33,20 @@ final class AdminOrderController extends Controller
     {
         $status = $request->query('status');
 
+        // `status` stays a chip, not a ListFilters field (A6): the existing
+        // OrderStatusBadge::FILTERABLE chip row is kept and rebuilt to
+        // preserve the toolbar's own filters.
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'Order #', columns: ['orders.order_no']),
+            FilterField::dateRange('placed', 'Placed', dateColumn: 'orders.placed_at'),
+        ]);
+
         // `items` is eager-loaded so the BV column can call Order::bvTotalPaise()
         // (sum of line BV) without an N+1 across the page of orders.
-        $orders = Order::with(['customer.distributor', 'distributor', 'items'])
-            ->when($status, fn ($q) => $q->where('status', $status))
+        $orders = $filters->apply(
+            Order::with(['customer.distributor', 'distributor', 'items'])
+                ->when($status, fn ($q) => $q->where('status', $status))
+        )
             ->orderByDesc('placed_at')
             ->paginate(25)
             ->withQueryString();
@@ -55,6 +67,7 @@ final class AdminOrderController extends Controller
 
         return view('admin.commerce.orders-index', [
             'orders' => $orders,
+            'filters' => $filters,
             'statusCounts' => $statusCounts,
             'repurchaseWalletByOrder' => $repurchaseWalletByOrder,
         ]);

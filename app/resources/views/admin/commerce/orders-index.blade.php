@@ -5,17 +5,19 @@
 @section('content')
 
 <div class="flex items-center gap-3 mb-6 flex-wrap">
-    <a href="{{ route('admin.commerce.orders.index') }}"
+    <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}"
        class="px-3 py-1 rounded-full text-xs font-medium border {{ !request()->query('status') ? 'bg-brand-700 text-white border-brand-500' : 'bg-white text-gray-700 border-gray-200 hover:border-brand-500' }}">
         All
     </a>
     @foreach(\App\Modules\Commerce\Support\OrderStatusBadge::FILTERABLE as $s)
-    <a href="{{ route('admin.commerce.orders.index', ['status' => $s]) }}"
+    <a href="{{ request()->fullUrlWithQuery(['status' => $s, 'page' => null]) }}"
        class="px-3 py-1 rounded-full text-xs font-medium border {{ request()->query('status') === $s ? 'bg-brand-700 text-white border-brand-500' : \App\Modules\Commerce\Support\OrderStatusBadge::classes($s) }}">
         {{ \App\Modules\Commerce\Support\OrderStatusBadge::label($s) }} @if(isset($statusCounts[$s])) ({{ $statusCounts[$s] }}) @endif
     </a>
     @endforeach
 </div>
+
+<x-filter-bar :filters="$filters" />
 
 <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
     <div class="overflow-x-auto">

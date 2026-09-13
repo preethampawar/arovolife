@@ -27,6 +27,8 @@
     New announcement
 </a>
 
+<x-filter-bar :filters="$filters" />
+
 @if($announcements->isEmpty())
     <div class="rounded-xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-600">
         Nothing written yet.

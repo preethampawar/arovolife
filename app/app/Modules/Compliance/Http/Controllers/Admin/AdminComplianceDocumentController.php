@@ -7,6 +7,8 @@ namespace App\Modules\Compliance\Http\Controllers\Admin;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Models\ComplianceDocument;
 use App\Modules\Compliance\Support\AuditDigests;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -27,14 +29,19 @@ final class AdminComplianceDocumentController extends Controller
 
     private const DIR = 'compliance-documents';
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        return view('admin.compliance-documents.index', [
-            'documents' => ComplianceDocument::query()
-                ->with('uploader')
-                ->latest()
-                ->get(),
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'Title', columns: ['compliance_documents.title']),
+            FilterField::boolean('is_published', 'Published only', column: 'compliance_documents.is_published'),
         ]);
+
+        $documents = $filters->apply(ComplianceDocument::query()->with('uploader'))
+            ->latest()
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('admin.compliance-documents.index', ['documents' => $documents, 'filters' => $filters]);
     }
 
     public function store(Request $request): RedirectResponse

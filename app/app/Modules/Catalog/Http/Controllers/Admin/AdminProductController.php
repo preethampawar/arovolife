@@ -14,6 +14,8 @@ use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Catalog\Services\ProductImageStorage;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -28,15 +30,25 @@ final class AdminProductController extends Controller
 {
     public function __construct(private readonly ProductImageStorage $images) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $products = Product::query()
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'Name or SKU', columns: ['products.name', 'products.sku']),
+            FilterField::select('status', 'Status', [
+                Product::STATUS_DRAFT => 'Draft',
+                Product::STATUS_ACTIVE => 'Active',
+                Product::STATUS_ARCHIVED => 'Archived',
+            ], column: 'products.status', placeholder: 'All statuses'),
+            FilterField::select('category_id', 'Category', $this->categoryFilterOptions(), column: 'products.category_id', placeholder: 'All categories'),
+        ]);
+
+        $products = $filters->apply(Product::query())
             ->with(['productCategory', 'variants' => fn ($q) => $q->orderBy('id')])
             ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
 
-        return view('admin.catalog.products.index', ['products' => $products]);
+        return view('admin.catalog.products.index', ['products' => $products, 'filters' => $filters]);
     }
 
     public function create(): View
@@ -283,6 +295,17 @@ final class AdminProductController extends Controller
             ->where('status', ProductCategory::STATUS_ACTIVE)
             ->orderBy('sort')
             ->get();
+    }
+
+    /** @return array<int|string, string> id => name, for the filter select */
+    private function categoryFilterOptions(): array
+    {
+        $options = [];
+        foreach (ProductCategory::query()->orderBy('sort')->get(['id', 'name']) as $category) {
+            $options[(string) $category->id] = (string) $category->name;
+        }
+
+        return $options;
     }
 
     /**

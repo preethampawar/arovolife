@@ -13,7 +13,9 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AnnouncementsFeature;
 use App\Modules\Shared\Rules\NoIncomeProjection;
 use App\Modules\Shared\Rules\NoRawGovernmentId;
+use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\IndianNumber;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -39,18 +41,34 @@ final class AdminAnnouncementController extends Controller
 {
     public function __construct(private readonly AnnouncementSettingsService $settings) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $this->assertEnabled();
 
-        return view('admin.announcements.index', [
-            'announcements' => Announcement::query()
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'Title', columns: ['announcements.title']),
+            FilterField::select('status', 'Status', [
+                Announcement::STATUS_DRAFT => 'Draft',
+                Announcement::STATUS_PUBLISHED => 'Published',
+                Announcement::STATUS_ARCHIVED => 'Archived',
+            ], column: 'announcements.status', placeholder: 'All statuses'),
+            FilterField::select('audience', 'Audience', [
+                Announcement::AUDIENCE_ALL => 'All',
+                Announcement::AUDIENCE_STATUS => 'Account status',
+                Announcement::AUDIENCE_RANK => 'Rank',
+            ], column: 'announcements.audience', placeholder: 'All audiences'),
+        ]);
+
+        $announcements = $filters->apply(
+            Announcement::query()
                 ->with('author:id,full_name')
                 ->withCount('reads')
-                ->orderByDesc('created_at')
-                ->paginate(25)
-                ->withQueryString(),
-        ]);
+        )
+            ->orderByDesc('created_at')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('admin.announcements.index', ['announcements' => $announcements, 'filters' => $filters]);
     }
 
     public function create(): View

@@ -17,17 +17,9 @@
         <strong>@bv($activationBv) BV</strong> lifetime) — <strong class="text-amber-700">which is
         recorded but not yet redeemable</strong>.
     </p>
-    <form method="GET" action="{{ route('admin.commerce.offers.index') }}" class="flex items-end gap-2">
-        <div>
-            <label for="month" class="mb-1 block text-xs font-medium text-gray-600">Month</label>
-            <input id="month" name="month" type="month" value="{{ $month->format('Y-m') }}"
-                   class="rounded-lg border-gray-300 bg-white focus:border-brand-500 focus:ring-brand-500 text-sm text-gray-900">
-        </div>
-        <button type="submit" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-            View
-        </button>
-    </form>
 </div>
+
+<x-filter-bar :filters="$filters" action="{{ route('admin.commerce.offers.index') }}" />
 
 @if (session('status'))
     <div class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">

@@ -9,6 +9,8 @@ use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Catalog\Services\ProductImageStorage;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,11 +28,25 @@ final class AdminBannerController extends Controller
 {
     public function __construct(private readonly ProductImageStorage $images) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        return view('admin.catalog.banners.index', [
-            'banners' => Banner::query()->with('category')->orderBy('sort')->orderByDesc('id')->paginate(50)->withQueryString(),
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'Title', columns: ['banners.title']),
+            FilterField::select('status', 'Status', [
+                Banner::STATUS_ACTIVE => 'Active',
+                Banner::STATUS_ARCHIVED => 'Archived',
+            ], column: 'banners.status', placeholder: 'All statuses'),
+            FilterField::select('category_id', 'Placement', $this->categoryFilterOptions(), column: 'banners.category_id', placeholder: 'All placements'),
         ]);
+
+        $banners = $filters->apply(Banner::query())
+            ->with('category')
+            ->orderBy('sort')
+            ->orderByDesc('id')
+            ->paginate(50)
+            ->withQueryString();
+
+        return view('admin.catalog.banners.index', ['banners' => $banners, 'filters' => $filters]);
     }
 
     public function create(): View
@@ -143,6 +159,17 @@ final class AdminBannerController extends Controller
             ->where('status', 'active')
             ->orderBy('sort')
             ->get(['id', 'name']);
+    }
+
+    /** @return array<int|string, string> id => name, for the filter select */
+    private function categoryFilterOptions(): array
+    {
+        $options = [];
+        foreach ($this->categoryOptions() as $category) {
+            $options[(string) $category->id] = (string) $category->name;
+        }
+
+        return $options;
     }
 
     /**

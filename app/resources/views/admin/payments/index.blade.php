@@ -47,25 +47,28 @@
 </div>
 @endif
 
+{{-- Status facets: the same `status` key the toolbar's select drives, so a
+     chip, the dropdown and the Clear link all stay in agreement. --}}
 @php
-    $tabs = ['' => 'All', 'created' => 'Awaiting payment', 'captured' => 'Captured', 'failed' => 'Failed', 'cancelled' => 'Cancelled / expired'];
+    $statusFacets = [
+        '' => 'All',
+        \App\Modules\Payments\Models\PaymentIntent::STATUS_CREATED => 'Awaiting payment',
+        \App\Modules\Payments\Models\PaymentIntent::STATUS_CAPTURED => 'Captured',
+        \App\Modules\Payments\Models\PaymentIntent::STATUS_FAILED => 'Failed',
+        \App\Modules\Payments\Models\PaymentIntent::STATUS_CANCELLED => 'Cancelled / expired',
+    ];
+    $activeStatus = $filters->value('status') ?? '';
 @endphp
-<form method="GET" class="flex flex-wrap items-center gap-2 mb-5">
-    @foreach($tabs as $val => $label)
-    <a href="{{ route('admin.payments.index', array_filter(['status' => $val, 'gateway' => $filters['gateway'], 'q' => $filters['q']])) }}"
-       class="px-3 py-1.5 rounded-full text-sm font-medium border {{ $filters['status'] === $val ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-300 hover:border-brand-400' }}">
-        {{ $label }}@if($val !== '' && isset($statusCounts[$val]))<span class="ml-1 opacity-75">({{ $statusCounts[$val] }})</span>@endif
-    </a>
+<div class="mb-4 flex flex-wrap items-center gap-2">
+    @foreach($statusFacets as $value => $label)
+        <a href="{{ request()->fullUrlWithQuery(['status' => $value === '' ? null : $value, 'page' => null]) }}"
+           class="px-3 py-1.5 rounded-full text-sm font-medium border transition-colors {{ $activeStatus === (string) $value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-300 hover:border-brand-400' }}">
+            {{ $label }}@if($value !== '' && isset($statusCounts[$value]))<span class="ml-1 opacity-75">({{ $statusCounts[$value] }})</span>@endif
+        </a>
     @endforeach
-    <input type="hidden" name="status" value="{{ $filters['status'] }}">
-    <select name="gateway" class="rounded-lg border-gray-300 text-sm">
-        <option value="">Any gateway</option>
-        <option value="razorpay" @selected($filters['gateway'] === 'razorpay')>Razorpay</option>
-        <option value="stub" @selected($filters['gateway'] === 'stub')>Stub (dev)</option>
-    </select>
-    <input type="search" name="q" value="{{ $filters['q'] }}" placeholder="Order no, order_… or pay_…" class="rounded-lg border-gray-300 text-sm w-60">
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-sm hover:bg-gray-50">Filter</button>
-</form>
+</div>
+
+<x-filter-bar :filters="$filters" />
 
 <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
     <table class="w-full text-sm">

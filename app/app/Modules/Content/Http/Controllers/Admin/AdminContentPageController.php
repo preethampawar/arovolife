@@ -9,8 +9,11 @@ use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Content\Http\Requests\ContentPageRequest;
 use App\Modules\Content\Models\ContentPage;
 use App\Modules\Shared\Features\FaqLibraryFeature;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Pennant\Feature;
@@ -18,11 +21,39 @@ use Mews\Purifier\Facades\Purifier;
 
 final class AdminContentPageController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $pages = ContentPage::orderBy('title')->paginate(25)->withQueryString();
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'Title', columns: ['content_pages.title']),
+            FilterField::select('status', 'Status', [
+                ContentPage::STATUS_DRAFT => 'Draft',
+                ContentPage::STATUS_PUBLISHED => 'Published',
+                ContentPage::STATUS_ARCHIVED => 'Archived',
+            ], column: 'content_pages.status', placeholder: 'All statuses'),
+            FilterField::select('type', 'Type', $this->typeOptions(), column: 'content_pages.type', placeholder: 'All types'),
+        ]);
 
-        return view('admin.content.index', ['pages' => $pages]);
+        $pages = $filters->apply(ContentPage::query())->orderBy('title')->paginate(25)->withQueryString();
+
+        return view('admin.content.index', ['pages' => $pages, 'filters' => $filters]);
+    }
+
+    /**
+     * Mirrors {@see ContentPageRequest::allowedTypes()}: the editable types
+     * plus faq while the library feature is on. Kept here rather than shared
+     * because the filter only ever reads it, never validates against it.
+     *
+     * @return array<string, string>
+     */
+    private function typeOptions(): array
+    {
+        $types = ['blog' => 'Blog', 'seminar' => 'Seminar', 'news' => 'News', 'hub' => 'Hub'];
+
+        if (Feature::for(null)->active(FaqLibraryFeature::class)) {
+            $types[ContentPage::TYPE_FAQ] = 'FAQ';
+        }
+
+        return $types;
     }
 
     public function create(): View
