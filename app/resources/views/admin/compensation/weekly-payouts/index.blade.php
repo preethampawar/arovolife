@@ -10,6 +10,8 @@
 </div>
 @enddeveloper
 
+<x-filter-bar :filters="$filters" />
+
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($batches->isEmpty())
     <p class="px-6 py-10 text-sm text-gray-600 text-center">No payout batches yet — weekly payout not yet active.</p>

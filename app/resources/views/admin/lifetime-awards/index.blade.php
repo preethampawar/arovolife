@@ -13,22 +13,7 @@
     <a href="{{ route('admin.lifetime-awards.catalog') }}" class="shrink-0 px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">Reward catalog →</a>
 </div>
 
-{{-- Filter --}}
-<form method="GET" class="flex gap-3 mb-6 items-end">
-    <div>
-        <label class="block text-xs text-gray-600 mb-1">Status <x-help-tip text="Filter the list by award status — pending, delivered or cancelled. Leave on All to show every milestone." /></label>
-        <select name="status" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
-            <option value="">All</option>
-            <option value="pending" @selected(request('status') === 'pending')>Pending</option>
-            <option value="delivered" @selected(request('status') === 'delivered')>Delivered</option>
-            <option value="cancelled" @selected(request('status') === 'cancelled')>Cancelled</option>
-        </select>
-    </div>
-    <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800">Filter</button>
-    @if(request('status'))
-        <a href="{{ route('admin.lifetime-awards.index') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
-    @endif
-</form>
+<x-filter-bar :filters="$filters" />
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     @if($milestones->isEmpty())

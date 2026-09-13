@@ -39,6 +39,8 @@
     @endforeach
 </div>
 
+<x-filter-bar :filters="$filters" />
+
 @if($reports->isEmpty())
     <div class="rounded-xl border border-gray-200 bg-white p-10 text-center text-sm text-gray-600">
         Nothing here. No messages are waiting for review.

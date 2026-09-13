@@ -10,6 +10,8 @@ use App\Modules\Messaging\Models\Message;
 use App\Modules\Messaging\Models\MessageReport;
 use App\Modules\Shared\Features\MessagingFeature;
 use App\Modules\Shared\Rules\NoRawGovernmentId;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -48,6 +50,14 @@ final class AdminMessageReportController extends Controller
         $status = $request->query('status', MessageReport::STATUS_OPEN);
         $status = is_string($status) ? $status : MessageReport::STATUS_OPEN;
 
+        $filters = ListFilters::make($request, [
+            // Reporter and reported-user identity fields ONLY — message.body
+            // must never be searchable from an index page.
+            FilterField::text('q', 'Search', 'Reporter or sender name/email'),
+            FilterField::select('category', 'Category', MessageReport::CATEGORIES, column: 'category', placeholder: 'All categories'),
+            FilterField::dateRange('created', 'Reported', dateColumn: 'message_reports.created_at'),
+        ]);
+
         $query = MessageReport::query()
             // The distributor rows carry the ADN and the id the admin
             // profile link needs: on a platform where several accounts share
@@ -66,6 +76,20 @@ final class AdminMessageReportController extends Controller
             $query->where('status', $status);
         }
 
+        if (($search = $filters->value('q')) !== null) {
+            $term = '%'.ListFilters::escapeLike($search).'%';
+
+            $query->where(function ($sub) use ($term): void {
+                $sub->whereHas('reporter', function ($u) use ($term): void {
+                    $u->where('full_name', 'like', $term)->orWhere('email', 'like', $term);
+                })->orWhereHas('message.fromUser', function ($u) use ($term): void {
+                    $u->where('full_name', 'like', $term)->orWhere('email', 'like', $term);
+                });
+            });
+        }
+
+        $filters->apply($query);
+
         return view('admin.messaging.reports.index', [
             'reports' => $query->paginate(25)->withQueryString(),
             'status' => $status,
@@ -75,6 +99,7 @@ final class AdminMessageReportController extends Controller
                 ->pluck('total', 'status')
                 ->all(),
             'categories' => MessageReport::CATEGORIES,
+            'filters' => $filters,
         ]);
     }
 
