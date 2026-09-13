@@ -22,7 +22,7 @@ final class AdminStockAdjustmentController extends Controller
 
     public function index(): View
     {
-        $adjustments = StockAdjustment::with(['variant.product', 'warehouse', 'actor'])->orderByDesc('id')->paginate(25);
+        $adjustments = StockAdjustment::with(['variant.product', 'warehouse', 'actor'])->orderByDesc('id')->paginate(25)->withQueryString();
 
         return view('admin.inventory.adjustments.index', ['adjustments' => $adjustments]);
     }

@@ -19,7 +19,7 @@ final class AdminWarehouseController extends Controller
 
     public function index(): View
     {
-        $warehouses = Warehouse::query()->orderBy('name')->paginate(25);
+        $warehouses = Warehouse::query()->orderBy('name')->paginate(25)->withQueryString();
 
         return view('admin.inventory.warehouses.index', ['warehouses' => $warehouses]);
     }

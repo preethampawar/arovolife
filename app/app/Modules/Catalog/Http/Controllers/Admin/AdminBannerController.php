@@ -29,7 +29,7 @@ final class AdminBannerController extends Controller
     public function index(): View
     {
         return view('admin.catalog.banners.index', [
-            'banners' => Banner::query()->with('category')->orderBy('sort')->orderByDesc('id')->paginate(50),
+            'banners' => Banner::query()->with('category')->orderBy('sort')->orderByDesc('id')->paginate(50)->withQueryString(),
         ]);
     }
 

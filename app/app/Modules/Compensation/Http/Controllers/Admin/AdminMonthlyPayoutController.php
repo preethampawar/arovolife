@@ -29,7 +29,8 @@ final class AdminMonthlyPayoutController extends Controller
         $batches = PayoutBatch::where('batch_type', PayoutBatch::TYPE_MONTHLY)
             ->withCount(['lineItems as held_count' => fn ($q) => $q->whereIn('status', PayoutLineItem::HELD_STATUSES)])
             ->orderByDesc('batch_date')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
         $minPayout = Number::format($plan->minPayoutPaise() / 100, 0);
 
         return view('admin.compensation.monthly-payouts.index', compact('batches', 'minPayout'));
@@ -37,7 +38,7 @@ final class AdminMonthlyPayoutController extends Controller
 
     public function show(PayoutBatch $batch, PayoutGatewaySettings $settings): View
     {
-        $lines = $batch->lineItems()->with('distributor.user')->paginate(50);
+        $lines = $batch->lineItems()->with('distributor.user')->paginate(50)->withQueryString();
 
         $statusCounts = $batch->lineItems()
             ->selectRaw('status, COUNT(*) AS total')

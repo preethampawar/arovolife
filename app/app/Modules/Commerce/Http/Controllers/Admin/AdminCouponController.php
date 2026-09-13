@@ -19,7 +19,7 @@ final class AdminCouponController extends Controller
 {
     public function index(): View
     {
-        $coupons = Coupon::query()->orderByDesc('id')->paginate(25);
+        $coupons = Coupon::query()->orderByDesc('id')->paginate(25)->withQueryString();
 
         return view('admin.commerce.coupons.index', ['coupons' => $coupons]);
     }

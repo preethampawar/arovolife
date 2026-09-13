@@ -18,7 +18,7 @@ final class AdminSupplierController extends Controller
 
     public function index(): View
     {
-        $suppliers = Supplier::query()->orderBy('name')->paginate(25);
+        $suppliers = Supplier::query()->orderBy('name')->paginate(25)->withQueryString();
 
         return view('admin.inventory.suppliers.index', ['suppliers' => $suppliers]);
     }

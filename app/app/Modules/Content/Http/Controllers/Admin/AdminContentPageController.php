@@ -20,7 +20,7 @@ final class AdminContentPageController extends Controller
 {
     public function index(): View
     {
-        $pages = ContentPage::orderBy('title')->paginate(25);
+        $pages = ContentPage::orderBy('title')->paginate(25)->withQueryString();
 
         return view('admin.content.index', ['pages' => $pages]);
     }

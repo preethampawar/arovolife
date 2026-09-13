@@ -73,6 +73,7 @@ final class CompensationOverviewController extends Controller
                 ->where('cutoff_date', $today)
                 ->orderByRaw("CASE status WHEN 'failed' THEN 0 WHEN 'credited' THEN 1 WHEN 'no_match' THEN 2 WHEN 'below_600bv' THEN 3 WHEN 'frozen' THEN 4 ELSE 5 END")
                 ->paginate(50)
+                ->withQueryString()
             : null;
 
         return view('admin.compensation.overview', compact(

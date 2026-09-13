@@ -28,7 +28,8 @@ final class AdminPurchaseOrderController extends Controller
         $orders = PurchaseOrder::with('supplier')
             ->when($status, fn ($q) => $q->where('status', $status))
             ->orderByDesc('id')
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
         return view('admin.inventory.purchase-orders.index', ['orders' => $orders]);
     }

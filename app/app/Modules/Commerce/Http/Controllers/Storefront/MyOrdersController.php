@@ -27,7 +27,8 @@ final class MyOrdersController extends Controller
             ->whereHas('customer', fn ($q) => $q->where('user_id', $request->user()->id))
             ->with(['items', 'coolingOff', 'bvLedgerEntries'])
             ->latest('placed_at')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('shop.orders.index', [
             'orders' => $orders,
@@ -53,7 +54,8 @@ final class MyOrdersController extends Controller
             ->where('self_consumption', false)
             ->with(['items', 'customer', 'bvLedgerEntries'])
             ->latest('placed_at')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
 
         return view('shop.orders.sales', ['sales' => $sales]);
     }

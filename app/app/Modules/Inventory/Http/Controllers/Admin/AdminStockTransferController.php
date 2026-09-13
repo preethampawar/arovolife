@@ -22,7 +22,7 @@ final class AdminStockTransferController extends Controller
 
     public function index(): View
     {
-        $transfers = StockTransfer::query()->orderByDesc('id')->paginate(25);
+        $transfers = StockTransfer::query()->orderByDesc('id')->paginate(25)->withQueryString();
 
         return view('admin.inventory.transfers.index', ['transfers' => $transfers]);
     }

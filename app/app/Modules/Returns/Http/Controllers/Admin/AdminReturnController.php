@@ -37,7 +37,8 @@ final class AdminReturnController extends Controller
         $returns = ReturnRequest::with(['order.customer', 'inspection', 'buybackDecision'])
             ->when($status, fn ($q) => $q->where('status', $status))
             ->orderByDesc('created_at')
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
         $statusCounts = ReturnRequest::selectRaw('status, COUNT(*) as c')
             ->groupBy('status')

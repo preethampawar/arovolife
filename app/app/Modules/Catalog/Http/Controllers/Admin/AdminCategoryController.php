@@ -25,7 +25,8 @@ final class AdminCategoryController extends Controller
             ->with('parent')
             ->withCount('products')
             ->orderBy('sort')
-            ->paginate(50);
+            ->paginate(50)
+            ->withQueryString();
 
         return view('admin.catalog.categories.index', ['categories' => $categories]);
     }

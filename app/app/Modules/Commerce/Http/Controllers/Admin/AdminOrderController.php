@@ -36,7 +36,8 @@ final class AdminOrderController extends Controller
         $orders = Order::with(['customer.distributor', 'distributor', 'items'])
             ->when($status, fn ($q) => $q->where('status', $status))
             ->orderByDesc('placed_at')
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
         $statusCounts = Order::selectRaw('status, COUNT(*) as c')
             ->groupBy('status')

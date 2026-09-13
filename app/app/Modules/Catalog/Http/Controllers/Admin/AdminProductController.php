@@ -33,7 +33,8 @@ final class AdminProductController extends Controller
         $products = Product::query()
             ->with(['productCategory', 'variants' => fn ($q) => $q->orderBy('id')])
             ->orderByDesc('id')
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
         return view('admin.catalog.products.index', ['products' => $products]);
     }

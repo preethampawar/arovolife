@@ -29,7 +29,8 @@ final class AdminPurchaseInvoiceController extends Controller
         $invoices = PurchaseInvoice::with('supplier')
             ->when($status, fn ($q) => $q->where('status', $status))
             ->orderByDesc('id')
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
         return view('admin.inventory.grns.index', ['invoices' => $invoices]);
     }

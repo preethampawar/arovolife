@@ -48,7 +48,8 @@ final class AdminAnnouncementController extends Controller
                 ->with('author:id,full_name')
                 ->withCount('reads')
                 ->orderByDesc('created_at')
-                ->paginate(25),
+                ->paginate(25)
+                ->withQueryString(),
         ]);
     }
 

@@ -50,7 +50,8 @@ final class DistributorGrievanceController extends Controller
         return view('grievance.my.index', [
             'tickets' => Ticket::where('distributor_id', $distributor->id)
                 ->orderByDesc('created_at')
-                ->paginate(15),
+                ->paginate(15)
+                ->withQueryString(),
         ]);
     }
 

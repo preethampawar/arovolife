@@ -29,7 +29,8 @@ final class AdminWeeklyPayoutController extends Controller
         $batches = PayoutBatch::whereIn('batch_type', [PayoutBatch::TYPE_WEEKLY, PayoutBatch::TYPE_GSB_WEEKLY])
             ->withCount(['lineItems as held_count' => fn ($q) => $q->whereIn('status', PayoutLineItem::HELD_STATUSES)])
             ->orderByDesc('batch_date')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
         // Computed here, not in the view: `::class` inside a @php(...) Blade
         // directive fails to compile (unexpected token "class").
         $minPayout = Number::format($plan->minPayoutPaise() / 100, 0);
@@ -39,7 +40,7 @@ final class AdminWeeklyPayoutController extends Controller
 
     public function show(PayoutBatch $batch, PayoutGatewaySettings $settings): View
     {
-        $lines = $batch->lineItems()->with('distributor.user')->paginate(50);
+        $lines = $batch->lineItems()->with('distributor.user')->paginate(50)->withQueryString();
 
         // Counted across the whole batch, not the current page — the header
         // must answer "how much of this batch has actually settled?".
