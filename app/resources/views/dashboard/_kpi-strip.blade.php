@@ -73,10 +73,13 @@
         'indigo'  => ['card' => 'border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-white hover:border-indigo-300',     'bar' => 'from-indigo-400 to-indigo-600',   'icon' => 'bg-indigo-500 text-white shadow-indigo-500/30',   'value' => 'text-indigo-800',  'ring' => 'focus:ring-indigo-500'],
         'sunrise' => ['card' => 'border-sunrise-200 bg-gradient-to-br from-sunrise-50 via-white to-white hover:border-sunrise-300', 'bar' => 'from-sunrise-400 to-sunrise-600', 'icon' => 'bg-sunrise-500 text-white shadow-sunrise-500/30', 'value' => 'text-sunrise-800', 'ring' => 'focus:ring-sunrise-500'],
     ];
-    $gridCols = count($tiles) === 6 ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-6' : 'grid-cols-2 lg:grid-cols-4';
+    // Three across at most: the strip sits in the dashboard's two-thirds
+    // column, not across the full page, so six in a row would leave each
+    // tile about 95px at the widest the page ever gets.
+    $gridCols = count($tiles) === 6 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2';
 @endphp
 
-<div class="grid {{ $gridCols }} gap-3 sm:gap-4 mb-6">
+<div class="grid {{ $gridCols }} gap-3 sm:gap-4">
     @foreach($tiles as $tile)
         @php
             $tone = $toneClasses[$tile['tone']];

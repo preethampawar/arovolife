@@ -38,7 +38,7 @@
     ];
 @endphp
 
-<div class="mb-6">
+<div>
     <p class="text-xs text-gray-700 uppercase tracking-wider font-semibold mb-3">Quick actions</p>
     <div class="flex flex-wrap gap-2 sm:gap-3">
         @foreach($actions as $action)

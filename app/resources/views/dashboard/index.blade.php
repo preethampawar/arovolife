@@ -38,14 +38,18 @@
 @include('dashboard._hero')
 
 @if($distributor)
-    {{-- The right-hand column is the distributor's own standing facts:
-         their invite link, their inbox, their cooling-off clock, then the
-         documents they can print. Placement moved out entirely — position
-         and line-change now live in the left sidenav, which is reachable
-         from every page rather than only this one. --}}
+    {{-- Two columns, two jobs. The left one is the business: who you are,
+         your numbers, and where you go next — it runs the full height of
+         the right column rather than stopping under Profile Stats and
+         leaving a hole. The right one is your own standing facts: invite
+         link, inbox, cooling-off clock, printable documents. Placement
+         moved out entirely — position and line-change now live in the left
+         sidenav, reachable from every page rather than only this one. --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div class="lg:col-span-2 min-w-0">
+        <div class="lg:col-span-2 flex flex-col gap-6 min-w-0">
             @include('dashboard._profile-stats')
+            @include('dashboard._kpi-strip')
+            @include('dashboard._quick-actions')
         </div>
         <div class="flex flex-col gap-6 min-w-0">
             @include('dashboard._referral-link')
@@ -56,9 +60,6 @@
             @include('dashboard._documents', ['docsLayout' => 'stacked'])
         </div>
     </div>
-
-    @include('dashboard._kpi-strip')
-    @include('dashboard._quick-actions')
 
     <div class="flex flex-col gap-6 mb-6 min-w-0">
         @include('dashboard._genos-balance')
