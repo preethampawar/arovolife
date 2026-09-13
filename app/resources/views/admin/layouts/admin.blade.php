@@ -140,7 +140,7 @@
         </div>
 
         <div class="admin-sidebar-scroll flex-1 min-h-0 overflow-y-auto flex flex-col">
-        <nav class="px-2.5 py-3 space-y-0.5">
+        <nav class="px-2.5 py-3">
             @php
                 // Unread Contact-inquiries count for the sidebar badge.
                 // Cached for 60s so this query doesn't run on every admin page.
@@ -264,7 +264,7 @@
                         }
                     }
                 @endphp
-                <div data-nav-group="{{ $group['key'] }}" @if($groupActive) data-nav-group-active="1" @endif>
+                <div data-nav-group="{{ $group['key'] }}" class="mt-6 first:mt-0" @if($groupActive) data-nav-group-active="1" @endif>
                 @if($group['label'] !== null)
                     {{-- text-left overrides the browser's default `button { text-align: center }`
                          — without it, a label long enough to wrap (e.g. "Support &
@@ -277,7 +277,7 @@
                     <button type="button" data-nav-group-toggle
                             aria-expanded="true"
                             aria-controls="nav-group-{{ $group['key'] }}"
-                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 px-3 pt-5 pb-1.5 mt-1 first:mt-0 first:pt-1 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500 transition-colors hover:text-gray-900">
+                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 px-3 pt-1 pb-2 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500 transition-colors hover:text-gray-900">
                         <span class="text-left">{{ $group['label'] }}</span>
                         <span data-nav-group-chevron="down" class="shrink-0 text-gray-300">{{ svg('lucide-chevron-down', 'w-3 h-3') }}</span>
                         <span data-nav-group-chevron="right" class="shrink-0 text-gray-300" hidden>{{ svg('lucide-chevron-right', 'w-3 h-3') }}</span>
