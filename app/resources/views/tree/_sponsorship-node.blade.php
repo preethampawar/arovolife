@@ -46,7 +46,7 @@
         $theme = $node->user->statusTheme();
     @endphp
 
-    <div class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-2 py-2 text-center min-w-[150px] max-w-[168px] shadow-sm">
+    <div data-node-card class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-2 py-2 text-center min-w-[150px] max-w-[168px] shadow-sm">
         @include('tree._purchase-mark', ['state' => $cardStats['purchase_state'] ?? null])
         <div class="group absolute top-1.5 left-1.5">
             <span class="block w-2 h-2 rounded-full {{ $theme['dot'] }} ring-2 ring-white cursor-help"></span>

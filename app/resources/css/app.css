@@ -462,6 +462,29 @@ html.dark .hover\:bg-leaf-50:hover { background-color: #1a3312; }
 html.dark .hover\:bg-leaf-100:hover { background-color: #20401a; }
 html.dark .to-leaf-50 { --tw-gradient-to: #13260d; }
 html.dark .to-leaf-50\/40 { --tw-gradient-to: rgb(19 38 13 / 0.4); }
+
+/* --- Genealogy minimap ---------------------------------------------
+   #minimapInner is a 1-10% scale clone of the tree canvas. At that size a
+   card's text, its status tint and its hairline border all fall below a
+   pixel, so a deep tree projects as an empty panel — completely empty in
+   dark mode, where the card tints already sit within a shade or two of the
+   panel's own surface. Flatten every cloned node to one solid block and
+   hide its contents: a minimap's job is the tree's SHAPE and where you are
+   in it, never its content. The purchase mark is the one thing kept, so the
+   projection still carries red / amber / green. The #id gives these the
+   specificity to beat both the card's utilities and their html.dark remaps
+   without an !important. */
+#minimapInner [data-node-card] {
+    background-color: #334155;
+    border-color: #334155;
+    box-shadow: none;
+}
+#minimapInner [data-node-card] > * { visibility: hidden; }
+#minimapInner [data-node-card] > [data-purchase-mark] { visibility: visible; }
+html.dark #minimapInner [data-node-card] {
+    background-color: #cbd5e1;
+    border-color: #cbd5e1;
+}
 html.dark .border-leaf-200 { border-color: #2f6323; }
 html.dark .border-leaf-300 { border-color: #3a7a2b; }
 html.dark .border-leaf-400 { border-color: #468f34; }

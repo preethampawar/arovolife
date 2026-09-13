@@ -48,7 +48,7 @@
         // (distributors.user_id NOT NULL with an FK to users.id).
         $theme = $node->user->statusTheme();
     @endphp
-    <div data-node-adn="{{ $node->adn }}" data-node-id="{{ $node->id }}"
+    <div data-node-adn="{{ $node->adn }}" data-node-id="{{ $node->id }}" data-node-card
         class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-2 py-2 text-center min-w-[150px] max-w-[168px] shadow-sm transition-shadow">
         @include('tree._purchase-mark', ['state' => $cardStats['purchase_state'] ?? null])
         {{-- Status dot moved to top-LEFT so the 3-dots "more actions" menu
