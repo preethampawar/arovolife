@@ -46,6 +46,9 @@
                 @if($order->discount_paise > 0)
                 <div class="flex gap-8 text-green-700"><span>Discount</span><span class="w-32 text-right">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->discount_paise / 100, 2) }}</span></div>
                 @endif
+                @if($repurchaseWalletDebit)
+                <div class="flex gap-8 text-green-700"><span>Repurchase wallet used</span><span class="w-32 text-right">−₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($repurchaseWalletDebit->amount_paise) / 100, 2) }}</span></div>
+                @endif
                 <div class="flex gap-8"><span class="text-gray-600">Shipping</span><span class="w-32 text-right">@if($order->shipping_paise > 0)₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}@else<span class="text-green-700">Free</span>@endif</span></div>
                 <div class="flex gap-8 font-semibold pt-2 border-t border-gray-100 mt-2"><span>Total</span><span class="w-32 text-right">{{ $order->displayTotal() }}</span></div>
             </div>

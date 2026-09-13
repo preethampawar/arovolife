@@ -6,6 +6,7 @@ namespace App\Modules\Commerce\Http\Controllers\Admin;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\InventorySettings;
@@ -42,9 +43,19 @@ final class AdminOrderController extends Controller
             ->pluck('c', 'status')
             ->all();
 
+        // Repurchase wallet applied at checkout (Compensation module) keyed by
+        // order id, so the list can show it without an N+1 per row.
+        $repurchaseWalletByOrder = WalletLedgerEntry::query()
+            ->where('reference_type', 'order')
+            ->where('type', 'repurchase_wallet_used')
+            ->whereIn('reference_id', $orders->pluck('id'))
+            ->pluck('amount_paise', 'reference_id')
+            ->map(fn (int $amountPaise): int => abs($amountPaise));
+
         return view('admin.commerce.orders-index', [
             'orders' => $orders,
             'statusCounts' => $statusCounts,
+            'repurchaseWalletByOrder' => $repurchaseWalletByOrder,
         ]);
     }
 
@@ -59,6 +70,12 @@ final class AdminOrderController extends Controller
             'order' => $order,
             'invoice' => Invoice::where('order_id', $order->id)->latest('id')->first(),
             'paymentIntent' => PaymentIntent::where('order_id', $order->id)->latest('id')->first(),
+            'repurchaseWalletDebit' => WalletLedgerEntry::query()
+                ->where('reference_type', 'order')
+                ->where('reference_id', $order->id)
+                ->where('type', 'repurchase_wallet_used')
+                ->latest('id')
+                ->first(),
             // Inventory plan H7: pick list, shipment and pack warehouses.
             'pickList' => $this->fulfilment->pickList($order),
             'shipment' => Shipment::where('order_id', $order->id)->latest('id')->first(),

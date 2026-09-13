@@ -27,6 +27,7 @@
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Customer</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Attribution</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Total</th>
+                    <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Repurchase Wallet</th>
                     <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">BV</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
                     <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Placed</th>
@@ -48,6 +49,13 @@
                         <span class="block text-gray-600">{{ $o->attribution_source }}</span>
                     </td>
                     <td class="px-4 py-3 font-semibold">{{ $o->displayTotal() }}</td>
+                    <td class="px-4 py-3 text-right text-gray-700 whitespace-nowrap">
+                        @if($repurchaseWalletByOrder->get($o->id))
+                            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($repurchaseWalletByOrder->get($o->id) / 100, 2) }}
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td class="px-4 py-3 text-right text-brand-700 whitespace-nowrap" title="Total Business Volume for this order">
                         {{ \App\Modules\Shared\Support\IndianNumber::format($o->bvTotalPaise() / 100, 0) }} BV
                     </td>
@@ -60,7 +68,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="9" class="px-4 py-8 text-center text-sm text-gray-600">No orders yet.</td></tr>
+                <tr><td colspan="10" class="px-4 py-8 text-center text-sm text-gray-600">No orders yet.</td></tr>
                 @endforelse
             </tbody>
         </table>
