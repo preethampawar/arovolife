@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
+use Illuminate\Contracts\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -40,7 +41,7 @@ function lfMake(array $query, array $fields): ListFilters
  * SQLite (double quotes) elsewhere, so asserting on a quoted identifier
  * would pin the test to one driver rather than to the behaviour.
  */
-function lfSql(Illuminate\Contracts\Database\Query\Builder $query): string
+function lfSql(Builder $query): string
 {
     return str_replace(['`', '"'], '', $query->toSql());
 }

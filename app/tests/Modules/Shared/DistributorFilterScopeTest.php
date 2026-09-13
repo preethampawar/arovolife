@@ -6,6 +6,7 @@ use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -26,7 +27,7 @@ use Illuminate\Support\Facades\DB;
  * test can assert the exact thing that matters: the other distributor's row
  * never appears, whatever the URL says.
  *
- * @see \App\Modules\Shared\Support\ListFilters
+ * @see ListFilters
  */
 uses(RefreshDatabase::class);
 
