@@ -7,6 +7,8 @@
     <title>@yield('title', 'Admin') — arovolife Admin</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials._font-size-fouc')
+    {{-- Admin dark/light theme: restore the saved choice before first paint. --}}
+    @include('partials._theme-fouc')
     {{-- Sidebar collapse FOUC preventer: restore the saved desktop rail state
          before first paint so the nav never renders wide and then snaps. --}}
     <script>
@@ -339,6 +341,20 @@
                 <h1 class="text-sm sm:text-base font-semibold text-white tracking-tight truncate">@yield('heading', 'Admin Console')</h1>
             </div>
             <div class="flex items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-slate-300 font-medium whitespace-nowrap">
+                {{-- Dark/light theme toggle. Purely a display preference stored
+                     per browser in localStorage; there is no server state and
+                     therefore no new route or gate — the control inherits the
+                     admin layout's own middleware. Both icons are rendered and
+                     CSS shows exactly one (see app.css, [data-theme-icon]), so
+                     the correct icon is right from the pre-paint script on. --}}
+                <button type="button" id="adminThemeToggle"
+                        aria-pressed="false"
+                        title="Toggle dark mode"
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-sunrise-400 transition-colors">
+                    <span class="sr-only">Toggle dark mode</span>
+                    <span data-theme-icon="light" aria-hidden="true">{{ svg('lucide-moon', 'w-4 h-4') }}</span>
+                    <span data-theme-icon="dark" aria-hidden="true">{{ svg('lucide-sun', 'w-4 h-4') }}</span>
+                </button>
                 <span class="hidden sm:inline">{{ now()->format('d M Y, H:i') }} IST</span>
             </div>
         </header>
@@ -470,6 +486,25 @@
                     state[key] = open ? 1 : 0;
                     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* ignore */ }
                 });
+            });
+        })();
+    </script>
+
+    {{-- Theme toggle. Flips the `dark` class the pre-paint script set and
+         persists the choice. Light is the default for anyone who has never
+         chosen; a storage failure (private browsing) degrades to a toggle
+         that still works for the current page but is not remembered. --}}
+    <script>
+        (() => {
+            const btn = document.getElementById('adminThemeToggle');
+            if (! btn) return;
+            const root = document.documentElement;
+            const sync = () => btn.setAttribute('aria-pressed', root.classList.contains('dark') ? 'true' : 'false');
+            sync();
+            btn.addEventListener('click', () => {
+                const dark = root.classList.toggle('dark');
+                try { localStorage.setItem('arovolife_admin_theme', dark ? 'dark' : 'light'); } catch (e) { /* ignore */ }
+                sync();
             });
         })();
     </script>

@@ -235,3 +235,202 @@
 .markdown-doc th, .markdown-doc td { border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; }
 .markdown-doc th { background: #f8fafc; font-weight: 600; color: #0f172a; white-space: nowrap; }
 .markdown-doc tbody tr:nth-child(even) { background: #fcfdfe; }
+
+/* =====================================================================
+   ADMIN — DARK THEME
+   ---------------------------------------------------------------------
+   Plan: docs/plans/admin-dark-theme-2026-09-13.md
+
+   The 146 admin views hardcode light utilities (text-gray-600 x1469,
+   bg-white x518, border-gray-200 x461, …). Rather than sprinkle `dark:`
+   variants through every one of them, this single layer remaps the
+   utilities the admin console actually uses whenever <html> carries the
+   `dark` class — which only the admin layout's pre-paint script ever
+   sets (partials/_theme-fouc.blade.php). The public site, shop, wizard
+   and distributor dashboard never see it.
+
+   Why class-targeted rules and not a redefinition of Tailwind's @theme
+   colour variables: one variable backs both `text-red-700` (which must
+   get LIGHTER in dark mode) and `bg-red-700` (a solid button that must
+   stay dark behind its white text). Separate selectors can express that;
+   a shared variable cannot.
+
+   These rules sit outside @layer, so they win over Tailwind's layered
+   utilities regardless of specificity — no !important anywhere.
+
+   Untouched by design: every bg-slate-* (the sidebar and header are
+   already dark in both themes), bg-sunrise-*, all ring-* focus rings,
+   and every solid bg-{brand,red,green,amber,blue}-600/700/800/900 fill,
+   which already carries white text at AA and reads correctly on a dark
+   page.
+
+   Contrast (measured against the card surface #19202c):
+     text-gray-900 14.6:1 · gray-800 13.0 · gray-700 10.9 · gray-600 9.6
+     gray-500 6.5 · gray-400 5.1 — all WCAG 2.1 AA or better.
+   ===================================================================== */
+
+html.dark { color-scheme: dark; }
+
+html.dark,
+html.dark body {
+    background-color: #0f1520;
+    color: #e6ebf2;
+}
+
+/* The admin <body> pins its page colour with an arbitrary utility. */
+html.dark body.bg-\[\#f4f7f6\] { background-color: #0f1520; }
+
+/* --- Surfaces ------------------------------------------------------- */
+html.dark .bg-white { background-color: #19202c; }
+html.dark .bg-gray-50 { background-color: #212a38; }
+html.dark .bg-gray-100 { background-color: #2a3444; }
+html.dark .bg-gray-200 { background-color: #323d4f; }
+html.dark .hover\:bg-white:hover { background-color: #212a38; }
+html.dark .hover\:bg-gray-50:hover { background-color: #232d3c; }
+html.dark .hover\:bg-gray-100:hover { background-color: #2d3849; }
+html.dark .hover\:bg-gray-900:hover { background-color: #0b101a; }
+html.dark .disabled\:bg-gray-100:disabled { background-color: #232c39; }
+html.dark .disabled\:bg-gray-300:disabled { background-color: #2b3543; }
+
+/* --- Text ----------------------------------------------------------- */
+html.dark .text-gray-900 { color: #f1f5f9; }
+html.dark .text-gray-800 { color: #e6ebf2; }
+html.dark .text-gray-700 { color: #d3dbe6; }
+html.dark .text-gray-600 { color: #bfc9d6; }
+html.dark .text-gray-500 { color: #9aa6b6; }
+html.dark .text-gray-400 { color: #8593a4; }
+html.dark .text-gray-300 { color: #93a1b2; }
+html.dark .hover\:text-gray-900:hover { color: #ffffff; }
+html.dark .hover\:text-gray-800:hover { color: #f1f5f9; }
+html.dark .hover\:text-gray-700:hover { color: #e6ebf2; }
+html.dark .disabled\:text-gray-600:disabled { color: #7c8899; }
+html.dark .disabled\:text-gray-500:disabled { color: #75808f; }
+html.dark .placeholder-gray-400::placeholder { color: #8593a4; }
+
+/* --- Borders & dividers --------------------------------------------- */
+html.dark .border-gray-100 { border-color: #29323f; }
+html.dark .border-gray-200 { border-color: #303b4d; }
+html.dark .border-gray-300 { border-color: #3b485c; }
+html.dark .hover\:border-gray-300:hover { border-color: #4a5a71; }
+html.dark .divide-gray-50 > *,
+html.dark .divide-gray-100 > * { border-color: #29323f; }
+html.dark .divide-gray-200 > * { border-color: #303b4d; }
+
+/* --- Form controls --------------------------------------------------
+   @layer base pins `color:#0f172a` on inputs; override it here along
+   with the field surface so typed text is legible.                     */
+html.dark input,
+html.dark select,
+html.dark textarea {
+    background-color: #212a38;
+    color: #f1f5f9;
+    border-color: #3b485c;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: #8593a4; }
+html.dark input[type="checkbox"],
+html.dark input[type="radio"] { background-color: #2a3444; }
+
+/* --- Tinted status surfaces -----------------------------------------
+   Tint end (50–300) goes dark; text end (600–900) goes light. Solid
+   600/700/800 FILLS are deliberately absent — they stay as they are.   */
+
+/* red */
+html.dark .bg-red-50 { background-color: #2b1416; }
+html.dark .bg-red-100 { background-color: #3a1a1d; }
+html.dark .hover\:bg-red-50:hover { background-color: #351a1d; }
+html.dark .border-red-200 { border-color: #6b2b31; }
+html.dark .border-red-300 { border-color: #7d353c; }
+html.dark .border-red-400 { border-color: #8e4048; }
+html.dark .text-red-500 { color: #f87171; }
+html.dark .text-red-600 { color: #fca5a5; }
+html.dark .text-red-700 { color: #fca5a5; }
+html.dark .text-red-800 { color: #fecaca; }
+html.dark .text-red-900 { color: #fee2e2; }
+html.dark .hover\:text-red-700:hover { color: #fecaca; }
+html.dark .hover\:text-red-800:hover { color: #fee2e2; }
+
+/* green */
+html.dark .bg-green-50 { background-color: #10251a; }
+html.dark .bg-green-100 { background-color: #16311f; }
+html.dark .border-green-200 { border-color: #235c38; }
+html.dark .border-green-300 { border-color: #2c7044; }
+html.dark .text-green-600 { color: #86efac; }
+html.dark .text-green-700 { color: #86efac; }
+html.dark .text-green-800 { color: #bbf7d0; }
+html.dark .text-green-900 { color: #dcfce7; }
+
+/* amber / yellow */
+html.dark .bg-amber-50 { background-color: #2a2011; }
+html.dark .bg-amber-100 { background-color: #3a2b14; }
+html.dark .bg-yellow-50 { background-color: #2a2011; }
+html.dark .bg-yellow-100 { background-color: #3a2b14; }
+html.dark .hover\:bg-amber-100:hover { background-color: #45341a; }
+html.dark .hover\:bg-amber-200:hover { background-color: #4f3c1e; }
+html.dark .border-amber-200 { border-color: #6b4c1d; }
+html.dark .border-amber-300 { border-color: #7d5a25; }
+html.dark .border-yellow-200 { border-color: #6b4c1d; }
+html.dark .text-amber-600 { color: #fcd34d; }
+html.dark .text-amber-700 { color: #fcd34d; }
+html.dark .text-amber-800 { color: #fde68a; }
+html.dark .text-amber-900 { color: #fef3c7; }
+html.dark .text-yellow-700 { color: #fcd34d; }
+html.dark .text-yellow-800 { color: #fde68a; }
+
+/* blue */
+html.dark .bg-blue-50 { background-color: #101d2e; }
+html.dark .bg-blue-100 { background-color: #17293f; }
+html.dark .border-blue-200 { border-color: #2b4a6e; }
+html.dark .border-blue-300 { border-color: #35597f; }
+html.dark .text-blue-600 { color: #93c5fd; }
+html.dark .text-blue-700 { color: #93c5fd; }
+html.dark .text-blue-800 { color: #bfdbfe; }
+html.dark .text-blue-900 { color: #dbeafe; }
+
+/* indigo */
+html.dark .bg-indigo-50 { background-color: #171a33; }
+html.dark .bg-indigo-100 { background-color: #1f2447; }
+html.dark .border-indigo-200 { border-color: #383f78; }
+html.dark .text-indigo-600 { color: #a5b4fc; }
+html.dark .text-indigo-700 { color: #a5b4fc; }
+html.dark .text-indigo-800 { color: #c7d2fe; }
+html.dark .hover\:text-indigo-700:hover { color: #c7d2fe; }
+html.dark .hover\:text-indigo-800:hover { color: #e0e7ff; }
+
+/* purple */
+html.dark .bg-purple-50 { background-color: #201434; }
+html.dark .bg-purple-100 { background-color: #2b1a46; }
+html.dark .border-purple-200 { border-color: #4c2d73; }
+html.dark .text-purple-700 { color: #d8b4fe; }
+html.dark .text-purple-800 { color: #e9d5ff; }
+
+/* orange */
+html.dark .bg-orange-50 { background-color: #2a1a10; }
+html.dark .bg-orange-100 { background-color: #3a2213; }
+html.dark .border-orange-200 { border-color: #6d3f1c; }
+html.dark .text-orange-700 { color: #fdba74; }
+html.dark .text-orange-800 { color: #fed7aa; }
+
+/* brand (logo blue) — the text end only; the 600–800 fills stay. */
+html.dark .bg-brand-50 { background-color: #0a2634; }
+html.dark .bg-brand-100 { background-color: #0d3244; }
+html.dark .hover\:bg-brand-50:hover { background-color: #0d3244; }
+html.dark .text-brand-600 { color: #5fd2f8; }
+html.dark .text-brand-700 { color: #5fd2f8; }
+html.dark .text-brand-800 { color: #a3e5fc; }
+html.dark .text-brand-900 { color: #cff1fd; }
+html.dark .hover\:text-brand-800:hover { color: #cff1fd; }
+html.dark .group:hover .group-hover\:text-brand-800 { color: #cff1fd; }
+html.dark .border-brand-100 { border-color: #0d3244; }
+html.dark .border-brand-200 { border-color: #114a68; }
+
+/* --- Misc ----------------------------------------------------------- */
+/* Prose/markdown blocks inside admin pages. */
+html.dark .markdown-doc { color: #cbd5e1; }
+/* Shadows read as grime on dark surfaces; deepen instead of tint. */
+html.dark .shadow-sm { --tw-shadow-color: rgba(0, 0, 0, 0.5); }
+
+/* Theme-toggle icon swap — one icon per theme, no JS class juggling. */
+[data-theme-icon="dark"] { display: none; }
+html.dark [data-theme-icon="light"] { display: none; }
+html.dark [data-theme-icon="dark"] { display: block; }
