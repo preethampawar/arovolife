@@ -322,3 +322,30 @@ it('DSH-08: shows the repurchase alert even with the repurchase engine flag off'
         ->assertSee('Repurchase alert')
         ->assertSee('Bring this to ₹0 by');
 });
+
+it('DOC-01: the documents page renders the repurchase card for an unqualified distributor', function () {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $user = dshUser('active');
+    dshDistributor($user);
+
+    // A fresh distributor is below the BV gate, so the card must show what
+    // opens the cycle rather than an empty window.
+    $this->actingAs($user)
+        ->get(route('dashboard.documents'))
+        ->assertOk()
+        ->assertSee('Repurchase cycle', false)
+        ->assertSee('Not started yet', false);
+});
+
+it('DOC-02: the repurchase card leaves no trace when the engine is off', function () {
+    Feature::for(null)->deactivate(RepurchaseEngineFeature::class);
+
+    $user = dshUser('active');
+    dshDistributor($user);
+
+    $this->actingAs($user)
+        ->get(route('dashboard.documents'))
+        ->assertOk()
+        ->assertDontSee('Repurchase cycle', false);
+});

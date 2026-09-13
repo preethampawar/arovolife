@@ -11,6 +11,7 @@ use App\Modules\Compensation\Events\RepurchaseCompleted;
 use App\Modules\Compensation\Events\RepurchaseCycleOpened;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\RepurchaseCycle;
+use App\Modules\Compensation\Services\DTOs\RepurchaseCycleCard;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -95,6 +96,35 @@ final class RepurchaseCycleService
             ->where('distributor_id', $distributorId)
             ->orderByDesc('cycle_start_date')
             ->first();
+    }
+
+    /**
+     * Everything the distributor-facing repurchase card shows, resolved once.
+     *
+     * Read-only: it reports the cycle as it already stands and never opens,
+     * advances or resolves one. A distributor who has not reached the BV gate
+     * has no cycle at all, and gets the progress toward that gate instead of
+     * an empty window — "not qualified yet" and "qualified, nothing due" are
+     * different answers and the card must not blur them.
+     */
+    public function cardFor(int $distributorId, ?Carbon $today = null): RepurchaseCycleCard
+    {
+        $today ??= Carbon::today();
+
+        $personalBvPaise = $this->bvLedger->totalPersonalBvPaise($distributorId);
+        $qualifyBvPaise = $this->plan->gsbMinBvPaise();
+
+        $cycle = $this->currentCycle($distributorId);
+
+        // No anchor means the 600-BV minimum has never been reached, so no
+        // obligation exists yet. Check the anchor rather than the cycle alone:
+        // a cycle row can exist from an earlier evaluation while the anchor is
+        // what decides whether an obligation is owed at all.
+        if ($cycle === null || $this->repurchaseAnchor($distributorId) === null) {
+            return RepurchaseCycleCard::notQualified($personalBvPaise, $qualifyBvPaise);
+        }
+
+        return RepurchaseCycleCard::fromCycle($cycle, $today, $personalBvPaise, $qualifyBvPaise);
     }
 
     /**
