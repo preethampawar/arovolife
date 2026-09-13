@@ -127,7 +127,7 @@
                      shouting brand accent. One orange textual mark in the
                      chrome; the active-nav rail is the other, and it earns it
                      by being positional rather than decorative. --}}
-                <span class="block text-[10px] text-gray-400 mt-1.5 tracking-[0.14em] uppercase font-semibold">Admin Console</span>
+                <span class="block text-[10px] text-gray-500 mt-1.5 tracking-[0.14em] uppercase font-semibold">Admin Console</span>
             </div>
             {{-- Desktop-only collapse / expand toggle. State lives on <html>
                  (class admin-nav-collapsed) and persists in localStorage. --}}
@@ -277,7 +277,7 @@
                     <button type="button" data-nav-group-toggle
                             aria-expanded="true"
                             aria-controls="nav-group-{{ $group['key'] }}"
-                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 px-3 pt-5 pb-1.5 mt-1 first:mt-0 first:pt-1 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 transition-colors hover:text-gray-700">
+                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 px-3 pt-5 pb-1.5 mt-1 first:mt-0 first:pt-1 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500 transition-colors hover:text-gray-900">
                         <span class="text-left">{{ $group['label'] }}</span>
                         <span data-nav-group-chevron="down" class="shrink-0 text-gray-300">{{ svg('lucide-chevron-down', 'w-3 h-3') }}</span>
                         <span data-nav-group-chevron="right" class="shrink-0 text-gray-300" hidden>{{ svg('lucide-chevron-right', 'w-3 h-3') }}</span>
@@ -399,18 +399,24 @@
                  session('status') shows the message twice. --}}
             {{-- A leading icon so the three blocks stop reading as coloured
                  paragraphs and are distinguishable at a glance without relying
-                 on colour alone. Copy is unchanged. --}}
+                 on colour alone. Copy is unchanged.
+
+                 The message body is a <div>, deliberately NOT a <span>: the
+                 flash text used to be a bare text node, and several browser
+                 specs select status badges with locator('span').filter({
+                 hasText: '...' }). Wrapping the message in a span makes those
+                 match the flash too and trips Playwright strict mode. --}}
             @if(session('status'))
             <div class="mb-5 flex items-start gap-2.5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
                 <span class="shrink-0 mt-px" aria-hidden="true">{{ svg('lucide-circle-check', 'w-4 h-4') }}</span>
-                <span>{{ session('status') }}</span>
+                <div>{{ session('status') }}</div>
             </div>
             @endif
 
             @if(session('error'))
             <div class="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 font-medium">
                 <span class="shrink-0 mt-px" aria-hidden="true">{{ svg('lucide-circle-alert', 'w-4 h-4') }}</span>
-                <span>{{ session('error') }}</span>
+                <div>{{ session('error') }}</div>
             </div>
             @endif
 
