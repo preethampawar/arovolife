@@ -1,14 +1,27 @@
-@props(['text', 'light' => false])
+@props(['text', 'light' => false, 'interactive' => true])
 {{-- Info icon with a hover/focus tooltip. Usage: <x-help-tip text="..." /> --}}
 {{-- Pass light (boolean) when the icon sits on a dark/gradient background. --}}
+{{-- Pass interactive="false" when the icon already sits inside another interactive
+     element (a card rendered as role="button" or an <a>): a focusable/aria-hidden
+     control nested in one is still exposed to assistive tech, so it renders as a
+     plain decorative span instead. Fold the tip text into the ancestor's own
+     aria-label so screen-reader users still get it; mouse hover still shows it here. --}}
 {{-- The popup is repositioned to fixed viewport coordinates on show so it is never
      clipped by overflow-x-auto table wrappers or overflow-hidden cards. --}}
 <span class="relative inline-flex items-center align-middle ml-1" data-help-tip>
+    @if($interactive)
     <button type="button" tabindex="0" aria-label="More information"
         class="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-brand-400
                {{ $light ? 'border-white/60 text-white/90 hover:bg-white/10' : 'border-gray-400 text-gray-600 hover:bg-gray-100' }}">
         i
     </button>
+    @else
+    <span aria-hidden="true"
+        class="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold
+               {{ $light ? 'border-white/60 text-white/90' : 'border-gray-400 text-gray-600' }}">
+        i
+    </span>
+    @endif
     <span role="tooltip"
         class="pointer-events-none invisible fixed z-50 w-56 rounded-lg bg-gray-900 px-3 py-2 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150">
         {{ $text }}
@@ -20,7 +33,7 @@
     var active = null;
 
     function show(root) {
-        var btn = root.querySelector('button');
+        var btn = root.querySelector('button, span[aria-hidden]');
         var tip = root.querySelector('[role="tooltip"]');
         if (!btn || !tip) return;
         var r = btn.getBoundingClientRect();

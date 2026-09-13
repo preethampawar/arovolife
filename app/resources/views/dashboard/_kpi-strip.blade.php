@@ -85,9 +85,14 @@
             // The roster script binds on [data-team-roster], so a div works.
             $isButton = isset($tile['roster']);
             $tag = $isButton ? 'div' : 'a';
+            // The help-tip icon below is rendered non-interactive (a plain span, not
+            // a button) because a focusable control nested inside this card would
+            // still be exposed to assistive tech even with tabindex="-1"/aria-hidden.
+            // Its text is folded into this card's own aria-label instead.
+            $ariaLabel = $tile['label'].'. '.$tile['sub'].'. '.$tile['tip'];
             $attrs = $isButton
-                ? 'role="button" tabindex="0" data-team-roster="'.$tile['roster'].'" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click();}"'
-                : 'href="'.$tile['href'].'"';
+                ? 'role="button" tabindex="0" data-team-roster="'.$tile['roster'].'" aria-label="'.e($ariaLabel).'" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click();}"'
+                : 'href="'.$tile['href'].'" aria-label="'.e($ariaLabel).'"';
         @endphp
         <{{ $tag }} {!! $attrs !!}
             class="group relative block cursor-pointer overflow-hidden text-left rounded-2xl border {{ $tone['card'] }} p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring-2 {{ $tone['ring'] }}">
@@ -96,7 +101,7 @@
                 <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-md {{ $tone['icon'] }}">
                     {{ svg('lucide-'.$tile['icon'], 'w-5 h-5') }}
                 </span>
-                <x-help-tip :text="$tile['tip']" />
+                <x-help-tip :text="$tile['tip']" :interactive="false" />
             </div>
             <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">{{ $tile['label'] }}</p>
             <p class="mt-1 text-xl sm:text-2xl font-bold {{ $tone['value'] }} leading-tight">{{ $tile['value'] }}</p>

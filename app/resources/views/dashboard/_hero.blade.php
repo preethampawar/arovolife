@@ -68,7 +68,7 @@
                     <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-white text-brand-700">Personal invite</span>
                 </div>
                 <div class="flex items-stretch gap-2">
-                    <input type="text" readonly value="{{ $inviteUrl }}"
+                    <input type="text" readonly value="{{ $inviteUrl }}" aria-label="My referral link"
                         class="flex-1 min-w-0 rounded-lg border border-white/30 bg-white px-2.5 py-1.5 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-sunrise-400"
                         onclick="this.select()">
                     <button type="button"

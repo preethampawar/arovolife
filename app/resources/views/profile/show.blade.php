@@ -42,26 +42,26 @@
             {{-- 1) FULL NAME --}}
             <div>
                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Full name <x-help-tip :text="$lockTip" /></label>
-                <input type="text" value="{{ $user->full_name }}" disabled class="{{ $lockedInput }}">
+                <input type="text" value="{{ $user->full_name }}" disabled aria-label="Full name" class="{{ $lockedInput }}">
             </div>
 
             @if($distributor)
             {{-- 2) ADN --}}
             <div>
                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">ADN <x-help-tip text="your permanent arovolife Distributor Number." /></label>
-                <input type="text" value="{{ $distributor->adn }}" disabled class="{{ $lockedInput }} font-mono">
+                <input type="text" value="{{ $distributor->adn }}" disabled aria-label="ADN" class="{{ $lockedInput }} font-mono">
             </div>
 
             {{-- 3) PAN (masked — last 4 only) --}}
             <div>
                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">PAN card number <x-help-tip text="masked for your security — only the last 4 characters are shown." /></label>
-                <input type="text" value="{{ $distributor->pan_masked ?? '—' }}" disabled class="{{ $lockedInput }} font-mono tracking-wider">
+                <input type="text" value="{{ $distributor->pan_masked ?? '—' }}" disabled aria-label="PAN card number" class="{{ $lockedInput }} font-mono tracking-wider">
             </div>
 
             {{-- 4) AADHAAR (masked — last 4 only) --}}
             <div>
                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Aadhaar number <x-help-tip text="masked for your security — only the last 4 digits are shown." /></label>
-                <input type="text" value="{{ $distributor->aadhaar_masked ?? '—' }}" disabled class="{{ $lockedInput }} font-mono tracking-wider">
+                <input type="text" value="{{ $distributor->aadhaar_masked ?? '—' }}" disabled aria-label="Aadhaar number" class="{{ $lockedInput }} font-mono tracking-wider">
             </div>
 
             {{-- 5) BANK ACCOUNT DETAILS (IFSC + on-file indicator; account number never shown) --}}
