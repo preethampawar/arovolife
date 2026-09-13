@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Console\Actions\PurchaseDataResetAction;
+use App\Console\Actions\PurchaseResetBlocked;
+use App\Modules\Compensation\Support\EngineScheduleWindow;
 use Illuminate\Console\Command;
 use Illuminate\Console\ConfirmableTrait;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +25,15 @@ final class PurchaseDataResetCommand extends Command
         // frozen daily pool economics (gsb_daily_pools / msb_daily_pools), which
         // are the primary evidence for why a past payout was the amount it was.
         if (app()->isProduction() && ! $this->confirmToProceed()) {
+            return self::FAILURE;
+        }
+
+        // Checked before the destructive prompt below, not just inside execute():
+        // an operator who has already typed "yes" to the row-count warning should
+        // not then be told to wait — refuse before asking the question at all.
+        if (EngineScheduleWindow::isActiveNow()) {
+            $this->error(PurchaseResetBlocked::duringEngineWindow()->getMessage());
+
             return self::FAILURE;
         }
 

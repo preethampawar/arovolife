@@ -8,12 +8,20 @@ use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use Database\Seeders\GsbSlabsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
+    // Outside the 00:00-05:00 IST engine window by default, so these tests
+    // don't flake depending on the wall-clock time they happen to run at.
+    Carbon::setTestNow(Carbon::parse('2026-01-01 12:00:00', 'Asia/Kolkata'));
+});
+
+afterEach(function (): void {
+    Carbon::setTestNow();
 });
 
 function seedPurchaseData(): Distributor
@@ -87,6 +95,17 @@ it('is idempotent — a second run succeeds on an already-clean database', funct
     $this->artisan('platform:reset-purchases', ['--force' => true])->assertExitCode(0);
 
     expect(DB::table('audit_log')->where('action', 'platform.purchase_reset')->count())->toBe(2);
+});
+
+it('refuses to run inside the nightly engine window', function () {
+    Carbon::setTestNow(Carbon::parse('2026-01-02 02:00:00', 'Asia/Kolkata'));
+    $dist = seedPurchaseData();
+
+    $this->artisan('platform:reset-purchases', ['--force' => true])
+        ->assertExitCode(1);
+
+    expect(DB::table('wallet_ledger_entries')->count())->toBeGreaterThan(0)
+        ->and($dist->fresh()->gsb_frozen_at)->not->toBeNull();
 });
 
 it('aborts without --force when confirmation is declined', function () {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Console\Actions\PurchaseDataResetAction;
+use App\Console\Actions\PurchaseResetBlocked;
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Models\EngineRun;
@@ -19,6 +20,7 @@ use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
+use App\Modules\Compensation\Support\EngineScheduleWindow;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use Illuminate\Contracts\View\View;
@@ -295,6 +297,13 @@ final class AdminEngineRunsController extends Controller
     public function resetPurchaseData(Request $request, PurchaseDataResetAction $reset): RedirectResponse
     {
         abort_unless($this->destructiveToolsAllowed($request), 404);
+
+        // Checked before validation and the audit-log "requested" entry below:
+        // refuse before anything is written, not after.
+        if (EngineScheduleWindow::isActiveNow()) {
+            return redirect()->route('admin.compensation.engine-runs.index')
+                ->with('error', PurchaseResetBlocked::duringEngineWindow()->getMessage());
+        }
 
         $validated = $request->validate([
             'confirm_database' => ['required', 'string', Rule::in([$this->recomputeGuard->targetDatabase()])],

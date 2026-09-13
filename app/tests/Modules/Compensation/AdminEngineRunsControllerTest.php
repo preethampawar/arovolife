@@ -31,6 +31,13 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     disableTestForeignKeys();
     $this->seed(RolesAndPermissionsSeeder::class);
+    // Outside the 00:00-05:00 IST engine window by default, so these tests
+    // don't flake depending on the wall-clock time they happen to run at.
+    Carbon::setTestNow(Carbon::parse('2026-01-01 12:00:00', 'Asia/Kolkata'));
+});
+
+afterEach(function (): void {
+    Carbon::setTestNow();
 });
 
 function engineRunsUser(string $role): User
@@ -542,6 +549,33 @@ it('wipes orders on a confirmed purchase-data reset but keeps the distributors',
         ->and(DB::table('distributors')->where('id', $distributor->id)->exists())->toBeTrue();
 
     expect(DB::table('audit_log')->where('action', 'platform.purchase_reset')->exists())->toBeTrue();
+});
+
+it('refuses a purchase-data reset inside the nightly engine window', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+    Carbon::setTestNow(Carbon::parse('2026-01-02 02:00:00', 'Asia/Kolkata'));
+
+    $distributor = Distributor::factory()->create();
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributor->id,
+        'order_id' => 4242,
+        'bv_paise' => 100_000,
+        'type' => 'accrual',
+        'effective_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $database = app(RecomputeGuard::class)->targetDatabase();
+
+    $this->actingAs(engineRunsUser('developer'))
+        ->from(route('admin.compensation.engine-runs.index'))
+        ->post(route('admin.compensation.engine-runs.reset-purchase-data'), ['confirm_database' => $database])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'))
+        ->assertSessionHas('error');
+
+    expect(DB::table('bv_ledger_entries')->count())->toBe(1)
+        ->and(DB::table('audit_log')->where('action', 'like', 'platform.purchase_reset%')->count())->toBe(0);
 });
 
 it('404s the recompute endpoint when the gate is closed', function (): void {

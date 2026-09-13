@@ -6,6 +6,7 @@ namespace App\Console\Actions;
 
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
 use App\Modules\Compensation\Support\DerivedTables;
+use App\Modules\Compensation\Support\EngineScheduleWindow;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use Closure;
@@ -127,6 +128,10 @@ final class PurchaseDataResetAction
         ?int $actorId = null,
         string $provenance = 'php artisan platform:reset-purchases',
     ): void {
+        if (EngineScheduleWindow::isActiveNow()) {
+            throw PurchaseResetBlocked::duringEngineWindow();
+        }
+
         $log = $progress ?? static fn (string $_m): null => null;
 
         $log('Truncating purchase-derived tables...');
