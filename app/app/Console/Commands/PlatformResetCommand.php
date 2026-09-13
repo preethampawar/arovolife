@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Console\Actions\PlatformResetAction;
+use App\Console\Actions\PurchaseResetBlocked;
+use App\Modules\Compensation\Support\EngineScheduleWindow;
 use Illuminate\Console\Command;
 
 final class PlatformResetCommand extends Command
@@ -15,6 +17,14 @@ final class PlatformResetCommand extends Command
 
     public function handle(PlatformResetAction $action): int
     {
+        // Checked before the destructive prompt below, not just inside execute():
+        // an operator who has already typed "yes" should not then be told to wait.
+        if (EngineScheduleWindow::isActiveNow()) {
+            $this->error(PurchaseResetBlocked::duringEngineWindow()->getMessage());
+
+            return self::FAILURE;
+        }
+
         if (! $this->option('force')) {
             $this->warn('THIS WILL WIPE THE DATABASE AND DELETE S3 KYC OBJECTS.');
             $this->line('Targets:');

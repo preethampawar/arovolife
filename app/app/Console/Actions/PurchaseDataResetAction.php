@@ -119,6 +119,41 @@ final class PurchaseDataResetAction
     }
 
     /**
+     * The single place both the CLI's early UX check and {@see execute()}'s
+     * authoritative check ask "is this reset permitted right now?" — so a
+     * refusal is audit-logged exactly once, from exactly one call site, however
+     * a caller reaches it.
+     *
+     * A refused attempt is itself worth a durable trace: the 2026-08-31 staging
+     * incident was reconstructed from platform.purchase_reset rows, and an
+     * operator repeatedly hitting this refusal at 2am is exactly the signal that
+     * should survive to be looked at later.
+     *
+     * @throws PurchaseResetBlocked
+     */
+    public function ensureOutsideEngineWindow(
+        ?int $actorId = null,
+        string $provenance = 'php artisan platform:reset-purchases',
+    ): void {
+        if (! EngineScheduleWindow::isActiveNow()) {
+            return;
+        }
+
+        AuditLog::create([
+            'actor_id' => $actorId ?? $this->resolveAdminUserId(),
+            'action' => 'platform.purchase_reset.refused',
+            'subject_type' => 'platform',
+            'subject_id' => 0,
+            'details' => [
+                'reason' => 'inside_engine_schedule_window',
+                'note' => 'Purchase-data reset refused — attempted via '.$provenance,
+            ],
+        ]);
+
+        throw PurchaseResetBlocked::duringEngineWindow();
+    }
+
+    /**
      * @param  Closure(string): void|null  $progress  optional callback for CLI output
      * @param  int|null  $actorId  the operator who ordered this, when one is known
      * @param  string  $provenance  how it was triggered, recorded verbatim in the audit entry
@@ -128,9 +163,7 @@ final class PurchaseDataResetAction
         ?int $actorId = null,
         string $provenance = 'php artisan platform:reset-purchases',
     ): void {
-        if (EngineScheduleWindow::isActiveNow()) {
-            throw PurchaseResetBlocked::duringEngineWindow();
-        }
+        $this->ensureOutsideEngineWindow($actorId, $provenance);
 
         $log = $progress ?? static fn (string $_m): null => null;
 

@@ -6,7 +6,6 @@ namespace App\Console\Commands;
 
 use App\Console\Actions\PurchaseDataResetAction;
 use App\Console\Actions\PurchaseResetBlocked;
-use App\Modules\Compensation\Support\EngineScheduleWindow;
 use Illuminate\Console\Command;
 use Illuminate\Console\ConfirmableTrait;
 use Illuminate\Support\Facades\DB;
@@ -31,8 +30,10 @@ final class PurchaseDataResetCommand extends Command
         // Checked before the destructive prompt below, not just inside execute():
         // an operator who has already typed "yes" to the row-count warning should
         // not then be told to wait — refuse before asking the question at all.
-        if (EngineScheduleWindow::isActiveNow()) {
-            $this->error(PurchaseResetBlocked::duringEngineWindow()->getMessage());
+        try {
+            $action->ensureOutsideEngineWindow(provenance: 'php artisan platform:reset-purchases');
+        } catch (PurchaseResetBlocked $e) {
+            $this->error($e->getMessage());
 
             return self::FAILURE;
         }

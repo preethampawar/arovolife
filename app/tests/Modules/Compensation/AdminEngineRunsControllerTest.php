@@ -575,7 +575,9 @@ it('refuses a purchase-data reset inside the nightly engine window', function ()
         ->assertSessionHas('error');
 
     expect(DB::table('bv_ledger_entries')->count())->toBe(1)
-        ->and(DB::table('audit_log')->where('action', 'like', 'platform.purchase_reset%')->count())->toBe(0);
+        ->and(DB::table('audit_log')->where('action', 'platform.purchase_reset.refused')->count())->toBe(1)
+        ->and(DB::table('audit_log')->where('action', 'platform.purchase_reset.requested')->count())->toBe(0)
+        ->and(DB::table('audit_log')->where('action', 'platform.purchase_reset')->count())->toBe(0);
 });
 
 it('404s the recompute endpoint when the gate is closed', function (): void {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Actions;
 
 use App\Modules\Compensation\Support\DerivedTables;
+use App\Modules\Compensation\Support\EngineScheduleWindow;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Genealogy\Support\ReservedAdns;
 use App\Modules\Identity\Models\User;
@@ -102,6 +103,10 @@ final class PlatformResetAction
      */
     public function execute(?Closure $progress = null): void
     {
+        if (EngineScheduleWindow::isActiveNow()) {
+            throw PurchaseResetBlocked::duringEngineWindow();
+        }
+
         $log = $progress ?? static fn (string $_m): null => null;
 
         $log('Cleaning S3 KYC objects...');

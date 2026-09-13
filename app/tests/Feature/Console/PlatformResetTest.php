@@ -8,12 +8,20 @@ use App\Modules\Genealogy\Support\ReservedAdns;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
+    // Outside the 00:00-05:00 IST engine window by default, so these tests
+    // don't flake depending on the wall-clock time they happen to run at.
+    Carbon::setTestNow(Carbon::parse('2026-01-01 12:00:00', 'Asia/Kolkata'));
+});
+
+afterEach(function (): void {
+    Carbon::setTestNow();
 });
 
 it('wipes everything and rebuilds only the 31 reserved company distributors (levels 0-4)', function () {
@@ -72,4 +80,14 @@ it('wipes everything and rebuilds only the 31 reserved company distributors (lev
 
     // The reset is audit-logged (audit_log itself was truncated first).
     expect(DB::table('audit_log')->where('action', 'platform.reset')->count())->toBe(1);
+});
+
+it('refuses to run inside the nightly engine window', function () {
+    Carbon::setTestNow(Carbon::parse('2026-01-02 02:00:00', 'Asia/Kolkata'));
+    $dist = Distributor::factory()->create();
+
+    $this->artisan('platform:reset', ['--force' => true])
+        ->assertExitCode(1);
+
+    expect(Distributor::query()->whereKey($dist->id)->exists())->toBeTrue();
 });

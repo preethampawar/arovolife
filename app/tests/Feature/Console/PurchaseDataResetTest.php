@@ -105,7 +105,8 @@ it('refuses to run inside the nightly engine window', function () {
         ->assertExitCode(1);
 
     expect(DB::table('wallet_ledger_entries')->count())->toBeGreaterThan(0)
-        ->and($dist->fresh()->gsb_frozen_at)->not->toBeNull();
+        ->and($dist->fresh()->gsb_frozen_at)->not->toBeNull()
+        ->and(DB::table('audit_log')->where('action', 'platform.purchase_reset.refused')->count())->toBe(1);
 });
 
 it('aborts without --force when confirmation is declined', function () {

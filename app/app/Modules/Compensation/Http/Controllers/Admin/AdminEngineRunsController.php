@@ -20,7 +20,6 @@ use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
-use App\Modules\Compensation\Support\EngineScheduleWindow;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use Illuminate\Contracts\View\View;
@@ -298,11 +297,16 @@ final class AdminEngineRunsController extends Controller
     {
         abort_unless($this->destructiveToolsAllowed($request), 404);
 
+        $actorId = auth()->id();
+        $actorId = is_numeric($actorId) ? (int) $actorId : null;
+
         // Checked before validation and the audit-log "requested" entry below:
-        // refuse before anything is written, not after.
-        if (EngineScheduleWindow::isActiveNow()) {
+        // refuse before anything else is written, not after.
+        try {
+            $reset->ensureOutsideEngineWindow($actorId, 'the admin Engine Runs console');
+        } catch (PurchaseResetBlocked $e) {
             return redirect()->route('admin.compensation.engine-runs.index')
-                ->with('error', PurchaseResetBlocked::duringEngineWindow()->getMessage());
+                ->with('error', $e->getMessage());
         }
 
         $validated = $request->validate([
@@ -326,8 +330,6 @@ final class AdminEngineRunsController extends Controller
         }
 
         $removed = $reset->preview();
-        $actorId = auth()->id();
-        $actorId = is_numeric($actorId) ? (int) $actorId : null;
 
         // Written BEFORE the truncation, and deliberately not inside the action:
         // this destroys cooling-off windows, invoices, buyback evidence and the
