@@ -326,7 +326,7 @@
          can get very thin/short on wide-aspect trees), with a min-size on
          the indicator itself so the user always has at least 24x24px of
          drag handle even when zoomed all the way out. --}}
-    <aside id="treeMinimap" class="hidden absolute bottom-3 right-3 z-30 rounded-lg border border-gray-300 bg-white shadow-lg overflow-hidden cursor-crosshair select-none" style="width: 280px; height: 200px;">
+    <aside id="treeMinimap" class="group hidden absolute bottom-3 right-3 z-30 rounded-lg border border-gray-300 bg-white shadow-lg overflow-hidden cursor-crosshair select-none" style="width: 280px; height: 200px;">
         <div class="absolute inset-0 overflow-hidden">
             <div id="minimapContent" class="absolute top-0 left-0 origin-top-left pointer-events-none"></div>
             <div id="minimapViewport"
@@ -334,7 +334,12 @@
                 style="left:0; top:0; width:50px; height:40px; min-width:24px; min-height:24px; touch-action:none;"
                 aria-label="Drag to pan, or click anywhere on the minimap to jump"></div>
         </div>
-        <div class="absolute top-0 left-0 right-0 px-2 py-1 bg-gradient-to-b from-white/95 to-transparent text-[10px] uppercase tracking-wider text-gray-700 font-semibold pointer-events-none">Minimap · drag rectangle or click to jump</div>
+        {{-- Only on hover: the projection fills the whole panel, so a
+             permanent banner across the top hides the shallowest levels —
+             the root included — which on a wide tree is most of what there
+             is to see. It appears exactly when the pointer is in range to
+             act on it. --}}
+        <div class="absolute top-0 left-0 right-0 px-2 py-1 bg-gradient-to-b from-white/95 to-transparent text-[10px] uppercase tracking-wider text-gray-700 font-semibold pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">Minimap · drag rectangle or click to jump</div>
     </aside>
 
     <div id="treeFsToolbar" class="hidden absolute top-3 right-3 z-40 rounded-xl bg-white/95 backdrop-blur shadow-lg border border-gray-200 px-2 py-1.5 flex items-center gap-1.5">
@@ -643,13 +648,53 @@ window.copyAdn = (btn) => {
         clone.querySelectorAll('[data-leaf-popover]').forEach(el => el.remove());
         content.appendChild(clone);
         const cw = clone.offsetWidth, ch = clone.offsetHeight;
-        mapScale = (cw === 0 || ch === 0) ? 0.1 : Math.min(MAP_W / cw, MAP_H / ch);
+
+        // Project by FILLING the panel on each axis independently, not by a
+        // uniform min() fit. Two reasons, both load-bearing:
+        //
+        //  1. The indicator has always been drawn that way — left is fx*MAP_W,
+        //     top is fy*MAP_H — so a uniform picture put the blue rectangle
+        //     over a place the picture never drew. They now share one
+        //     projection, which is what makes drag and click-to-jump land.
+        //  2. A uniform fit annihilates a wide tree. /admin/tree at depth 9
+        //     measures 116388x2573; min() lands the whole thing in a 280x6
+        //     strip at the top of the panel, under the label — the "blank
+        //     minimap". Aspect fidelity is worth nothing here; position is
+        //     the only thing a minimap owes you.
+        const sx = cw === 0 ? 0.1 : MAP_W / cw;
+        const sy = ch === 0 ? 0.1 : MAP_H / ch;
+        mapScale = Math.min(sx, sy);
         // Same counter-scale the main canvas gets, sized for the minimap's own
         // projection, so the purchase marks survive as colour dots there too.
         clone.style.setProperty('--tree-mark-scale', String(Math.min(3, Math.max(1, 0.55 / mapScale))));
-        content.style.transform = `scale(${mapScale})`;
+        content.style.transform = `scale(${sx}, ${sy})`;
         content.style.transformOrigin = 'top left';
         content.style.width = cw + 'px'; content.style.height = ch + 'px';
+
+        // Even filled, a card on a wide tree projects to well under a pixel
+        // (168px * 0.0024 = 0.4px) and antialiases away to nothing. Widen each
+        // flattened node just enough to register — measured after the
+        // transform, so these are real on-screen pixels — and never past 80%
+        // of the gap to its neighbour, or a dense level smears into one bar
+        // and the map loses the shape it exists to show.
+        const rects = [...clone.querySelectorAll('[data-node-card]')].map(el => el.getBoundingClientRect());
+        if (rects.length > 0) {
+            const aw = rects[0].width;
+            const rows = new Map();
+            rects.forEach(r => {
+                const key = Math.round(r.top);
+                (rows.get(key) ?? rows.set(key, []).get(key)).push(r.left);
+            });
+            let pitch = Infinity;
+            rows.forEach(xs => {
+                xs.sort((a, b) => a - b);
+                for (let i = 1; i < xs.length; i++) pitch = Math.min(pitch, xs[i] - xs[i - 1]);
+            });
+            const room = Number.isFinite(pitch) ? (pitch * 0.8) / aw : Infinity;
+            const nx = aw > 0 ? Math.min(4, room, Math.max(1, 3 / aw)) : 1;
+            clone.style.setProperty('--minimap-node-x', String(Math.max(1, nx)));
+        }
+
         cloned = true; refresh();
     };
     window.toggleMinimap = () => {

@@ -478,6 +478,12 @@ html.dark .to-leaf-50\/40 { --tw-gradient-to: rgb(19 38 13 / 0.4); }
     background-color: #334155;
     border-color: #334155;
     box-shadow: none;
+    /* --minimap-node-x is set by cloneCanvas() once it has measured the
+       projected card against the gap to its neighbour: on a wide tree a card
+       lands at 0.4px and antialiases to nothing, so it is widened just enough
+       to register without smearing a dense level into one bar. 1 on any tree
+       whose cards already project big enough. */
+    transform: scaleX(var(--minimap-node-x, 1));
 }
 #minimapInner [data-node-card] > * { visibility: hidden; }
 #minimapInner [data-node-card] > [data-purchase-mark] { visibility: visible; }
