@@ -233,6 +233,20 @@ body.admin-shell .focus\:outline-none:focus-visible {
     body.admin-shell :focus-visible { transition: outline-color 100ms linear; }
 }
 
+/* The sticky topbar stack sits above page content. A hairline alone reads
+   flat once content scrolls under it — the old dark bar got this separation
+   for free from its own colour. Two stops: a crisp 1px seam plus a short
+   diffuse falloff. Dark deepens rather than tints, because a grey shadow on
+   a dark surface reads as grime. */
+#adminTopbarStack {
+    box-shadow: 0 1px 0 0 rgb(15 23 42 / 0.04),
+                0 6px 16px -12px rgb(15 23 42 / 0.25);
+}
+html.dark #adminTopbarStack {
+    box-shadow: 0 1px 0 0 rgb(0 0 0 / 0.5),
+                0 6px 16px -12px rgb(0 0 0 / 0.6);
+}
+
 /* =====================================================================
    Wizard — registration flow visual treatment.
    "Refined editorial fintech": atmospheric mesh background, Fraunces

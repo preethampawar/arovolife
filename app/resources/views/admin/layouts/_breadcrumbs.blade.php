@@ -10,6 +10,13 @@
     );
 @endphp
 
+@php
+    // The ADMIN mark. Rendered as a link inside the trail, and as a bare
+    // span on pages with no trail (the dashboard), so the topbar's eyebrow
+    // line is never empty and the bar never changes height between pages.
+    $crumbChip = 'inline-flex shrink-0 items-center rounded-md border border-sunrise-200 bg-sunrise-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-sunrise-800 transition-colors hover:bg-sunrise-100';
+@endphp
+
 @if ($crumbTrail)
     @php
         $crumbLinks = [
@@ -70,39 +77,50 @@
         $crumbCount = count($crumbs);
     @endphp
 
-    <div class="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-2">
-        <nav aria-label="Breadcrumb">
-            <ol class="flex flex-wrap items-center gap-1.5 text-xs">
-                @foreach ($crumbs as $crumbIndex => $crumb)
-                    @php
-                        // On mobile only the last two crumbs (and the separator
-                        // between them) survive; the rest are hidden, not dropped,
-                        // so assistive tech still reads the whole trail.
-                        $crumbHidden = $crumbIndex < $crumbCount - 2 ? 'hidden sm:flex' : 'flex';
-                    @endphp
+    {{-- No bar chrome of its own any more: this renders as the eyebrow line
+         inside the topbar, which owns the surface and the bottom border. --}}
+    <nav aria-label="Breadcrumb">
+        <ol class="flex flex-wrap items-center gap-1.5 text-[11px] leading-4">
+            @foreach ($crumbs as $crumbIndex => $crumb)
+                @php
+                    // On mobile only the last two crumbs (and the separator
+                    // between them) survive; the rest are hidden, not dropped,
+                    // so assistive tech still reads the whole trail.
+                    $crumbHidden = $crumbIndex < $crumbCount - 2 ? 'hidden sm:flex' : 'flex';
+                @endphp
 
-                    @if ($crumbIndex > 0)
-                        <li aria-hidden="true" class="{{ $crumbIndex < $crumbCount - 1 ? 'hidden sm:flex' : 'flex' }} items-center text-gray-400">&rsaquo;</li>
+                @if ($crumbIndex > 0)
+                    <li aria-hidden="true" class="{{ $crumbIndex < $crumbCount - 1 ? 'hidden sm:flex' : 'flex' }} items-center text-gray-300">{{ svg('lucide-chevron-right', 'w-3 h-3') }}</li>
+                @endif
+
+                <li class="{{ $crumbHidden }} items-center">
+                    @if (! empty($crumb['current']))
+                        {{-- The leaf is the view's `heading` section. Blade's
+                             `@section('x', $value)` already runs `e()` over
+                             that value, so it is echoed raw here exactly as
+                             the layout header echoes it — `{{ }}` would
+                             double-escape and render "Returns &amp;amp;
+                             Refunds". Nav labels are literals in
+                             AdminNavigation. --}}
+                        <span aria-current="page" class="font-medium text-gray-500">{!! $crumb['label'] !!}</span>
+                    @elseif ($crumbIndex === 0 && $crumb['label'] === 'Admin')
+                        {{-- The root crumb is the ADMIN mark. It stays an <a>
+                             whose accessible name is exactly "Admin" —
+                             admin-navigation.spec.js selects it by role+name. --}}
+                        <a href="{{ $crumb['url'] }}" class="{{ $crumbChip }}">Admin</a>
+                    @elseif ($crumb['url'])
+                        <a href="{{ $crumb['url'] }}" class="text-gray-500 transition-colors hover:text-gray-900">{{ $crumb['label'] }}</a>
+                    @else
+                        <span class="text-gray-400">{{ $crumb['label'] }}</span>
                     @endif
-
-                    <li class="{{ $crumbHidden }} items-center">
-                        @if (! empty($crumb['current']))
-                            {{-- The leaf is the view's `heading` section. Blade's
-                                 `@section('x', $value)` already runs `e()` over
-                                 that value, so it is echoed raw here exactly as
-                                 the layout header echoes it — `{{ }}` would
-                                 double-escape and render "Returns &amp;amp;
-                                 Refunds". Nav labels are literals in
-                                 AdminNavigation. --}}
-                            <span aria-current="page" class="font-medium text-gray-900">{!! $crumb['label'] !!}</span>
-                        @elseif ($crumb['url'])
-                            <a href="{{ $crumb['url'] }}" class="text-gray-500 hover:text-gray-900 hover:underline">{{ $crumb['label'] }}</a>
-                        @else
-                            <span class="text-gray-500">{{ $crumb['label'] }}</span>
-                        @endif
-                    </li>
-                @endforeach
-            </ol>
-        </nav>
-    </div>
+                </li>
+            @endforeach
+        </ol>
+    </nav>
+@else
+    {{-- Dashboard, and any route not under a nav prefix: no trail, so no
+         <nav aria-label="Breadcrumb"> at all — admin-navigation.spec.js
+         asserts a count of 0 on /admin. The chip still renders so the ADMIN
+         mark is present on every page and the topbar keeps its height. --}}
+    <span class="{{ $crumbChip }}">Admin</span>
 @endif

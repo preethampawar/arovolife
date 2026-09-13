@@ -54,6 +54,10 @@
                 min-width: 0.5rem; width: 0.5rem; height: 0.5rem; padding: 0;
                 font-size: 0; line-height: 0;
             }
+            /* Rail mode: the count collapses to an 8px dot. Without a ring it
+               fuses with the icon glyph sitting underneath it. */
+            html.admin-nav-collapsed .admin-nav-badge { box-shadow: 0 0 0 2px #ffffff; }
+            html.dark.admin-nav-collapsed .admin-nav-badge { box-shadow: 0 0 0 2px #0f1927; }
         }
 
         /* Admin sidebar: keep the scrollbar track reserved at a constant width
@@ -110,28 +114,33 @@
     <aside id="adminSidebar"
         class="w-60 fixed top-0 bottom-0 left-0 z-40 bg-white border-r border-gray-200 flex flex-col
                -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out">
-        <div class="admin-nav-head px-5 py-5 border-b border-gray-200 shrink-0 flex items-start justify-between gap-2">
+        <div class="admin-nav-head px-4 py-4 border-b border-gray-200 shrink-0 flex items-start justify-between gap-2">
             <div class="admin-nav-brand min-w-0">
-                <a href="{{ route('admin.dashboard') }}" class="block">
+                <a href="{{ route('admin.dashboard') }}" class="block rounded-lg">
                     {{-- Two logo variants swap with the theme, same mechanism as the
                          moon/sun toggle icons (see app.css, [data-theme-logo]). --}}
-                    <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" data-theme-logo="light" class="h-10 w-auto">
-                    <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" data-theme-logo="dark" class="h-10 w-auto">
+                    <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" data-theme-logo="light" class="h-9 w-auto">
+                    <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" data-theme-logo="dark" class="h-9 w-auto">
                 </a>
-                <span class="block text-[11px] text-sunrise-800 mt-1.5 tracking-wider uppercase font-semibold">Admin Console</span>
+                {{-- Neutral, not sunrise-800. With the orange ADMIN chip now in
+                     the topbar, an orange caption 200px away was a second
+                     shouting brand accent. One orange textual mark in the
+                     chrome; the active-nav rail is the other, and it earns it
+                     by being positional rather than decorative. --}}
+                <span class="block text-[10px] text-gray-400 mt-1.5 tracking-[0.14em] uppercase font-semibold">Admin Console</span>
             </div>
             {{-- Desktop-only collapse / expand toggle. State lives on <html>
                  (class admin-nav-collapsed) and persists in localStorage. --}}
             <button type="button" id="adminSidebarToggle"
                 aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"
-                class="hidden lg:inline-flex shrink-0 w-8 h-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                class="hidden lg:inline-flex shrink-0 w-8 h-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
                 <x-lucide-panel-left-close class="admin-nav-collapse-icon w-4 h-4" />
                 <x-lucide-panel-left-open class="admin-nav-expand-icon w-4 h-4" />
             </button>
         </div>
 
         <div class="admin-sidebar-scroll flex-1 min-h-0 overflow-y-auto flex flex-col">
-        <nav class="px-3 py-4 space-y-0.5">
+        <nav class="px-2.5 py-3 space-y-0.5">
             @php
                 // Unread Contact-inquiries count for the sidebar badge.
                 // Cached for 60s so this query doesn't run on every admin page.
@@ -260,13 +269,18 @@
                     {{-- text-left overrides the browser's default `button { text-align: center }`
                          — without it, a label long enough to wrap (e.g. "Support &
                          Compliance") centers its second line instead of staying flush left. --}}
+                    {{-- The filled grey chip and its border-t are gone: a solid
+                         pill for a section label is the most dated thing in the
+                         sidebar. Separation is whitespace now (pt-5), which also
+                         lets the eye chunk the nine groups faster than a rule
+                         did. --}}
                     <button type="button" data-nav-group-toggle
                             aria-expanded="true"
                             aria-controls="nav-group-{{ $group['key'] }}"
-                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 text-left text-[10px] font-bold uppercase tracking-widest text-gray-600 bg-gray-100 rounded-lg px-4 py-2 mt-4 first:mt-0 border-t border-gray-200 first:border-t-0 hover:bg-gray-200 hover:text-gray-900 transition-colors">
+                            class="admin-nav-group-header w-full flex items-center justify-between gap-2 px-3 pt-5 pb-1.5 mt-1 first:mt-0 first:pt-1 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 transition-colors hover:text-gray-700">
                         <span class="text-left">{{ $group['label'] }}</span>
-                        <span data-nav-group-chevron="down">{{ svg('lucide-chevron-down', 'w-3 h-3') }}</span>
-                        <span data-nav-group-chevron="right" hidden>{{ svg('lucide-chevron-right', 'w-3 h-3') }}</span>
+                        <span data-nav-group-chevron="down" class="shrink-0 text-gray-300">{{ svg('lucide-chevron-down', 'w-3 h-3') }}</span>
+                        <span data-nav-group-chevron="right" class="shrink-0 text-gray-300" hidden>{{ svg('lucide-chevron-right', 'w-3 h-3') }}</span>
                     </button>
                 @endif
                     <div id="nav-group-{{ $group['key'] }}" class="admin-nav-group-list space-y-1 pt-0.5">
@@ -275,18 +289,25 @@
                     $active = request()->routeIs($item['route'])
                         || (isset($item['prefix']) && request()->routeIs($item['prefix'].'*'));
                 @endphp
+                {{-- Tightened ~5px per item across ~40 items: roughly 200px
+                     less scroll in a nav that previously overflowed on a
+                     laptop. The active rail thins 4px -> 3px so it reads as a
+                     marker rather than a slab. --}}
                 <a href="{{ route($item['route'], $item['params'] ?? []) }}" title="{{ $item['label'] }}"
-                   class="admin-nav-item relative flex items-center gap-3 pl-4 pr-3 py-2.5 rounded-lg text-sm transition-colors
+                   class="admin-nav-item relative flex items-center gap-2.5 pl-3.5 pr-2.5 py-2 rounded-lg text-[13px] leading-5 transition-colors
                           {{ $active
                              ? 'bg-gray-100 text-gray-900 font-semibold'
                              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-medium' }}">
                     @if($active)
-                    <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-sunrise-500"></span>
+                    <span class="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-sunrise-500"></span>
                     @endif
-                    <span class="{{ $active ? 'text-sunrise-600' : 'text-gray-400' }}">{{ svg('lucide-'.$item['icon'], 'w-4 h-4') }}</span>
+                    <span class="shrink-0 {{ $active ? 'text-sunrise-600' : 'text-gray-400' }}">{{ svg('lucide-'.$item['icon'], 'w-[18px] h-[18px]') }}</span>
                     <span class="admin-nav-label flex-1">{{ $item['label'] }}</span>
                     @if(!empty($item['badge']))
-                        <span class="admin-nav-badge inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-sunrise-800 text-white text-[10px] font-bold leading-none">{{ $item['badge'] }}</span>
+                        {{-- sunrise-600, not 800: the deeper shade read as a muddy
+                             brown rather than a live count. tabular-nums keeps a
+                             two- and three-digit badge the same width. --}}
+                        <span class="admin-nav-badge inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-sunrise-600 text-white text-[10px] font-semibold leading-none tabular-nums">{{ $item['badge'] }}</span>
                     @endif
                 </a>
             @endforeach
@@ -316,13 +337,19 @@
             })();
         </script>
 
-            <div class="mt-auto px-3 py-4 border-t border-gray-200">
-                <p class="admin-nav-label text-xs text-gray-500 px-3 mb-2 truncate font-medium">{{ auth()->user()->email }}</p>
+            <div class="mt-auto px-2.5 py-3 border-t border-gray-200">
+                <p class="admin-nav-label text-[11px] text-gray-500 px-2.5 mb-1.5 truncate font-medium">{{ auth()->user()->email }}</p>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
+                    {{-- The raw ⏻ character was the one glyph in the console not
+                         from the icon set: it rendered at whatever the system
+                         font supplied and some screen readers announced it as
+                         "power symbol". The button's own "Sign out" text carries
+                         the accessible name; the lucide icon is inert. --}}
                     <button type="submit" title="Sign out"
-                        class="admin-nav-item w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600 font-medium hover:bg-gray-100 hover:text-red-600 transition-colors">
-                        <span class="text-gray-400">⏻</span> <span class="admin-nav-label">Sign out</span>
+                        class="admin-nav-item w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[13px] text-gray-600 font-medium hover:bg-red-50 hover:text-red-600 transition-colors">
+                        <span class="shrink-0 text-gray-400">{{ svg('lucide-log-out', 'w-[18px] h-[18px]') }}</span>
+                        <span class="admin-nav-label">Sign out</span>
                     </button>
                 </form>
             </div>
@@ -340,37 +367,13 @@
         {{-- Header + (on compensation pages) the compensation sub-nav travel
              together as one sticky block, so the sub-nav never has to guess
              the header's height as a top offset. --}}
-        <div class="sticky top-0 z-20">
-        <header class="bg-slate-800 border-b border-slate-900 pl-16 pr-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-sunrise-800 text-white shrink-0">Admin</span>
-                <h1 class="text-sm sm:text-base font-semibold text-white tracking-tight truncate">@yield('heading', 'Admin Console')</h1>
-            </div>
-            <div class="flex items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-slate-300 font-medium whitespace-nowrap">
-                {{-- Dark/light theme toggle. Purely a display preference stored
-                     per browser in localStorage; there is no server state and
-                     therefore no new route or gate — the control inherits the
-                     admin layout's own middleware. Both icons are rendered and
-                     CSS shows exactly one (see app.css, [data-theme-icon]), so
-                     the correct icon is right from the pre-paint script on. --}}
-                <button type="button" id="adminThemeToggle"
-                        aria-pressed="false"
-                        title="Toggle dark mode"
-                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-sunrise-400 transition-colors">
-                    <span class="sr-only">Toggle dark mode</span>
-                    <span data-theme-icon="light" aria-hidden="true">{{ svg('lucide-moon', 'w-4 h-4') }}</span>
-                    <span data-theme-icon="dark" aria-hidden="true">{{ svg('lucide-sun', 'w-4 h-4') }}</span>
-                </button>
-                <span class="hidden sm:inline">{{ now()->format('d M Y, H:i') }} IST</span>
-            </div>
-        </header>
+        <div id="adminTopbarStack" class="sticky top-0 z-20">
+            @include('admin.layouts._topbar')
 
-        @include('admin.layouts._breadcrumbs')
-
-        @includeWhen(
-            request()->routeIs('admin.compensation.*') || request()->routeIs('admin.lifetime-awards.*'),
-            'admin.compensation._nav'
-        )
+            @includeWhen(
+                request()->routeIs('admin.compensation.*') || request()->routeIs('admin.lifetime-awards.*'),
+                'admin.compensation._nav'
+            )
         </div>
 
         <main class="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-w-0 max-w-full">
@@ -381,28 +384,40 @@
                  so no page has to repeat it. --}}
             @if(request()->routeIs('admin.compensation.*') || request()->routeIs('admin.lifetime-awards.*'))
             @hasSection('heading')
-            <h2 class="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight mb-4">@yield('heading')</h2>
+            {{-- Demoted, not removed. This exists because of an explicit client
+                 instruction (2026-08-28: the report's title must be visible on
+                 the page itself, on every report). The topbar h1 now satisfies
+                 that literally and stickily, so this is a subordinate label —
+                 at text-2xl it was louder than the page's own h1. Deleting it
+                 outright is a content decision and needs client sign-off. --}}
+            <h2 class="text-base font-semibold text-gray-900 tracking-tight mb-5">@yield('heading')</h2>
             @endif
             @endif
 
             {{-- Flash messages are rendered here for every admin page. Views must
                  NOT repeat these blocks — a page that renders its own
                  session('status') shows the message twice. --}}
+            {{-- A leading icon so the three blocks stop reading as coloured
+                 paragraphs and are distinguishable at a glance without relying
+                 on colour alone. Copy is unchanged. --}}
             @if(session('status'))
-            <div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-                {{ session('status') }}
+            <div class="mb-5 flex items-start gap-2.5 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                <span class="shrink-0 mt-px" aria-hidden="true">{{ svg('lucide-circle-check', 'w-4 h-4') }}</span>
+                <span>{{ session('status') }}</span>
             </div>
             @endif
 
             @if(session('error'))
-            <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 font-medium">
-                {{ session('error') }}
+            <div class="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 font-medium">
+                <span class="shrink-0 mt-px" aria-hidden="true">{{ svg('lucide-circle-alert', 'w-4 h-4') }}</span>
+                <span>{{ session('error') }}</span>
             </div>
             @endif
 
             @if($errors->any())
-            <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
-                <ul class="text-sm text-red-700 space-y-1 list-disc list-inside">
+            <div class="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4">
+                <span class="shrink-0 mt-px text-red-700" aria-hidden="true">{{ svg('lucide-circle-alert', 'w-4 h-4') }}</span>
+                <ul class="text-sm text-red-700 space-y-1 {{ count($errors->all()) > 1 ? 'list-disc list-inside' : '' }}">
                     @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
                 </ul>
             </div>
