@@ -72,7 +72,7 @@
                     </td>
                     <td class="px-4 py-3 text-right">
                         @if($item->url)
-                            <a href="{{ $item->url }}" class="text-brand-700 hover:text-brand-800 font-medium">Fix →</a>
+                            <a href="{{ $item->url }}" class="text-brand-700 hover:text-brand-800 font-medium">Fix {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                         @endif
                     </td>
                     <td class="px-4 py-3 text-right">

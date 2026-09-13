@@ -24,7 +24,7 @@
         </a>
         <a href="{{ route('admin.compensation.distributors.show', $distributor->id) }}"
            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-300 bg-purple-50 text-sm text-purple-700 font-medium hover:bg-purple-100">
-            <x-lucide-banknote class="w-4 h-4" /> Compensation →
+            <x-lucide-banknote class="w-4 h-4" /> Compensation {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
         </a>
 
         <button type="button" onclick="openResetPwdModal()"
@@ -223,7 +223,7 @@
         @if($kycTotal > 0 && auth()->user()?->can('kyc.review'))
         <a href="{{ route('admin.kyc.show', $distributor->id) }}"
             class="shrink-0 inline-flex items-center rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium px-3 py-1.5 text-xs transition-colors">
-            Open KYC review →
+            Open KYC review {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
         </a>
         @endif
     </div>

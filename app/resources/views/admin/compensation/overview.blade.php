@@ -73,7 +73,7 @@
         </span>
         <a href="{{ route('admin.compensation.manual-controls.index', ['adn' => $item->distributor->adn ?? '']) }}"
            class="text-xs px-2 py-1 rounded bg-amber-100 text-amber-800 hover:bg-amber-200 font-medium">
-            Retry →
+            Retry {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
         </a>
     </div>
     @endforeach
@@ -84,7 +84,7 @@
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Today's cut-off — {{ \Illuminate\Support\Carbon::today()->format('d M Y') }}</span>
-        <a href="{{ route('admin.compensation.daily-cutoffs.index') }}" class="text-xs text-brand-700 hover:underline">View all dates →</a>
+        <a href="{{ route('admin.compensation.daily-cutoffs.index') }}" class="text-xs text-brand-700 hover:underline">View all dates {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
     </div>
     @if($cutoffTable->isEmpty())
     <p class="px-5 py-8 text-sm text-gray-600 text-center">No data yet — GSB engine not yet active.</p>

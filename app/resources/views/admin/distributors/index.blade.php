@@ -114,7 +114,7 @@
                     </td>
                     <td class="px-4 py-3">
                         <a href="{{ route('admin.distributors.show', $d->id) }}"
-                           class="text-xs text-brand-700 hover:text-brand-800">View →</a>
+                           class="text-xs text-brand-700 hover:text-brand-800">View {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                     </td>
                 </tr>
                 @empty

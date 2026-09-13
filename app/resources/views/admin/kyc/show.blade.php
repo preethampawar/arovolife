@@ -95,7 +95,7 @@
                     <div class="flex justify-between items-center px-3 py-2 bg-gray-50">
                         <span class="text-gray-700 text-xs font-medium">{{ str_replace('_', ' ', $doc->type) }}</span>
                         <a href="{{ $auditedUrl }}" target="_blank"
-                            class="text-[11px] text-brand-700 hover:text-brand-800 underline">Open full size →</a>
+                            class="text-[11px] text-brand-700 hover:text-brand-800 underline">Open full size {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                     </div>
                     @if($isImage)
                         <a href="{{ $auditedUrl }}" target="_blank" class="block bg-gray-100">

@@ -102,14 +102,14 @@
                     @if($row->kyc_documents_count === 0 && $currentTab !== 'rejected')
                         <a href="{{ route('admin.distributors.show', $row->id) }}"
                             class="inline-flex items-center rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-medium px-3 py-1.5 text-xs transition-colors">
-                            View profile →
+                            View profile {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
                         </a>
                     @else
                         <a href="{{ route('admin.kyc.show', $row->id) }}"
                             class="inline-flex items-center rounded-lg
                                 {{ $currentTab === 'rejected' ? 'bg-red-500 hover:bg-red-600' : 'bg-brand-700 hover:bg-brand-800' }}
                                 text-white font-medium px-3 py-1.5 text-xs transition-colors">
-                            Review →
+                            Review {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
                         </a>
                     @endif
                 </td>

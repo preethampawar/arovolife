@@ -12,7 +12,7 @@
 <div class="mb-6 flex items-center justify-between gap-3 flex-wrap">
     <a href="{{ route('admin.distributors.show', $distributor->id) }}"
        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-brand-300 bg-white hover:bg-brand-50 text-brand-700 text-xs font-semibold transition-colors">
-        View distributor →
+        View distributor {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
     </a>
 </div>
 

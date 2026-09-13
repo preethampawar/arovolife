@@ -86,7 +86,7 @@
                 </td>
                 <td class="px-4 py-3 text-right">
                     <a href="{{ route('admin.returns.show', $rtn) }}"
-                       class="text-sm text-brand-700 hover:text-brand-800 font-medium">Review →</a>
+                       class="text-sm text-brand-700 hover:text-brand-800 font-medium">Review {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                 </td>
             </tr>
             @empty

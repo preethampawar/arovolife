@@ -59,7 +59,7 @@
                     </td>
                     <td class="px-4 py-2">
                         <a href="{{ route('admin.compensation.fortune-bonus.show', \Illuminate\Support\Carbon::parse($m->month_start)->format('Y-m')) }}"
-                           class="text-brand-700 text-xs hover:underline">View →</a>
+                           class="text-brand-700 text-xs hover:underline">View {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                     </td>
                 </tr>
                 @endforeach

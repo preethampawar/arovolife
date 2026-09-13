@@ -104,7 +104,7 @@
                     </td>
                     <td class="px-3 py-2 text-right">
                         <a href="{{ route('admin.compensation.distributors.show', $row->distributor_id) }}"
-                           class="text-brand-700 text-[10px] hover:underline">Detail →</a>
+                           class="text-brand-700 text-[10px] hover:underline">Detail {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                     </td>
                 </tr>
                 @endforeach

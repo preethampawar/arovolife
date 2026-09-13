@@ -11,10 +11,10 @@
 
 @if($attention > 0)
 <a href="{{ route('admin.payments.refunds') }}" class="block mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 hover:bg-amber-100">
-    <strong>{{ $attention }}</strong> refund{{ $attention === 1 ? '' : 's' }} need{{ $attention === 1 ? 's' : '' }} attention — failed at the gateway, held more than {{ \App\Modules\Payments\Support\RefundWorklist::ALERT_AFTER_DAYS }} days without the return being received, or owed on an order with no gateway payment to refund against. Open the unsettled refunds worklist →
+    <strong>{{ $attention }}</strong> refund{{ $attention === 1 ? '' : 's' }} need{{ $attention === 1 ? 's' : '' }} attention — failed at the gateway, held more than {{ \App\Modules\Payments\Support\RefundWorklist::ALERT_AFTER_DAYS }} days without the return being received, or owed on an order with no gateway payment to refund against. Open the unsettled refunds worklist {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
 </a>
 @else
-<a href="{{ route('admin.payments.refunds') }}" class="inline-block mb-5 text-sm text-brand-700 hover:underline">Unsettled refunds worklist →</a>
+<a href="{{ route('admin.payments.refunds') }}" class="inline-block mb-5 text-sm text-brand-700 hover:underline">Unsettled refunds worklist {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
 @endif
 
 @if($invoiceGapCount > 0)
@@ -111,7 +111,7 @@
                 </td>
                 <td class="px-4 py-3 text-gray-700">{{ $intent->method ?? '—' }}</td>
                 <td class="px-4 py-3 text-gray-600 text-xs">{{ $intent->created_at->format('d M Y H:i') }}</td>
-                <td class="px-4 py-3 text-right"><a href="{{ route('admin.payments.show', $intent) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">Timeline →</a></td>
+                <td class="px-4 py-3 text-right"><a href="{{ route('admin.payments.show', $intent) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">Timeline {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a></td>
             </tr>
             @empty
             <tr><td colspan="10" class="px-4 py-8 text-center text-sm text-gray-600">No payment intents match.</td></tr>

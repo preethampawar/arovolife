@@ -12,7 +12,7 @@
 
 <div class="flex justify-end gap-2 mb-4">
     <a href="{{ route('admin.arete-centres.index') }}"
-       class="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50">Centres are managed under Arete Centres →</a>
+       class="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50">Centres are managed under Arete Centres {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
 </div>
 
 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -43,7 +43,7 @@
                     </td>
                     <td class="px-4 py-2">
                         <a href="{{ route('admin.compensation.adc-bonus.show', \Illuminate\Support\Carbon::parse($m->month_start)->format('Y-m')) }}"
-                           class="text-brand-700 text-xs hover:underline">View →</a>
+                           class="text-brand-700 text-xs hover:underline">View {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                     </td>
                 </tr>
                 @endforeach

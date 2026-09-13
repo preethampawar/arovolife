@@ -135,8 +135,8 @@ test.describe('Action Center: type page', () => {
         // Age column: a number of hours, e.g. "72h".
         await expect(firstRow.locator('td').nth(2)).toHaveText(/^\d+h$/);
 
-        const fixLink = firstRow.getByRole('link', { name: 'Fix →' });
-        test.skip((await fixLink.count()) === 0, 'The first row has no "Fix →" link (item.url is null for this provider/row).');
+        const fixLink = firstRow.getByRole('link', { name: 'Fix' });
+        test.skip((await fixLink.count()) === 0, 'The first row has no "Fix" link (item.url is null for this provider/row).');
 
         const href = await fixLink.getAttribute('href');
         await fixLink.click();

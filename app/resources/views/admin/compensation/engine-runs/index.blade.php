@@ -563,10 +563,10 @@
 
                 <div class="mt-2 flex items-center gap-3 text-xs">
                     @if($definition->reportRouteName !== null)
-                    <a href="{{ route($definition->reportRouteName) }}" class="text-indigo-600 hover:text-indigo-800 font-medium">Report page →</a>
+                    <a href="{{ route($definition->reportRouteName) }}" class="text-indigo-600 hover:text-indigo-800 font-medium">Report page {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                     @endif
                     <a href="{{ route('admin.compensation.engine-runs.events', ['engine' => $definition->key]) }}"
-                       class="text-indigo-600 hover:text-indigo-800 font-medium">Run events →</a>
+                       class="text-indigo-600 hover:text-indigo-800 font-medium">Run events {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                 </div>
             </div>
 

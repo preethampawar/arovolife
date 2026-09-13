@@ -149,7 +149,7 @@
                 <td class="px-4 py-3 text-gray-600 text-xs">{{ $rq->entitlements_held_at->format('d M Y') }}</td>
                 <td class="px-4 py-3 text-right {{ $days >= \App\Modules\Payments\Support\RefundWorklist::ALERT_AFTER_DAYS ? 'text-red-700 font-semibold' : 'text-gray-700' }}">{{ $days }}</td>
                 <td class="px-4 py-3 text-xs">@if($rq->hold_escalated_at)<span class="text-red-700">Escalated to Grievance Officer</span>@elseif($rq->hold_alert_sent_at)<span class="text-amber-700">Alerted</span>@else<span class="text-gray-600">Running</span>@endif</td>
-                <td class="px-4 py-3 text-right"><a href="{{ route('admin.returns.show', $rq) }}" class="text-sm text-brand-700 hover:underline">Open return →</a></td>
+                <td class="px-4 py-3 text-right"><a href="{{ route('admin.returns.show', $rq) }}" class="text-sm text-brand-700 hover:underline">Open return {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a></td>
             </tr>
             @empty
             <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-600">None waiting.</td></tr>

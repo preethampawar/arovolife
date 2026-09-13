@@ -82,7 +82,7 @@
                     <td class="px-4 py-3 text-right text-gray-700">{{ $row->orders }}</td>
                     <td class="px-4 py-3 text-xs text-gray-600">{{ $row->last_at ? \Illuminate\Support\Carbon::parse($row->last_at)->format('d M Y H:i') : '—' }}</td>
                     <td class="px-4 py-3 text-right">
-                        <a href="{{ route('admin.commerce.bv-ledger.show', $row->distributor_id) }}" class="text-xs text-brand-700 hover:text-brand-800">View →</a>
+                        <a href="{{ route('admin.commerce.bv-ledger.show', $row->distributor_id) }}" class="text-xs text-brand-700 hover:text-brand-800">View {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                     </td>
                 </tr>
                 @empty

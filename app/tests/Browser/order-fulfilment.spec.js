@@ -107,7 +107,7 @@ async function gotoAdminOrder(page, orderNo) {
     }
     // Fall back to the order list row text match (order_no cell).
     const row = page.locator('tbody tr').filter({ hasText: orderNo }).first();
-    await row.getByRole('link', { name: 'View →' }).click();
+    await row.getByRole('link', { name: 'View' }).click();
 }
 
 test.describe.configure({ mode: 'serial' });
@@ -266,8 +266,8 @@ test.describe('Returns: saleable inspection restocks and settles a refund', () =
         test.skip(count === 0, 'No return requests exist in this dev database to inspect. Open one from the storefront (Orders → Return this order) with a delivered order first, then re-run.');
 
         // The row's first <a> is the order-number link (admin.commerce.orders.show),
-        // not the return itself — the return's own show page is the "Review →" link.
-        await rows.first().getByRole('link', { name: 'Review →' }).click();
+        // not the return itself — the return's own show page is the "Review" link.
+        await rows.first().getByRole('link', { name: 'Review' }).click();
         await page.waitForURL('**/admin/returns/**');
 
         const inspectForm = page.locator('form').filter({ has: page.locator('select[name="condition"]') });

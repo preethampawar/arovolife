@@ -246,7 +246,7 @@
         <div class="flex flex-wrap items-center gap-3">
             <a href="{{ route('admin.kyc.show', $distributor->id) }}"
                class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
-                Open KYC review →
+                Open KYC review {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
             </a>
             @if(!$allVerified && $kycStatus['total'] > 0)
                 <form method="POST" action="{{ route('admin.kyc.approve', $distributor->id) }}" class="inline"

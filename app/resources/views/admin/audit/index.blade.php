@@ -79,7 +79,7 @@
                         @if($log->subject_type === 'distributor' && $log->subject_id)
                             <a href="{{ route('admin.distributors.show', $log->subject_id) }}"
                                class="text-xs text-brand-700 hover:underline mt-1 inline-block">
-                                Open distributor →
+                                Open distributor {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
                             </a>
                         @endif
                     </td>

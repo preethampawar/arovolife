@@ -10,7 +10,7 @@
     <div class="flex-1 rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-800">
         Lifetime awards are issued on a distributor's first achievement of a given rank, subject to re-qualification gates: Ranks 1–2 release immediately, Ranks 3–5 require 2 qualifications, Ranks 6–9 require 3. Choose <strong>Goods</strong> (no deductions) or <strong>Cash</strong> (Group C admin 3%/₹25k + 5% TDS) when marking delivered.
     </div>
-    <a href="{{ route('admin.lifetime-awards.catalog') }}" class="shrink-0 px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">Reward catalog →</a>
+    <a href="{{ route('admin.lifetime-awards.catalog') }}" class="shrink-0 px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">Reward catalog {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
 </div>
 
 <x-filter-bar :filters="$filters" />

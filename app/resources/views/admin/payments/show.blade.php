@@ -89,7 +89,7 @@
             @empty
             <p class="text-sm text-gray-600">None.</p>
             @endforelse
-            <a href="{{ route('admin.payments.refunds') }}" class="block mt-4 text-sm text-brand-700 hover:underline">Unsettled refunds worklist →</a>
+            <a href="{{ route('admin.payments.refunds') }}" class="block mt-4 text-sm text-brand-700 hover:underline">Unsettled refunds worklist {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
         </div>
     </div>
 </div>

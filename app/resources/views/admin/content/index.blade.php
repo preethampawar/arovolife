@@ -56,13 +56,13 @@
                         <a href="{{ route('content.show', $page->slug) }}" target="_blank"
                            class="text-xs text-brand-700 hover:text-brand-800 mr-4">View ↗</a>
                         @endif
-                        <a href="{{ route('admin.content.edit', $page) }}" class="text-xs text-brand-700 hover:text-brand-800">Edit →</a>
+                        <a href="{{ route('admin.content.edit', $page) }}" class="text-xs text-brand-700 hover:text-brand-800">Edit {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                     </td>
                 </tr>
                 @empty
                 <tr>
                     <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-600">
-                        No content pages yet. <a href="{{ route('admin.content.create') }}" class="text-brand-700">Create one →</a>
+                        No content pages yet. <a href="{{ route('admin.content.create') }}" class="text-brand-700">Create one {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                     </td>
                 </tr>
                 @endforelse

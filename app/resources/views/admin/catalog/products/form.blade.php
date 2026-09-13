@@ -166,7 +166,7 @@
                 @endif
                 @if($variant->exists)
                 @can('inventory.manage')
-                <a href="{{ route('admin.inventory.adjustments.create', ['product_variant_id' => $variant->id]) }}" class="inline-block mt-1 text-sm font-medium text-brand-700 hover:text-brand-800">Adjust stock →</a>
+                <a href="{{ route('admin.inventory.adjustments.create', ['product_variant_id' => $variant->id]) }}" class="inline-block mt-1 text-sm font-medium text-brand-700 hover:text-brand-800">Adjust stock {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
                 @endcan
                 @endif
             </div>
