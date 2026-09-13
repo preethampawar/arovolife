@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Shared\Support;
 
-use Illuminate\Contracts\Database\Query\Builder;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
 
 /**
@@ -155,12 +156,12 @@ final class ListFilters
      * Fields with no mapping are skipped — read those with {@see self::value()}
      * and apply them yourself. Returns the same builder for chaining.
      *
-     * @template TBuilder of Builder
+     * @template TBuilder of EloquentBuilder<*>|QueryBuilder
      *
      * @param  TBuilder  $query
      * @return TBuilder
      */
-    public function apply(Builder $query): Builder
+    public function apply(EloquentBuilder|QueryBuilder $query): EloquentBuilder|QueryBuilder
     {
         foreach ($this->fields as $field) {
             match ($field->type) {
@@ -173,7 +174,8 @@ final class ListFilters
         return $query;
     }
 
-    private function applyText(Builder $query, FilterField $field): void
+    /** @param  EloquentBuilder<*>|QueryBuilder  $query */
+    private function applyText(EloquentBuilder|QueryBuilder $query, FilterField $field): void
     {
         $value = $this->value($field->key);
 
@@ -183,14 +185,15 @@ final class ListFilters
 
         $term = '%'.self::escapeLike($value).'%';
 
-        $query->where(function (Builder $inner) use ($field, $term): void {
+        $query->where(function (EloquentBuilder|QueryBuilder $inner) use ($field, $term): void {
             foreach ($field->columns as $column) {
                 $inner->orWhere($column, 'like', $term);
             }
         });
     }
 
-    private function applyDateRange(Builder $query, FilterField $field): void
+    /** @param  EloquentBuilder<*>|QueryBuilder  $query */
+    private function applyDateRange(EloquentBuilder|QueryBuilder $query, FilterField $field): void
     {
         if ($field->dateColumn === null) {
             return;
@@ -205,7 +208,8 @@ final class ListFilters
         }
     }
 
-    private function applyEquals(Builder $query, FilterField $field): void
+    /** @param  EloquentBuilder<*>|QueryBuilder  $query */
+    private function applyEquals(EloquentBuilder|QueryBuilder $query, FilterField $field): void
     {
         $value = $this->value($field->key);
 
@@ -219,8 +223,12 @@ final class ListFilters
     /**
      * Escape the LIKE wildcards so a search for "50%" does not match everything.
      * Pairs with the default backslash escape character on both MySQL and SQLite.
+     *
+     * Public because a page whose search spans a relation cannot use
+     * {@see self::apply()} and has to build its own `whereHas` — it should
+     * still escape the term the same way rather than reinventing this.
      */
-    private static function escapeLike(string $value): string
+    public static function escapeLike(string $value): string
     {
         return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
     }

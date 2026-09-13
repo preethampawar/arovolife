@@ -33,6 +33,18 @@ function lfMake(array $query, array $fields): ListFilters
     return ListFilters::make(lfRequest($query), $fields);
 }
 
+/**
+ * SQL with the grammar's identifier quoting stripped.
+ *
+ * These tests run on MySQL (backticks) but the same code is exercised on
+ * SQLite (double quotes) elsewhere, so asserting on a quoted identifier
+ * would pin the test to one driver rather than to the behaviour.
+ */
+function lfSql(Illuminate\Contracts\Database\Query\Builder $query): string
+{
+    return str_replace(['`', '"'], '', $query->toSql());
+}
+
 function lfStatusField(): FilterField
 {
     return FilterField::select('status', 'Status', ['open' => 'Open', 'closed' => 'Closed'], column: 'status');
@@ -93,19 +105,19 @@ it('applies an equals clause for a select that names a column', function () {
     $query = DB::table('things');
     lfMake(['status' => 'closed'], [lfStatusField()])->apply($query);
 
-    expect($query->toSql())->toContain('"status" = ?')
+    expect(lfSql($query))->toContain('status = ?')
         ->and($query->getBindings())->toBe(['closed']);
 });
 
 it('applies no clause for a field that names no column', function () {
     $query = DB::table('things');
-    $before = $query->toSql();
+    $before = lfSql($query);
 
     lfMake(['status' => 'open'], [
         FilterField::select('status', 'Status', ['open' => 'Open']),
     ])->apply($query);
 
-    expect($query->toSql())->toBe($before)
+    expect(lfSql($query))->toBe($before)
         ->and($query->getBindings())->toBe([]);
 });
 
@@ -113,8 +125,8 @@ it('ORs a text search across every column it names', function () {
     $query = DB::table('things');
     lfMake(['q' => 'ram'], [FilterField::text('q', 'Search', columns: ['name', 'email'])])->apply($query);
 
-    expect($query->toSql())->toContain('"name" like ?')
-        ->and($query->toSql())->toContain('or "email" like ?')
+    expect(lfSql($query))->toContain('name like ?')
+        ->and(lfSql($query))->toContain('or email like ?')
         ->and($query->getBindings())->toBe(['%ram%', '%ram%']);
 });
 
@@ -135,7 +147,7 @@ it('applies each present bound of a date range independently', function () {
     $fromOnly = DB::table('things');
     lfMake(['created_from' => '2026-09-01'], [$field])->apply($fromOnly);
     expect($fromOnly->getBindings())->toBe(['2026-09-01'])
-        ->and($fromOnly->toSql())->toContain('>=');
+        ->and(lfSql($fromOnly))->toContain('>=');
 });
 
 it('builds one chip per active value, each dropping only its own key', function () {

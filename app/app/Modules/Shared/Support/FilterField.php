@@ -34,7 +34,7 @@ final class FilterField
     public const TYPE_BOOLEAN = 'bool';
 
     /**
-     * @param  array<string, string>  $options  value => label, select only
+     * @param  array<int|string, string>  $options  value => label, select only
      * @param  list<string>  $columns  LIKE targets, text only
      */
     private function __construct(
@@ -75,7 +75,7 @@ final class FilterField
      * A single-choice dropdown. A submitted value outside `$options` is
      * discarded by {@see ListFilters::make()} and never reaches the query.
      *
-     * @param  array<string, string>  $options  value => label
+     * @param  array<int|string, string>  $options  value => label
      */
     public static function select(
         string $key,
