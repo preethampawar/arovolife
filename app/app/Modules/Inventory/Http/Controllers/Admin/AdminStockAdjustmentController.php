@@ -9,6 +9,8 @@ use App\Modules\Inventory\Models\StockAdjustment;
 use App\Modules\Inventory\Models\StockBatch;
 use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\StockAdjustmentService;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,11 +22,27 @@ final class AdminStockAdjustmentController extends Controller
 {
     public function __construct(private readonly StockAdjustmentService $adjustments) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $adjustments = StockAdjustment::with(['variant.product', 'warehouse', 'actor'])->orderByDesc('id')->paginate(25)->withQueryString();
+        $filters = ListFilters::make($request, [
+            FilterField::select('warehouse_code', 'Warehouse', Warehouse::query()->orderBy('name')->get(['code', 'name'])->mapWithKeys(fn (Warehouse $w): array => [$w->code => $w->name])->all(), column: 'stock_adjustments.warehouse_code', placeholder: 'All warehouses'),
+            FilterField::select('reason', 'Reason', [
+                StockAdjustment::REASON_COUNT_CORRECTION => 'Count correction',
+                StockAdjustment::REASON_DAMAGED => 'Damaged',
+                StockAdjustment::REASON_EXPIRED => 'Expired',
+                StockAdjustment::REASON_THEFT_LOSS => 'Theft/loss',
+                StockAdjustment::REASON_SAMPLE => 'Sample',
+                StockAdjustment::REASON_OTHER => 'Other',
+            ], column: 'stock_adjustments.reason', placeholder: 'All reasons'),
+            FilterField::dateRange('created', 'Created', dateColumn: 'stock_adjustments.created_at'),
+        ]);
 
-        return view('admin.inventory.adjustments.index', ['adjustments' => $adjustments]);
+        $adjustments = $filters->apply(StockAdjustment::with(['variant.product', 'warehouse', 'actor']))
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('admin.inventory.adjustments.index', ['adjustments' => $adjustments, 'filters' => $filters]);
     }
 
     public function create(Request $request): View

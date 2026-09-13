@@ -10,6 +10,8 @@ use App\Modules\Inventory\Models\PurchaseOrder;
 use App\Modules\Inventory\Models\Supplier;
 use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\PurchaseOrderService;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,15 +25,25 @@ final class AdminPurchaseOrderController extends Controller
 
     public function index(Request $request): View
     {
-        $status = $request->query('status');
+        $filters = ListFilters::make($request, [
+            FilterField::text('q', 'Search', 'PO no.', columns: ['purchase_orders.po_no']),
+            FilterField::select('status', 'Status', [
+                PurchaseOrder::STATUS_DRAFT => 'Draft',
+                PurchaseOrder::STATUS_SENT => 'Sent',
+                PurchaseOrder::STATUS_PARTIALLY_RECEIVED => 'Partially received',
+                PurchaseOrder::STATUS_RECEIVED => 'Received',
+                PurchaseOrder::STATUS_CANCELLED => 'Cancelled',
+            ], column: 'purchase_orders.status', placeholder: 'All statuses'),
+            FilterField::select('supplier_id', 'Supplier', Supplier::query()->orderBy('name')->get(['id', 'name'])->mapWithKeys(fn (Supplier $s): array => [(string) $s->id => $s->name])->all(), column: 'purchase_orders.supplier_id', placeholder: 'All suppliers'),
+            FilterField::dateRange('expected_at', 'Expected', dateColumn: 'purchase_orders.expected_at'),
+        ]);
 
-        $orders = PurchaseOrder::with('supplier')
-            ->when($status, fn ($q) => $q->where('status', $status))
+        $orders = $filters->apply(PurchaseOrder::with('supplier'))
             ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
 
-        return view('admin.inventory.purchase-orders.index', ['orders' => $orders]);
+        return view('admin.inventory.purchase-orders.index', ['orders' => $orders, 'filters' => $filters]);
     }
 
     public function create(): View
