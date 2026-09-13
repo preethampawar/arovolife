@@ -86,21 +86,9 @@
         #f4f7f6;
 }
 
-.wizard-stage::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image:
-        linear-gradient(to right, rgba(15, 23, 42, 0.018) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(15, 23, 42, 0.018) 1px, transparent 1px);
-    background-size: 32px 32px;
-    pointer-events: none;
-    mask-image: linear-gradient(to bottom, black 0%, black 60%, transparent 100%);
-    z-index: 0;
-}
-
-/* Lift normal content above the ::before grid. Exclude fixed/absolute/sticky
-   children (e.g. the confirm-modal overlay, the sticky top nav) — forcing
+/* Keep normal content in its own stacking context above the stage gradients.
+   Exclude fixed/absolute/sticky children (e.g. the confirm-modal overlay,
+   the sticky top nav) — forcing
    position:relative on them clobbers their own positioning (the sticky header
    would stop sticking and scroll away). */
 .wizard-stage > *:where(:not(.fixed):not(.absolute):not(.sticky)) { position: relative; z-index: 1; }
