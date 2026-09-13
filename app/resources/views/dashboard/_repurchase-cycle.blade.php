@@ -116,25 +116,33 @@
                 </svg>
 
                 <div class="flex-1 min-w-64 space-y-3">
-                    <dl class="flex flex-wrap gap-x-8 gap-y-2 text-sm">
-                        <div>
-                            <dt class="text-xs font-medium text-gray-500">Cycle starts</dt>
-                            <dd class="font-semibold text-gray-900">{{ $card->startDate?->format('d M Y') }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-medium text-gray-500">Cycle ends</dt>
-                            <dd class="font-semibold text-gray-900">{{ $card->endDate?->format('d M Y') }}</dd>
-                        </div>
-                        <div>
-                            {{-- Deliberately the obligation, not the window length:
-                                 due_date is inclusive, so a "30-day" cycle spans 31
-                                 calendar days and printing that number invites an
-                                 argument the distributor cannot win. The two dates
-                                 above already say the window exactly. --}}
-                            <dt class="text-xs font-medium text-gray-500">Required this cycle</dt>
-                            <dd class="font-semibold text-gray-900">@bv($card->requiredBvPaise)</dd>
-                        </div>
-                    </dl>
+                    <div>
+                        <dl class="flex flex-wrap gap-x-8 gap-y-2 text-sm">
+                            <div>
+                                <dt class="text-xs font-medium text-gray-500">Cycle starts</dt>
+                                <dd class="font-semibold text-gray-900">{{ $card->startDate?->format('d M Y') }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs font-medium text-gray-500">Cycle ends</dt>
+                                <dd class="font-semibold text-gray-900">{{ $card->endDate?->format('d M Y') }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-xs font-medium text-gray-500">Required this cycle</dt>
+                                <dd class="font-semibold text-gray-900">@bv($card->requiredBvPaise)</dd>
+                            </div>
+                        </dl>
+                        {{-- Without this line the dates read as off-by-one: the anchor
+                             day is day 0 and due_date is inclusive, so the window runs
+                             start + 30 (4 Sep -> 4 Oct). Stated the way the plan states
+                             it rather than as the 31-day span, so the card and
+                             docs/compensation/repurchase-client-examples-2026-09-07.md
+                             use the same words. daysTotal is inclusive of both ends, so
+                             minus one is the DB-driven comp.repurchase.cycle_days
+                             length -- never hardcoded. --}}
+                        <p class="mt-2 text-xs text-gray-500">
+                            Window: start + {{ $card->daysTotal - 1 }} days &mdash; the last day counts.
+                        </p>
+                    </div>
 
                     {{-- The two conditions the engine actually checks at window end. --}}
                     <div>
