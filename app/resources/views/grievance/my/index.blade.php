@@ -15,6 +15,8 @@
         </a>
     </div>
 
+    <x-filter-bar :filters="$filters" />
+
     @if ($tickets->isEmpty())
         <div class="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
             <p class="text-gray-900 font-medium mb-1">You have not raised any grievances.</p>

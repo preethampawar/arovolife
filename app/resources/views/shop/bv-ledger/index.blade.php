@@ -27,6 +27,8 @@
         </div>
     </div>
 
+    <x-filter-bar :filters="$filters" />
+
     @if($entries->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <p class="text-gray-600">No BV transactions yet.</p>

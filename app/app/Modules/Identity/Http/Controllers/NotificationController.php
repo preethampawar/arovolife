@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Http\Controllers;
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -22,13 +25,28 @@ use Illuminate\View\View;
  */
 final class NotificationController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         /** @var User $user */
         $user = Auth::user();
 
+        // `unread` declares no column: "not yet read" is a NULL test, not an
+        // equality, so it is applied here rather than by ListFilters::apply().
+        // It is applied to the morph relation itself, so it cannot reach a
+        // notification addressed to anyone else.
+        $filters = ListFilters::make($request, [
+            FilterField::boolean('unread', 'Unread only'),
+        ]);
+
+        $notifications = $user->notifications()->latest();
+
+        if ($filters->has('unread')) {
+            $notifications->whereNull('read_at');
+        }
+
         return view('notifications.index', [
-            'notifications' => $user->notifications()->latest()->paginate(20)->withQueryString(),
+            'filters' => $filters,
+            'notifications' => $notifications->paginate(20)->withQueryString(),
         ]);
     }
 

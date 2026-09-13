@@ -584,3 +584,30 @@ applied *after* it and may never be part of it (A7, hard rule 3).
   Asserted by Playwright scenarios 14 and 15.
 - **C2-4, C2-6 need pagination introduced.** Use `->paginate(25)->withQueryString()`
   and add the `{{ $x->links() }}` call to the view.
+
+## §Rollout A2 — inventory (Slice S4)
+
+| # | Route | Controller (under `app/`) | View (under `app/resources/views/`) | Change |
+|---|---|---|---|---|
+| A2-1 | `admin.inventory.suppliers.index` | `app/Modules/Inventory/Http/Controllers/Admin/AdminSupplierController.php` | `admin/inventory/suppliers/index.blade.php` | New (needs `Request` param, X2): `status` (active/archived), `q` (`name`) |
+| A2-2 | `admin.inventory.warehouses.index` | `app/Modules/Inventory/Http/Controllers/Admin/AdminWarehouseController.php` | `admin/inventory/warehouses/index.blade.php` | New (X2): `status`, `type` (hub/warehouse/franchise), `fulfils_orders` bool, `q` (`name`, `code`) |
+| A2-3 | `admin.inventory.transfers.index` | `app/Modules/Inventory/Http/Controllers/Admin/AdminStockTransferController.php` | `admin/inventory/transfers/index.blade.php` | New (X2): `status` (draft/dispatched/received/cancelled), `warehouse_code` (OR across `from_warehouse_code`/`to_warehouse_code` — model on `AdminInventoryReportController::transferRegister()`), `created` range |
+| A2-4 | `admin.inventory.adjustments.index` | `app/Modules/Inventory/Http/Controllers/Admin/AdminStockAdjustmentController.php` | `admin/inventory/adjustments/index.blade.php` | New (X2): `warehouse_code`, `reason` (enum from `StockAdjustmentRequest` validation rules — read it, do not invent), `created` range |
+| A2-5 | `admin.inventory.grns.index` | `app/Modules/Inventory/Http/Controllers/Admin/AdminPurchaseInvoiceController.php` | `admin/inventory/grns/index.blade.php` | **X3 — `status` already read, no control.** Surface it (draft/posted/cancelled); add `supplier_id`, `q` (`grn_no`, `supplier_invoice_no`), `supplier_invoice_date` range |
+| A2-6 | `admin.inventory.purchase-orders.index` | `app/Modules/Inventory/Http/Controllers/Admin/AdminPurchaseOrderController.php` | `admin/inventory/purchase-orders/index.blade.php` | **X3.** Surface `status` (draft/sent/partially_received/received/cancelled); add `supplier_id`, `q` (`po_no`), `expected_at` range |
+
+**Not touched — already complete:** `admin.inventory.stock.index` (`warehouse_code` + `q`, both with UI and `withQueryString()`) is the module's reference implementation.
+
+**Excluded:** the eleven `admin.inventory.reports.*` endpoints. They already have
+`warehouse_code` and, where `dated`, `date_from`/`date_to`, all with UI, through
+one generic template. Each report's filters must also thread into its own row
+generator for `ReportExport::respond()`, and several (`purchaseRegister` hardcodes
+`status = posted`; `orderFulfilment` and `returnsRestock` union multiple sources)
+do not accept a uniform filter set. Migrating them is a per-report design job,
+not a mechanical rollout. Recorded in §Outcome.
+
+### Constraint binding S4
+
+Stock, and five of the reports, use raw joins. Every filter column on those
+pages must be table-qualified (`inventory_levels.status`, not `status`) or
+MySQL raises an ambiguous-column error that SQLite would not catch (X7).

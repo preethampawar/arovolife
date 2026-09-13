@@ -27,6 +27,8 @@
         </ul>
     </div>
 
+    <x-filter-bar :filters="$filters" />
+
     @if($requests->isEmpty())
         <div class="rounded-2xl border border-dashed border-gray-300 bg-white px-6 py-12 text-center">
             <p class="text-gray-900 font-medium mb-1">You have not filed any requests.</p>
@@ -48,7 +50,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @foreach($requests as $item)
                     <tr>
-                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
+                        <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $requests->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-3 font-mono"><a href="{{ route('my.requests.show', $item) }}" class="text-brand-700 hover:text-brand-800">{{ $item->request_no }}</a></td>
                         <td class="px-4 py-3">{{ $item->typeLabel() }}</td>
                         <td class="px-4 py-3 text-gray-700">{{ $item->requestedSummary() }}</td>
@@ -59,6 +61,7 @@
                 </tbody>
             </table>
         </div>
+        <div class="mt-4">{{ $requests->links() }}</div>
     @endif
 </div>
 @endsection

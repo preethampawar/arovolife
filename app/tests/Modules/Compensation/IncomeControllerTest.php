@@ -653,8 +653,11 @@ it('shows friendly wallet ledger type labels, never raw machine types', function
         ->assertOk()
         ->assertSee('Genos Sales Bonus')
         ->assertSee('Repurchase deduction')
-        ->assertDontSee('gsb_credit')
-        ->assertDontSee('repurchase_deduction');
+        // Tag-stripped: the raw machine type must never be RENDERED to a
+        // distributor. It does legitimately appear as the `value` attribute of
+        // the Type filter's <option>s, which is markup, not displayed text.
+        ->assertDontSeeText('gsb_credit')
+        ->assertDontSeeText('repurchase_deduction');
 });
 
 it('streams the same friendly wallet ledger type labels in the CSV export (F64)', function (): void {

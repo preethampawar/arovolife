@@ -7,6 +7,7 @@ namespace App\Modules\Grievance\Http\Controllers;
 use App\Modules\Grievance\DTOs\FileGrievanceData;
 use App\Modules\Grievance\Enums\TicketCategory;
 use App\Modules\Grievance\Enums\TicketChannel;
+use App\Modules\Grievance\Enums\TicketStatus;
 use App\Modules\Grievance\Models\Ticket;
 use App\Modules\Grievance\Models\TicketAttachment;
 use App\Modules\Grievance\Services\GrievanceService;
@@ -15,6 +16,8 @@ use App\Modules\Grievance\Support\GrievanceAttachmentStore;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use App\Modules\Shared\Rules\NoRawGovernmentId;
+use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -47,8 +50,21 @@ final class DistributorGrievanceController extends Controller
             throw new NotFoundHttpException;
         }
 
+        $statuses = [];
+        foreach (TicketStatus::cases() as $status) {
+            $statuses[$status->value] = $status->label();
+        }
+
+        $filters = ListFilters::make($request, [
+            FilterField::select('status', 'Status', $statuses, column: 'tickets.status', placeholder: 'All statuses'),
+            FilterField::dateRange('created', 'Raised', dateColumn: 'tickets.created_at'),
+        ]);
+
+        // Ownership scope first — the filters only narrow this distributor's
+        // own tickets, never reach another complainant's.
         return view('grievance.my.index', [
-            'tickets' => Ticket::where('distributor_id', $distributor->id)
+            'filters' => $filters,
+            'tickets' => $filters->apply(Ticket::where('distributor_id', $distributor->id))
                 ->orderByDesc('created_at')
                 ->paginate(15)
                 ->withQueryString(),
