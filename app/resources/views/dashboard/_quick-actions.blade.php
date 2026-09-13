@@ -36,18 +36,30 @@
         'slate'   => ['card' => 'border-slate-200 bg-slate-50 hover:border-slate-400 hover:bg-slate-100',         'icon' => 'bg-slate-600 text-white',   'label' => 'text-slate-900'],
         'red'     => ['card' => 'border-red-200 bg-red-50 hover:border-red-400 hover:bg-red-100',                 'icon' => 'bg-red-500 text-white',     'label' => 'text-red-900'],
     ];
+
+    // Always exactly two rows, both the same width: half the tiles per row,
+    // so eleven never lands as seven-and-four. Literal class strings because
+    // Tailwind scans the source and would not see an interpolated name.
+    $quickCols = [
+        4 => 'sm:grid-cols-4',
+        5 => 'sm:grid-cols-5',
+        6 => 'sm:grid-cols-6',
+    ][min(6, max(4, (int) ceil(count($actions) / 2)))];
 @endphp
 
-<div>
+{{-- flex-1 + auto-rows-fr: the block absorbs whatever height the right-hand
+     column leaves over, and the two rows split it evenly, so the tiles grow
+     instead of the page ending in white space. --}}
+<div class="flex flex-1 flex-col">
     <p class="text-xs text-gray-700 uppercase tracking-wider font-semibold mb-3">Quick actions</p>
-    <div class="flex flex-wrap gap-2 sm:gap-3">
+    <div class="grid flex-1 auto-rows-fr grid-cols-3 {{ $quickCols }} gap-2 sm:gap-3">
         @foreach($actions as $action)
             @php
                 preg_match('/^bg-([a-z]+)-/', $action['tone'], $m);
                 $qt = $quickTones[$m[1] ?? 'brand'] ?? $quickTones['brand'];
             @endphp
             <a href="{{ $action['href'] }}"
-               class="group flex flex-1 basis-[calc(33.333%-0.5rem)] sm:basis-24 sm:max-w-36 min-w-0 flex-col items-center gap-2 rounded-2xl border {{ $qt['card'] }} px-2 py-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+               class="group flex h-full min-h-24 min-w-0 flex-col items-center justify-center gap-2 rounded-2xl border {{ $qt['card'] }} px-2 py-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                 <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-md {{ $qt['icon'] }} transition group-hover:scale-105">
                     {{ svg('lucide-'.$action['icon'], 'w-5 h-5') }}
                 </span>
