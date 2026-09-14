@@ -134,7 +134,7 @@
         <ul class="space-y-1">
             @foreach($aogoStatus->conditions as $condition)
             <li class="flex items-start gap-2 text-xs">
-                <span class="{{ $condition->met ? 'text-green-600' : 'text-gray-300' }}">{{ $condition->met ? '✓' : '○' }}</span>
+                <span class="{{ $condition->met ? 'text-green-600' : 'text-gray-400' }} shrink-0">{{ svg($condition->met ? 'lucide-circle-check' : 'lucide-circle', 'w-3.5 h-3.5', ['aria-hidden' => 'true']) }}</span>
                 <span class="{{ $condition->met ? 'text-gray-700' : 'text-gray-600' }} flex items-center gap-1">
                     {{ $condition->label }}
                     @if($condition->note)

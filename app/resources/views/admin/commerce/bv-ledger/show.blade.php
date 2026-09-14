@@ -48,7 +48,7 @@
             <input type="date" name="to" value="{{ $to }}" class="ml-1 rounded-lg border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
         </label>
         <x-ui.button >Apply</x-ui.button>
-        @if($ranged)<a href="{{ route('admin.commerce.bv-ledger.show', $distributor->id) }}" class="text-xs text-gray-600 hover:text-gray-900">✕ Clear</a>@endif
+        @if($ranged)<a href="{{ route('admin.commerce.bv-ledger.show', $distributor->id) }}" class="text-xs text-gray-600 hover:text-gray-900">{{ svg('lucide-x', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Clear</a>@endif
     </form>
     <a href="{{ route('admin.commerce.bv-ledger.show.export', array_merge($dateQuery, ['distributor' => $distributor->id, 'format' => 'xlsx'])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors">

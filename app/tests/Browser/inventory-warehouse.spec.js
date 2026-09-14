@@ -53,7 +53,7 @@ test.describe('Inventory: Warehouses', () => {
     test('list page loads with a "New warehouse" action', async ({ adminPage: page }) => {
         await page.goto('/admin/inventory/warehouses');
         await expect(page.getByRole('heading', { name: 'Warehouses' })).toBeVisible();
-        await expect(page.getByRole('link', { name: '+ New warehouse' })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'New warehouse' })).toBeVisible();
     });
 
     test('create a warehouse and see it in the list', async ({ adminPage: page }) => {
@@ -85,7 +85,7 @@ test.describe('Inventory: Suppliers', () => {
     test('list page loads with a "New supplier" action', async ({ adminPage: page }) => {
         await page.goto('/admin/inventory/suppliers');
         await expect(page.getByRole('heading', { name: 'Suppliers' })).toBeVisible();
-        await expect(page.getByRole('link', { name: '+ New supplier' })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'New supplier' })).toBeVisible();
     });
 
     test('create a supplier and see it in the list', async ({ adminPage: page }) => {
@@ -407,7 +407,7 @@ test.describe('Inventory: Reports', () => {
         await page.goto('/admin/inventory/reports/stock-on-hand');
         const [download] = await Promise.all([
             page.waitForEvent('download'),
-            page.getByRole('link', { name: 'Export CSV' }).click(),
+            page.getByRole('link', { name: 'CSV', exact: true }).click(),
         ]);
         expect(download.suggestedFilename()).toMatch(/\.csv$/i);
     });

@@ -6,7 +6,7 @@
 {{-- Flash is rendered once by the admin layout (admin.blade.php). --}}
 <div class="flex items-center justify-between mb-5">
     <p class="text-sm text-gray-600">Carousel banners shown at the top of the shop. Recommended 1520&nbsp;×&nbsp;350&nbsp;px.</p>
-    <a href="{{ route('admin.catalog.banners.create') }}" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold">+ New banner</a>
+    <x-ui.button href="{{ route('admin.catalog.banners.create') }}">{{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} New banner</x-ui.button>
 </div>
 
 <x-filter-bar :filters="$filters" />

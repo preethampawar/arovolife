@@ -17,7 +17,7 @@
             <a href="{{ route('admin.inventory.grns.edit', $invoice) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">Edit</a>
             <form method="POST" action="{{ route('admin.inventory.grns.post', $invoice) }}" data-confirm="Post this goods receipt?" data-confirm-title="Confirm GRN posting" data-confirm-impact="Post this GRN? This brings the stock on hand and cannot be undone by editing — only by cancelling.">
                 @csrf
-                <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Post GRN</button>
+                <x-ui.button >Post GRN</x-ui.button>
             </form>
         @endif
         @if($invoice->isPosted())

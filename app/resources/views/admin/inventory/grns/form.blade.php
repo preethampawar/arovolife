@@ -103,13 +103,13 @@
                 </tr>
             </tfoot>
         </table>
-        <button type="button" id="grnAddLine" class="text-sm text-brand-700 hover:text-brand-800 font-medium">+ Add line</button>
+        <button type="button" id="grnAddLine" class="text-sm text-brand-700 hover:text-brand-800 font-medium">{{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Add line</button>
     </div>
 
     </x-ui.card> class="flex items-center gap-3">
-        <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
+        <x-ui.button >
             {{ $isEdit ? 'Save changes' : 'Save as draft' }}
-        </button>
+        </x-ui.button>
         <a href="{{ $isEdit ? route('admin.inventory.grns.show', $invoice) : route('admin.inventory.grns.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
     </div>
 </form>

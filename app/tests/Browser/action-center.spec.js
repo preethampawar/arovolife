@@ -153,8 +153,12 @@ test.describe('Action Center: type page', () => {
         await fixLink.click();
         await page.waitForURL('**/admin/commerce/orders/**');
         expect(page.url()).toContain(href.split('/').pop());
-        // Lands on the existing order screen, not a 404.
-        await expect(page.locator('body')).not.toContainText('404');
+        // Lands on the existing order screen, not a 404. Asserted on the
+        // heading rather than by looking for "404" anywhere in the body —
+        // plenty of real order pages contain those three digits in an order
+        // number or an amount, which made this fail on the data rather than
+        // on the behaviour.
+        await expect(page.getByRole('heading', { name: /^Order / })).toBeVisible();
     });
 
     test('filters narrow the list', async ({ adminPage: page }) => {

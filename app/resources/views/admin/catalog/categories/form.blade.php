@@ -56,7 +56,7 @@
                     <img src="{{ $category->imageUrl() }}" alt="" class="w-24 h-24 object-cover rounded-lg border border-gray-200 mb-2">
                 @endif
                 <input type="file" name="image" accept="image/jpeg,image/png"
-                    class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-900 file:text-white file:text-sm file:font-medium hover:file:bg-slate-800">
+                    class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-700 file:text-white file:text-sm file:font-medium hover:file:bg-brand-800">
             </div>
 
             <div class="block sm:col-span-2">
@@ -68,7 +68,7 @@
                     <img src="{{ $category->bannerUrl() }}" alt="" class="w-full max-w-md aspect-[1280/290] object-cover rounded-lg border border-gray-200 mb-2">
                 @endif
                 <input type="file" name="banner" accept="image/jpeg,image/png"
-                    class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-900 file:text-white file:text-sm file:font-medium hover:file:bg-slate-800">
+                    class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-700 file:text-white file:text-sm file:font-medium hover:file:bg-brand-800">
                 <input type="url" name="banner_external_url" value="{{ old('banner_external_url', $category->banner_external_url) }}" maxlength="500" placeholder="…or a hosted image URL https://…"
                     class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
@@ -76,9 +76,9 @@
     </x-ui.card>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
+        <x-ui.button >
             {{ $isEdit ? 'Save changes' : 'Create category' }}
-        </button>
+        </x-ui.button>
         <a href="{{ route('admin.catalog.categories.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
         @if($isEdit)
         {{-- Submits the separate archive form below via form= (forms must not nest). --}}

@@ -170,7 +170,7 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
                                         @foreach($meta['options'] ?? [] as $opt)
                                             @if(! empty($opt['note']))
                                             <li class="{{ $opt['value'] === $value ? 'text-gray-700 font-medium' : '' }}">
-                                                <span class="{{ $opt['value'] === $value ? 'text-brand-700' : 'text-gray-600' }}">{{ $opt['label'] }}@if($opt['value'] === $value) ✓@endif:</span>
+                                                <span class="{{ $opt['value'] === $value ? 'text-brand-700' : 'text-gray-600' }}">{{ $opt['label'] }}@if($opt['value'] === $value) {{ svg('lucide-check', 'w-3 h-3 inline-block align-[-1px]', ['aria-hidden' => 'true']) }}@endif:</span>
                                                 {{ $opt['note'] }}
                                             </li>
                                             @endif

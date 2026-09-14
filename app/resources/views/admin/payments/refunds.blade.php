@@ -57,7 +57,7 @@
                             @csrf
                             <input type="text" name="reference" required minlength="6" maxlength="64" placeholder="NEFT / UTR reference" class="w-full rounded-lg border-gray-300 text-sm">
                             <input type="text" name="note" maxlength="500" placeholder="Note (optional)" class="w-full rounded-lg border-gray-300 text-sm">
-                            <button type="submit" class="w-full py-1.5 rounded-lg bg-gray-800 text-white text-sm">Record settlement</button>
+                            <x-ui.button class="w-full">Record settlement</x-ui.button>
                         </form>
                     </details>
                     @elseif($c['state'] === 'held')
@@ -112,7 +112,7 @@
                             @csrf
                             <input type="text" name="reference" required minlength="6" maxlength="64" placeholder="{{ $owedPaise > 0 ? 'NEFT / UTR reference' : 'Reference or reason' }}" class="w-full rounded-lg border-gray-300 text-sm">
                             <input type="text" name="note" maxlength="500" placeholder="Note (optional)" class="w-full rounded-lg border-gray-300 text-sm">
-                            <button type="submit" class="w-full py-1.5 rounded-lg bg-gray-800 text-white text-sm">Record settlement</button>
+                            <x-ui.button class="w-full">Record settlement</x-ui.button>
                         </form>
                     </details>
                     @endcan

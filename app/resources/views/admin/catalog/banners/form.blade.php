@@ -57,7 +57,7 @@
                     <img src="{{ $banner->url() }}" alt="" class="w-full max-w-md aspect-[1520/350] object-cover rounded-lg border border-gray-200 mb-2">
                 @endif
                 <input type="file" name="image" accept="image/jpeg,image/png"
-                    class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-900 file:text-white file:text-sm file:font-medium hover:file:bg-slate-800">
+                    class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-700 file:text-white file:text-sm file:font-medium hover:file:bg-brand-800">
                 <span class="block text-xs text-gray-600 mt-1">Upload to S3. Leave empty to keep the current image or use the URL below.</span>
             </div>
             <label class="block sm:col-span-2">
@@ -83,9 +83,9 @@
     </x-ui.card>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
+        <x-ui.button >
             {{ $isEdit ? 'Save changes' : 'Create banner' }}
-        </button>
+        </x-ui.button>
         <a href="{{ route('admin.catalog.banners.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
         @if($isEdit)
         {{-- Submits the separate delete form below via form= (forms must not nest). --}}

@@ -12,7 +12,7 @@
     </div>
 
     <div class="mb-4 flex items-center justify-between">
-        <a href="{{ route('admin.content.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to Content Pages</a>
+        <a href="{{ route('admin.content.index') }}" class="text-sm text-gray-600 hover:text-gray-900">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back to Content Pages</a>
         @if($page->status === 'published')
         <a href="{{ route('content.show', $page->slug) }}" target="_blank"
            class="text-sm text-brand-700 hover:text-brand-800">View live ↗</a>

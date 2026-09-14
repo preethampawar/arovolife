@@ -5,10 +5,9 @@
 @section('content')
 <div class="flex items-center justify-between gap-3 mb-6 flex-wrap">
     <p class="text-sm text-gray-600">Manage the product catalog — pricing, attributes, images and descriptions.</p>
-    <a href="{{ route('admin.catalog.products.create') }}"
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
-        + New product
-    </a>
+    <x-ui.button href="{{ route('admin.catalog.products.create') }}">
+        {{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} New product
+    </x-ui.button>
 </div>
 
 <x-filter-bar :filters="$filters" />

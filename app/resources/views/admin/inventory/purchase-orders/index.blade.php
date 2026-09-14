@@ -5,10 +5,9 @@
 @section('content')
 <div class="flex items-center justify-between gap-3 mb-6 flex-wrap">
     <p class="text-sm text-gray-600">The intent to buy. A purchase order moves no stock on its own — a posted GRN does.</p>
-    <a href="{{ route('admin.inventory.purchase-orders.create') }}"
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
-        + New purchase order
-    </a>
+    <x-ui.button href="{{ route('admin.inventory.purchase-orders.create') }}">
+        {{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} New purchase order
+    </x-ui.button>
 </div>
 
 <x-filter-bar :filters="$filters" />

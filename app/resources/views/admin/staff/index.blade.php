@@ -12,7 +12,7 @@
         register. Every change made here is recorded in the audit log.
     </p>
     <x-ui.button href="{{ route('admin.staff.create') }}" class="shrink-0">
-        + Add staff user
+        {{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Add staff user
     </x-ui.button>
 </div>
 
@@ -29,7 +29,7 @@
         </a>
     @endforeach
     @if(request()->query('role'))
-    <a href="{{ route('admin.staff.index') }}" class="text-xs text-gray-700 hover:text-gray-900">✕ Clear</a>
+    <a href="{{ route('admin.staff.index') }}" class="text-xs text-gray-700 hover:text-gray-900">{{ svg('lucide-x', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Clear</a>
     @endif
 </div>
 

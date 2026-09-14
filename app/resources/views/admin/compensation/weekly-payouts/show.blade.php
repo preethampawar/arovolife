@@ -47,7 +47,7 @@
 
 <div class="mb-4 flex items-start justify-between gap-3 flex-wrap">
     <a href="{{ route('admin.compensation.weekly-payouts.index') }}"
-       class="text-sm text-brand-700 hover:underline">← Back to payout batches</a>
+       class="text-sm text-brand-700 hover:underline">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back to payout batches</a>
 
     <div class="flex items-center gap-2 flex-wrap justify-end">
         <span class="inline-flex px-2 py-1 rounded text-[11px] font-medium {{ $batchStatusLabel['cls'] }}">

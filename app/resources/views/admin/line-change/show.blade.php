@@ -127,7 +127,7 @@
 @endif
 
 <a href="{{ route('admin.line-changes.index') }}" class="inline-block mt-6 text-sm text-gray-600 hover:text-gray-700">
-    ← Back to queue
+    {{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back to queue
 </a>
 
 @endsection

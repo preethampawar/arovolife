@@ -36,11 +36,11 @@
         </a>
     @endforeach
     @if(request()->query('status'))
-    <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}" class="text-xs text-gray-700 hover:text-gray-900">✕ Clear</a>
+    <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}" class="text-xs text-gray-700 hover:text-gray-900">{{ svg('lucide-x', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Clear</a>
     @endif
     <div class="ml-auto flex items-center gap-2">
         <x-ui.button href="{{ route('admin.distributors.create') }}">
-            + Add Distributor
+            {{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Add Distributor
         </x-ui.button>
         <a href="{{ route('admin.distributors.export', $filters->toQuery() + ['format' => 'xlsx']) }}"
            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">

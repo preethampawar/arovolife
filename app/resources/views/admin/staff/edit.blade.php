@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="mb-6">
-    <a href="{{ route('admin.staff.index') }}" class="text-sm text-gray-700 hover:text-gray-900">← Back to staff users</a>
+    <a href="{{ route('admin.staff.index') }}" class="text-sm text-gray-700 hover:text-gray-900">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back to staff users</a>
 </div>
 
 <div class="max-w-2xl space-y-6">

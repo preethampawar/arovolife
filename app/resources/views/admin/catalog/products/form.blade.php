@@ -208,7 +208,7 @@
             </div>
             @endforeach
         </div>
-        <button type="button" id="addAttrRow" class="text-sm text-brand-700 hover:text-brand-800 font-medium">+ Add section</button>
+        <button type="button" id="addAttrRow" class="text-sm text-brand-700 hover:text-brand-800 font-medium">{{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Add section</button>
 
         {{-- Template for new rows (textarea is initialised on demand). --}}
         <template id="attrRowTemplate">
@@ -244,7 +244,7 @@
         </div>
         @endif
         <input type="file" name="images[]" accept="image/jpeg,image/png" multiple
-            class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-900 file:text-white file:text-sm file:font-medium hover:file:bg-slate-800">
+            class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-700 file:text-white file:text-sm file:font-medium hover:file:bg-brand-800">
         <p class="text-xs text-gray-600">JPG or PNG, up to 5 MB each. Stored on S3. <x-help-tip text="Upload one or more gallery images shown on the product page. JPG or PNG, up to 5 MB each." /></p>
 
         <label class="block pt-2 border-t border-gray-100">
@@ -263,9 +263,9 @@
     </x-ui.card>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
+        <x-ui.button >
             {{ $isEdit ? 'Save changes' : 'Create product' }}
-        </button>
+        </x-ui.button>
         <a href="{{ route('admin.catalog.products.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
         @if($isEdit)
         <form id="archiveForm" method="POST" action="{{ route('admin.catalog.products.archive', $product) }}" class="ml-auto"

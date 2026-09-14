@@ -31,7 +31,7 @@
                 @endforeach
             </select>
         </form>
-        <a href="{{ route('admin.compensation.engine-runs.index') }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">← Engine Runs</a>
+        <a href="{{ route('admin.compensation.engine-runs.index') }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Engine Runs</a>
     </div>
 </div>
 

@@ -18,7 +18,7 @@
         reconcile to its budget. Per-rank budgets are edited on
         <a href="{{ route('admin.compensation.plan-settings.index') }}" class="underline font-medium">Compensation → Plan settings</a>.
     </div>
-    <a href="{{ route('admin.lifetime-awards.index') }}" class="shrink-0 px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">← Milestones</a>
+    <a href="{{ route('admin.lifetime-awards.index') }}" class="shrink-0 px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Milestones</a>
 </div>
 
 @foreach($byRank as $rank => $items)

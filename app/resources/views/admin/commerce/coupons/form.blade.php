@@ -125,9 +125,9 @@
     </x-ui.card>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
+        <x-ui.button >
             {{ $isEdit ? 'Save changes' : 'Create coupon' }}
-        </button>
+        </x-ui.button>
         <a href="{{ route('admin.commerce.coupons.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
         @if($isEdit)
         <form method="POST" action="{{ route('admin.commerce.coupons.archive', $coupon) }}" class="ml-auto" data-confirm-impact="Archive this coupon?">

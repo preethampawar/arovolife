@@ -90,9 +90,9 @@
     </x-ui.card>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
+        <x-ui.button >
             {{ $isEdit ? 'Save changes' : 'Create warehouse' }}
-        </button>
+        </x-ui.button>
         <a href="{{ route('admin.inventory.warehouses.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
         @if($isEdit && ! $isDefault && $warehouse->status === 'active')
         <form method="POST" action="{{ route('admin.inventory.warehouses.archive', $warehouse) }}" class="ml-auto" data-confirm="Archive this warehouse?" data-confirm-title="Confirm archive" data-confirm-impact="Archive this warehouse?">

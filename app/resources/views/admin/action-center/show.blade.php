@@ -28,7 +28,7 @@
         @endforeach
     </select>
     @endif
-    <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Filter</button>
+    <x-ui.button >Filter</x-ui.button>
     @if(collect($filters)->filter()->isNotEmpty())
         <a href="{{ route('admin.action-center.show', $provider->key()) }}" class="text-sm text-gray-600 hover:text-gray-900">Clear</a>
     @endif
@@ -92,7 +92,7 @@
                                 <label class="block text-xs font-medium text-gray-700 mb-1">Reason (min 10 chars)</label>
                                 <textarea name="reason" required minlength="10" rows="2"
                                     class="w-full rounded-md border border-gray-300 px-2 py-1 text-sm mb-2"></textarea>
-                                <button type="submit" class="w-full px-3 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-colors">Snooze</button>
+                                <x-ui.button size="sm" class="w-full">Snooze</x-ui.button>
                             </form>
                         </details>
                         @endunless

@@ -5,10 +5,9 @@
 @section('content')
 <div class="flex items-center justify-between gap-3 mb-6 flex-wrap">
     <p class="text-sm text-gray-600">Stock in transit is not counted at either warehouse until it is received.</p>
-    <a href="{{ route('admin.inventory.transfers.create') }}"
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
-        + New transfer
-    </a>
+    <x-ui.button href="{{ route('admin.inventory.transfers.create') }}">
+        {{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} New transfer
+    </x-ui.button>
 </div>
 
 <x-filter-bar :filters="$filters" />

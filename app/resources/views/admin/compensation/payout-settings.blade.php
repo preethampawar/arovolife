@@ -19,7 +19,7 @@
 
 <div class="mb-4">
     <a href="{{ route('admin.compensation.weekly-payouts.index') }}"
-       class="text-sm text-brand-700 hover:underline">← Back to payout batches</a>
+       class="text-sm text-brand-700 hover:underline">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back to payout batches</a>
 </div>
 
 {{-- What this page is for --}}

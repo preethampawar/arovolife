@@ -12,7 +12,7 @@
             <option value="{{ $wh->code }}" @selected($warehouseCode === $wh->code)>{{ $wh->name }} ({{ $wh->code }})</option>
         @endforeach
     </select>
-    <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Filter</button>
+    <x-ui.button >Filter</x-ui.button>
     @if($search !== '' || $warehouseCode !== '')
         <a href="{{ route('admin.inventory.stock.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Clear</a>
     @endif

@@ -26,7 +26,7 @@
 @endif
 
 <div class="flex flex-wrap justify-end items-center gap-2 mb-4">
-    <x-ui.button href="{{ route('admin.arete-centres.create') }}">+ Add Centre</x-ui.button>
+    <x-ui.button href="{{ route('admin.arete-centres.create') }}">{{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Add Centre</x-ui.button>
 </div>
 
 <form method="GET" class="mb-4 flex flex-wrap items-end gap-3 bg-white rounded-xl border border-gray-200 p-4">

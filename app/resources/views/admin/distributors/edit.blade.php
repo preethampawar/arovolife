@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="mb-6 flex items-center justify-between gap-3 flex-wrap">
-    <a href="{{ route('admin.distributors.show', $distributor->id) }}" class="text-sm text-gray-700 hover:text-gray-900">← Back to profile</a>
+    <a href="{{ route('admin.distributors.show', $distributor->id) }}" class="text-sm text-gray-700 hover:text-gray-900">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back to profile</a>
 </div>
 
 <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900">

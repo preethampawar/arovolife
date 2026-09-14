@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="mb-4">
-    <a href="{{ route('admin.contact-inquiries.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← Back to inbox</a>
+    <a href="{{ route('admin.contact-inquiries.index') }}" class="text-sm text-gray-600 hover:text-gray-700">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back to inbox</a>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -120,9 +120,9 @@
                     <dt class="text-gray-600">Privacy consent</dt>
                     <dd class="text-gray-800">
                         @if($inquiry->privacy_consent_at)
-                            <span class="text-leaf-700 font-semibold">✓ Recorded</span> {{ $inquiry->privacy_consent_at->format('d M Y H:i') }}
+                            <span class="text-leaf-700 font-semibold">{{ svg('lucide-check', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Recorded</span> {{ $inquiry->privacy_consent_at->format('d M Y H:i') }}
                         @else
-                            <span class="text-red-700 font-semibold">⚠ Missing</span>
+                            <span class="text-red-700 font-semibold">{{ svg('lucide-triangle-alert', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Missing</span>
                         @endif
                     </dd>
                 </div>

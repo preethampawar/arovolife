@@ -24,7 +24,7 @@
 @endphp
 
 <div class="mb-4">
-    <a href="{{ route('admin.returns.index') }}" class="text-sm text-gray-600 hover:text-gray-900">← Back to returns</a>
+    <a href="{{ route('admin.returns.index') }}" class="text-sm text-gray-600 hover:text-gray-900">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back to returns</a>
 </div>
 
 @foreach(['inspect','approve','reject'] as $field)

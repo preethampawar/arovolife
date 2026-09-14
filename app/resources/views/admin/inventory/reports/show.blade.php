@@ -17,13 +17,14 @@
         <input type="date" name="date_to" value="{{ $dateTo }}" placeholder="To"
             class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
         @endif
-        <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Filter</button>
+        <x-ui.button >Filter</x-ui.button>
     </form>
     <div class="flex items-center gap-2">
-        <a href="{{ request()->fullUrlWithQuery(['format' => 'xlsx']) }}"
-           class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Export Excel</a>
-        <a href="{{ request()->fullUrlWithQuery(['format' => 'csv']) }}"
-           class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50">CSV</a>
+        {{-- exports.spec.js selects both of these by role and exact name
+             ("Export Excel", "CSV"); the icons are aria-hidden so the
+             accessible names are unchanged. --}}
+        <x-ui.button :href="request()->fullUrlWithQuery(['format' => 'xlsx'])" icon="download">Export Excel</x-ui.button>
+        <x-ui.button :href="request()->fullUrlWithQuery(['format' => 'csv'])" variant="secondary">CSV</x-ui.button>
     </div>
 </div>
 
@@ -56,6 +57,6 @@
 </x-ui.card>
 
 <p class="mt-3 text-xs text-gray-600">
-    <a href="{{ route('admin.inventory.reports.index') }}" class="text-brand-700 hover:text-brand-800 font-medium">← All reports</a>
+    <a href="{{ route('admin.inventory.reports.index') }}" class="text-brand-700 hover:text-brand-800 font-medium">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} All reports</a>
 </p>
 @endsection

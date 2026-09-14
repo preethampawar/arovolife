@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="mb-4">
-    <a href="{{ $isCompanyRoot ? route('admin.distributors.index') : route('admin.distributors.show', $self->id) }}" class="text-sm text-gray-600 hover:text-gray-700">← Back</a>
+    <a href="{{ $isCompanyRoot ? route('admin.distributors.index') : route('admin.distributors.show', $self->id) }}" class="text-sm text-gray-600 hover:text-gray-700">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back</a>
 </div>
 
 {{-- Admin context bar — whose tree, with action buttons --}}

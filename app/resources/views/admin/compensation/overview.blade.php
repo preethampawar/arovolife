@@ -23,8 +23,12 @@
             Today's cut-off
             <x-help-tip text="The 23:59 daily GSB cut-off runs automatically. If it shows Failed, use Manual Controls → Retry." />
         </p>
-        <p class="mt-1 text-lg font-bold {{ $cutoffStatus === 'done' ? 'text-green-700' : ($cutoffStatus === 'failed' ? 'text-red-600' : 'text-amber-700') }}">
-            {{ match($cutoffStatus) { 'done' => '✓ Done', 'failed' => '✗ Failed', default => '⚠ Pending' } }}
+        {{-- The icon is chosen alongside the label rather than embedded in it:
+             the label is a PHP string, and an icon helper inside one would be
+             text, not markup. --}}
+        <p class="mt-1 text-lg font-bold flex items-center gap-1.5 {{ $cutoffStatus === 'done' ? 'text-green-700' : ($cutoffStatus === 'failed' ? 'text-red-600' : 'text-amber-700') }}">
+            {{ svg(match($cutoffStatus) { 'done' => 'lucide-check', 'failed' => 'lucide-x', default => 'lucide-triangle-alert' }, 'w-4 h-4 shrink-0', ['aria-hidden' => 'true']) }}
+            {{ match($cutoffStatus) { 'done' => 'Done', 'failed' => 'Failed', default => 'Pending' } }}
         </p>
     </x-ui.card>
     <x-ui.card padding="p-4">
@@ -60,11 +64,11 @@
 {{-- Attention feed --}}
 @if($failedCutoffs->isEmpty())
 <div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700 font-medium">
-    ✓ All systems normal — no failed cut-offs today.
+    {{ svg('lucide-check', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} All systems normal — no failed cut-offs today.
 </div>
 @else
 <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
-    <p class="text-sm font-semibold text-red-800 mb-3">⚠ {{ $failedCutoffs->count() }} failed cut-off(s) need attention</p>
+    <p class="text-sm font-semibold text-red-800 mb-3">{{ svg('lucide-triangle-alert', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} {{ $failedCutoffs->count() }} failed cut-off(s) need attention</p>
     @foreach($failedCutoffs as $item)
     <div class="flex items-center justify-between py-2 border-b border-red-100 last:border-0 text-sm">
         <span class="text-red-700">

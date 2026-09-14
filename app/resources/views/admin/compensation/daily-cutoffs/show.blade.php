@@ -6,7 +6,7 @@
 
 <div class="mb-4">
     <a href="{{ route('admin.compensation.daily-cutoffs.index', ['date' => $parsed->toDateString()]) }}"
-       class="text-sm text-brand-700 hover:underline">← Back to cut-offs list</a>
+       class="text-sm text-brand-700 hover:underline">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back to cut-offs list</a>
 </div>
 
 @developer

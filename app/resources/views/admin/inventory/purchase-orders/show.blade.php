@@ -17,11 +17,11 @@
             <a href="{{ route('admin.inventory.purchase-orders.edit', $purchaseOrder) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">Edit</a>
             <form method="POST" action="{{ route('admin.inventory.purchase-orders.send', $purchaseOrder) }}" data-confirm="Send this purchase order?" data-confirm-title="Confirm send" data-confirm-impact="Send this purchase order to the supplier?">
                 @csrf
-                <button type="submit" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Send to supplier</button>
+                <x-ui.button >Send to supplier</x-ui.button>
             </form>
         @endif
         @if(in_array($purchaseOrder->status, ['sent', 'partially_received']))
-            <a href="{{ route('admin.inventory.grns.create', ['purchase_order_id' => $purchaseOrder->id]) }}" class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Create GRN from this PO</a>
+            <x-ui.button :href="route('admin.inventory.grns.create', ['purchase_order_id' => $purchaseOrder->id])" icon="package-plus">Create GRN from this PO</x-ui.button>
         @endif
         @if(! in_array($purchaseOrder->status, ['received', 'cancelled']))
             <form method="POST" action="{{ route('admin.inventory.purchase-orders.cancel', $purchaseOrder) }}" data-confirm="Cancel this purchase order?" data-confirm-title="Confirm cancellation" data-confirm-impact="Cancel this purchase order?">

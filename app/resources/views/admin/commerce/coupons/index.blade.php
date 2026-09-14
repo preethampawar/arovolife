@@ -5,10 +5,9 @@
 @section('content')
 <div class="flex items-center justify-between gap-3 mb-6 flex-wrap">
     <p class="text-sm text-gray-600">Promo codes &amp; discounts applied at checkout. A coupon only reduces what the customer pays — it never creates income.</p>
-    <a href="{{ route('admin.commerce.coupons.create') }}"
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
-        + New coupon
-    </a>
+    <x-ui.button href="{{ route('admin.commerce.coupons.create') }}">
+        {{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} New coupon
+    </x-ui.button>
 </div>
 
 <x-filter-bar :filters="$filters" />

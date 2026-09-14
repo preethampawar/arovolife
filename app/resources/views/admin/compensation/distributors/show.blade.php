@@ -16,10 +16,10 @@
         </div>
         <div class="flex gap-2">
             <a href="{{ route('admin.distributors.show', $distributor) }}"
-               class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">← Profile</a>
+               class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Profile</a>
             @if($gsbOn)
             <a href="{{ route('admin.compensation.manual-controls.index', ['adn' => $distributor->adn]) }}"
-               class="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600">⚠ Manual Controls</a>
+               class="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600">{{ svg('lucide-triangle-alert', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Manual Controls</a>
             @endif
         </div>
     </div>
@@ -113,7 +113,7 @@
 {{-- Failed cut-off alert --}}
 @if($failedToday)
 <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 flex items-center gap-3">
-    <span>⚠ <strong>Today's cut-off failed</strong> — {{ $failedToday->failure_reason ?? 'unknown error' }}</span>
+    <span class="flex items-center gap-2">{{ svg('lucide-triangle-alert', 'w-4 h-4 shrink-0', ['aria-hidden' => 'true']) }} <span><strong>Today's cut-off failed</strong> — {{ $failedToday->failure_reason ?? 'unknown error' }}</span></span>
     <a href="{{ route('admin.compensation.manual-controls.index', ['adn' => $distributor->adn, 'action' => 'retry', 'date' => today()->toDateString()]) }}"
        class="ml-auto px-3 py-1 rounded bg-amber-200 text-amber-900 text-xs font-medium hover:bg-amber-300">Retry this cut-off</a>
 </div>

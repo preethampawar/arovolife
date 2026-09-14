@@ -422,7 +422,7 @@ function unmaskNomineeAadhaar(btn) {
             @csrf
             <button type="submit"
                 class="px-4 py-2 rounded-lg bg-green-700 hover:bg-green-600 text-white text-sm font-medium transition-colors">
-                ✓ Unblock Account
+                {{ svg('lucide-check', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Unblock Account
             </button>
         </form>
         @endif
@@ -430,13 +430,13 @@ function unmaskNomineeAadhaar(btn) {
         @if(in_array($distributor->status, ['active','pending']))
         <button onclick="document.getElementById('freeze-form').classList.toggle('hidden')"
             class="px-4 py-2 rounded-lg bg-yellow-700 hover:bg-yellow-600 text-white text-sm font-medium transition-colors">
-            ⚠ Block Account
+            {{ svg('lucide-triangle-alert', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Block Account
         </button>
         @endif
 
         <button onclick="document.getElementById('terminate-form').classList.toggle('hidden')"
             class="px-4 py-2 rounded-lg bg-red-800 hover:bg-red-700 text-white text-sm font-medium transition-colors">
-            ✕ Terminate
+            {{ svg('lucide-x', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Terminate
         </button>
 
         @if($distributor->distributor_status === 'active')
@@ -488,7 +488,7 @@ function unmaskNomineeAadhaar(btn) {
         data-confirm-impact="The account is permanently closed and the distributor can never sign in again. This is irreversible."
         class="hidden mt-4 space-y-3 border-t border-gray-200 pt-4">
         @csrf
-        <p class="text-sm text-red-700 font-medium">⚠ This action is irreversible. The distributor's ADN will be permanently closed.</p>
+        <p class="text-sm text-red-700 font-medium">{{ svg('lucide-triangle-alert', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} This action is irreversible. The distributor's ADN will be permanently closed.</p>
         <label class="block text-sm text-gray-700">Reason for termination <span class="text-red-700">*</span> <x-help-tip text="Recorded in the audit log with this irreversible action." /></label>
         <textarea name="reason" required rows="2" placeholder="Enter reason (required for audit log)…"
             class="w-full max-w-lg rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"></textarea>

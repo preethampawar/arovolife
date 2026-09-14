@@ -97,23 +97,20 @@
         @endswitch
     @endforeach
 
-    <button type="submit" data-testid="filter-apply"
-            class="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
-        Filter
-    </button>
+    {{-- These were the console's one remaining slate-900 button, which made
+         the busiest control on 39 list pages a different colour from every
+         other primary action in the product. The data-testid hooks pass
+         straight through the component to the element. --}}
+    <x-ui.button type="submit" data-testid="filter-apply" icon="list-filter">Filter</x-ui.button>
 
     @if($filters->any())
-        <a href="{{ $filters->clearUrl() }}" data-testid="filter-clear"
-           class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-            Clear
-        </a>
+        <x-ui.button :href="$filters->clearUrl()" variant="secondary" data-testid="filter-clear" icon="x">Clear</x-ui.button>
     @endif
 
     @foreach($exports as $export)
-        <a href="{{ $export['url'] }}" data-testid="filter-export"
-           class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+        <x-ui.button :href="$export['url']" variant="secondary" data-testid="filter-export" icon="download">
             {{ $export['label'] }}
-        </a>
+        </x-ui.button>
     @endforeach
 
     {{ $slot }}
@@ -127,7 +124,7 @@
                class="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700 hover:bg-gray-50">
                 <span class="text-gray-500">{{ $chip['label'] }}:</span>
                 <span class="font-medium">{{ $chip['display'] }}</span>
-                <span aria-hidden="true" class="text-gray-400">&times;</span>
+                <span aria-hidden="true" class="text-gray-400">{{ svg('lucide-x', 'w-3 h-3') }}</span>
                 <span class="sr-only">Remove this filter</span>
             </a>
         @endforeach

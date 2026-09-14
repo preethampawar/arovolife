@@ -5,10 +5,9 @@
 @section('content')
 <div class="flex items-center justify-between gap-3 mb-6 flex-wrap">
     <p class="text-sm text-gray-600">The counterparties on purchase orders and goods receipts.</p>
-    <a href="{{ route('admin.inventory.suppliers.create') }}"
-        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
-        + New supplier
-    </a>
+    <x-ui.button href="{{ route('admin.inventory.suppliers.create') }}">
+        {{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} New supplier
+    </x-ui.button>
 </div>
 
 <x-filter-bar :filters="$filters" />

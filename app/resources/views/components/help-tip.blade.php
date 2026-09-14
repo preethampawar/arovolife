@@ -1,5 +1,8 @@
 @props(['text', 'light' => false, 'interactive' => true])
 {{-- Info icon with a hover/focus tooltip. Usage: <x-help-tip text="..." /> --}}
+{{-- The icon carries no focus utilities of its own: app.css gives the admin
+     shell one :focus-visible treatment, and the browser default covers the
+     rest. A ring here as well would double-draw inside the console. --}}
 {{-- Pass light (boolean) when the icon sits on a dark/gradient background. --}}
 {{-- Pass interactive="false" when the icon already sits inside another interactive
      element (a card rendered as role="button" or an <a>): a focusable/aria-hidden
@@ -11,19 +14,22 @@
 <span class="relative inline-flex items-center align-middle ml-1" data-help-tip>
     @if($interactive)
     <button type="button" tabindex="0" aria-label="More information"
-        class="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-brand-400
-               {{ $light ? 'border-white/60 text-white/90 hover:bg-white/10' : 'border-gray-400 text-gray-600 hover:bg-gray-100' }}">
-        i
+        class="inline-flex h-4 w-4 items-center justify-center rounded-full transition-colors
+               {{ $light ? 'text-white/80 hover:text-white' : 'text-gray-500 hover:text-gray-700' }}">
+        {{ svg('lucide-circle-help', 'w-3.5 h-3.5') }}
     </button>
     @else
     <span aria-hidden="true"
-        class="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] font-bold
-               {{ $light ? 'border-white/60 text-white/90' : 'border-gray-400 text-gray-600' }}">
-        i
+        class="inline-flex h-4 w-4 items-center justify-center rounded-full
+               {{ $light ? 'text-white/80' : 'text-gray-500' }}">
+        {{ svg('lucide-circle-help', 'w-3.5 h-3.5') }}
     </span>
     @endif
+    {{-- Width stays fixed: the positioning script measures offsetWidth to keep
+         the tip inside the viewport, and an intrinsic width would make that
+         measurement depend on where the tip happens to sit. --}}
     <span role="tooltip"
-        class="pointer-events-none invisible fixed z-50 w-56 rounded-lg bg-gray-900 px-3 py-2 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity duration-150">
+        class="pointer-events-none invisible fixed z-50 w-60 rounded-xl bg-gray-900 px-3.5 py-2.5 text-xs leading-relaxed text-white opacity-0 shadow-xl transition-opacity duration-150">
         {{ $text }}
     </span>
 </span>

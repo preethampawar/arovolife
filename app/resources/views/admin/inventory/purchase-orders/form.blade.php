@@ -78,13 +78,13 @@
                 </tr>
             </tfoot>
         </table>
-        <button type="button" id="poAddLine" class="text-sm text-brand-700 hover:text-brand-800 font-medium">+ Add line</button>
+        <button type="button" id="poAddLine" class="text-sm text-brand-700 hover:text-brand-800 font-medium">{{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Add line</button>
     </x-ui.card>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">
+        <x-ui.button >
             {{ $isEdit ? 'Save changes' : 'Create purchase order' }}
-        </button>
+        </x-ui.button>
         <a href="{{ $isEdit ? route('admin.inventory.purchase-orders.show', $purchaseOrder) : route('admin.inventory.purchase-orders.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
     </div>
 </form>

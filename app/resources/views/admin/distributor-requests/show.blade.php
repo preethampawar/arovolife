@@ -17,7 +17,7 @@
 @endphp
 
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.distributor-requests.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← All requests</a>
+    <a href="{{ route('admin.distributor-requests.index') }}" class="text-sm text-gray-600 hover:text-gray-700">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} All requests</a>
     <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $badge[$item->status] ?? 'bg-gray-100 text-gray-600' }}">{{ $item->statusLabel() }}</span>
 </div>
 

@@ -10,7 +10,7 @@
         Every change is recorded in the audit log.
     </p>
     <x-ui.button href="{{ route('admin.content.create') }}">
-        + New Page
+        {{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} New Page
     </x-ui.button>
 </div>
 

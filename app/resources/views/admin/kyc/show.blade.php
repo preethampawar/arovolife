@@ -234,10 +234,9 @@
         <textarea name="reason" required minlength="8" maxlength="1024" rows="3"
             class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-gray-500 focus:ring-gray-500"
             placeholder="e.g. Fraudulent PAN — does not match the name on the Aadhaar card. Multiple inconsistencies after re-upload."></textarea>
-        <button type="submit"
-            class="w-full sm:w-auto inline-flex justify-center items-center rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-medium px-4 py-2.5 text-sm transition-colors">
+        <x-ui.button class="w-full sm:w-auto">
             Terminate account permanently
-        </button>
+        </x-ui.button>
     </form>
 </details>
 
@@ -286,16 +285,14 @@
                            file:cursor-pointer hover:file:bg-brand-100">
             </div>
         </div>
-        <button type="submit"
-            class="w-full sm:w-auto rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-medium
-                   px-6 py-2 text-sm transition-colors">
+        <x-ui.button class="w-full sm:w-auto">
             Upload
-        </button>
+        </x-ui.button>
     </form>
 </div>
 
 <a href="{{ route('admin.kyc.index') }}" class="inline-block mt-6 text-sm text-gray-600 hover:text-gray-700">
-    ← Back to queue
+    {{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back to queue
 </a>
 
 @endsection

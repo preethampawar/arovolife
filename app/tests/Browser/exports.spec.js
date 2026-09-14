@@ -242,7 +242,9 @@ test.describe('Income: wallet export', () => {
 test.describe('Dashboard: My Team roster export', () => {
     test('T11: Download Excel (from the team-roster modal) downloads .xlsx', async ({ distributorPage: page }) => {
         await page.goto('/dashboard');
-        const totalCard = page.locator('[data-team-roster="total"]');
+        // The hook appears twice on the dashboard — once on the ID-card panel
+        // and once on the My Team card — and both open the same modal.
+        const totalCard = page.locator('[data-team-roster="total"]').first();
         if ((await totalCard.count()) === 0) {
             test.skip(true, 'My Team card not present for this distributor - no team stats to show');
         }

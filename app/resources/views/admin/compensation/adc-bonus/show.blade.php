@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="flex items-center gap-3 mb-6">
-    <a href="{{ route('admin.compensation.adc-bonus.index') }}" class="text-sm text-gray-600 hover:text-gray-700">← All months</a>
+    <a href="{{ route('admin.compensation.adc-bonus.index') }}" class="text-sm text-gray-600 hover:text-gray-700">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} All months</a>
 </div>
 
 <x-ui.card flush>

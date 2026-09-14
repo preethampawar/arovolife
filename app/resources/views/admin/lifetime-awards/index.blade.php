@@ -57,7 +57,7 @@
                         <span class="inline-flex items-center gap-1 text-xs font-semibold {{ $releasable ? 'text-green-700' : 'text-amber-700' }}">
                             {{ $milestone->qualification_count }} / {{ $threshold }}
                             @if($releasable)
-                            <span class="text-green-500" title="Releasable">✓</span>
+                            <span class="text-green-600" title="Releasable">{{ svg('lucide-circle-check', 'w-4 h-4 inline-block', ['aria-hidden' => 'true']) }}</span>
                             @endif
                         </span>
                     </td>
