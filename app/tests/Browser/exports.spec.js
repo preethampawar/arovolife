@@ -109,7 +109,10 @@ test.describe('Compensation: GSB calculation export', () => {
         // default-to-XLSX behaviour.
         const [download] = await Promise.all([
             page.waitForEvent('download'),
-            page.goto('/admin/compensation/gsb-calculation/export'),
+            // Same attachment-navigation rejection as T16.
+            page.goto('/admin/compensation/gsb-calculation/export').catch((err) => {
+                if (!/Download is starting/.test(err.message)) throw err;
+            }),
         ]);
         expect(download.suggestedFilename()).toMatch(/\.xlsx$/);
     });

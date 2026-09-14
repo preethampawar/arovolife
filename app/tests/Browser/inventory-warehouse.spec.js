@@ -396,7 +396,10 @@ test.describe('Inventory: Reports', () => {
             await expect(page.locator('select[name="warehouse_code"]')).toBeVisible();
             await expect(page.getByRole('button', { name: 'Filter' })).toBeVisible();
             await expect(page.getByRole('table')).toBeVisible();
-            await expect(page.getByRole('link', { name: 'Export CSV' })).toHaveAttribute('href', /export=csv/);
+            // The report toolbar offers "Export Excel" and "CSV", and the CSV
+            // link carries ?format=csv — the older ?export=csv spelling is the
+            // legacy URL kept working for bookmarks (exports.spec.js T16).
+            await expect(page.getByRole('link', { name: 'CSV', exact: true })).toHaveAttribute('href', /format=csv/);
         });
     }
 
