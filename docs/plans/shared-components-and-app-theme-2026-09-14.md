@@ -301,3 +301,103 @@ component has been scanned in dark at all.
 
 **Deferred:** `partials/impersonation-banner` — no impersonation fixture exists,
 so it cannot be swept without building one.
+
+
+---
+
+## Outcome — the five slices, 2026-09-14
+
+All five ran. Branch `feat/admin-ui-modernisation`, still unpushed.
+Full suite: **211 passed / 33 skipped / 0 failed** (from 202/33/0).
+
+### What shipped
+
+**`689ccce6` — gradient stops.** Twenty-one rules, replacing the six that had
+each been added after a light band turned up on a dark page. Every stop lands
+on the colour its solid twin already uses rather than a freshly mixed value,
+so a tinted card and the gradient beside it stay in step; only the tint end
+(50-200) is remapped. One judgement call beyond the plan: `via-slate-300`, the
+"or" hairline on login, forgot-password, contact and registration step 1, was
+listed as "leave alone" but is not brand colour — left as-is it stops being a
+hairline in dark and becomes a bright rule across the card. It tracks
+`border-gray-300` now.
+
+**`81e51c40` — three pages repaired.** Settings and both payout batch detail
+screens had been returning **500 since `1e0a398b`**: the Wave 6 button sweep
+rewrote `<button {{ $readOnly ? 'disabled' : '' }}>` as
+`<x-ui.button {{ ... }}>`, and a raw echo — or an `@disabled` directive — in a
+component tag's attribute position compiles to PHP that does not parse. Now
+`:disabled="$readOnly"`.
+
+Worth keeping, because it is why this survived a "green" build:
+`php artisan view:cache` reports success on a view that compiles to invalid
+PHP. It writes the file without parsing it. What finds it is linting the
+output —
+
+```
+php artisan view:cache && for f in storage/framework/views/*.php; \
+    do php -l "$f" >/dev/null || echo "$f"; done
+```
+
+— which is now clean across all 446 compiled views. Add this to the checks
+after any scripted Blade edit.
+
+**`4e9368ca` — the route sweep.** 154 of 160 routes scanned in dark across the
+three fixture tiers, 40 skipped with a reason each. Three assertions per page:
+the stored theme survives to paint, the page was not silently redirected away,
+and axe finds no contrast failure. The redirect assertion earns its place —
+without it an expired fixture or a new guard turns the sweep into a shorter
+sweep that still passes.
+
+**`3ca92369` — the overlays.** Confirm modal, toast stack, genealogy node menu,
+send-message modal, ID-card modal, mobile drawer at 390px. All six clean in
+dark. Each scan asserts axe actually scored some text first: a scope that
+matches nothing yields no violations, which reads exactly like a clean overlay.
+Nothing submits — the confirm modal is reached by a submit a capture-phase
+listener has already cancelled, and dismissed with Cancel.
+
+### What the sweep found
+
+| Finding | Where | Fix |
+|---|---|---|
+| `bg-[#f4f7f6]` hardcodes the public canvas; nothing keyed on a colour name reaches it, so the whole band stayed light with dark-mode text on it — heading at 1.02:1 | `landing/about.blade.php:150` | remapped by class name in `app.css` |
+| `text-gray-400` was tuned against the canvas alone (4.65:1) then used on cards (4.14:1) and `bg-gray-50` (4.24:1) | everywhere | retuned to `#8b95a3` — the hardest ground it lands on |
+| White on brand-500 (2.35:1), brand-600 (3.76:1), amber-500 (2.26:1), amber-600 (3.19:1) | ten buttons and facet pills across payments, returns, feature-flags, distributors, kyc, my/requests, my/arete-centre | moved to the 700 step, which the rest of the console already uses |
+| Three pages returning 500 | settings, monthly-payouts/show, weekly-payouts/show | see `81e51c40` |
+| Two specs scanning `/shop/orders`, which is not a route — the 404 page carries the theme so the assertion passed, but the orders page had never been scanned | `theme.spec.js`, `accessibility.spec.js` | pointed at `/orders` |
+| Five routes whose only parameters are optional were excluded by the "drop any `{`" rule, taking the genealogy pages and the two modals that only exist there with them | inventory | added |
+
+**The contrast failures were not dark-mode bugs.** White on amber-500 is 2.26:1
+in both themes. They surfaced here only because this is the first sweep that
+loaded those pages at all.
+
+### Coverage that is still open
+
+- **Wizard steps 3-12.** `EnsureRegistrationProgress` needs a real
+  in-progress registration, which means creating an account in the dev
+  database. Step 1 forwards to step 2 and **step 2 is swept** (via a referral
+  link, `THEME_WIZARD_ADN`), so the wizard layout, `.card-refined` and
+  `.input-refined` are covered; the step-specific bodies are not. The tint
+  generator walks `resources/views` in full, so those views did get dark rules
+  for every tint utility they use — the gap is verification, not theming.
+- **`/my/arete-centre/apply` returns 500 on this dev database.** A PII column
+  on the fixture's row was written outside `PiiCrypter`, so the prefill throws
+  `DecryptException`. Pre-existing and unrelated to this work; it is in `SKIP`
+  with that reason rather than papered over. Worth deciding separately whether
+  a single undecryptable field should take a page down.
+- **`partials/impersonation-banner`** — still deferred, still no fixture.
+- **Parameterised routes** (order detail, distributor detail, GRN, PO, batch
+  show) are outside the inventory by construction. The three 500s this pass
+  found were all on such pages, which is an argument for a small
+  seeded-id sweep later.
+
+### Acceptance
+
+- [x] Gradient-stop rules for every tint-end stop; none for saturated brand stops
+- [x] Sweep covers every parameterless GET route or names a reason (160 + 40 = 200)
+- [x] Zero axe `color-contrast` violations in dark across the sweep
+- [x] Every overlay scanned, or listed above as deferred
+- [x] No `dark:` utility anywhere
+- [x] Public canvas still `#f4f7f6`; `body.admin-shell` still owns the console ramp
+- [x] `npm run build`, `view:cache` + `php -l` on all 446 compiled views, full suite
+- [x] Suite at 211 passed / 33 skipped / 0 failed
