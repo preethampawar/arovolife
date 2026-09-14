@@ -13,6 +13,7 @@ use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Compensation\Support\AreteCenterDeclarations;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Crypto\PiiCrypter;
 use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
 use App\Modules\Shared\Http\Rules\ScannedForMalware;
 use App\Modules\Shared\Support\IndianStates;
@@ -20,7 +21,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use InvalidArgumentException;
@@ -191,14 +191,19 @@ final class DistributorAreteCenterApplicationController extends Controller
      */
     private function identityBlock(Distributor $distributor): array
     {
-        $bankFull = null;
-        if (filled($distributor->bank_account_enc)) {
-            try {
-                $bankFull = Crypt::decryptString((string) $distributor->bank_account_enc);
-            } catch (\Throwable) {
-                $bankFull = null;
-            }
-        }
+        // PiiCrypter, not Crypt: the bank column is written with the dedicated
+        // PII key (ADR-0008). Reading it through the APP_KEY encrypter happens
+        // to work only where the two keys coincide — on an environment with a
+        // real PII key it throws, and the bare catch this replaces turned that
+        // into a permanently blank account number rather than an error anyone
+        // saw. tryDecryptString still degrades, but it says so in the log.
+        $bankFull = filled($distributor->bank_account_enc)
+            ? PiiCrypter::tryDecryptString((string) $distributor->bank_account_enc, [
+                'model' => $distributor::class,
+                'model_id' => $distributor->getKey(),
+                'column' => 'bank_account_enc',
+            ])
+            : null;
         $bankMasked = $bankFull === null
             ? '—'
             : str_repeat('X', max(0, strlen($bankFull) - 4)).substr($bankFull, -4);

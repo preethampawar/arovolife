@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Shared\Crypto;
 
 use App\Modules\Shared\Casts\PiiEncrypted;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Encryption\Encrypter;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -42,6 +44,43 @@ final class PiiCrypter
     public static function decryptString(string $payload): string
     {
         return self::encrypter()->decryptString($payload);
+    }
+
+    /**
+     * Decrypt, or null if this ciphertext cannot be read with any key we hold.
+     *
+     * Use this on a READ PATH that only wants to display the value. A column
+     * that will not decrypt is a data problem on one row — a key rotated
+     * without `pii:reencrypt`, a row copied in from another environment, a
+     * truncated write — and it must not take the whole page down with it: the
+     * masked form (`pan_last4`, the bank's last 4) is stored separately and is
+     * what the page actually shows, so there is nothing for the reader to lose.
+     *
+     * Every failure is logged at warning level with the row it came from and
+     * never the value, so "this field is quietly blank" cannot become the
+     * silent state of a whole table after a bad rotation.
+     *
+     * Paths that must NOT continue without the plaintext — a payout writing an
+     * account number to a bank file — keep calling {@see decryptString()} and
+     * handle the exception, because there a blank is worse than a failure.
+     *
+     * @param  array<string, scalar|null>  $context  identifying the row, for the log
+     */
+    public static function tryDecryptString(string $payload, array $context = []): ?string
+    {
+        if ($payload === '') {
+            return null;
+        }
+
+        try {
+            return self::decryptString($payload);
+        } catch (DecryptException $e) {
+            Log::warning('PII ciphertext could not be decrypted; treating the field as absent.', $context + [
+                'reason' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     public static function encrypter(): Encrypter

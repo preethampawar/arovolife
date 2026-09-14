@@ -7,6 +7,7 @@ use App\Modules\Shared\Crypto\PiiCrypter;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -157,4 +158,32 @@ it('PII-06: an undecryptable value (foreign key) is left untouched by pii:reencr
 
     // Untouched — still the foreign ciphertext, recoverable only by re-entry.
     expect(DB::table('distributors')->where('id', $id)->value('pan_encrypted'))->toBe($foreignCipher);
+});
+
+it('PII-07: an undecryptable column reads as null instead of throwing', function (): void {
+    // The row PII-06 describes — ciphertext from a key nobody here holds —
+    // reached a *read* path. Before this, the cast rethrew DecryptException
+    // and the page around it returned 500; /my/arete-centre/apply did exactly
+    // that on a dev row whose PAN was written under a since-replaced key.
+    $foreign = new Encrypter(random_bytes(32), (string) config('app.cipher'));
+
+    setPiiKey(piiKey());
+
+    $d = new Distributor;
+    $d->setRawAttributes(['id' => 7, 'pan_encrypted' => $foreign->encryptString('OLDPAN1234X')]);
+
+    Log::shouldReceive('warning')->once()->withArgs(
+        fn (string $message, array $context): bool => str_contains($message, 'could not be decrypted')
+            && $context['column'] === 'pan_encrypted'
+            && $context['model_id'] === 7
+    );
+
+    expect($d->pan_encrypted)->toBeNull();
+});
+
+it('PII-08: a readable column is unaffected by the degrade path', function (): void {
+    setPiiKey(piiKey());
+
+    expect(PiiCrypter::tryDecryptString(PiiCrypter::encryptString('ABCDE1234F')))->toBe('ABCDE1234F')
+        ->and(PiiCrypter::tryDecryptString(''))->toBeNull();
 });
