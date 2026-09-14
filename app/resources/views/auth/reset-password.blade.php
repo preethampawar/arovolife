@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Choose a new password — arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials._theme-fouc')
     @include('partials._font-size-fouc')
     {{-- GA intentionally excluded: the reset token is in the URL path and
          GA4 captures page_location by default, which would ship a live

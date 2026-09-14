@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title') — arovolife</title>
     @vite(['resources/css/app.css'])
+    @include('partials._theme-fouc')
     @include('partials._font-size-fouc')
 </head>
 <body class="min-h-full text-gray-900 antialiased wizard-stage">

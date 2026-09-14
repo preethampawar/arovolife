@@ -8,6 +8,7 @@
     <meta name="description" content="{{ $page->meta_description }}">
     @endif
     @vite(['resources/css/app.css'])
+    @include('partials._theme-fouc')
     @include('partials._font-size-fouc')
     @include('partials._google-analytics')
     <style>

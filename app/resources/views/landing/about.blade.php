@@ -7,6 +7,7 @@
     <title>About arovolife — Direct Selling, Done Right</title>
     <meta name="description" content="Born in India, 2026 — arovolife is a customer-first direct selling company offering best-in-class nutraceutical and personal-care products with industry-leading distributor growth pathways.">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials._theme-fouc')
     @include('partials._font-size-fouc')
     @include('partials._google-analytics')
     <style>

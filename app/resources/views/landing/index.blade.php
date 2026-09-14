@@ -6,6 +6,7 @@
     <title>arovolife — Direct Selling, Done Right</title>
     <meta name="description" content="arovolife is a direct-selling company compliant with India's DSR 2021. Free to register, 30-day cooling-off, no income projections.">
     @vite(['resources/css/app.css'])
+    @include('partials._theme-fouc')
     @include('partials._font-size-fouc')
     @include('partials._google-analytics')
 </head>

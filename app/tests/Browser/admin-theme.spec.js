@@ -15,7 +15,7 @@
  *   - admin@arovolife.test / admin12345
  *   - `npm i -D @axe-core/playwright` (already a devDependency)
  *
- * Every test restores localStorage['arovolife_admin_theme'] before finishing:
+ * Every test restores localStorage['arovolife_theme'] before finishing:
  * the config runs `workers: 1, fullyParallel: false`, so a leaked dark theme
  * would follow whichever spec file runs next in the same storage context.
  *
@@ -25,7 +25,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from './fixtures.js';
 
-const KEY = 'arovolife_admin_theme';
+// One key for the whole application since the toggle left the console.
+// The old admin-only key is still read once at boot as a fallback so an
+// existing choice survives the rename.
+const KEY = 'arovolife_theme';
 
 const isDark = (page) => page.evaluate(() => document.documentElement.classList.contains('dark'));
 const stored = (page) => page.evaluate((k) => localStorage.getItem(k), KEY);

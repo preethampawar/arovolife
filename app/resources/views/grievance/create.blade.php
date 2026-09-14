@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Raise a grievance — arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials._theme-fouc')
     @include('partials._font-size-fouc')
     {{-- No analytics on this page. It is the anonymous-complaint form: sending
          a whistleblower's page view to a third party would undercut the

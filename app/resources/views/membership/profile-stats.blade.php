@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile Stats — arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials._theme-fouc')
     <style>
         /* Force the brand tints + status pills to render on paper and in
            saved-as-PDF. Most browsers strip background colours from print by

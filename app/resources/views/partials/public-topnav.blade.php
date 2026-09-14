@@ -166,6 +166,11 @@
                     class="w-7 h-6 inline-flex items-center justify-center rounded-full text-[13px] font-semibold text-white/90 hover:text-white hover:bg-brand-700 transition-colors"
                     title="Reset to default" aria-label="Reset font size">↺</button>
         </div>
+
+        {{-- The other display preference. Same storage, same pre-paint script
+             as the console's; sized and coloured for the brand bar. --}}
+        @include('partials._theme-toggle', ['class' => 'h-7 w-7 rounded-full text-white/90 hover:bg-brand-700 hover:text-white'])
+
         <span class="text-brand-400">|</span>
 
         @auth

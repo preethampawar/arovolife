@@ -6,6 +6,7 @@
     <title>Arovo Hub — arovolife</title>
     <meta name="description" content="Explore arovolife's hub — health services, social contribution, online shopping and online courses.">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials._theme-fouc')
     @include('partials._font-size-fouc')
     @include('partials._google-analytics')
 </head>

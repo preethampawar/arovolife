@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Direct Seller Application — arovolife</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('partials._theme-fouc')
     <style>
         @media print {
             @page { size: A4 portrait; margin: 16mm; }

@@ -517,25 +517,6 @@
         })();
     </script>
 
-    {{-- Theme toggle. Flips the `dark` class the pre-paint script set and
-         persists the choice. Light is the default for anyone who has never
-         chosen; a storage failure (private browsing) degrades to a toggle
-         that still works for the current page but is not remembered. --}}
-    <script>
-        (() => {
-            const btn = document.getElementById('adminThemeToggle');
-            if (! btn) return;
-            const root = document.documentElement;
-            const sync = () => btn.setAttribute('aria-pressed', root.classList.contains('dark') ? 'true' : 'false');
-            sync();
-            btn.addEventListener('click', () => {
-                const dark = root.classList.toggle('dark');
-                try { localStorage.setItem('arovolife_admin_theme', dark ? 'dark' : 'light'); } catch (e) { /* ignore */ }
-                sync();
-            });
-        })();
-    </script>
-
     {{-- Platform-wide confirmation modal. Any form marked with data-confirm
          is intercepted and confirmed here before submitting. --}}
     <x-confirm-modal />

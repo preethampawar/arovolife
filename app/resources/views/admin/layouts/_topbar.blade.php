@@ -40,20 +40,10 @@
         </div>
 
         <div class="flex shrink-0 items-center gap-1 sm:gap-3">
-            {{-- Dark/light theme toggle. Purely a display preference stored
-                 per browser in localStorage; there is no server state and
-                 therefore no new route or gate — the control inherits the
-                 admin layout's own middleware. Both icons are rendered and
-                 CSS shows exactly one (see app.css, [data-theme-icon]), so
-                 the correct icon is right from the pre-paint script on. --}}
-            <button type="button" id="adminThemeToggle"
-                    aria-pressed="false"
-                    title="Toggle dark mode"
-                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
-                <span class="sr-only">Toggle dark mode</span>
-                <span data-theme-icon="light" aria-hidden="true">{{ svg('lucide-moon', 'w-[18px] h-[18px]') }}</span>
-                <span data-theme-icon="dark" aria-hidden="true">{{ svg('lucide-sun', 'w-[18px] h-[18px]') }}</span>
-            </button>
+            {{-- The console no longer owns the theme: the same control and the
+                 same storage key now serve the distributor portal, the shop,
+                 the wizard and the public pages. --}}
+            @include('partials._theme-toggle')
 
             {{-- data-testid so visual snapshots can mask it: this text changes
                  every minute and would otherwise flake every screenshot. --}}
