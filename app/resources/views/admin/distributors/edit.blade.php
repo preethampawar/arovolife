@@ -207,7 +207,7 @@
             </div>
             @error('identity')<p class="text-xs text-red-700">{{ $message }}</p>@enderror
             <button type="submit"
-                class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors">
+                class="px-4 py-2 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors">
                 Update identity & reset KYC
             </button>
         </form>
@@ -305,7 +305,7 @@
                 data-confirm-title="Confirm reset link"
                 data-confirm-impact="Emails the distributor a reset link valid for 60 minutes so they can set a new password. No password changes until they use the link.">
                 @csrf
-                <button type="submit" class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors">
+                <button type="submit" class="px-4 py-2 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors">
                     Send password reset link
                 </button>
             </form>

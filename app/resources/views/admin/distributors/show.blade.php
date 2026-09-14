@@ -446,7 +446,7 @@ function unmaskNomineeAadhaar(btn) {
             data-confirm-impact="The distributor record is marked inactive. This is reversible — you can reactivate the record later.">
             @csrf
             <button type="submit"
-                class="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors"
+                class="px-4 py-2 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors"
                 title="Mark distributor record inactive (distributors.status = inactive)">
                 ⏸ Deactivate Distributor
             </button>

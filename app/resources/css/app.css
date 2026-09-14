@@ -816,8 +816,38 @@ html.dark .text-sunrise-700\/80 { color: rgb(249 189 102 / 0.8); }
 html.dark .text-sunrise-800 { color: #fbd093; }
 
 /* --- Misc ----------------------------------------------------------- */
-/* Prose/markdown blocks inside admin pages. */
+/* Prose/markdown blocks inside admin pages (/admin/help/*).
+
+   Only the base colour was remapped, which is the half-remapped case the
+   theme notes warn about and the worst of the two: the body text went light
+   while every heading, <strong>, table header and row stripe kept the hex it
+   was given for a white page. `#0c1727` on `#19212b` is 1.1:1 — the headings
+   of the entire admin help set were invisible, not merely low-contrast.
+   Values below track the neutral ramp: gray-900/700/600 for text, .bg-white
+   / .bg-gray-50 for surfaces, .border-gray-200 for rules. */
 html.dark .markdown-doc { color: #cbd5e1; }
+html.dark .markdown-doc h1,
+html.dark .markdown-doc h2,
+html.dark .markdown-doc strong,
+html.dark .markdown-doc th { color: #f1f4f7; }
+html.dark .markdown-doc h3 { color: #e3e8ee; }
+html.dark .markdown-doc h2 { border-top-color: #303a46; }
+html.dark .markdown-doc code { background: #2c3642; color: #7cd3f7; }
+html.dark .markdown-doc pre { background: #0b1119; color: #cdd3da; }
+/* The blockquote's ground and rule are var(--color-brand-50/300), and the
+   dark layer remaps class names rather than the tokens themselves — so
+   without these two it keeps a near-white ground under light text. */
+html.dark .markdown-doc blockquote {
+    background: #0a2634;
+    border-left-color: #08607f;
+    color: #cbd5e1;
+}
+html.dark .markdown-doc a { color: #5fd2f8; }
+html.dark .markdown-doc hr { border-top-color: #303a46; }
+html.dark .markdown-doc th,
+html.dark .markdown-doc td { border-color: #303a46; }
+html.dark .markdown-doc th { background: #232c36; }
+html.dark .markdown-doc tbody tr:nth-child(even) { background: #1e2733; }
 /* Shadows read as grime on dark surfaces; deepen instead of tint.
 
    Override the composed value, NOT --tw-shadow-color. Tailwind rewrites
