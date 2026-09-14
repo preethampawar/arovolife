@@ -217,6 +217,29 @@ export const ADMIN_ROUTES = [
 ];
 
 /**
+ * Wizard steps 3-12, in the order a joiner walks them.
+ *
+ * Not in PUBLIC_ROUTES because none of them is reachable by navigation alone:
+ * EnsureRegistrationProgress compares the requested step against the furthest
+ * one the session has completed, so a fresh visitor asking for step 7 is sent
+ * back to step 3. theme-wizard.spec.js sweeps these by actually walking the
+ * wizard — see the header there for why that is safe to run against a real
+ * database.
+ */
+export const WIZARD_ROUTES = [
+    '/register/orientation',        // 3
+    '/register/consent',            // 4
+    '/register/identity-documents', // 5
+    '/register/demographics',       // 6
+    '/register/nominee',            // 7
+    '/register/kyc/bank',           // 8
+    '/register/personal',           // 9
+    '/register/documents',          // 10
+    '/register/arete-centre',       // 11
+    '/register/complete',           // 12
+];
+
+/**
  * Route -> reason. Everything here is deliberately not swept, and the reason
  * is the point: a silent omission and a considered exclusion look identical
  * in a passing test run.
@@ -248,19 +271,9 @@ export const SKIP = {
     '/income/wallet/export': 'returns a file, not a page',
     '/join/lookup': 'JSON endpoint, no markup to scan',
     '/kyc/resubmit': 'only reachable while an applicant is rejected; the fixture is active',
-    '/register/arete-centre': 'wizard step 11 — EnsureRegistrationProgress redirects a fresh session',
     '/register/check-availability': 'JSON endpoint, no markup to scan',
-    '/register/complete': 'wizard step 12 — EnsureRegistrationProgress redirects a fresh session',
-    '/register/consent': 'wizard step 4 — EnsureRegistrationProgress redirects a fresh session',
-    '/register/demographics': 'wizard step 6 — EnsureRegistrationProgress redirects a fresh session',
-    '/register/documents': 'wizard step 10 — EnsureRegistrationProgress redirects a fresh session',
-    '/register/identity-documents': 'wizard step 5 — EnsureRegistrationProgress redirects a fresh session',
-    '/register/kyc/bank': 'wizard step 8 — EnsureRegistrationProgress redirects a fresh session',
-    '/register/nominee': 'wizard step 7 — EnsureRegistrationProgress redirects a fresh session',
-    '/register/orientation': 'wizard step 3 — EnsureRegistrationProgress redirects a fresh session',
-    '/register/personal': 'wizard step 9 — EnsureRegistrationProgress redirects a fresh session',
     '/tree/search': 'JSON endpoint, no markup to scan',
     '/tree/suggest': 'JSON endpoint, no markup to scan',
 };
 
-export const ALL_ROUTES = [...PUBLIC_ROUTES, ...DISTRIBUTOR_ROUTES, ...ADMIN_ROUTES];
+export const ALL_ROUTES = [...PUBLIC_ROUTES, ...DISTRIBUTOR_ROUTES, ...ADMIN_ROUTES, ...WIZARD_ROUTES];
