@@ -32,7 +32,7 @@
     </div>
 </div>
 
-<div class="bg-white rounded-xl border border-gray-200 p-6 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+<x-ui.card padding="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm" class="mb-6">
     <div><span class="block text-xs text-gray-500">Supplier</span>{{ $purchaseOrder->supplier?->name ?? '—' }}</div>
     <div><span class="block text-xs text-gray-500">Warehouse</span>{{ $purchaseOrder->warehouse_code }}</div>
     <div><span class="block text-xs text-gray-500">Expected</span>{{ $purchaseOrder->expected_at?->format('d M Y') ?? '—' }}</div>
@@ -40,9 +40,9 @@
     @if($purchaseOrder->notes)
         <div class="sm:col-span-4"><span class="block text-xs text-gray-500">Notes</span><span class="whitespace-pre-line">{{ $purchaseOrder->notes }}</span></div>
     @endif
-</div>
+</x-ui.card>
 
-<div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
+<x-ui.card flush class="mb-6">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -63,10 +63,10 @@
             @endforeach
         </tbody>
     </table>
-</div>
+</x-ui.card>
 
 @if($invoices->isNotEmpty())
-<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <div class="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-900">Goods receipts against this PO</div>
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
@@ -88,6 +88,6 @@
             @endforeach
         </tbody>
     </table>
-</div>
+</x-ui.card>
 @endif
 @endsection

@@ -17,25 +17,25 @@
 </div>
 
 {{-- Distributor header --}}
-<div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm mb-6">
+<x-ui.card padding="p-6" class="mb-6">
     <p class="text-2xl font-mono font-bold text-brand-700">{{ $distributor->adn }}</p>
     <p class="text-sm text-gray-800 mt-1">{{ $distributor->user->full_name ?: 'No name recorded' }}</p>
-</div>
+</x-ui.card>
 
 {{-- Summary cards --}}
 <div class="grid grid-cols-3 gap-3 mb-6">
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Lifetime personal BV</p>
         <p class="mt-1 text-lg font-bold text-brand-700 whitespace-nowrap">@bv($lifetimeNet)</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Accrued{{ $ranged ? ' (range)' : '' }}</p>
         <p class="mt-1 text-lg font-bold text-green-700 whitespace-nowrap">@bv($breakdown->accruedPaise)</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Reversed{{ $ranged ? ' (range)' : '' }}</p>
         <p class="mt-1 text-lg font-bold text-red-600 whitespace-nowrap">@bv(abs($breakdown->reversedPaise))</p>
-    </div>
+    </x-ui.card>
 </div>
 
 {{-- Date filter + export --}}
@@ -47,7 +47,7 @@
         <label class="text-xs text-gray-600">To
             <input type="date" name="to" value="{{ $to }}" class="ml-1 rounded-lg border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
         </label>
-        <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">Apply</button>
+        <x-ui.button >Apply</x-ui.button>
         @if($ranged)<a href="{{ route('admin.commerce.bv-ledger.show', $distributor->id) }}" class="text-xs text-gray-600 hover:text-gray-900">✕ Clear</a>@endif
     </form>
     <a href="{{ route('admin.commerce.bv-ledger.show.export', array_merge($dateQuery, ['distributor' => $distributor->id, 'format' => 'xlsx'])) }}"
@@ -60,7 +60,7 @@
     </a>
 </div>
 
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+<x-ui.card flush>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
@@ -98,7 +98,7 @@
                     <td class="px-4 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">@bv($running)</td>
                 </tr>
                 @empty
-                <tr><td colspan="6" class="px-4 py-8 text-center text-sm text-gray-600">No BV entries for this distributor{{ $ranged ? ' in this range' : '' }}.</td></tr>
+                <x-ui.empty-state colspan="6" title="No BV entries for this distributor{{ $ranged ? ' in this range' : '' }}." />
                 @endforelse
             </tbody>
         </table>
@@ -106,6 +106,6 @@
     @if($entries->hasPages())
     <div class="px-4 py-4 border-t border-gray-200">{{ $entries->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

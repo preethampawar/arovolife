@@ -37,7 +37,7 @@
     <div class="lg:col-span-2 space-y-6">
 
         {{-- Return summary --}}
-        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <x-ui.card padding="p-6">
             <div class="flex justify-between items-start mb-4">
                 <div>
                     <h3 class="font-semibold text-gray-900">Return request</h3>
@@ -61,10 +61,10 @@
                     <dd class="text-gray-700 mt-0.5">{{ $return->notes }}</dd></div>
                 @endif
             </dl>
-        </div>
+        </x-ui.card>
 
         {{-- Order items --}}
-        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <x-ui.card padding="p-6">
             <h3 class="font-semibold text-gray-900 mb-3">Order items ({{ $order->order_no }})</h3>
             <table class="w-full text-sm">
                 <thead><tr class="border-b border-gray-100">
@@ -95,11 +95,11 @@
                 <div class="flex gap-8"><span class="text-gray-600">Shipping</span><span class="w-28 text-right">@if($order->shipping_paise > 0)₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}@else Free @endif</span></div>
                 <div class="flex gap-8 font-semibold pt-1 border-t border-gray-100 mt-1"><span>Total paid</span><span class="w-28 text-right">{{ $order->displayTotal() }}</span></div>
             </div>
-        </div>
+        </x-ui.card>
 
         {{-- Inspection record (admin-reviewed reasons only) --}}
         @if(! $return->isCoolingOff())
-        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <x-ui.card padding="p-6">
             <h3 class="font-semibold text-gray-900 mb-4">Inspection</h3>
             @if($inspection)
             <dl class="grid grid-cols-2 gap-3 text-sm mb-3">
@@ -129,13 +129,13 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Inspector notes (optional) <x-help-tip text="Optional notes about the inspection; saved with the inspection record." /></label>
                     <textarea name="notes" rows="2" maxlength="1000" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
                 </div>
-                <button type="submit" class="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium">Record inspection</button>
+                <x-ui.button >Record inspection</x-ui.button>
             </form>
             @else
             <p class="text-sm text-gray-600">No inspection recorded yet.</p>
             @endif
             @endif
-        </div>
+        </x-ui.card>
         @endif
 
     </div>
@@ -145,7 +145,7 @@
 
         {{-- Refund computation --}}
         @if($decision)
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <h3 class="font-semibold text-gray-900 mb-3">Computed refund (T&amp;C §8 matrix)</h3>
             <dl class="text-sm space-y-1.5">
                 <div class="flex justify-between"><dt class="text-gray-600">Base (ex-GST)</dt><dd>₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->refund_base_paise / 100, 2) }}</dd></div>
@@ -156,7 +156,7 @@
                 <div class="flex justify-between font-semibold border-t border-gray-100 pt-1.5 mt-1"><dt>Net refund</dt><dd>₹{{ \App\Modules\Shared\Support\IndianNumber::format($decision->net_refund_paise / 100, 2) }}</dd></div>
             </dl>
             <p class="text-xs text-gray-600 mt-3">Matrix version {{ $decision->decision_matrix_version }} · ADR-0009 §8</p>
-        </div>
+        </x-ui.card>
         @elseif($return->isCoolingOff())
         <div class="bg-blue-50 rounded-2xl border border-blue-200 p-5">
             <p class="text-sm text-blue-800 font-medium">Full refund</p>
@@ -168,7 +168,7 @@
         {{-- Approve / Reject actions (non-cooling-off, after inspection) --}}
         @if(! $return->isCoolingOff() && $return->status === 'opened' && $order->status === 'refund_inspection' && $decision)
         @can('finance.record')
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-3">
+        <x-ui.card padding="p-5 space-y-3">
             <h3 class="font-semibold text-gray-900">Decision</h3>
             <form method="POST" action="{{ route('admin.returns.approve', $return) }}"
                 data-confirm="Approve this refund?"
@@ -184,7 +184,7 @@
                 @csrf
                 <button type="submit" class="w-full py-2 rounded-lg bg-white hover:bg-red-50 border border-red-300 text-red-600 text-sm font-medium">Reject return</button>
             </form>
-        </div>
+        </x-ui.card>
         @else
         @if(! $return->isCoolingOff() && $return->status === 'opened' && $order->status === 'refund_inspection' && $decision)
         <p class="text-sm text-gray-600 bg-gray-50 rounded-2xl border border-gray-200 p-4">You need the <strong>finance.record</strong> permission to approve or reject returns.</p>

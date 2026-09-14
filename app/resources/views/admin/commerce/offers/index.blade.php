@@ -88,9 +88,9 @@
                 @endforeach
             </select>
         </div>
-        <button type="submit" class="rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800">
+        <x-ui.button >
             {{ $announced ? 'Change product' : 'Announce' }}
-        </button>
+        </x-ui.button>
     </form>
 </div>
 

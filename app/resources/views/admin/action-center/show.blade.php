@@ -34,7 +34,7 @@
     @endif
 </form>
 
-<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -99,11 +99,11 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="px-4 py-10 text-center text-gray-600">Nothing needs action right now.</td></tr>
+                <x-ui.empty-state colspan="6" title="Nothing needs action right now." />
             @endforelse
         </tbody>
     </table>
-</div>
+</x-ui.card>
 
 <div class="mt-4">{{ $items->links() }}</div>
 

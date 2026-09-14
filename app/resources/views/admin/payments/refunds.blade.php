@@ -10,7 +10,8 @@
 
 <p class="text-sm text-gray-600 mb-5">Every refund owed and not yet in the buyer's hands. A refund is settled only when Razorpay confirms it processed, or when finance records a manual NEFT here. Two clocks: <strong>cancellation → receipt</strong> (ours to chase — alert at {{ \App\Modules\Payments\Support\RefundWorklist::ALERT_AFTER_DAYS }} days, Grievance Officer at {{ \App\Modules\Payments\Support\RefundWorklist::ESCALATE_AFTER_DAYS }}) and <strong>receipt → credited</strong> (the published {{ \App\Modules\Payments\Support\RefundWorklist::PROMISE_BUSINESS_DAYS }} working days).</p>
 
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto mb-8">
+<x-ui.card flush class="mb-8">
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -66,15 +67,17 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="9" class="px-4 py-8 text-center text-sm text-gray-600">No unsettled refunds.</td></tr>
+            <x-ui.empty-state colspan="9" title="No unsettled refunds." />
             @endforelse
         </tbody>
     </table>
-</div>
+    </div>
+</x-ui.card>
 
 <h2 class="font-semibold text-gray-900 mb-3">Refunds owed outside the gateway</h2>
 <p class="text-xs text-gray-600 mb-3">Approved refunds on orders with no gateway payment to refund against — cash on delivery, or a payment recorded outside the platform. The obligation is in the ledger; the only discharge is the NEFT finance makes, recorded here with its UTR. The same 7-working-day promise applies.</p>
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto mb-8">
+<x-ui.card flush class="mb-8">
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -116,15 +119,17 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-600">None owed outside the gateway.</td></tr>
+            <x-ui.empty-state colspan="8" title="None owed outside the gateway." />
             @endforelse
         </tbody>
     </table>
-</div>
+    </div>
+</x-ui.card>
 
 <h2 class="font-semibold text-gray-900 mb-3">Cooling-off returns awaiting receipt</h2>
 <p class="text-xs text-gray-600 mb-3">The buyer has cancelled; the goods are not yet marked received. Points, repurchase credit and any cash refund are all held until they are. Mark receipt from the return itself (Admin → Returns).</p>
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
+<x-ui.card flush>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -152,10 +157,11 @@
                 <td class="px-4 py-3 text-right"><a href="{{ route('admin.returns.show', $rq) }}" class="text-sm text-brand-700 hover:underline">Open return {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a></td>
             </tr>
             @empty
-            <tr><td colspan="8" class="px-4 py-8 text-center text-sm text-gray-600">None waiting.</td></tr>
+            <x-ui.empty-state colspan="8" title="None waiting." />
             @endforelse
         </tbody>
     </table>
-</div>
+    </div>
+</x-ui.card>
 
 @endsection

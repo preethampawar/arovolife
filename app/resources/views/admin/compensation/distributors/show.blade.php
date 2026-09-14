@@ -5,7 +5,7 @@
 @section('content')
 
 {{-- Header card --}}
-<div class="bg-white rounded-xl border border-gray-200 p-5 mb-5 shadow-sm">
+<x-ui.card padding="p-5" class="mb-5">
     <div class="flex items-start justify-between mb-4">
         <div>
             <p class="text-2xl font-bold text-brand-700 font-mono">{{ $distributor->adn }}</p>
@@ -108,7 +108,7 @@
         </div>
     </div>
     @endif
-</div>
+</x-ui.card>
 
 {{-- Failed cut-off alert --}}
 @if($failedToday)

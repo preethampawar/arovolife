@@ -40,9 +40,9 @@
     $safeAction = in_array($action, $allowedActions, true) ? $action : null;
 @endphp
 @if($safeAction)
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
+<x-ui.card padding="p-5" class="mb-6">
     @include('admin.compensation.manual-controls._form-'.$safeAction)
-</div>
+</x-ui.card>
 @else
 <div class="bg-gray-50 rounded-xl border border-gray-200 p-6 text-center text-sm text-gray-600 mb-6">
     Select an action above to get started.
@@ -50,12 +50,12 @@
 @endif
 
 {{-- Recent actions audit feed --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+<x-ui.card flush>
     <div class="px-5 py-3 border-b border-gray-100">
         <span class="text-sm font-semibold text-gray-900">Recent manual actions</span>
     </div>
     @if($recentActions->isEmpty())
-    <p class="px-5 py-6 text-sm text-gray-600 text-center">No manual actions recorded yet.</p>
+    <x-ui.empty-state title="No manual actions recorded yet." />
     @else
     <div class="divide-y divide-gray-50">
         @foreach($recentActions as $log)
@@ -79,6 +79,6 @@
         @endforeach
     </div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

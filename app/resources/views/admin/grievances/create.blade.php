@@ -146,9 +146,9 @@
                class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:ring-brand-500">
     </div>
 
-    <button type="submit" class="rounded-lg bg-brand-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-800">
+    <x-ui.button >
         Record complaint
-    </button>
+    </x-ui.button>
 </form>
 
 <x-confirm-modal />

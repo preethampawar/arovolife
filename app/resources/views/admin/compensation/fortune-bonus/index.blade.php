@@ -10,9 +10,10 @@
 </div>
 @enddeveloper
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($months->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-600 text-center">No Fortune Bonus months yet — the engine has not run for any month.</p>
+        <x-ui.empty-state title="No Fortune Bonus months yet."
+                          description="The engine has not run for any month." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -67,6 +68,6 @@
         </table>
     </div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

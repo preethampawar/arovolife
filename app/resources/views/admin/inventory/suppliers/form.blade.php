@@ -14,7 +14,7 @@
 
     <p class="text-sm text-gray-600">Suppliers carry no stock effect on their own — they're the counterparty on purchase orders and goods receipts.</p>
 
-    <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <x-ui.card padding="p-6 space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">Name <x-help-tip text="The supplier's registered business name." /></span>
@@ -42,9 +42,9 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
         </div>
-    </div>
+    </x-ui.card>
 
-    <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <x-ui.card padding="p-6 space-y-4">
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Address</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block sm:col-span-2">
@@ -75,7 +75,7 @@
                 </select>
             </label>
         </div>
-    </div>
+    </x-ui.card>
 
     <div class="flex items-center gap-3">
         <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">

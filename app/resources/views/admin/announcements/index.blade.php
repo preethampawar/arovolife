@@ -21,11 +21,10 @@
     <div class="mb-4 rounded-lg border border-leaf-200 bg-leaf-50 px-4 py-3 text-sm text-leaf-800">{{ session('status') }}</div>
 @endif
 
-<a href="{{ route('admin.announcements.create') }}"
-   class="mb-4 inline-flex items-center gap-1.5 rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">
+<x-ui.button href="{{ route('admin.announcements.create') }}" class="mb-4">
     <x-lucide-plus class="h-4 w-4" />
     New announcement
-</a>
+</x-ui.button>
 
 <x-filter-bar :filters="$filters" />
 

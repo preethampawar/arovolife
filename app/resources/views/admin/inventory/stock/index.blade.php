@@ -18,7 +18,7 @@
     @endif
 </form>
 
-<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -91,11 +91,11 @@
                 </tr>
                 @endif
             @empty
-                <tr><td colspan="9" class="px-4 py-10 text-center text-gray-600">No stock levels match this filter.</td></tr>
+                <x-ui.empty-state colspan="9" title="No stock levels match this filter." />
             @endforelse
         </tbody>
     </table>
-</div>
+</x-ui.card>
 
 <div class="mt-4">{{ $levels->links() }}</div>
 @endsection

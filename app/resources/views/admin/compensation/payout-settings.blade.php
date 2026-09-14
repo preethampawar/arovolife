@@ -31,7 +31,7 @@
 </div>
 
 {{-- ── Current gateway ─────────────────────────────────────────────── --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-5">
+<x-ui.card flush class="mb-5">
     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Current gateway</span>
         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium
@@ -58,10 +58,10 @@
             </p>
         @endif
     </div>
-</div>
+</x-ui.card>
 
 {{-- ── RazorpayX credentials (env-derived, never editable here) ─────── --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-5">
+<x-ui.card flush class="mb-5">
     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between gap-3 flex-wrap">
         <span class="text-sm font-semibold text-gray-900 flex items-center gap-1">
             RazorpayX credentials
@@ -117,10 +117,10 @@
     </div>
 
     <div id="payout-test-result" class="hidden px-5 pb-5 text-sm"></div>
-</div>
+</x-ui.card>
 
 {{-- ── The five levers ─────────────────────────────────────────────── --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+<x-ui.card flush>
     <div class="px-5 py-3 border-b border-gray-100">
         <span class="text-sm font-semibold text-gray-900">Payout configuration</span>
     </div>
@@ -179,10 +179,9 @@
                            maxlength="{{ $meta['max'] ?? 255 }}" required
                            class="w-full rounded-lg border-gray-300 text-sm focus:border-brand-500 focus:ring-brand-500">
                     @endif
-                    <button type="submit"
-                            class="mt-2 w-full inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
+                    <x-ui.button class="mt-2 w-full">
                         Save
-                    </button>
+                    </x-ui.button>
                 </form>
                 @else
                 <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
@@ -194,7 +193,7 @@
         </div>
         @endforeach
     </div>
-</div>
+</x-ui.card>
 
 @push('scripts')
 <script>

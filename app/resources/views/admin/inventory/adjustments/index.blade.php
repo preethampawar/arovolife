@@ -13,7 +13,7 @@
 
 <x-filter-bar :filters="$filters" />
 
-<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -38,11 +38,13 @@
                     <td class="px-4 py-3 text-gray-600 text-xs">{{ $adjustment->occurred_at->format('d M Y H:i') }}</td>
                 </tr>
             @empty
-                <tr><td colspan="7" class="px-4 py-10 text-center text-gray-600">No adjustments yet. <a href="{{ route('admin.inventory.adjustments.create') }}" class="text-brand-700 underline">Create one</a>.</td></tr>
+                <x-ui.empty-state colspan="7" title="No adjustments yet.">
+                    <x-ui.button href="{{ route('admin.inventory.adjustments.create') }}" variant="secondary" size="sm" icon="plus">Create one</x-ui.button>
+                </x-ui.empty-state>
             @endforelse
         </tbody>
     </table>
-</div>
+</x-ui.card>
 
 <div class="mt-4">{{ $adjustments->links() }}</div>
 @endsection

@@ -23,9 +23,9 @@
         class="rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
     <input name="to" type="date" value="{{ request()->query('to') }}"
         class="rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500">
-    <button type="submit" class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
+    <x-ui.button >
         Filter
-    </button>
+    </x-ui.button>
     @if(request()->hasAny(['action','subject_type','actor','from','to']))
     <a href="{{ route('admin.audit-log') }}" class="px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-800 hover:text-white transition-colors">
         Clear
@@ -49,7 +49,7 @@
      "Activity" column rendered via AuditLogPresenter. Technical
      event key + raw subject row are still discoverable inside the
      Details popover so engineers can still grep them. --}}
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
@@ -113,9 +113,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr>
-                    <td colspan="4" class="px-4 py-8 text-center text-sm text-gray-700">No audit entries found.</td>
-                </tr>
+                <x-ui.empty-state colspan="4" title="No audit entries found." />
                 @endforelse
             </tbody>
         </table>
@@ -125,6 +123,6 @@
         {{ $logs->links() }}
     </div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

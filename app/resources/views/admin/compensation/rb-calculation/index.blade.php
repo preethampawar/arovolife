@@ -40,7 +40,7 @@
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
         <option value="requalification_held" {{ $status === 'requalification_held' ? 'selected' : '' }}>Requalification held</option>
     </select>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
+    <x-ui.button >Apply</x-ui.button>
     @if($q || $month || $rank || $status)
     <a href="{{ route('admin.compensation.rb-calculation.index') }}"
        class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
@@ -60,9 +60,9 @@
 @foreach($rank1Blocks as $block)
     @include('admin.compensation._formulas.rb-month', ['rank1' => $block['rank1'], 'date' => $block['date'], 'rankNames' => $rankNames, 'open' => count($rank1Blocks) === 1])
 @endforeach
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
+<x-ui.card flush class="mb-8">
     @if($rank1Rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Rank-1 records found.</p>
+    <x-ui.empty-state title="No Rank-1 records found." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -136,13 +136,13 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rank1Rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 {{-- ── Ranks 2–9 — equal split ─────────────────────────────────────────── --}}
 <h2 class="text-sm font-semibold text-gray-800 mb-2">Ranks 2–9 — equal split per rank pool</h2>
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($rankRows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Rank 2–9 records found.</p>
+    <x-ui.empty-state title="No Rank 2–9 records found." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -214,6 +214,6 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rankRows->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

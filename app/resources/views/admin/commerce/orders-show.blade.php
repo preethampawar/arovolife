@@ -7,7 +7,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 space-y-6">
         {{-- Items --}}
-        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <x-ui.card padding="p-6">
             <h3 class="font-semibold text-gray-900 mb-4">Items</h3>
             <table class="w-full text-sm">
                 <thead>
@@ -52,10 +52,10 @@
                 <div class="flex gap-8"><span class="text-gray-600">Shipping</span><span class="w-32 text-right">@if($order->shipping_paise > 0)₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}@else<span class="text-green-700">Free</span>@endif</span></div>
                 <div class="flex gap-8 font-semibold pt-2 border-t border-gray-100 mt-2"><span>Total</span><span class="w-32 text-right">{{ $order->displayTotal() }}</span></div>
             </div>
-        </div>
+        </x-ui.card>
 
         {{-- Actions --}}
-        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <x-ui.card padding="p-6">
             <h3 class="font-semibold text-gray-900 mb-3">Fulfilment Actions</h3>
             @error('cancel')<p class="mb-3 text-sm text-red-600">{{ $message }}</p>@enderror
             <div class="flex flex-wrap items-end gap-3">
@@ -97,7 +97,7 @@
                         <input name="ship_tracking_no" type="text" maxlength="120" placeholder="e.g. 1234567890"
                             class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                     </div>
-                    <button class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium">Mark as Shipped</button>
+                    <x-ui.button >Mark as Shipped</x-ui.button>
                 </form>
                 @endif
 
@@ -124,10 +124,10 @@
                 <p class="text-sm text-gray-600">No fulfilment actions available in status <strong>{{ $order->status }}</strong>.</p>
                 @endif
             </div>
-        </div>
+        </x-ui.card>
 
         {{-- Pick list + shipment (inventory plan H7) --}}
-        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <x-ui.card padding="p-6">
             <div class="flex flex-wrap items-baseline justify-between gap-2 mb-4">
                 <h3 class="font-semibold text-gray-900">Pick list</h3>
                 <p class="text-xs text-gray-600">
@@ -167,16 +167,16 @@
                 No shipment recorded for this order.
                 @endif
             </div>
-        </div>
+        </x-ui.card>
     </div>
 
     <div class="space-y-6">
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <p class="text-xs uppercase tracking-wider text-gray-600 mb-3">Timeline</p>
             @include('shop.orders._timeline', ['order' => $order])
-        </div>
+        </x-ui.card>
 
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Status</p>
             <p class="text-lg font-semibold text-gray-900 capitalize">{{ str_replace('_', ' ', $order->status) }}</p>
             <div class="mt-4 space-y-1 text-xs text-gray-600">
@@ -187,9 +187,9 @@
                 @if($order->cancelled_at)<div class="text-red-700 font-medium">Cancelled {{ $order->cancelled_at->format('d M Y H:i') }}</div>@endif
                 @if($order->delivered_at)<div class="text-green-700 font-medium">Delivered {{ $order->delivered_at->format('d M Y H:i') }}</div>@endif
             </div>
-        </div>
+        </x-ui.card>
 
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Payment</p>
             <p class="text-sm font-medium text-gray-900">Online</p>
             @if($paymentIntent)
@@ -204,11 +204,11 @@
             @else
             <p class="text-xs text-gray-600 mt-2">No gateway payment recorded for this order.</p>
             @endif
-        </div>
+        </x-ui.card>
 
         {{-- Invoice. Support needs to see the document the buyer was issued,
              and to re-issue it when generation failed at checkout (QA F101). --}}
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Invoice</p>
             @if($invoice)
             <p class="text-sm font-mono text-gray-900">{{ $invoice->invoice_no }}</p>
@@ -235,24 +235,24 @@
             <p class="text-xs text-gray-600 mt-2">An invoice is issued only once the order is paid.</p>
             @endif
             @endcan
-        </div>
+        </x-ui.card>
 
         @if($order->coolingOff)
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Cooling-Off</p>
             <p class="text-sm"><strong class="text-gray-900">{{ $order->coolingOff->daysRemaining() }} days</strong> remaining</p>
             <p class="text-xs text-gray-600 mt-1">Closes {{ $order->coolingOff->ends_at->format('d M Y') }}</p>
             <p class="text-xs text-gray-600 mt-1">Status: <span class="font-mono">{{ $order->coolingOff->status }}</span></p>
-        </div>
+        </x-ui.card>
         @endif
 
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Customer</p>
             <p class="text-sm font-medium text-gray-900">{{ $order->customer->display_name ?? '—' }}</p>
             <p class="text-xs text-gray-600 break-all">{{ $order->customer->email_enc ?? '—' }}</p>
-        </div>
+        </x-ui.card>
 
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Attribution</p>
             @if($order->attributed_distributor_id)
             <p class="text-sm font-mono text-brand-700">{{ $order->distributor->adn ?? '#' . $order->attributed_distributor_id }}</p>
@@ -263,9 +263,9 @@
             @if($order->self_consumption)
             <p class="text-xs text-amber-700 mt-1">Self-consumption (BV only)</p>
             @endif
-        </div>
+        </x-ui.card>
 
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Shipping</p>
             <p class="text-sm text-gray-700">
                 {{ $order->ship_name }}<br>
@@ -273,7 +273,7 @@
                 {{ $order->ship_line1 }}@if($order->ship_line2), {{ $order->ship_line2 }}@endif<br>
                 {{ $order->ship_city }}, {{ $order->ship_state }} {{ $order->ship_pincode }}
             </p>
-        </div>
+        </x-ui.card>
     </div>
 </div>
 

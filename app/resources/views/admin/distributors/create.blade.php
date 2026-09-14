@@ -18,7 +18,7 @@
     @csrf
 
     {{-- Sponsor & Placement --}}
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-4">Sponsor & Placement</h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
@@ -45,10 +45,10 @@
                 </select>
             </div>
         </div>
-    </div>
+    </x-ui.card>
 
     {{-- User --}}
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-4">User</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -77,10 +77,10 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
         </div>
-    </div>
+    </x-ui.card>
 
     {{-- Identity --}}
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-4">Identity (PAN + Aadhaar)</h3>
         <p class="text-xs text-gray-700 mb-4">
             Both PAN and Aadhaar are encrypted at rest. Only the last 4 of each is shown in the audit log. After KYC approval the encrypted blobs are nulled and the original uploaded scans are purged.
@@ -104,11 +104,11 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
         </div>
-    </div>
+    </x-ui.card>
 
     {{-- Bank (optional — server-side rule is nullable + required_with;
          leave both fields blank to skip, or fill both to record bank). --}}
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-1">Bank <span class="text-gray-600 text-sm font-normal">(optional)</span></h3>
         <p class="text-xs text-gray-600 mb-4">
             Leave both fields blank if the distributor hasn't shared bank
@@ -140,10 +140,10 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
         </div>
-    </div>
+    </x-ui.card>
 
     {{-- State --}}
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-4">State</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -157,12 +157,12 @@
                 </select>
             </div>
         </div>
-    </div>
+    </x-ui.card>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
+        <x-ui.button >
             Create distributor
-        </button>
+        </x-ui.button>
         <a href="{{ route('admin.distributors.index') }}"
            class="px-5 py-2.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors">
             Cancel

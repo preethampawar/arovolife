@@ -33,34 +33,34 @@
 
 {{-- ── Headline numbers (window-scoped) ─────────────────────────────── --}}
 <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Paid orders</p>
         <p class="mt-1 text-lg font-bold text-gray-900">{{ IndianNumber::format($totals['orders']) }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Gross value</p>
         <p class="mt-1 text-lg font-bold text-brand-700 whitespace-nowrap">₹{{ IndianNumber::format($totals['gross_paise'] / 100, 2) }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Average order</p>
         <p class="mt-1 text-lg font-bold text-gray-900 whitespace-nowrap">₹{{ IndianNumber::format($totals['average_order_paise'] / 100, 2) }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">BV generated</p>
         <p class="mt-1 text-lg font-bold text-green-700 whitespace-nowrap">@bv($totals['bv_paise'])</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Cancelled / refunded</p>
         <p class="mt-1 text-lg font-bold text-red-600">
             {{ IndianNumber::format($totals['cancelled']) }} / {{ IndianNumber::format($totals['refunded']) }}
         </p>
-    </div>
+    </x-ui.card>
 </div>
 
 {{-- ── The two funnels ──────────────────────────────────────────────── --}}
 <div class="grid gap-4 lg:grid-cols-2 mb-6">
     @foreach ([['Registration funnel', $registrationFunnel], ['Commerce funnel', $commerceFunnel]] as [$funnelTitle, $stages])
-        <div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-600">{{ $funnelTitle }}</h2>
 
             <ol class="space-y-3">
@@ -94,12 +94,12 @@
                 started before it and finished inside it appears only where they finished, so a short
                 window can show a later step ahead of an earlier one.
             </p>
-        </div>
+        </x-ui.card>
     @endforeach
 </div>
 
 {{-- ── The base ─────────────────────────────────────────────────────── --}}
-<div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-6">
+<x-ui.card padding="p-5" class="mb-6">
     <h2 class="mb-4 text-xs font-semibold uppercase tracking-wider text-gray-600">The distributor base (as of today)</h2>
 
     <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -124,10 +124,10 @@
         nothing the compensation plan can pay on, and twelve months of it makes them liable to the
         Agreement §21 dormancy rule.
     </p>
-</div>
+</x-ui.card>
 
 {{-- ── Retention ────────────────────────────────────────────────────── --}}
-<div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mb-6">
+<x-ui.card padding="p-5" class="mb-6">
     <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-600">Monthly buyer retention</h2>
     <p class="mt-1 mb-4 text-xs text-gray-600 leading-relaxed">
         Measured on purchases, not logins — a distributor who signs in every month and never buys is not
@@ -165,10 +165,10 @@
     <p class="mt-3 text-xs text-gray-600">
         A dash means nobody bought in the month before, so there was nothing to retain.
     </p>
-</div>
+</x-ui.card>
 
 {{-- ── Top by volume ────────────────────────────────────────────────── --}}
-<div class="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+<x-ui.card padding="p-5">
     <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-600">Highest volume in the window</h2>
     <p class="mt-1 mb-4 text-xs text-gray-600 leading-relaxed">
         BV attributed in the selected window. No rank and no earnings — this is an operational view of
@@ -208,5 +208,5 @@
             </table>
         </div>
     @endif
-</div>
+</x-ui.card>
 @endsection

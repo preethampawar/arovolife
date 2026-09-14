@@ -3,9 +3,9 @@
     Personal BV ledger for this distributor — every accrual (purchase) and reversal (cancellation / refund). Net BV is the running total. BV is tied exclusively to paid product sales (hard rule #2).
 </div>
 @enddeveloper
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if(empty($rows) || $rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No BV ledger entries yet.</p>
+    <x-ui.empty-state title="No BV ledger entries yet." />
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
@@ -45,4 +45,4 @@
     </table>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>

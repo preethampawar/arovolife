@@ -21,7 +21,7 @@
     @method('PATCH')
 
     {{-- Profile --}}
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-4">Profile</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -49,10 +49,10 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
         </div>
-    </div>
+    </x-ui.card>
 
     {{-- Address --}}
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-4">Address</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -65,10 +65,10 @@
                 </select>
             </div>
         </div>
-    </div>
+    </x-ui.card>
 
     {{-- Bank details (optional) --}}
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-1">Bank details <span class="text-gray-600 text-sm font-normal">(optional)</span></h3>
         <p class="text-xs text-gray-700 mb-4">
             The current account number is encrypted at rest. To rotate it,
@@ -96,7 +96,7 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
         </div>
-    </div>
+    </x-ui.card>
 
     {{-- Tree position (truly immutable — ADN, sponsor, placement
          define the Genos (placement tree) structure and cannot be re-keyed). --}}
@@ -134,9 +134,9 @@
     </div>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
+        <x-ui.button >
             Save changes
-        </button>
+        </x-ui.button>
         <a href="{{ route('admin.distributors.show', $distributor->id) }}"
            class="px-5 py-2.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors">
             Cancel
@@ -220,7 +220,7 @@
         $allVerified = $kycStatus['total'] > 0 && $kycStatus['verified'] === $kycStatus['total'];
         $partVerified = $kycStatus['verified'] > 0 && $kycStatus['verified'] < $kycStatus['total'];
     @endphp
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <div class="flex items-start justify-between gap-3 mb-3">
             <h3 class="font-semibold text-gray-800">KYC review</h3>
             @if($kycStatus['total'] === 0)
@@ -282,9 +282,9 @@
         <p class="text-xs text-gray-600 mt-3">
             Document uploads + per-document view/approve live on the dedicated KYC review page.
         </p>
-    </div>
+    </x-ui.card>
 
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-2">Password</h3>
         <p class="text-xs text-gray-700 mb-4">
             Two ways to recover access for <span class="font-mono">{{ $distributor->user->email }}</span> —
@@ -344,9 +344,9 @@
                 </button>
             </form>
         </div>
-    </div>
+    </x-ui.card>
 
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-2">ID photo <x-help-tip text="A JPG or PNG photo (200×200 to 4000×4000 px, max 5 MB). EXIF data is stripped and any previous photo is replaced." /></h3>
         <p class="text-xs text-gray-700 mb-4">
             JPG or PNG, between 200×200 and 4000×4000 pixels, max 5 MB. The image is EXIF-stripped on upload and the previous photo (if any) is deleted from storage.
@@ -379,11 +379,11 @@
             @csrf
             <input type="file" name="photo" accept="image/jpeg,image/png" required
                 class="text-sm text-gray-800 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold hover:file:bg-gray-200">
-            <button type="submit" class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
+            <x-ui.button >
                 {{ !empty($idPhotoUrl) ? 'Replace photo' : 'Upload photo' }}
-            </button>
+            </x-ui.button>
         </form>
-    </div>
+    </x-ui.card>
 </div>
 
 @endsection

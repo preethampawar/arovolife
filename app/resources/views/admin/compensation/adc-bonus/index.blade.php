@@ -15,9 +15,10 @@
        class="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50">Centres are managed under Arete Centres {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
 </div>
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($months->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-600 text-center">No ADC Bonus batches yet — engine has not yet run.</p>
+        <x-ui.empty-state title="No ADC Bonus batches yet."
+                          description="Engine has not yet run." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -51,6 +52,6 @@
         </table>
     </div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

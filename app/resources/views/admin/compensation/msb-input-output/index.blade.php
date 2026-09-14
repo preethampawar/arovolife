@@ -25,7 +25,7 @@
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
     <input type="date" name="to" value="{{ $to ?? '' }}"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
+    <x-ui.button >Apply</x-ui.button>
     @if($day || $week || $from || $to)
     <a href="{{ route('admin.compensation.msb-input-output.index') }}"
        class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
@@ -43,11 +43,10 @@
 <p class="mb-4 text-xs text-gray-500">"Income" is the gross the pool awarded; the repurchase deduction is what moved to the repurchase wallet at credit time, and "Credited to wallet" is the difference. Admin charge and TDS are payout-time figures and never appear here.</p>
 
 @if($pools->isEmpty())
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">
-        No pooled cut-off days yet — rows appear once the daily cut-off runs with the Mentorship Bonus enabled.
-    </p>
-</div>
+<x-ui.card flush>
+    <x-ui.empty-state title="No pooled cut-off days yet."
+                      description="Rows appear once the daily cut-off runs with the Mentorship Bonus enabled." />
+</x-ui.card>
 @else
 <div class="space-y-6">
     @foreach($pools->items() as $pool)
@@ -61,7 +60,7 @@
         $totalDeduction = (int) $rows->sum('deduction_paise');
         $totalCredited = (int) $rows->sum('credited_paise');
     @endphp
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <x-ui.card flush>
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
             <span class="font-semibold text-gray-800">{{ $pool->cutoff_date->format('d/m/Y') }}</span>
             <span class="text-gray-600">Day <strong class="text-gray-700">{{ $dayNo ?? '—' }}</strong></span>
@@ -112,7 +111,7 @@
                         <x-bonus-credit-cells :gross="(int) $row->income_paise" :deduction="(int) $row->deduction_paise" :credited="(int) $row->credited_paise" td-class="px-3 py-2 text-right" />
                     </tr>
                     @empty
-                    <tr><td colspan="8" class="px-3 py-4 text-center text-gray-600">No Mentorship Bonus earners this day.</td></tr>
+                    <x-ui.empty-state colspan="8" title="No Mentorship Bonus earners this day." />
                     @endforelse
                 </tbody>
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
@@ -136,7 +135,7 @@
                 </tfoot>
             </table>
         </div>
-    </div>
+    </x-ui.card>
     @endforeach
 </div>
 <div class="mt-4">{{ $pools->links() }}</div>

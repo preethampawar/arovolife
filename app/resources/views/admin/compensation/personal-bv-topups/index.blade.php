@@ -21,18 +21,16 @@
     </select>
     <input type="text" name="q" value="{{ $q }}" placeholder="Search ADN…"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm w-40">
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
+    <x-ui.button >Apply</x-ui.button>
     <a href="{{ route('admin.compensation.personal-bv-topups.export', array_merge(array_filter(['date' => $date->toDateString(), 'type' => $type, 'q' => $q]), ['format' => 'xlsx'])) }}"
        class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">⬇ Excel</a>
     <a href="{{ route('admin.compensation.personal-bv-topups.export', array_merge(array_filter(['date' => $date->toDateString(), 'type' => $type, 'q' => $q]), ['format' => 'csv'])) }}"
        class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">CSV</a>
 </form>
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($rows->isEmpty())
-    <p class="px-6 py-10 text-sm text-gray-600 text-center">
-        No personal BV topups recorded for {{ $date->format('d M Y') }}.
-    </p>
+    <x-ui.empty-state title="No personal BV topups recorded for {{ $date->format('d M Y') }}." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -90,6 +88,6 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

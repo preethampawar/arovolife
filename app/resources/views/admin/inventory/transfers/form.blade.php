@@ -12,7 +12,7 @@
         <div class="rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3">{{ $errors->first('transfer') }}</div>
     @endif
 
-    <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <x-ui.card padding="p-6 space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">From warehouse</span>
@@ -33,9 +33,9 @@
                 </select>
             </label>
         </div>
-    </div>
+    </x-ui.card>
 
-    <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4 overflow-x-auto">
+    <x-ui.card padding="p-6 space-y-4 overflow-x-auto">
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Line items</h2>
         <p class="text-xs text-gray-500">Choose the source warehouse first — its batches with stock on hand will appear here.</p>
         <table class="w-full text-sm min-w-[700px]">
@@ -52,7 +52,7 @@
         <button type="button" id="transferAddLine" class="text-sm text-brand-700 hover:text-brand-800 font-medium">+ Add line</button>
     </div>
 
-    <div class="flex items-center gap-3">
+    </x-ui.card> class="flex items-center gap-3">
         <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">Create transfer</button>
         <a href="{{ route('admin.inventory.transfers.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
     </div>

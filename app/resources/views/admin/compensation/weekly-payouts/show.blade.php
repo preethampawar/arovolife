@@ -72,10 +72,9 @@
                   data-confirm="Dispatch {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s) through Razorpay Payouts?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this dispatch.' : '' }}"
                   data-confirm-impact="Impact: this initiates REAL BANK TRANSFERS immediately. Each transfer is confirmed by Razorpay's webhook and cannot be recalled from this screen.">
                 @csrf
-                <button type="submit" @disabled(! $gatewayReady)
-                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <x-ui.button @disabled(! $gatewayReady)>
                     <x-lucide-zap class="w-4 h-4" /> Approve &amp; dispatch to bank
-                </button>
+                </x-ui.button>
             </form>
             @else
             <form method="POST" action="{{ route('admin.compensation.weekly-payouts.approve', $batch) }}"
@@ -83,10 +82,9 @@
                   data-confirm="Approve this payout batch of {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s)?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this approval.' : '' }}"
                   data-confirm-impact="Impact: the batch is signed off for payment. Holds are re-checked first — anyone whose KYC or bank details arrived since the batch was built is released into it. No money moves until you upload the bank file (NEFT) to the bank and import the bank's response file here.">
                 @csrf
-                <button type="submit"
-                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
+                <x-ui.button >
                     <x-lucide-check class="w-4 h-4" /> Approve batch
-                </button>
+                </x-ui.button>
             </form>
             @endif
         @endif
@@ -144,7 +142,7 @@
 
 {{-- Manual NEFT: import the bank's response file ─────────────────────── --}}
 @if(! $isRazorpay && $canReconcile)
-<div class="mb-6 bg-white rounded-xl border border-gray-200 shadow-sm">
+<x-ui.card flush class="mb-6">
     <div class="px-5 py-3 border-b border-gray-100">
         <span class="text-sm font-semibold text-gray-900 flex items-center gap-1">
             Import bank response
@@ -166,36 +164,35 @@
                 <strong>UTR</strong> and <strong>Failure Reason</strong> are used when present.
             </p>
         </div>
-        <button type="submit"
-                class="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
+        <x-ui.button >
             <x-lucide-upload class="w-4 h-4" /> Import response
-        </button>
+        </x-ui.button>
     </form>
-</div>
+</x-ui.card>
 @endif
 
 {{-- Batch summary --}}
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Distributors</p>
         <p class="mt-1 text-lg font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($batch->distributor_count) }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             Total gross <x-help-tip text="Sum of the bonus credits swept by this batch, before the repurchase deduction already taken at credit time." />
         </p>
         <p class="mt-1 text-lg font-bold text-gray-900">{{ $rupees($batch->total_gross_paise) }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             Deductions <x-help-tip text="Repurchase deduction + admin charge + TDS across all line items." />
         </p>
         <p class="mt-1 text-lg font-bold text-red-600">{{ $rupees($batch->total_deductions_paise) }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Net to transfer</p>
         <p class="mt-1 text-lg font-bold text-green-700">{{ $rupees($batch->total_net_paise) }}</p>
-    </div>
+    </x-ui.card>
 </div>
 
 {{-- Where every line item stands --}}
@@ -209,7 +206,7 @@
 </div>
 
 {{-- Line items table --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Line items</span>
         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $batchStatusLabel['cls'] }}">
@@ -217,7 +214,7 @@
         </span>
     </div>
     @if($lines->isEmpty())
-    <p class="px-6 py-10 text-sm text-gray-600 text-center">No line items in this batch.</p>
+    <x-ui.empty-state title="No line items in this batch." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -333,6 +330,6 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $lines->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

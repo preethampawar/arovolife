@@ -23,7 +23,7 @@
     data-confirm-impact="Creates a back-office login with the selected roles and immediate access to the admin console. Audit-logged; the account can be deactivated later.">
     @csrf
 
-    <div class="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+    <x-ui.card padding="p-6 space-y-4">
         <div>
             <label class="block text-xs text-gray-700 mb-1" for="full_name">
                 Full name <x-help-tip text="The team member's name as it should appear in the staff register and audit log." />
@@ -69,9 +69,9 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
         </div>
-    </div>
+    </x-ui.card>
 
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-1">Roles</h3>
         <p class="text-xs text-gray-600 mb-4">
             Pick at least one. Separation of duties (R-17) is enforced in code: finance staff cannot freeze
@@ -88,12 +88,12 @@
         </div>
         @error('roles') <p class="text-xs text-red-600 mt-2">{{ $message }}</p> @enderror
         @error('roles.*') <p class="text-xs text-red-600 mt-2">{{ $message }}</p> @enderror
-    </div>
+    </x-ui.card>
 
     <div class="flex items-center gap-3">
-        <button type="submit" class="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">
+        <x-ui.button >
             Create staff account
-        </button>
+        </x-ui.button>
         <a href="{{ route('admin.staff.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
     </div>
 </form>

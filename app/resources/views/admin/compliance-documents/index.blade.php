@@ -42,16 +42,15 @@
             <p class="text-xs text-gray-600 mt-1">PDF, Word, Excel or image (JPG/PNG). Max 20 MB.</p>
         </div>
 
-        <button type="submit"
-            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
+        <x-ui.button >
             Upload &amp; publish
-        </button>
+        </x-ui.button>
     </form>
 
     {{-- Document list --}}
     <x-filter-bar :filters="$filters" />
 
-    <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <x-ui.card flush>
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50/50">
@@ -104,11 +103,11 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="5" class="px-4 py-8 text-center text-sm text-gray-600">No documents uploaded yet.</td></tr>
+                <x-ui.empty-state colspan="5" title="No documents uploaded yet." />
                 @endforelse
             </tbody>
         </table>
-    </div>
+    </x-ui.card>
     @if($documents->hasPages())
     <div class="px-4 py-4 border-t border-gray-200">{{ $documents->links() }}</div>
     @endif

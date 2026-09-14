@@ -70,7 +70,8 @@
 
 <x-filter-bar :filters="$filters" />
 
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-x-auto">
+<x-ui.card flush>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -114,11 +115,12 @@
                 <td class="px-4 py-3 text-right"><a href="{{ route('admin.payments.show', $intent) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">Timeline {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a></td>
             </tr>
             @empty
-            <tr><td colspan="10" class="px-4 py-8 text-center text-sm text-gray-600">No payment intents match.</td></tr>
+            <x-ui.empty-state colspan="10" title="No payment intents match." />
             @endforelse
         </tbody>
     </table>
-</div>
+    </div>
+</x-ui.card>
 <div class="mt-4">{{ $intents->links() }}</div>
 
 @endsection

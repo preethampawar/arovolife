@@ -7,7 +7,7 @@
     <div class="rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3 mb-4">{{ $errors->first('transfer') }}</div>
 @endif
 
-<div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+<x-ui.card padding="p-6" class="mb-6">
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
         <div><span class="block text-xs text-gray-500">From</span>{{ $transfer->fromWarehouse?->name }} ({{ $transfer->from_warehouse_code }})</div>
         <div><span class="block text-xs text-gray-500">To</span>{{ $transfer->toWarehouse?->name }} ({{ $transfer->to_warehouse_code }})</div>
@@ -16,9 +16,9 @@
         </div>
         <div><span class="block text-xs text-gray-500">Created</span>{{ $transfer->created_at->format('d M Y H:i') }}</div>
     </div>
-</div>
+</x-ui.card>
 
-<div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-6">
+<x-ui.card flush class="mb-6">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -46,7 +46,7 @@
             @endforeach
         </tbody>
     </table>
-</div>
+</x-ui.card>
 
 <div class="flex items-center gap-3">
     @if($transfer->status === 'draft')

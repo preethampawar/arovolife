@@ -3,9 +3,9 @@
     Monthly Arete Development Centre (ADC) bonus earned by this distributor as a centre holder — a share of the net BV of orders collected at the centre for the month, subject to the centre's phase and cap.
 </div>
 @enddeveloper
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if(empty($rows) || $rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No ADC bonus history yet.</p>
+    <x-ui.empty-state title="No ADC bonus history yet." />
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
@@ -44,4 +44,4 @@
     </table>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>

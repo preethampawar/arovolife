@@ -30,7 +30,7 @@
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
     </select>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
+    <x-ui.button >Apply</x-ui.button>
     @if($q || $area || $month || $status)
     <a href="{{ route('admin.compensation.adc-calculation.index') }}"
        class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
@@ -50,9 +50,9 @@
     @include('admin.compensation._formulas.adc-month', ['adc' => $adc, 'monthStart' => $monthStart, 'open' => count($monthBlocks) === 1])
 @endforeach
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No ADC Bonus records found.</p>
+    <x-ui.empty-state title="No ADC Bonus records found." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -163,6 +163,6 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

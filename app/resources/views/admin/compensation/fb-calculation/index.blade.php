@@ -43,7 +43,7 @@
         <option value="skipped" {{ $status === 'skipped' ? 'selected' : '' }}>Skipped</option>
         <option value="repurchase_wallet_blocked" {{ $status === 'repurchase_wallet_blocked' ? 'selected' : '' }}>Repurchase wallet not cleared</option>
     </select>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
+    <x-ui.button >Apply</x-ui.button>
     @if($q || $month || $status)
     <a href="{{ route('admin.compensation.fb-calculation.index') }}"
        class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
@@ -63,9 +63,9 @@
     @include('admin.compensation._formulas.fb-month', ['pool' => $pool, 'open' => count($monthPools) === 1])
 @endforeach
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Fortune Bonus records found.</p>
+    <x-ui.empty-state title="No Fortune Bonus records found." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -169,6 +169,6 @@
     <p class="px-4 py-2 text-xs text-gray-500 border-t border-gray-100">Income = ₹30 minimum (funded from the month's pool, pro-rated on a shortfall month) + FB Points × Value, limited to the level's maximum. The ₹30 is included in the Income column; it is not a separate line. Repurchase deduction = the share of Income moved to the repurchase wallet the moment it was credited; Credited to wallet = Income − Repurchase deduction. Admin charge and TDS are taken later, at payout.</p>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

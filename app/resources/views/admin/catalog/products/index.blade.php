@@ -13,7 +13,7 @@
 
 <x-filter-bar :filters="$filters" />
 
-<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -54,11 +54,13 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-600">No products yet. <a href="{{ route('admin.catalog.products.create') }}" class="text-brand-700 underline">Create the first one</a>.</td></tr>
+                <x-ui.empty-state colspan="8" title="No products yet.">
+                    <x-ui.button href="{{ route('admin.catalog.products.create') }}" variant="secondary" size="sm" icon="plus">Create the first one</x-ui.button>
+                </x-ui.empty-state>
             @endforelse
         </tbody>
     </table>
-</div>
+</x-ui.card>
 
 <div class="mt-4">{{ $products->links() }}</div>
 @endsection

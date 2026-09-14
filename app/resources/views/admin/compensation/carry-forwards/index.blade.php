@@ -18,7 +18,7 @@
                {{ request('filter') === 'near_cap' ? 'checked' : '' }}>
         Near cap (&gt;80%)
     </label>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
+    <x-ui.button >Apply</x-ui.button>
     <a href="{{ route('admin.compensation.carry-forwards.export', array_merge(array_filter(['q' => request('q'), 'filter' => request('filter')]), ['format' => 'xlsx'])) }}"
        class="ml-auto px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-xs text-gray-700 hover:bg-gray-50">
         ↓ Download Excel
@@ -29,11 +29,10 @@
     </a>
 </form>
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($rows->isEmpty())
-    <p class="px-6 py-10 text-sm text-gray-600 text-center">
-        No carry-forward data yet — GSB engine not yet active.
-    </p>
+    <x-ui.empty-state title="No carry-forward data yet."
+                      description="GSB engine not yet active." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -113,6 +112,6 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

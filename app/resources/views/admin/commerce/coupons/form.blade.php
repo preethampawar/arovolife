@@ -17,7 +17,7 @@
     @csrf
     @if($isEdit) @method('PUT') @endif
 
-    <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <x-ui.card padding="p-6 space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">Code <x-help-tip text="The code customers type at checkout to apply this coupon." /></span>
@@ -37,9 +37,9 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
         </div>
-    </div>
+    </x-ui.card>
 
-    <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <x-ui.card padding="p-6 space-y-4">
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Discount</h2>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <label class="block">
@@ -65,9 +65,9 @@
             <input type="number" step="0.01" min="0" name="min_purchase" value="{{ $minPrefill }}" placeholder="0"
                 class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
         </label>
-    </div>
+    </x-ui.card>
 
-    <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <x-ui.card padding="p-6 space-y-4">
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Eligibility</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block">
@@ -95,9 +95,9 @@
                 </select>
             </label>
         </div>
-    </div>
+    </x-ui.card>
 
-    <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <x-ui.card padding="p-6 space-y-4">
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Window &amp; limits</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block">
@@ -122,7 +122,7 @@
             </label>
         </div>
         <p class="text-xs text-gray-600">A "new user" coupon = per-customer limit of 1.</p>
-    </div>
+    </x-ui.card>
 
     <div class="flex items-center gap-3">
         <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">

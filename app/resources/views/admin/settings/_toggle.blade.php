@@ -40,9 +40,8 @@
          Browser form-data rules: a button with name+value overrides the
          hidden input of the same name, so clicking this posts the inverse. --}}
     <noscript>
-        <button type="submit" name="value" value="{{ $isOn ? 'false' : 'true' }}"
-                class="ml-2 px-3 py-1 text-xs rounded bg-brand-700 text-white">
+        <x-ui.button size="sm" class="ml-2" name="value" value="{{ $isOn ? 'false' : 'true' }}">
             {{ $isOn ? 'Turn off' : 'Turn on' }}
-        </button>
+        </x-ui.button>
     </noscript>
 </form>

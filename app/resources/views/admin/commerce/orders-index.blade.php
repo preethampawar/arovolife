@@ -19,7 +19,7 @@
 
 <x-filter-bar :filters="$filters" />
 
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+<x-ui.card flush>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
@@ -78,7 +78,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="10" class="px-4 py-8 text-center text-sm text-gray-600">No orders yet.</td></tr>
+                <x-ui.empty-state colspan="10" title="No orders yet." />
                 @endforelse
             </tbody>
         </table>
@@ -86,6 +86,6 @@
     @if($orders->hasPages())
     <div class="px-4 py-4 border-t border-gray-200">{{ $orders->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

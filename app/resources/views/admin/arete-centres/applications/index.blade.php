@@ -23,9 +23,9 @@
 
 <x-filter-bar :filters="$filters" />
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($applications->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-600 text-center">No applications match these filters.</p>
+        <x-ui.empty-state title="No applications match these filters." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -59,5 +59,5 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $applications->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 @endsection

@@ -10,7 +10,7 @@
 
 <div class="max-w-2xl space-y-6">
 
-    <div class="bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6">
         <h3 class="font-semibold text-gray-800 mb-3">{{ $staff->full_name ?: '—' }}</h3>
         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
@@ -30,7 +30,7 @@
                 <dd class="text-gray-800">{{ $staff->last_login_at?->format('d M Y, h:i A') ?? 'Never' }}</dd>
             </div>
         </dl>
-    </div>
+    </x-ui.card>
 
     @if($isSelf)
     <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -59,9 +59,9 @@
         </div>
         @error('roles') <p class="text-xs text-red-600 mb-3">{{ $message }}</p> @enderror
         @error('roles.*') <p class="text-xs text-red-600 mb-3">{{ $message }}</p> @enderror
-        <button type="submit" class="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">
+        <x-ui.button >
             Save roles
-        </button>
+        </x-ui.button>
     </form>
 
     {{-- Status --}}

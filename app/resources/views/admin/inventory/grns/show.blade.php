@@ -30,7 +30,7 @@
     </div>
 </div>
 
-<div class="bg-white rounded-xl border border-gray-200 p-6 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+<x-ui.card padding="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm" class="mb-6">
     <div><span class="block text-xs text-gray-500">Supplier</span>{{ $invoice->supplier?->name ?? '—' }}</div>
     <div><span class="block text-xs text-gray-500">Purchase order</span>{{ $invoice->purchaseOrder?->po_no ?? '—' }}</div>
     <div><span class="block text-xs text-gray-500">Warehouse</span>{{ $invoice->warehouse_code }}</div>
@@ -41,9 +41,9 @@
     @if($invoice->notes)
         <div class="sm:col-span-4"><span class="block text-xs text-gray-500">Notes</span><span class="whitespace-pre-line">{{ $invoice->notes }}</span></div>
     @endif
-</div>
+</x-ui.card>
 
-<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -84,5 +84,5 @@
             </tr>
         </tfoot>
     </table>
-</div>
+</x-ui.card>
 @endsection

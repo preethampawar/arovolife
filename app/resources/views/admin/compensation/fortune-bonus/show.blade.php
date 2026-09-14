@@ -5,7 +5,7 @@
 @section('content')
 
 {{-- Frozen month economics (fortune_monthly_pools) --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+<x-ui.card flush class="mb-6">
     <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
         <span class="font-semibold text-gray-800">
             Frozen month economics
@@ -58,11 +58,11 @@
         No frozen pool row for this month — the engine has not run for it yet.
     </p>
     @endunless
-</div>
+</x-ui.card>
 
 {{-- Frozen per-level cascade economics (fortune_monthly_pool_levels) --}}
 @if($pool && $pool->point_value_paise === null && $pool->levels->isNotEmpty())
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+<x-ui.card flush class="mb-6">
     <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-800">
         Frozen per-level economics
         <x-help-tip text="Levels settle top-down, each at the whole-rupee floor of the remaining pool over all remaining points, with a per-member ceiling that includes the guaranteed minimum (₹30 at level 9 = the minimum only). Legacy months may show Residual (one shared value, uncapped) or Flat-minimum levels from the rule in force before 03 Sep 2026." />
@@ -95,7 +95,7 @@
             </tbody>
         </table>
     </div>
-</div>
+</x-ui.card>
 @endif
 
 {{-- Per-depth points ladder (admin-editable under Plan settings → Fortune Bonus) --}}
@@ -114,23 +114,23 @@
 @if($levelSummaries->isNotEmpty())
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
     @foreach($levelSummaries as $level => $summary)
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm text-center">
+    <x-ui.card padding="p-4 text-center">
         <p class="text-xs font-medium text-gray-600 mb-1">Level {{ $level }}</p>
         <p class="text-sm font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($summary->participant_count) }} participants</p>
         <p class="text-xs text-indigo-700 font-medium mt-0.5">{{ \App\Modules\Shared\Support\IndianNumber::format((int) $summary->total_points) }} FB points</p>
         <p class="text-xs text-gray-600 mt-0.5">Credited to wallets: ₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 2) }}</p>
-    </div>
+    </x-ui.card>
     @endforeach
 </div>
 @endif
 
 {{-- Participants table --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     <div class="px-5 py-3 border-b border-gray-100">
         <span class="text-sm font-semibold text-gray-900">Matrix participants</span>
     </div>
     @if($rows->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-600 text-center">No participants enrolled for this month.</p>
+        <x-ui.empty-state title="No participants enrolled for this month." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -186,6 +186,6 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

@@ -56,9 +56,9 @@
 
                 @error('review_note')<p class="mb-3 text-xs text-red-600">{{ $message }}</p>@enderror
 
-                <button type="submit" class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">
+                <x-ui.button >
                     Close report
-                </button>
+                </x-ui.button>
             </form>
         @else
             <div class="rounded-xl border border-gray-200 bg-white p-5">

@@ -40,11 +40,10 @@
 </form>
 
 @if($months->isEmpty())
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">
-        No Rank Bonus months yet — rows appear once the monthly rank run credits a month.
-    </p>
-</div>
+<x-ui.card flush>
+    <x-ui.empty-state title="No Rank Bonus months yet."
+                      description="Rows appear once the monthly rank run credits a month." />
+</x-ui.card>
 @else
 <div class="space-y-6">
     @foreach($months->items() as $monthRow)
@@ -52,7 +51,7 @@
         $monthStart = \Illuminate\Support\Carbon::parse($monthRow->month_start)->toDateString();
         $block = $blocks[$monthStart];
     @endphp
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <x-ui.card flush>
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
             <span class="font-semibold text-gray-800">{{ \Illuminate\Support\Carbon::parse($monthStart)->format('F Y') }}</span>
             <span class="text-gray-500">Month turnover
@@ -159,7 +158,7 @@
             so nothing was frozen and its pool went unspent.
         </div>
         @endif
-    </div>
+    </x-ui.card>
     @endforeach
 </div>
 <div class="mt-4">{{ $months->links() }}</div>

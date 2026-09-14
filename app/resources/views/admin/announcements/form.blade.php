@@ -83,9 +83,9 @@
         </div>
         @error('pinned')<p class="mb-3 text-xs text-red-600">{{ $message }}</p>@enderror
 
-        <button type="submit" class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">
+        <x-ui.button >
             {{ $announcement->exists ? 'Save changes' : 'Save draft' }}
-        </button>
+        </x-ui.button>
     </form>
 
     @if($announcement->exists)
@@ -101,7 +101,7 @@
                         data-confirm-impact="Every distributor in its audience will see it immediately. If the email copy setting is on, it is also emailed — and an email cannot be taken back.">
                         @csrf
                         <input type="hidden" name="status" value="{{ Announcement::STATUS_PUBLISHED }}">
-                        <button type="submit" class="w-full rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">Publish</button>
+                        <x-ui.button class="w-full">Publish</x-ui.button>
                     </form>
                 @else
                     <form method="POST" action="{{ route('admin.announcements.transition', ['announcement' => $announcement->id]) }}" class="mb-2"

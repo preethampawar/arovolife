@@ -3,9 +3,9 @@
     History of weekly Tuesday bank transfer payout line items for this distributor. Each batch pays one Wednesday-to-Tuesday earning week and runs the Tuesday one week after that week closed, so a batch dated Tuesday 22 September pays income earned from Wednesday 9 September to Tuesday 15 September.
 </div>
 @enddeveloper
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if(empty($rows) || $rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No payout history yet.</p>
+    <x-ui.empty-state title="No payout history yet." />
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
@@ -57,4 +57,4 @@
     </table>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>

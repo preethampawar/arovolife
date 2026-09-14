@@ -6,9 +6,9 @@
     @endif
 </div>
 @enddeveloper
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if(empty($ledger) || $ledger->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No wallet transactions yet.</p>
+    <x-ui.empty-state title="No wallet transactions yet." />
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
@@ -40,16 +40,17 @@
         </tbody>
     </table>
     @endif
-</div>
+</x-ui.card>
 
 {{-- Repurchase wallet ledger --}}
 <h3 class="text-sm font-semibold text-gray-700 mt-6 mb-2 flex items-center gap-1">
     Repurchase Wallet
     <x-help-tip text="10% of each bonus (max ₹10,000 per calendar month) is moved here the moment the bonus is credited. The balance is applied at checkout toward the monthly repurchase obligation. It cannot be withdrawn." />
 </h3>
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if(empty($repurchaseLedger) || $repurchaseLedger->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No repurchase wallet transactions yet — deductions appear here once the first payout is processed.</p>
+    <x-ui.empty-state title="No repurchase wallet transactions yet."
+                      description="Deductions appear here once the first payout is processed." />
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
@@ -76,4 +77,4 @@
         </tbody>
     </table>
     @endif
-</div>
+</x-ui.card>

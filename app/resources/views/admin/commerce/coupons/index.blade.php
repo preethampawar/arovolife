@@ -13,7 +13,7 @@
 
 <x-filter-bar :filters="$filters" />
 
-<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -51,11 +51,13 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="px-4 py-10 text-center text-gray-600">No coupons yet. <a href="{{ route('admin.commerce.coupons.create') }}" class="text-brand-700 underline">Create one</a>.</td></tr>
+                <x-ui.empty-state colspan="8" title="No coupons yet.">
+                    <x-ui.button href="{{ route('admin.commerce.coupons.create') }}" variant="secondary" size="sm" icon="plus">Create one</x-ui.button>
+                </x-ui.empty-state>
             @endforelse
         </tbody>
     </table>
-</div>
+</x-ui.card>
 
 <div class="mt-4">{{ $coupons->links() }}</div>
 @endsection

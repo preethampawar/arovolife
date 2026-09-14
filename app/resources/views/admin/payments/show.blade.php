@@ -9,7 +9,7 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <div class="lg:col-span-2 space-y-6">
-        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <x-ui.card padding="p-6">
             <h3 class="font-semibold text-gray-900 mb-4">Intent</h3>
             <dl class="grid grid-cols-2 gap-3 text-sm">
                 <div><dt class="text-xs text-gray-600 uppercase font-medium">Order</dt><dd><a href="{{ route('admin.commerce.orders.show', $intent->order) }}" class="text-brand-700 font-mono">{{ $intent->order->order_no }}</a> · {{ $intent->order->status }}</dd></div>
@@ -28,9 +28,9 @@
                 <div class="col-span-2"><dt class="text-xs text-gray-600 uppercase font-medium">Last gateway error</dt><dd class="text-red-700">{{ $intent->error_code }} — {{ $intent->error_description }}</dd></div>
                 @endif
             </dl>
-        </div>
+        </x-ui.card>
 
-        <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <x-ui.card padding="p-6">
             <h3 class="font-semibold text-gray-900 mb-1">Timeline</h3>
             <p class="text-xs text-gray-600 mb-4">Every call we made, every callback the browser posted, every webhook the gateway sent. Payloads are stored already scrubbed — no contact, email, VPA or cardholder name — and dropped after {{ \App\Modules\Payments\Console\Commands\PaymentsRedactEventsCommand::DEFAULT_DAYS }} days.</p>
             <ol class="space-y-3">
@@ -57,13 +57,13 @@
                 <li class="text-sm text-gray-600">No events recorded.</li>
                 @endforelse
             </ol>
-        </div>
+        </x-ui.card>
     </div>
 
     <div class="space-y-6">
         @can('finance.record')
         @if($intent->gateway === 'razorpay' && $intent->status !== 'captured' && $intent->gateway_order_id)
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <h3 class="font-semibold text-gray-900 mb-2">Sync with gateway</h3>
             <p class="text-xs text-gray-600 mb-3">Asks Razorpay what happened to this order and applies its answer through the normal confirmation checks. If it reports a capture for the exact amount, the order becomes paid and BV accrues — this is logged against your user.</p>
             <form method="POST" action="{{ route('admin.payments.sync', $intent) }}"
@@ -71,13 +71,13 @@
                   data-confirm-title="Sync payment"
                   data-confirm-impact="Impact: if Razorpay reports the payment captured, the order is marked paid, BV accrues and the compensation engines run. Nothing is marked paid on your word — only on the gateway's.">
                 @csrf
-                <button type="submit" class="w-full py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold">Sync now</button>
+                <x-ui.button class="w-full">Sync now</x-ui.button>
             </form>
-        </div>
+        </x-ui.card>
         @endif
         @endcan
 
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <x-ui.card padding="p-5">
             <h3 class="font-semibold text-gray-900 mb-3">Refunds on this order</h3>
             @forelse($refunds as $refund)
             @php $c = $classify($refund); @endphp
@@ -90,7 +90,7 @@
             <p class="text-sm text-gray-600">None.</p>
             @endforelse
             <a href="{{ route('admin.payments.refunds') }}" class="block mt-4 text-sm text-brand-700 hover:underline">Unsettled refunds worklist {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
-        </div>
+        </x-ui.card>
     </div>
 </div>
 

@@ -33,20 +33,20 @@
 @if($rankSummaries->isNotEmpty())
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
     @foreach($rankSummaries as $rankNum => $summary)
-    <div class="bg-white rounded-xl border border-gray-200 p-3 text-center">
+    <x-ui.card padding="p-3 text-center">
         <p class="text-[10px] text-gray-600 mb-1 font-medium uppercase tracking-wide">{{ $rankNames[$rankNum] ?? 'Rank '.$rankNum }}</p>
         <p class="text-sm font-bold text-indigo-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->pool_paise / 100, 2) }}</p>
         <p class="text-[10px] text-gray-600">pool · {{ $summary->qualifier_count }} qualifiers</p>
         <p class="text-xs font-semibold text-green-700 mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 2) }} credited to wallets</p>
-    </div>
+    </x-ui.card>
     @endforeach
 </div>
 @endif
 
 {{-- Per-distributor table --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($rows->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-600 text-center">No Rank Bonus results for this month.</p>
+        <x-ui.empty-state title="No Rank Bonus results for this month." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -88,6 +88,6 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

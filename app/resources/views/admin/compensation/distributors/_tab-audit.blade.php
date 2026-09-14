@@ -3,9 +3,9 @@
     Admin actions on this distributor's compensation records (manual credits, reversals, freezes). From the system audit log.
 </div>
 @enddeveloper
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if(empty($auditRows) || (method_exists($auditRows, 'isEmpty') && $auditRows->isEmpty()))
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No compensation audit entries yet.</p>
+    <x-ui.empty-state title="No compensation audit entries yet." />
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
@@ -31,4 +31,4 @@
     </table>
     <div class="px-4 py-3 border-t border-gray-100">{{ $auditRows->links() }}</div>
     @endif
-</div>
+</x-ui.card>

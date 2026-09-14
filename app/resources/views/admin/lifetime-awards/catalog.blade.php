@@ -54,7 +54,7 @@
                        class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 <span class="text-[11px] text-gray-600">{{ $rupees($reward->worth_paise) }}</span>
             </div>
-            <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+            <x-ui.button >Save</x-ui.button>
         </form>
         @endforeach
     </div>

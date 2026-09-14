@@ -503,7 +503,7 @@
         $isMonth = $definition->periodType === \App\Modules\Compensation\Support\EnginePeriodType::Month;
         $notScheduled = ! $definition->cadence->isScheduled();
     @endphp
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+    <x-ui.card padding="p-5">
         <div class="flex flex-wrap items-start justify-between gap-4">
 
             {{-- Identity + status column --}}
@@ -615,13 +615,13 @@
                     <textarea name="reason" rows="2" required placeholder="e.g. Scheduled run on the 1st failed — re-running after fix"
                               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none">{{ old('engine') === $definition->key ? old('reason') : '' }}</textarea>
                 </div>
-                <button type="submit" class="w-full px-4 py-2 rounded-lg bg-brand-700 text-white text-sm font-medium hover:bg-brand-800">
+                <x-ui.button class="w-full">
                     Preview &amp; Confirm &rarr;
-                </button>
+                </x-ui.button>
             </form>
             @endif
         </div>
-    </div>
+    </x-ui.card>
     @endforeach
 </div>
 

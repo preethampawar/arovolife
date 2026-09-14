@@ -18,7 +18,7 @@
 {{-- Stat cards --}}
 <div class="grid grid-cols-2 {{ $gsbOn ? 'lg:grid-cols-4' : 'lg:grid-cols-1' }} gap-3 mb-6">
     @if($gsbOn)
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             Today's cut-off
             <x-help-tip text="The 23:59 daily GSB cut-off runs automatically. If it shows Failed, use Manual Controls → Retry." />
@@ -26,24 +26,24 @@
         <p class="mt-1 text-lg font-bold {{ $cutoffStatus === 'done' ? 'text-green-700' : ($cutoffStatus === 'failed' ? 'text-red-600' : 'text-amber-700') }}">
             {{ match($cutoffStatus) { 'done' => '✓ Done', 'failed' => '✗ Failed', default => '⚠ Pending' } }}
         </p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             Failed jobs
             <x-help-tip text="Jobs that errored during today's cut-off or payout run. Each links to the affected distributor." />
         </p>
         <p class="mt-1 text-lg font-bold {{ $todayFailed > 0 ? 'text-red-600' : 'text-green-700' }}">{{ \App\Modules\Shared\Support\IndianNumber::format($todayFailed) }}</p>
-    </div>
+    </x-ui.card>
     @endif
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             Pending payouts
             <x-help-tip text="Total amount queued for the next Tuesday bank transfer ({{ $nextWeeklyPayout->format('d M Y') }}), which pays earnings through {{ $nextWeeklyEarningsThrough->format('d M Y') }}. Does not include wallets below the ₹{{ \App\Modules\Shared\Support\IndianNumber::format(app(\App\Modules\Compensation\Services\CompensationPlanSettingsService::class)->minPayoutPaise() / 100, 0) }} minimum. Cash payable only — repurchase wallet balances are excluded." />
         </p>
         <p class="mt-1 text-lg font-bold text-blue-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pendingPayoutPaise / 100, 2) }}</p>
-    </div>
+    </x-ui.card>
     @if($gsbOn)
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             GSB this week
             <x-help-tip text="GSB credited to main wallets (gross minus the repurchase deduction; admin charge and TDS come off at payout) since last Tuesday 00:00. This is a crediting figure, not a batch total: next Tuesday ({{ $nextWeeklyPayout->format('d M Y') }}) pays earnings through {{ $nextWeeklyEarningsThrough->format('d M Y') }}, one week behind. Reversals are shown separately — they do not reduce this figure." />
@@ -52,7 +52,7 @@
         @if($gsbReversalsThisWeekPaise > 0)
             <p class="text-xs text-amber-700 font-medium mt-0.5">₹{{ \App\Modules\Shared\Support\IndianNumber::format($gsbReversalsThisWeekPaise / 100, 2) }} reversed</p>
         @endif
-    </div>
+    </x-ui.card>
     @endif
 </div>
 
@@ -81,13 +81,14 @@
 @endif
 
 {{-- Today's cut-off table --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
         <span class="text-sm font-semibold text-gray-900">Today's cut-off — {{ \Illuminate\Support\Carbon::today()->format('d M Y') }}</span>
         <a href="{{ route('admin.compensation.daily-cutoffs.index') }}" class="text-xs text-brand-700 hover:underline">View all dates {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
     </div>
     @if($cutoffTable->isEmpty())
-    <p class="px-5 py-8 text-sm text-gray-600 text-center">No data yet — GSB engine not yet active.</p>
+    <x-ui.empty-state title="No data yet."
+                      description="GSB engine not yet active." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -126,7 +127,7 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $cutoffTable->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 @endif
 
 @endsection

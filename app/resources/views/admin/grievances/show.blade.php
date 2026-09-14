@@ -79,9 +79,9 @@
                 <label for="note" class="block text-sm font-medium text-gray-700">Respond</label>
                 <textarea id="note" name="note" rows="4" maxlength="5000" required
                           class="w-full rounded-lg border-gray-300 bg-white focus:border-brand-500 focus:ring-brand-500 text-sm text-gray-900"></textarea>
-                <button type="submit" class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">
+                <x-ui.button >
                     Record response
-                </button>
+                </x-ui.button>
             </form>
         @endif
 

@@ -27,7 +27,8 @@
     </div>
 </div>
 
-<div class="bg-white rounded-xl border border-gray-200 overflow-x-auto">
+<x-ui.card flush>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -47,11 +48,12 @@
                 @endforeach
             </tr>
             @empty
-            <tr><td colspan="{{ count($columns) }}" class="px-4 py-10 text-center text-gray-600">No rows match this filter.</td></tr>
+            <x-ui.empty-state colspan="{{ count($columns) }}" title="No rows match this filter." />
             @endforelse
         </tbody>
     </table>
-</div>
+    </div>
+</x-ui.card>
 
 <p class="mt-3 text-xs text-gray-600">
     <a href="{{ route('admin.inventory.reports.index') }}" class="text-brand-700 hover:text-brand-800 font-medium">← All reports</a>

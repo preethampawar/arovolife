@@ -3,9 +3,9 @@
     Mentorship Bonus earned by this distributor as a sponsor. When a directly sponsored sponsee's cut-off matches a GSB slab, the sponsor earns that slab's MSB points; the credit is points × the day's point value (the 3% MSB pool ÷ the day's total points). Legacy rows from the old 10%→1% rate ladder show — in the points columns.
 </div>
 @enddeveloper
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if(empty($rows) || $rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Mentorship Bonus history yet.</p>
+    <x-ui.empty-state title="No Mentorship Bonus history yet." />
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
@@ -51,4 +51,4 @@
     </table>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>

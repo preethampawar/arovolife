@@ -24,7 +24,7 @@
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
     <input type="date" name="to" value="{{ $to ?? '' }}"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
+    <x-ui.button >Apply</x-ui.button>
     @if($day || $week || $from || $to)
     <a href="{{ route('admin.compensation.gsb-input-output.index') }}"
        class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
@@ -40,11 +40,10 @@
 </form>
 
 @if($pools->isEmpty())
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">
-        No pooled cut-off days yet — rows appear once the GSB daily pool pricing runs its first cut-off.
-    </p>
-</div>
+<x-ui.card flush>
+    <x-ui.empty-state title="No pooled cut-off days yet."
+                      description="Rows appear once the GSB daily pool pricing runs its first cut-off." />
+</x-ui.card>
 @else
 <div class="space-y-6">
     @foreach($pools->items() as $pool)
@@ -66,7 +65,7 @@
             return (int) $agg->slab >= 3 ? (int) $pool->variable_score_value_paise : (int) ($agg->fixed_value_paise ?? 0);
         };
     @endphp
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <x-ui.card flush>
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
             <span class="font-semibold text-gray-800">{{ $pool->cutoff_date->format('d/m/Y') }}</span>
             <span class="text-gray-600">Day <strong class="text-gray-700">{{ $dayNo ?? '—' }}</strong></span>
@@ -127,7 +126,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="9" class="px-3 py-4 text-center text-gray-600">No slab achievers this day.</td></tr>
+                    <x-ui.empty-state colspan="9" title="No slab achievers this day." />
                     @endforelse
                 </tbody>
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
@@ -158,7 +157,7 @@
                 </tfoot>
             </table>
         </div>
-    </div>
+    </x-ui.card>
     @endforeach
 </div>
 <div class="mt-4">{{ $pools->links() }}</div>

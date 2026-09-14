@@ -3,9 +3,9 @@
     Monthly Fortune Bonus. Positions are filled first-come-first-served; each matrix level pays depth points × that level's point value, subject to the level's per-distributor cap and the plan's minimum commission.
 </div>
 @enddeveloper
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if(empty($rows) || $rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Fortune Bonus history yet.</p>
+    <x-ui.empty-state title="No Fortune Bonus history yet." />
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
@@ -55,4 +55,4 @@
     </table>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>

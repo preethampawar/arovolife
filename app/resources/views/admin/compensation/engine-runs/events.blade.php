@@ -35,9 +35,11 @@
     </div>
 </div>
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
+<x-ui.card flush>
+    <div class="overflow-x-auto">
     @if($runs->isEmpty())
-    <p class="px-5 py-8 text-sm text-gray-600 text-center">No engine runs match this filter. Runs appear here from the moment an engine starts.</p>
+    <x-ui.empty-state title="No engine runs match this filter."
+                      description="Runs appear here from the moment an engine starts." />
     @else
     <table class="min-w-full text-xs">
         <thead>
@@ -160,7 +162,8 @@
         </tbody>
     </table>
     @endif
-</div>
+    </div>
+</x-ui.card>
 
 <div class="mt-4">
     {{ $runs->links() }}

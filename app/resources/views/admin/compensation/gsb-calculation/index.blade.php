@@ -34,7 +34,7 @@
         <option value="repurchase_suspended" {{ $status === 'repurchase_suspended' ? 'selected' : '' }}>Repurchase suspended</option>
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
     </select>
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium">Apply</button>
+    <x-ui.button >Apply</x-ui.button>
     @if($q || $from || $to || $status || $slab)
     <a href="{{ route('admin.compensation.gsb-calculation.index') }}"
        class="text-sm text-gray-600 hover:text-gray-700">Clear</a>
@@ -57,9 +57,9 @@
 <p class="mb-4 text-xs text-gray-500">Showing the {{ \App\Modules\Compensation\Services\BonusCalculationSnapshots::MAX_DAILY_BLOCKS }} latest days on this page; {{ $hiddenDays }} more day{{ $hiddenDays === 1 ? '' : 's' }} below — filter by date to see a specific day's formula.</p>
 @endif
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No slab-earning records found.</p>
+    <x-ui.empty-state title="No slab-earning records found." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -163,6 +163,6 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

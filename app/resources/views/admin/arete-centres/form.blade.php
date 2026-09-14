@@ -18,7 +18,7 @@
 @include('admin.arete-centres._tabs')
 
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 max-w-2xl">
+<x-ui.card padding="p-6" class="max-w-2xl">
     <div class="mb-4 text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
         @if($isEdit)
             Update this Arete Development Centre. Every change is recorded in the audit log. Status, company default and deactivation are changed from the registry list, not here.
@@ -177,13 +177,13 @@
         </fieldset>
 
         <div class="pt-2 flex gap-3">
-            <button type="submit" class="px-5 py-2 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">
+            <x-ui.button >
                 {{ $isEdit ? 'Save changes' : 'Add Centre' }}
-            </button>
+            </x-ui.button>
             <a href="{{ route('admin.arete-centres.index') }}"
                class="px-5 py-2 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors">Cancel</a>
         </div>
     </form>
-</div>
+</x-ui.card>
 
 @endsection

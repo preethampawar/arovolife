@@ -18,7 +18,7 @@
     @csrf
     @if($isEdit) @method('PUT') @endif
 
-    <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <x-ui.card padding="p-6 space-y-4">
         {{-- Recommended-size note (Shopping Mall banner). --}}
         <div class="rounded-lg bg-brand-50 border border-brand-200 px-3 py-2 text-xs text-brand-800">
             Shopping&nbsp;Mall banner — recommended image size <strong>1520&nbsp;×&nbsp;350&nbsp;px</strong> (JPG or PNG, up to 5&nbsp;MB). Upload a file <em>or</em> paste a hosted image URL below.
@@ -80,7 +80,7 @@
                 </select>
             </label>
         </div>
-    </div>
+    </x-ui.card>
 
     <div class="flex items-center gap-3">
         <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">

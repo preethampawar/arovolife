@@ -5,13 +5,13 @@
 @section('content')
 
 @if($summary->isEmpty())
-    <div class="bg-white rounded-xl border border-gray-200 p-10 text-center text-gray-600">
+    <x-ui.card padding="p-10 text-center text-gray-600">
         Nothing needs action right now.
-    </div>
+    </x-ui.card>
 @else
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         @foreach($summary as $group => $rows)
-        <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <x-ui.card flush>
             <div class="px-5 py-3 border-b border-gray-100 bg-gray-50">
                 <h3 class="text-sm font-semibold text-gray-900">{{ \App\Modules\ActionCenter\Support\ActionGroup::label($group) }}</h3>
             </div>
@@ -44,7 +44,7 @@
                 </li>
                 @endforeach
             </ul>
-        </div>
+        </x-ui.card>
         @endforeach
     </div>
 @endif

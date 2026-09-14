@@ -29,7 +29,7 @@
 
 <x-filter-bar :filters="$filters" />
 
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -90,13 +90,11 @@
                 </td>
             </tr>
             @empty
-            <tr>
-                <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-600">No return requests found.</td>
-            </tr>
+            <x-ui.empty-state colspan="9" title="No return requests found." />
             @endforelse
         </tbody>
     </table>
-</div>
+</x-ui.card>
 
 @if($returns->hasPages())
 <div class="mt-4">{{ $returns->links() }}</div>

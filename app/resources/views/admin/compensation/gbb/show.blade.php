@@ -5,7 +5,7 @@
 @section('content')
 
 {{-- Frozen month economics (gbb_monthly_pools) --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+<x-ui.card flush class="mb-6">
     <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
         <span class="font-semibold text-gray-800">
             Frozen month economics
@@ -34,36 +34,36 @@
         No frozen pool row for this month — it was run before the monthly pool snapshot existed.
     </p>
     @endunless
-</div>
+</x-ui.card>
 
 {{-- Result totals --}}
 @if($summary && $summary->distributor_count > 0)
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+    <x-ui.card padding="p-4 text-center">
         <p class="text-xs text-gray-600 mb-1">Distributors</p>
         <p class="text-lg font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($summary->distributor_count) }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+    </x-ui.card>
+    <x-ui.card padding="p-4 text-center">
         <p class="text-xs text-gray-600 mb-1">
             AGP Recorded <x-help-tip text="Sum of the AGP on every row for this month, including repurchase-wallet-blocked rows and the legacy repurchase-held and repurchase-suspended ones — none of which are in the frozen denominator above." />
         </p>
         <p class="text-lg font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_agp) }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+    </x-ui.card>
+    <x-ui.card padding="p-4 text-center">
         <p class="text-xs text-gray-600 mb-1">Gross</p>
         <p class="text-lg font-bold text-indigo-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_gross_paise / 100, 0) }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+    </x-ui.card>
+    <x-ui.card padding="p-4 text-center">
         <p class="text-xs text-gray-600 mb-1">Credited to wallets <x-help-tip text="Sum of every credited row's gross minus its repurchase deduction. Admin charge and TDS are taken at payout." /></p>
         <p class="text-lg font-bold text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_net_paise / 100, 0) }}</p>
-    </div>
+    </x-ui.card>
 </div>
 @endif
 
 {{-- Per-distributor table --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($rows->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-600 text-center">No GBB results for this month.</p>
+        <x-ui.empty-state title="No GBB results for this month." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -114,6 +114,6 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

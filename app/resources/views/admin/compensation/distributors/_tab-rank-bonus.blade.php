@@ -7,9 +7,9 @@
 @enddeveloper
 
 {{-- Rank Bonus results --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-5">
+<x-ui.card flush class="mb-5">
     @if(empty($rows) || $rows->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No Rank Bonus history yet.</p>
+    <x-ui.empty-state title="No Rank Bonus history yet." />
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
@@ -61,16 +61,16 @@
     </table>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 {{-- Rank qualifications — the achievement history the bonus is paid from. --}}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-5">
+<x-ui.card flush class="mb-5">
     <p class="px-4 py-2.5 text-xs font-semibold text-gray-600 bg-gray-50 border-b border-gray-100">
         Rank qualifications (latest 24)
         <x-help-tip text="Every month this distributor met a rank's conditions. Ranks 1–2 record the month's Left/Right Genos BV; Ranks 3–9 qualify structurally (two prior-rank qualifiers per side) and record no BV." />
     </p>
     @if(empty($quals) || $quals->isEmpty())
-    <p class="px-6 py-8 text-sm text-gray-600 text-center">No rank qualification yet.</p>
+    <x-ui.empty-state title="No rank qualification yet." />
     @else
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
@@ -106,12 +106,12 @@
         </tbody>
     </table>
     @endif
-</div>
+</x-ui.card>
 
 {{-- AO-GO eligibility for the current month — the same four rules the monthly
      run applies, so support can answer "why no AO-GO this month?". --}}
 @if(! empty($aogoStatus))
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-5">
+<x-ui.card flush class="mb-5">
     <p class="px-4 py-2.5 text-xs font-semibold text-gray-600 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
         <span>
             AO-GO offer — this month
@@ -145,12 +145,12 @@
             @endforeach
         </ul>
     </div>
-</div>
+</x-ui.card>
 @endif
 
 {{-- AO-GO grants --}}
 @if(! empty($aogoGrants) && $aogoGrants->isNotEmpty())
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     <p class="px-4 py-2.5 text-xs font-semibold text-gray-600 bg-gray-50 border-b border-gray-100">
         AO-GO grants
         <x-help-tip text="Achieve Once – Get Once: a degraded ex-rank-holder earns offer points in the Rank-1 pool, never in consecutive months, up to the lifetime cap." />
@@ -189,5 +189,5 @@
             @endforeach
         </tbody>
     </table>
-</div>
+</x-ui.card>
 @endif

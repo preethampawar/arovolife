@@ -399,7 +399,7 @@
                 </label>
                 <div class="flex items-end gap-2">
                     @if($canEdit)
-                    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+                    <x-ui.button >Save</x-ui.button>
                     @endif
                 </div>
             </div>
@@ -490,7 +490,7 @@
                 </label>
                 <div class="flex items-end gap-2">
                     @if($canEdit)
-                    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+                    <x-ui.button >Save</x-ui.button>
                     @endif
                 </div>
             </div>
@@ -550,7 +550,7 @@
                 </div>
                 <div class="flex items-end mt-5">
                     @if($canEdit)
-                    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+                    <x-ui.button >Save</x-ui.button>
                     @endif
                 </div>
             </div>
@@ -594,7 +594,7 @@
                 </div>
                 <div class="flex items-end gap-2">
                     @if($canEdit)
-                    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700">Save</button>
+                    <x-ui.button >Save</x-ui.button>
                     @endif
                 </div>
             </div>

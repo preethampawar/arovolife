@@ -11,10 +11,9 @@
         managers). Staff accounts are not distributors and never appear in the Distributor
         register. Every change made here is recorded in the audit log.
     </p>
-    <a href="{{ route('admin.staff.create') }}"
-       class="shrink-0 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
+    <x-ui.button href="{{ route('admin.staff.create') }}" class="shrink-0">
         + Add staff user
-    </a>
+    </x-ui.button>
 </div>
 
 {{-- Role filter pills --}}
@@ -38,7 +37,7 @@
 <x-filter-bar :filters="$filters" />
 
 {{-- Table --}}
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
@@ -93,14 +92,12 @@
                     </td>
                 </tr>
                 @empty
-                <tr>
-                    <td colspan="6" class="px-4 py-8 text-center text-gray-600">No staff users found.</td>
-                </tr>
+                <x-ui.empty-state colspan="6" title="No staff users found." />
                 @endforelse
             </tbody>
         </table>
     </div>
-</div>
+</x-ui.card>
 
 @if($staff->hasPages())
 <div class="mt-6">

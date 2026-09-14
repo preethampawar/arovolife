@@ -26,8 +26,7 @@
 @endif
 
 <div class="flex flex-wrap justify-end items-center gap-2 mb-4">
-    <a href="{{ route('admin.arete-centres.create') }}"
-       class="px-4 py-1.5 rounded-lg bg-brand-700 text-white text-sm hover:bg-brand-800 transition-colors">+ Add Centre</a>
+    <x-ui.button href="{{ route('admin.arete-centres.create') }}">+ Add Centre</x-ui.button>
 </div>
 
 <form method="GET" class="mb-4 flex flex-wrap items-end gap-3 bg-white rounded-xl border border-gray-200 p-4">
@@ -83,13 +82,14 @@
         <label class="block text-xs text-gray-600 mb-1">Centre name</label>
         <input type="text" name="q" value="{{ $filters['q'] }}" class="{{ $inp }} w-44">
     </div>
-    <button type="submit" class="px-4 py-1.5 rounded-lg bg-brand-700 text-white text-sm hover:bg-brand-800 transition-colors">Filter</button>
+    <x-ui.button >Filter</x-ui.button>
     <a href="{{ route('admin.arete-centres.index') }}" class="text-sm text-gray-600 hover:text-gray-800">Reset</a>
 </form>
 
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+<x-ui.card flush>
     @if($centers->isEmpty())
-        <p class="px-6 py-10 text-sm text-gray-600 text-center">No centres match — add one above or clear the filters.</p>
+        <x-ui.empty-state title="No centres match."
+                          description="Add one above or clear the filters." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
@@ -199,6 +199,6 @@
     </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $centers->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

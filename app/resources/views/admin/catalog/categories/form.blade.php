@@ -12,7 +12,7 @@
     @csrf
     @if($isEdit) @method('PUT') @endif
 
-    <div class="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+    <x-ui.card padding="p-6 space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="block">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">Name <x-help-tip text="The category name shown to customers on the shop." /></span>
@@ -73,7 +73,7 @@
                     class="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
             </div>
         </div>
-    </div>
+    </x-ui.card>
 
     <div class="flex items-center gap-3">
         <button type="submit" class="px-5 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition-colors">

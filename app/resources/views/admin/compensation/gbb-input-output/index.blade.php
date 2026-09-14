@@ -41,11 +41,10 @@
 </form>
 
 @if($pools->isEmpty())
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm">
-    <p class="px-6 py-8 text-sm text-gray-400 text-center">
-        No pooled months yet — rows appear once the GBB monthly run freezes a month's pool.
-    </p>
-</div>
+<x-ui.card flush>
+    <x-ui.empty-state title="No pooled months yet."
+                      description="Rows appear once the GBB monthly run freezes a month's pool." />
+</x-ui.card>
 @else
 <div class="space-y-6">
     @foreach($pools->items() as $pool)
@@ -60,7 +59,7 @@
         $totalDeduction = (int) $rows->sum('deduction_paise');
         $totalCredited = (int) $rows->sum('credited_paise');
     @endphp
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <x-ui.card flush>
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
             <span class="font-semibold text-gray-800">{{ \Illuminate\Support\Carbon::parse($pool->month_start)->format('F Y') }}</span>
             <span class="text-gray-500">Month total BV <strong class="text-gray-700">@bv($pool->company_bv_paise)</strong></span>
@@ -157,7 +156,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="8" class="px-3 py-4 text-center text-gray-400">No Growth Booster Bonus earners this month.</td></tr>
+                    <x-ui.empty-state colspan="8" title="No Growth Booster Bonus earners this month." />
                     @endforelse
                 </tbody>
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
@@ -180,7 +179,7 @@
                 </tfoot>
             </table>
         </div>
-    </div>
+    </x-ui.card>
     @endforeach
 </div>
 <div class="mt-4">{{ $pools->links() }}</div>

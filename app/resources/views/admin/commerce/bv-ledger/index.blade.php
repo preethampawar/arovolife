@@ -11,26 +11,26 @@
 
 {{-- ── Headline cards (date-scoped) ─────────────────────────────────── --}}
 <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Personal BV</p>
         <p class="mt-1 text-lg font-bold text-brand-700 whitespace-nowrap">@bv($cards['net'])</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Accrued</p>
         <p class="mt-1 text-lg font-bold text-green-700 whitespace-nowrap">@bv($cards['accrued'])</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Reversed</p>
         <p class="mt-1 text-lg font-bold text-red-600 whitespace-nowrap">@bv(abs($cards['reversed']))</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Distributors</p>
         <p class="mt-1 text-lg font-bold text-gray-900 whitespace-nowrap">{{ \App\Modules\Shared\Support\IndianNumber::format($cards['distributors']) }}</p>
-    </div>
-    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+    </x-ui.card>
+    <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Entries</p>
         <p class="mt-1 text-lg font-bold text-gray-900 whitespace-nowrap">{{ \App\Modules\Shared\Support\IndianNumber::format($cards['entries']) }}</p>
-    </div>
+    </x-ui.card>
 </div>
 
 {{-- ── Tabs + date filter + export ──────────────────────────────────── --}}
@@ -52,7 +52,7 @@
 ]" />
 
 @if($tab === 'summary')
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+<x-ui.card flush>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
@@ -86,7 +86,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="9" class="px-4 py-8 text-center text-sm text-gray-600">No BV accumulated yet.</td></tr>
+                <x-ui.empty-state colspan="9" title="No BV accumulated yet." />
                 @endforelse
             </tbody>
         </table>
@@ -94,11 +94,11 @@
     @if($summary->hasPages())
     <div class="px-4 py-4 border-t border-gray-200">{{ $summary->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @else
 {{-- ── All entries (raw chronological feed) ─────────────────────────── --}}
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+<x-ui.card flush>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
@@ -137,7 +137,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="6" class="px-4 py-8 text-center text-sm text-gray-600">No BV entries in this range.</td></tr>
+                <x-ui.empty-state colspan="6" title="No BV entries in this range." />
                 @endforelse
             </tbody>
         </table>
@@ -145,7 +145,7 @@
     @if($entries->hasPages())
     <div class="px-4 py-4 border-t border-gray-200">{{ $entries->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 @endif
 
 @endsection

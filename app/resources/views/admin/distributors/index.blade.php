@@ -39,10 +39,9 @@
     <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}" class="text-xs text-gray-700 hover:text-gray-900">✕ Clear</a>
     @endif
     <div class="ml-auto flex items-center gap-2">
-        <a href="{{ route('admin.distributors.create') }}"
-           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors shadow-sm">
+        <x-ui.button href="{{ route('admin.distributors.create') }}">
             + Add Distributor
-        </a>
+        </x-ui.button>
         <a href="{{ route('admin.distributors.export', $filters->toQuery() + ['format' => 'xlsx']) }}"
            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors">
             ↓ Export Excel (DSR Register)
@@ -57,7 +56,7 @@
 <x-filter-bar :filters="$filters" />
 
 {{-- Table --}}
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
@@ -118,11 +117,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr>
-                    <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-700">
-                        No distributors found.
-                    </td>
-                </tr>
+                <x-ui.empty-state colspan="9" title="No distributors found." />
                 @endforelse
             </tbody>
         </table>
@@ -132,6 +127,6 @@
         {{ $distributors->links() }}
     </div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection

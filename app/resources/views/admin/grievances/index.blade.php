@@ -24,10 +24,9 @@
            class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
             Compliance report
         </a>
-        <a href="{{ route('admin.grievances.create') }}"
-           class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">
+        <x-ui.button href="{{ route('admin.grievances.create') }}">
             Record a complaint
-        </a>
+        </x-ui.button>
     </div>
 </div>
 

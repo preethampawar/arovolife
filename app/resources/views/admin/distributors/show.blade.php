@@ -51,7 +51,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
 
     {{-- Identity Card --}}
-    <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6">
+    <x-ui.card padding="p-6" class="lg:col-span-2">
         <div class="flex items-start justify-between mb-4">
             <div>
                 <p class="text-3xl font-mono font-bold text-brand-700">{{ $distributor->adn }}</p>
@@ -104,11 +104,11 @@
             <div><p class="text-xs text-gray-700 mb-0.5">Bank IFSC</p><p class="text-gray-800 font-mono">{{ $distributor->bank_ifsc }}</p></div>
             <div><p class="text-xs text-gray-700 mb-0.5">Registered</p><p class="text-gray-800">{{ \Carbon\Carbon::parse($distributor->user_created_at)->format('d M Y, h:i A') }}</p></div>
         </div>
-    </div>
+    </x-ui.card>
 
     {{-- Placement Card --}}
     <div class="space-y-4">
-        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+        <x-ui.card padding="p-5">
             <p class="text-xs text-gray-700 uppercase tracking-wider mb-3">Placement</p>
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between">
@@ -128,10 +128,10 @@
                     <span class="font-medium">{{ $downlineCount }}</span>
                 </div>
             </div>
-        </div>
+        </x-ui.card>
 
         {{-- Genos Children --}}
-        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+        <x-ui.card padding="p-5">
             <p class="text-xs text-gray-700 uppercase tracking-wider mb-3">Direct Groups</p>
             <div class="flex gap-3">
                 <div class="flex-1 rounded-lg p-3 border {{ $leftChild ? 'border-brand-500 bg-brand-50' : 'border-gray-200 bg-white/50' }}">
@@ -151,7 +151,7 @@
                     @endif
                 </div>
             </div>
-        </div>
+        </x-ui.card>
 
         {{-- Referral link generator (admin can hand a link to a prospect).
              Sponsor-only — placement is resolved on the public /join page
@@ -175,7 +175,7 @@
         </div>
 
         {{-- Cooling-Off --}}
-        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+        <x-ui.card padding="p-5">
             <p class="text-xs text-gray-700 uppercase tracking-wider mb-2">Cooling-Off</p>
             @php $daysLeft = now()->diffInDays($distributor->cooling_off_end_at, false); @endphp
             <p class="text-sm">
@@ -188,12 +188,12 @@
             @else
             <p class="text-xs text-gray-600 mt-1">Period expired</p>
             @endif
-        </div>
+        </x-ui.card>
     </div>
 </div>
 
 {{-- KYC --}}
-<div class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+<x-ui.card padding="p-4" class="mb-6">
     <div class="flex items-center justify-between gap-4">
         <div>
             <p class="text-xs text-gray-700 uppercase tracking-wider mb-2">KYC</p>
@@ -227,20 +227,20 @@
         </a>
         @endif
     </div>
-</div>
+</x-ui.card>
 
 {{-- Sponsor --}}
 @if($sponsor)
-<div class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+<x-ui.card padding="p-4" class="mb-6">
     <p class="text-xs text-gray-700 uppercase tracking-wider mb-2">Sponsor</p>
     <p class="text-sm font-mono text-brand-700">{{ $sponsor->adn }}</p>
     <p class="text-xs text-gray-700">{{ $sponsor->full_name }} · {{ $sponsor->email }}</p>
-</div>
+</x-ui.card>
 @endif
 
 {{-- Demographics --}}
 @if($profileRow)
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6">
+<x-ui.card flush class="mb-6">
     <div class="px-6 py-4 border-b border-gray-200">
         <h3 class="font-semibold text-gray-800">Demographics</h3>
     </div>
@@ -305,12 +305,12 @@
         </div>
         @endif
     </div>
-</div>
+</x-ui.card>
 @endif
 
 {{-- Nominee --}}
 @if($nomineeRow)
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6">
+<x-ui.card flush class="mb-6">
     <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <h3 class="font-semibold text-gray-800">Nominee</h3>
         @if($nomineeRow->aadhaar_last4)
@@ -377,7 +377,7 @@
             <p class="text-gray-800">{{ \Carbon\Carbon::parse($nomineeRow->consent_given_at)->format('d M Y, h:i A') }}</p>
         </div>
     </div>
-</div>
+</x-ui.card>
 
 <script>
 function unmaskNomineeAadhaar(btn) {
@@ -410,7 +410,7 @@ function unmaskNomineeAadhaar(btn) {
 
 {{-- Admin Actions --}}
 @if($distributor->status !== 'terminated')
-<div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+<x-ui.card padding="p-6" class="mb-6">
     <h3 class="font-semibold text-gray-800 mb-4">Account Actions</h3>
     <div class="flex flex-wrap gap-4">
 
@@ -496,12 +496,12 @@ function unmaskNomineeAadhaar(btn) {
             Confirm Termination
         </button>
     </form>
-</div>
+</x-ui.card>
 @endif
 
 {{-- Consent Records --}}
 @if($consents->count())
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-6">
+<x-ui.card flush class="mb-6">
     <div class="px-6 py-4 border-b border-gray-200">
         <h3 class="font-semibold text-gray-800">Consent Records</h3>
     </div>
@@ -527,11 +527,11 @@ function unmaskNomineeAadhaar(btn) {
             @endforeach
         </tbody>
     </table>
-</div>
+</x-ui.card>
 @endif
 
 {{-- Audit Trail --}}
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <div class="px-6 py-4 border-b border-gray-200">
         <h3 class="font-semibold text-gray-800">Audit Trail</h3>
     </div>
@@ -556,7 +556,7 @@ function unmaskNomineeAadhaar(btn) {
         <p class="px-6 py-4 text-sm text-gray-700">No audit entries.</p>
         @endforelse
     </div>
-</div>
+</x-ui.card>
 
 {{-- Reset-password modal. Posts to the existing set-password endpoint, which
      validates (StrongPassword + NotPwned + 8-char min + confirmation match),
@@ -595,8 +595,7 @@ function unmaskNomineeAadhaar(btn) {
             <div class="flex justify-end gap-3 pt-1">
                 <button type="button" onclick="closeResetPwdModal()"
                     class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-                <button type="submit"
-                    class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">Set password</button>
+                <x-ui.button >Set password</x-ui.button>
             </div>
         </form>
     </div>

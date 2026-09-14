@@ -9,15 +9,14 @@
         Manage public content pages (Terms, Privacy, Ethics, Grievance, Notices).
         Every change is recorded in the audit log.
     </p>
-    <a href="{{ route('admin.content.create') }}"
-       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
+    <x-ui.button href="{{ route('admin.content.create') }}">
         + New Page
-    </a>
+    </x-ui.button>
 </div>
 
 <x-filter-bar :filters="$filters" />
 
-<div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+<x-ui.card flush>
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
@@ -60,11 +59,9 @@
                     </td>
                 </tr>
                 @empty
-                <tr>
-                    <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-600">
-                        No content pages yet. <a href="{{ route('admin.content.create') }}" class="text-brand-700">Create one {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
-                    </td>
-                </tr>
+                <x-ui.empty-state colspan="6" title="No content pages yet.">
+                    <x-ui.button href="{{ route('admin.content.create') }}" variant="secondary" size="sm" icon="plus">Create one</x-ui.button>
+                </x-ui.empty-state>
                 @endforelse
             </tbody>
         </table>
@@ -72,6 +69,6 @@
     @if($pages->hasPages())
     <div class="px-4 py-4 border-t border-gray-200">{{ $pages->links() }}</div>
     @endif
-</div>
+</x-ui.card>
 
 @endsection
