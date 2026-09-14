@@ -18,7 +18,7 @@
         .page-body ul { list-style: disc; padding-left: 1.5rem; margin: 0.75rem 0; }
         .page-body ol { list-style: decimal; padding-left: 1.5rem; margin: 0.75rem 0; }
         .page-body li { margin: 0.25rem 0; color: #374151; }
-        .page-body a  { color: #1f9a8e; text-decoration: underline; }
+        .page-body a  { color: #127a70; text-decoration: underline; }
         .page-body blockquote { border-left: 3px solid #2ab3a6; padding-left: 1rem; margin: 1rem 0; color: #4b5563; font-style: italic; }
         .page-body strong { font-weight: 600; color: #111827; }
         .page-body pre { background: #f3f4f6; padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; font-size: 0.875rem; }

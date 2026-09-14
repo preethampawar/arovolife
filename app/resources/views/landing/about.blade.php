@@ -404,7 +404,7 @@
     </section>
 
     {{-- Footer (matches landing) --}}
-    <footer class="bg-gray-900 text-gray-600 py-12">
+    <footer class="bg-gray-900 text-gray-400 py-12">
         <div class="max-w-7xl mx-auto px-6 text-center">
             <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-12 w-auto mx-auto mb-4">
             <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs mb-4">
@@ -414,7 +414,7 @@
                 <a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance Redressal</a>
                 <a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a>
             </div>
-            <p class="text-xs text-gray-600 mb-3 leading-relaxed">
+            <p class="text-xs text-gray-400 mb-3 leading-relaxed">
                 Customer Care:
                 <a href="tel:+918886662949" class="hover:text-white">+91 88866 62949</a> ·
                 <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a> ·

@@ -272,7 +272,7 @@
         <x-lucide-map class="w-3.5 h-3.5" />
         <span id="treeMinimapLabel">Minimap</span>
     </button>
-    <button type="button" id="treeFullscreenBtn" onclick="toggleFullscreen()" class="hidden md:inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-leaf-500 hover:bg-leaf-600 text-white font-semibold transition-colors">
+    <button type="button" id="treeFullscreenBtn" onclick="toggleFullscreen()" class="hidden md:inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-leaf-700 hover:bg-leaf-800 text-white font-semibold transition-colors">
         <x-lucide-expand class="w-3.5 h-3.5" />
         <span id="treeFullscreenLabel">Full Screen</span>
     </button>
@@ -353,7 +353,7 @@
             Map
         </button>
         <span class="mx-1 h-5 w-px bg-gray-200"></span>
-        <button type="button" onclick="toggleFullscreen()" class="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md bg-leaf-500 hover:bg-leaf-600 text-white text-[11px] font-semibold transition-colors" title="Exit full screen (Esc)">
+        <button type="button" onclick="toggleFullscreen()" class="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md bg-leaf-700 hover:bg-leaf-800 text-white text-[11px] font-semibold transition-colors" title="Exit full screen (Esc)">
             <x-lucide-shrink class="w-3.5 h-3.5" />
             Exit
         </button>

@@ -157,7 +157,7 @@
     $cardTones = [
         ['gradient' => 'from-leaf-100 to-leaf-50',       'iconColor' => 'text-leaf-500',    'badgeBg' => 'bg-leaf-100',    'badgeTxt' => 'text-leaf-700',    'borderHover' => 'hover:border-leaf-400',    'shadow' => 'hover:shadow-leaf-500/20'],
         ['gradient' => 'from-brand-100 to-brand-50',     'iconColor' => 'text-brand-500',   'badgeBg' => 'bg-brand-100',   'badgeTxt' => 'text-brand-700',   'borderHover' => 'hover:border-brand-400',   'shadow' => 'hover:shadow-brand-500/20'],
-        ['gradient' => 'from-sunrise-100 to-sunrise-50', 'iconColor' => 'text-sunrise-500', 'badgeBg' => 'bg-sunrise-100', 'badgeTxt' => 'text-sunrise-700', 'borderHover' => 'hover:border-sunrise-400', 'shadow' => 'hover:shadow-sunrise-500/20'],
+        ['gradient' => 'from-sunrise-100 to-sunrise-50', 'iconColor' => 'text-sunrise-500', 'badgeBg' => 'bg-sunrise-100', 'badgeTxt' => 'text-sunrise-800', 'borderHover' => 'hover:border-sunrise-400', 'shadow' => 'hover:shadow-sunrise-500/20'],
         ['gradient' => 'from-violet-100 to-violet-50',   'iconColor' => 'text-violet-500',  'badgeBg' => 'bg-violet-100',  'badgeTxt' => 'text-violet-700',  'borderHover' => 'hover:border-violet-400',  'shadow' => 'hover:shadow-violet-500/20'],
     ];
     $toneFor = fn (int $i) => $cardTones[$i % count($cardTones)];

@@ -425,7 +425,7 @@
                 $whyCards = [
                     ['title' => 'Free Registration',    'body' => 'Zero joining fee. No payment required at signup — ever.',                      'icon' => $iconGift,   'bg' => 'bg-brand-50',   'border' => 'border-brand-200',   'iconBg' => 'bg-brand-100 text-brand-700',     'titleClr' => 'text-brand-700'],
                     ['title' => 'Your Data, Protected', 'body' => 'PAN stored as hash. Raw Aadhaar never touches our database. Full audit log.', 'icon' => $iconShield, 'bg' => 'bg-violet-50',  'border' => 'border-violet-200',  'iconBg' => 'bg-violet-100 text-violet-700',   'titleClr' => 'text-violet-700'],
-                    ['title' => '30-Day Cooling-Off',   'body' => 'One-click cancellation with full refund during the cooling-off period.',      'icon' => $iconClock,  'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'iconBg' => 'bg-sunrise-100 text-sunrise-700', 'titleClr' => 'text-sunrise-700'],
+                    ['title' => '30-Day Cooling-Off',   'body' => 'One-click cancellation with full refund during the cooling-off period.',      'icon' => $iconClock,  'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'iconBg' => 'bg-sunrise-100 text-sunrise-700', 'titleClr' => 'text-sunrise-800'],
                     ['title' => 'Real Sales Earnings',  'body' => 'Commissions are paid on actual product sales, never on recruiting alone.',    'icon' => $iconRupee,  'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'iconBg' => 'bg-leaf-100 text-leaf-700',       'titleClr' => 'text-leaf-700'],
                 ];
             @endphp
@@ -640,7 +640,7 @@
     </section>
 
     {{-- Footer --}}
-    <footer class="bg-gray-900 text-gray-600 py-12">
+    <footer class="bg-gray-900 text-gray-400 py-12">
         <div class="max-w-7xl mx-auto px-6">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
                 <div>
@@ -657,7 +657,7 @@
                         <li>
                             <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a>
                         </li>
-                        <li class="text-gray-600 leading-relaxed">
+                        <li class="text-gray-400 leading-relaxed">
                             {{ config('arovolife.support_hours') }}
                         </li>
                     </ul>
@@ -695,8 +695,8 @@
             </div>
             <div class="border-t border-gray-800 pt-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-sm">
                 <p>&copy; {{ date('Y') }} Arovolife Private Limited. All rights reserved.</p>
-                <p class="text-gray-600">
-                    <strong class="text-gray-600">Registration is free.</strong> No payment required at signup.
+                <p class="text-gray-400">
+                    <strong class="text-gray-400">Registration is free.</strong> No payment required at signup.
                 </p>
             </div>
         </div>

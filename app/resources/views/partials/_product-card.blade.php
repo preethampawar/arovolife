@@ -18,7 +18,7 @@
             </div>
         @endif
         @if($variant->hasDiscount())
-            <span class="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500 text-white shadow-md">
+            <span class="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-600 text-white shadow-md">
                 −{{ $variant->discountPercent() }}%
             </span>
         @endif
