@@ -41,17 +41,28 @@ const STATUTORY_TYPE = 'orders.invoice_missing';
 const STATUTORY_LABEL = 'Paid orders missing an invoice';
 
 test.describe('Action Center: sidebar and dashboard', () => {
-    test('sidebar shows an Action Center link for the admin', async ({ adminPage: page }) => {
+    // The sidebar entry was narrowed to the developer role on 2026-09-12 while
+    // the screen beds in (AdminNavigation::overviewItems). The route itself is
+    // still open to the admin family, so these two tests assert the gate rather
+    // than the link: once the entry is widened again the second one resumes on
+    // its own, because it keys off whether the link is actually rendered.
+    test('the sidebar entry stays hidden from a non-developer admin', async ({ adminPage: page }) => {
         await page.goto('/admin');
-        // The badge (when non-zero) is nested inside the link and concatenates
-        // into its accessible name ("Action Center 319"), so match by prefix
-        // rather than `exact: true`.
-        await expect(page.getByRole('link', { name: /^Action Center/ })).toBeVisible();
+        await expect(page.getByRole('link', { name: /^Action Center/ })).toHaveCount(0);
+
+        // Hidden from the nav, still reachable by route — the gate is about
+        // surfacing the screen, not about permission.
+        await page.goto(`/admin/action-center/${NON_STATUTORY_TYPE}`);
+        await expect(page.getByRole('heading', { name: NON_STATUTORY_LABEL })).toBeVisible();
     });
 
     test('sidebar badge shows only when the viewer has a critical count', async ({ adminPage: page }) => {
         await page.goto('/admin');
+        // The badge (when non-zero) is nested inside the link and concatenates
+        // into its accessible name ("Action Center 319"), so match by prefix
+        // rather than `exact: true`.
         const link = page.getByRole('link', { name: /^Action Center/ });
+        test.skip(await link.count() === 0, 'Action Center is dev-only in the sidebar right now.');
         await expect(link).toBeVisible();
         const badge = link.locator('.admin-nav-badge');
         const badgeCount = await badge.count();

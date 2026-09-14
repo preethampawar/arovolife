@@ -55,7 +55,14 @@ test.describe('Inventory reports export', () => {
     test('T16: legacy ?export=csv still downloads CSV', async ({ adminPage: page }) => {
         const [download] = await Promise.all([
             page.waitForEvent('download'),
-            page.goto('/admin/inventory/reports/stock-on-hand?export=csv'),
+            // The response is an attachment, so the navigation never commits
+            // and page.goto() rejects with "Download is starting" even though
+            // the download itself arrives. Swallow exactly that rejection —
+            // any other navigation error still fails the test, and so does a
+            // download that never turns up.
+            page.goto('/admin/inventory/reports/stock-on-hand?export=csv').catch((err) => {
+                if (!/Download is starting/.test(err.message)) throw err;
+            }),
         ]);
         expect(download.suggestedFilename()).toBe('inventory-stock-on-hand.csv');
     });

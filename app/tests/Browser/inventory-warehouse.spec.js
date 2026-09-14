@@ -67,6 +67,10 @@ test.describe('Inventory: Warehouses', () => {
         await page.getByRole('button', { name: 'Create warehouse' }).click();
 
         await page.waitForURL('**/admin/inventory/warehouses');
+        // The list is ordered by name and paginated at 25, and every run of
+        // this suite leaves two warehouses behind, so a new row is not
+        // necessarily on the first page. Search for it rather than assume.
+        await page.goto(`/admin/inventory/warehouses?q=${warehouseCode}`);
         const row = page.locator('tbody tr').filter({ hasText: warehouseCode });
         await expect(row).toBeVisible();
         await expect(row.locator('td').nth(5)).toContainText('Active');
@@ -250,12 +254,15 @@ test.describe('Inventory: Stock transfer', () => {
     let secondWarehouseCode;
 
     test('create a second warehouse to transfer into', async ({ adminPage: page }) => {
-        secondWarehouseCode = `${warehouseCode}B`.slice(0, 10);
+        // Keep room for the suffix: slicing after appending would drop the "B"
+        // and silently reuse the first warehouse's code if the stamp ever grew.
+        secondWarehouseCode = `${warehouseCode.slice(0, 9)}B`;
         await page.goto('/admin/inventory/warehouses/create');
         await page.fill('input[name="code"]', secondWarehouseCode);
         await page.fill('input[name="name"]', `Playwright Transfer Target ${stamp}`);
         await page.getByRole('button', { name: 'Create warehouse' }).click();
         await page.waitForURL('**/admin/inventory/warehouses');
+        await page.goto(`/admin/inventory/warehouses?q=${secondWarehouseCode}`);
         await expect(page.locator('tbody tr').filter({ hasText: secondWarehouseCode })).toBeVisible();
     });
 
