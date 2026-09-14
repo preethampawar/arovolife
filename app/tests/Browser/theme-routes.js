@@ -2,7 +2,10 @@
  * The route inventory the dark-mode contrast sweep walks.
  *
  * Built from `php artisan route:list --method=GET --except-vendor`, dropping
- * anything with a `{parameter}` and everything under `api/`. It is checked in
+ * anything with a REQUIRED `{parameter}` and everything under `api/`. A route
+ * whose only parameters are optional — `tree/{adn?}`, `admin/tree/{id?}` — is
+ * reachable bare and belongs here; leaving those out is how the genealogy
+ * pages, and the two modals that only exist on them, went unswept. It is checked in
  * as a literal list on purpose: generating it at test time would make the
  * suite unable to enumerate its own cases until the app boots, and a route
  * that silently disappears would then show up as a smaller run rather than a
@@ -104,6 +107,8 @@ export const DISTRIBUTOR_ROUTES = [
     '/profile/consents',
     '/profile/password',
     '/profile/withdraw-consent',
+    '/tree',
+    '/tree/sponsorship',
 ];
 
 /**
@@ -132,6 +137,8 @@ export const ADMIN_ROUTES = [
     '/admin/commerce/orders',
     '/admin/compensation',
     '/admin/compensation/adc-bonus',
+    '/admin/compensation/adc-bonus/applications',
+    '/admin/compensation/adc-bonus/centers',
     '/admin/compensation/adc-calculation',
     '/admin/compensation/aw-rw-calculation',
     '/admin/compensation/carry-forwards',
@@ -205,6 +212,7 @@ export const ADMIN_ROUTES = [
     '/admin/settings',
     '/admin/staff',
     '/admin/staff/create',
+    '/admin/tree',
 ];
 
 /**

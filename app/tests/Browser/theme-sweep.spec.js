@@ -138,7 +138,11 @@ async function assertClean(page, routes, testInfo, expectedRedirects) {
 const DISTRIBUTOR_REDIRECTS = [
     '/my/arete-centre/edit -> /my/arete-centre',   // the fixture has no application to edit
 ];
-const ADMIN_REDIRECTS = [];
+const ADMIN_REDIRECTS = [
+    // Legacy aliases; both land on pages this sweep already covers.
+    '/admin/compensation/adc-bonus/applications -> /admin/arete-centres/applications',
+    '/admin/compensation/adc-bonus/centers -> /admin/arete-centres',
+];
 
 test.describe('dark mode holds across the route inventory', () => {
     test('every public route', async ({ page }, testInfo) => {
@@ -165,7 +169,7 @@ test.describe('the inventory itself', () => {
         // dropping any URI containing '{' and everything under api/.
         // This assertion is the tripwire: add a route, and it fails until the
         // route is either swept or given a reason in SKIP.
-        expect(ALL_ROUTES.length + Object.keys(SKIP).length).toBe(195);
+        expect(ALL_ROUTES.length + Object.keys(SKIP).length).toBe(200);
         expect(new Set(ALL_ROUTES).size, 'no route listed in two tiers').toBe(ALL_ROUTES.length);
         for (const path of ALL_ROUTES) {
             expect(SKIP[path], `${path} is both swept and skipped`).toBeUndefined();
