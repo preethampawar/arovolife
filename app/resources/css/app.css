@@ -1080,3 +1080,39 @@ html.dark .text-violet-600 { color: #ae82ff; }
 html.dark .text-violet-700 { color: #b289ff; }
 html.dark .text-violet-900 { color: #dfceff; }
 html.dark .border-blue-100 { border-color: #1a3257; }
+
+/* --- Gradient stops --------------------------------------------------
+   A gradient stop is a custom property, so none of the bg-* rules above
+   reach it: the six stops in the Surfaces block were added one at a time
+   as light bands turned up on dark pages. This is the rest of them, done
+   the same way — each stop lands on exactly the colour its solid twin
+   already uses, so a tinted card and the gradient beside it stay in step.
+   Only the tint end (50-200) is remapped. A saturated stop is the brand
+   and reads on both grounds, so from-brand-600, to-sky-600, via-leaf-500
+   and the image scrims are deliberately left alone.                     */
+html.dark .from-brand-100 { --tw-gradient-from: #0d3244; }
+html.dark .from-indigo-50 { --tw-gradient-from: #171a33; }
+html.dark .from-leaf-100 { --tw-gradient-from: #1a3312; }
+html.dark .from-leaf-50 { --tw-gradient-from: #13260d; }
+html.dark .from-sky-50 { --tw-gradient-from: #0b2333; }
+html.dark .from-sunrise-100 { --tw-gradient-from: #3a2a10; }
+html.dark .from-sunrise-50 { --tw-gradient-from: #2b1f0c; }
+html.dark .from-violet-100 { --tw-gradient-from: #28224c; }
+html.dark .to-brand-100 { --tw-gradient-to: #0d3244; }
+html.dark .to-brand-50 { --tw-gradient-to: #0a2634; }
+html.dark .to-brand-50\/60 { --tw-gradient-to: rgb(10 38 52 / 0.6); }
+html.dark .to-leaf-50\/60 { --tw-gradient-to: rgb(19 38 13 / 0.6); }
+html.dark .to-sunrise-50 { --tw-gradient-to: #2b1f0c; }
+html.dark .to-violet-50 { --tw-gradient-to: #1d1d3a; }
+html.dark .via-brand-50 { --tw-gradient-via: #0a2634; }
+html.dark .via-brand-50\/50 { --tw-gradient-via: rgb(10 38 52 / 0.5); }
+html.dark .via-brand-50\/60 { --tw-gradient-via: rgb(10 38 52 / 0.6); }
+html.dark .via-leaf-50 { --tw-gradient-via: #13260d; }
+html.dark .via-leaf-50\/40 { --tw-gradient-via: rgb(19 38 13 / 0.4); }
+html.dark .via-white { --tw-gradient-via: #19212b; }
+
+/* The "or" rule on login, forgot-password, contact and registration step 1
+   is a hairline, not brand colour: from-transparent via-slate-300. Left at
+   slate-300 it stops being a hairline in dark and becomes a bright white
+   rule across the card, so it tracks border-gray-300 instead.           */
+html.dark .via-slate-300 { --tw-gradient-via: #3e4b58; }
