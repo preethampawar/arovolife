@@ -19,7 +19,7 @@
     <a href="{{ request()->fullUrlWithQuery(['status' => $val ?: null, 'page' => null]) }}"
        class="px-3 py-1.5 rounded-full text-sm font-medium border
               {{ $current === $val
-                  ? 'bg-brand-600 text-white border-brand-600'
+                  ? 'bg-brand-700 text-white border-brand-700'
                   : 'bg-white text-gray-700 border-gray-300 hover:border-brand-400' }}">
         {{ $label }}
         @if(isset($statusCounts[$val]))<span class="ml-1 opacity-75">({{ $statusCounts[$val] }})</span>@endif

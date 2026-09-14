@@ -61,7 +61,7 @@
                     @csrf
                     @if ($flag['active'])
                         <input type="hidden" name="action" value="deactivate">
-                        <button type="submit" class="px-3 py-1.5 text-sm rounded-md bg-amber-600 text-white hover:bg-amber-700 font-semibold transition-colors">
+                        <button type="submit" class="px-3 py-1.5 text-sm rounded-md bg-amber-700 text-white hover:bg-amber-800 font-semibold transition-colors">
                             Deactivate
                         </button>
                     @else

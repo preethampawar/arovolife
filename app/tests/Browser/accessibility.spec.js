@@ -66,7 +66,7 @@ const DISTRIBUTOR_PAGES = [
     ['sponsorship tree', '/tree/sponsorship'],
     ['income dashboard', '/income'],
     ['wallet', '/wallet'],
-    ['my orders', '/shop/orders'],
+    ['my orders', '/orders'],
     ['profile', '/profile'],
     ['support', '/support'],
 ];

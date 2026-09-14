@@ -577,6 +577,13 @@ html.dark .bg-white\/70 { background-color: rgb(25 33 43 / 0.7); }
 html.dark .bg-white\/80 { background-color: rgb(25 33 43 / 0.8); }
 html.dark .bg-white\/95 { background-color: rgb(25 33 43 / 0.95); }
 
+/* The one section that hardcodes the public canvas as an arbitrary utility
+   (landing/about.blade.php:150, "What we stand for"). Nothing keyed on a
+   colour NAME can reach it, so in dark the whole band stayed #f4f7f6 with
+   dark-mode text on it — the heading was 1.02:1. Remapped by class name
+   rather than by editing the view, so any future use is covered too.     */
+html.dark .bg-\[\#f4f7f6\] { background-color: #0e161f; }
+
 /* Gradient stops are custom properties, not background-color, so none of the
    surface rules above reach them: the admin tree's context banner is
    bg-gradient-to-r from-brand-50 to-white, which kept painting a light ramp
@@ -598,7 +605,15 @@ html.dark .text-gray-800 { color: #e3e8ec; }
 html.dark .text-gray-700 { color: #cdd3da; }
 html.dark .text-gray-600 { color: #b5bdc6; }
 html.dark .text-gray-500 { color: #97a1ad; }
-html.dark .text-gray-400 { color: #76828f; }
+/* gray-400 is the dimmest legible step, so it is the one that lands on
+   the 4.5:1 line. #76828f was picked against the canvas (4.65:1) and
+   then used everywhere else too, where it does not hold: 4.14:1 on a
+   card and 4.24:1 on bg-gray-50. Tuned to the hardest ground it
+   actually lands on — 4.66:1 on #232c36, 5.35:1 on #19212b, 6.01:1 on
+   the canvas — and still below gray-500, so the ramp keeps its order.
+   The blog/news/seminar date lines and the GSB calculation captions
+   are what found this.                                              */
+html.dark .text-gray-400 { color: #8b95a3; }
 html.dark .text-gray-300 { color: #818c99; }
 /* slate is gray's twin hue; a handful of views reach for it instead. */
 html.dark .text-slate-700 { color: #cdd3da; }
@@ -609,7 +624,7 @@ html.dark .hover\:text-gray-800:hover { color: #f1f4f7; }
 html.dark .hover\:text-gray-700:hover { color: #e3e8ec; }
 html.dark .disabled\:text-gray-600:disabled { color: #7c8899; }
 html.dark .disabled\:text-gray-500:disabled { color: #75808f; }
-html.dark .placeholder-gray-400::placeholder { color: #76828f; }
+html.dark .placeholder-gray-400::placeholder { color: #8b95a3; }
 
 /* --- Borders & dividers --------------------------------------------- */
 html.dark .border-gray-100 { border-color: #27303a; }
@@ -632,7 +647,7 @@ html.dark textarea {
     border-color: #3e4b58;
 }
 html.dark input::placeholder,
-html.dark textarea::placeholder { color: #76828f; }
+html.dark textarea::placeholder { color: #8b95a3; }
 html.dark input[type="checkbox"],
 html.dark input[type="radio"] { background-color: #2c3642; }
 
@@ -897,7 +912,7 @@ html.dark .input-refined {
     border-color: #3e4b58;
     color: #f1f4f7;
 }
-html.dark .input-refined::placeholder { color: #76828f; }
+html.dark .input-refined::placeholder { color: #8b95a3; }
 html.dark .input-refined:hover { border-color: color-mix(in oklab, var(--color-brand-400) 45%, #3e4b58); }
 html.dark .input-refined:focus {
     border-color: var(--color-brand-400);
@@ -932,7 +947,7 @@ html.dark .bg-pinstripe {
 /* The public footers are the one place the light design is already dark.
    Left alone they would sit at #101828 against a #0e161f canvas and the
    block would disappear; going DARKER than the canvas separates them and
-   also keeps text-gray-400 (#76828f) above the 4.5:1 floor, which a
+   also keeps text-gray-400 (#8b95a3) above the 4.5:1 floor, which a
    lighter footer would not. */
 html.dark .bg-gray-900 { background-color: #0a1018; }
 html.dark .bg-gray-800 { background-color: #121a23; }

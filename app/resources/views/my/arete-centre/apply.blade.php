@@ -274,7 +274,7 @@
         </section>
 
         <button type="submit"
-            class="w-full inline-flex justify-center items-center rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium px-6 py-3 text-sm transition-colors">
+            class="w-full inline-flex justify-center items-center rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-6 py-3 text-sm transition-colors">
             {{ $isEdit ? 'Resubmit application' : 'Submit application' }}
         </button>
     </form>

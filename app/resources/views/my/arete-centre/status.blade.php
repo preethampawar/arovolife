@@ -36,7 +36,7 @@
             An Arete Development Centre is a training, product-demonstration and support centre for arovolife
             distributors in your area. Applying is free and does not guarantee approval.
         </p>
-        <a href="{{ route('my.adc.apply') }}" class="inline-flex items-center rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium px-5 py-2.5 text-sm transition-colors">Apply now</a>
+        <a href="{{ route('my.adc.apply') }}" class="inline-flex items-center rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-5 py-2.5 text-sm transition-colors">Apply now</a>
     </div>
 
     @elseif(in_array($statusKey, ['submitted', 'under_review'], true))
@@ -55,7 +55,7 @@
         <p class="font-semibold mb-2">Your application needs changes.</p>
         <p class="mb-3">arovolife reviewed your application for <strong>{{ $application->centre_name }}</strong> and asked for the following:</p>
         <p class="mb-4 rounded-lg bg-white/70 p-3 text-orange-900">{{ $application->admin_notes }}</p>
-        <a href="{{ route('my.adc.edit') }}" class="inline-flex items-center rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium px-5 py-2.5 text-sm transition-colors">Update and resubmit</a>
+        <a href="{{ route('my.adc.edit') }}" class="inline-flex items-center rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-5 py-2.5 text-sm transition-colors">Update and resubmit</a>
     </div>
 
     @elseif($statusKey === 'approved')

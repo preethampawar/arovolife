@@ -19,7 +19,7 @@
                class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Profile</a>
             @if($gsbOn)
             <a href="{{ route('admin.compensation.manual-controls.index', ['adn' => $distributor->adn]) }}"
-               class="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600">{{ svg('lucide-triangle-alert', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Manual Controls</a>
+               class="px-3 py-1.5 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800">{{ svg('lucide-triangle-alert', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Manual Controls</a>
             @endif
         </div>
     </div>

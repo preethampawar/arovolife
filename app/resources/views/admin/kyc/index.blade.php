@@ -35,7 +35,7 @@
          from a fresh submission, so nobody could see what was blocked. --}}
     <a href="{{ request()->fullUrlWithQuery(['tab' => 'flagged', 'page' => null]) }}"
         class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors
-            {{ $currentTab === 'flagged' ? 'border-amber-500 bg-amber-500 text-white' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' }}">
+            {{ $currentTab === 'flagged' ? 'border-amber-700 bg-amber-700 text-white' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' }}">
         Awaiting re-upload
         <span class="inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold
             {{ $currentTab === 'flagged' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-700' }}">

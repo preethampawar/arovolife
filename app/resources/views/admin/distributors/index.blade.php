@@ -12,7 +12,7 @@
             'inactive' => 'bg-green-50 text-green-700 border-green-200 hover:border-green-400',
         ],
         'pending' => [
-            'active'   => 'bg-amber-500 text-white border-amber-500',
+            'active'   => 'bg-amber-700 text-white border-amber-700',
             'inactive' => 'bg-amber-50 text-amber-700 border-amber-200 hover:border-amber-400',
         ],
         'frozen' => [

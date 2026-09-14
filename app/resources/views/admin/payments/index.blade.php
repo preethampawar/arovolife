@@ -62,7 +62,7 @@
 <div class="mb-4 flex flex-wrap items-center gap-2">
     @foreach($statusFacets as $value => $label)
         <a href="{{ request()->fullUrlWithQuery(['status' => $value === '' ? null : $value, 'page' => null]) }}"
-           class="px-3 py-1.5 rounded-full text-sm font-medium border transition-colors {{ $activeStatus === (string) $value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-700 border-gray-300 hover:border-brand-400' }}">
+           class="px-3 py-1.5 rounded-full text-sm font-medium border transition-colors {{ $activeStatus === (string) $value ? 'bg-brand-700 text-white border-brand-700' : 'bg-white text-gray-700 border-gray-300 hover:border-brand-400' }}">
             {{ $label }}@if($value !== '' && isset($statusCounts[$value]))<span class="ml-1 opacity-75">({{ $statusCounts[$value] }})</span>@endif
         </a>
     @endforeach

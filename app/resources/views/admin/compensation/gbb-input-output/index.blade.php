@@ -25,7 +25,7 @@
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
     <input type="month" name="to" value="{{ $to ?? '' }}"
            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
-    <button type="submit" class="px-3 py-1.5 rounded-lg bg-brand-500 text-white text-sm font-medium">Apply</button>
+    <x-ui.button type="submit" size="sm">Apply</x-ui.button>
     @if($month || $from || $to)
     <a href="{{ route('admin.compensation.gbb-input-output.index') }}"
        class="text-sm text-gray-500 hover:text-gray-700">Clear</a>

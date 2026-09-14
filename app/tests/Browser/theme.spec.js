@@ -29,7 +29,7 @@ const toggle = (page) => page.getByRole('button', { name: /toggle dark mode/i })
 
 /** Anonymous, signed-in distributor, and the wizard — one page each. */
 const PUBLIC_PAGES = [['home', '/'], ['login', '/login'], ['shop', '/shop'], ['terms', '/p/terms']];
-const DISTRIBUTOR_PAGES = [['dashboard', '/dashboard'], ['income', '/income'], ['wallet', '/income/wallet'], ['my orders', '/shop/orders']];
+const DISTRIBUTOR_PAGES = [['dashboard', '/dashboard'], ['income', '/income'], ['wallet', '/income/wallet'], ['my orders', '/orders']];
 
 test.describe('the toggle reaches the whole application', () => {
     for (const [name, path] of PUBLIC_PAGES) {
@@ -79,7 +79,7 @@ test.describe('the toggle reaches the whole application', () => {
         await page.goto('/shop');
         await setTheme(page, 'dark');
 
-        for (const path of ['/dashboard', '/income', '/shop/orders', '/admin']) {
+        for (const path of ['/dashboard', '/income', '/orders', '/admin']) {
             await page.goto(path);
             expect(await isDark(page), `${path} did not honour the stored choice`).toBe(true);
         }

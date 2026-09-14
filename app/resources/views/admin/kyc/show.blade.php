@@ -135,7 +135,7 @@
                                             placeholder="Reason (sent verbatim to the applicant) — e.g. PAN card is blurry; please re-upload a sharper photo."
                                             class="w-full rounded border border-amber-300 px-2 py-1 text-[11px] focus:border-amber-500 focus:ring-amber-500"></textarea>
                                         <button type="submit"
-                                            class="w-full inline-flex justify-center items-center rounded bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-medium px-3 py-1">
+                                            class="w-full inline-flex justify-center items-center rounded bg-amber-700 hover:bg-amber-800 text-white text-[11px] font-medium px-3 py-1">
                                             Flag &amp; email applicant
                                         </button>
                                     </form>
