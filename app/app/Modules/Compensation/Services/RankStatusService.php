@@ -64,7 +64,7 @@ final class RankStatusService
 
         $requalificationConditionsMet = null;
         if ($currentRank !== null && ($achievementCounts[$currentRank] ?? 0) > 1) {
-            $requalificationConditionsMet = $this->requalificationGate->passes(
+            $requalificationConditionsMet = $this->requalificationGate->passesSoFar(
                 $distributorId,
                 $monthStart,
                 $currentRank,

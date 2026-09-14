@@ -48,6 +48,7 @@ final class GroupBvReplayService
     public function replay(?Closure $progress = null, ?Carbon $from = null): int
     {
         $log = $progress ?? static fn (string $_m): null => null;
+        $callerClock = Carbon::getTestNow();
 
         $propagated = 0;
 
@@ -63,6 +64,10 @@ final class GroupBvReplayService
             // the chunk size *is* the resolution of the progress bar. At 200 a
             // 330-order replay reports twice and looks frozen for minutes; at 25
             // it ticks often enough that a genuine stall is visible as a stall.
+            // Clock-neutral, like the engine replay: whatever the caller had
+            // pinned is put back below, so a run inside a pinned test clock —
+            // which is the only way to test a historical horizon — is not
+            // silently unpinned half way through.
             ->chunkById(self::PROGRESS_CHUNK, function ($orders) use (&$propagated, $log): void {
                 foreach ($orders as $order) {
                     $bvPaise = (int) BvLedgerEntry::where('order_id', $order->id)
@@ -95,7 +100,7 @@ final class GroupBvReplayService
                 $log(sprintf('  %d order(s) propagated', $propagated));
             });
 
-        Carbon::setTestNow();
+        Carbon::setTestNow($callerClock);
 
         return $propagated;
     }

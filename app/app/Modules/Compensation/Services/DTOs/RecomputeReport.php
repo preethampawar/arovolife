@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services\DTOs;
 
+use App\Modules\Compensation\Services\Recompute\RecomputeHorizon;
 use Illuminate\Support\Carbon;
 
 /**
@@ -19,9 +20,13 @@ final readonly class RecomputeReport
     public const MODE_WINDOWED = 'windowed';
 
     /**
+     * @param  Carbon  $to  the last calendar day the replay covered
      * @param  array<string, int>  $rowsRemoved  table => rows truncated
      * @param  array<string, int>  $enginesRun  artisan signature => times invoked
      * @param  list<string>  $warnings
+     * @param  RecomputeHorizon  $horizon  how far the scheduler's calendar was replayed
+     * @param  Carbon|null  $simulatedThrough  the instant a PROJECTION replayed to; null
+     *                                         when nothing was simulated
      */
     public function __construct(
         public Carbon $from,
@@ -33,7 +38,15 @@ final readonly class RecomputeReport
         public array $warnings,
         public float $durationSeconds,
         public string $mode = self::MODE_FULL,
+        public RecomputeHorizon $horizon = RecomputeHorizon::Now,
+        public ?Carbon $simulatedThrough = null,
     ) {}
+
+    /** True when this run simulated firings the scheduler has not reached. */
+    public function isProjected(): bool
+    {
+        return $this->horizon->isProjected();
+    }
 
     public function totalRowsRemoved(): int
     {

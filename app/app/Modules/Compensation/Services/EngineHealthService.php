@@ -38,14 +38,6 @@ final class EngineHealthService
     /** Far enough back to cover a monthly engine's previous fire date. */
     private const int FIRE_LOOKBACK_DAYS = 31;
 
-    /**
-     * The cadence note that marks an engine whose scheduled run works the day
-     * BEFORE it fires. routes/console.php passes the GSB cut-off
-     * `--date=yesterday`; nothing else in the registry expresses that, and
-     * `periodRelativeTo()` deliberately maps a replayed day to itself.
-     */
-    private const string PREVIOUS_DAY_NOTE = 'previous day';
-
     public function __construct(private readonly EngineStatusService $status) {}
 
     public function report(Carbon $now): EngineHealthReport
@@ -290,13 +282,7 @@ final class EngineHealthService
     /** The period a scheduled fire on that date produces. */
     private function periodForFire(EngineDefinition $definition, Carbon $firedAt): Carbon
     {
-        $period = $definition->periodRelativeTo($firedAt);
-
-        if (str_contains((string) $definition->cadence->note, self::PREVIOUS_DAY_NOTE)) {
-            $period = $period->subDay();
-        }
-
-        return $definition->periodStart($period);
+        return $definition->periodStart($definition->periodForFireOn($firedAt));
     }
 
     private function definitionFor(string $key): ?EngineDefinition

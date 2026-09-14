@@ -268,7 +268,6 @@ it('deletes monthly results from the first of their month, not mid-month', funct
 it('widens a window that opens inside a closed month to that month', function (): void {
     $report = app(CompensationRecomputeRunner::class)->run(
         from: Carbon::today()->subMonthNoOverflow()->setDay(15),
-        to: Carbon::today(),
         windowed: true,
     );
 
@@ -293,10 +292,19 @@ it('replays a window that opens in the current month from the requested day', fu
 });
 
 it('replays only the engines asked for and names the ones it skipped', function (): void {
-    $report = app(CompensationRecomputeRunner::class)->run(
-        from: Carbon::today(),
-        onlyEngineKeys: ['gsb.daily-cutoff'],
-    );
+    // Pinned: the cut-off for a day fires at 00:10 the NEXT morning, so a window
+    // opening yesterday produces exactly one firing — and only once 00:10 today
+    // has passed, which is not true at every hour a suite might run at.
+    Carbon::setTestNow(Carbon::parse('2026-09-10 12:00:00'));
+
+    try {
+        $report = app(CompensationRecomputeRunner::class)->run(
+            from: Carbon::parse('2026-09-09'),
+            onlyEngineKeys: ['gsb.daily-cutoff'],
+        );
+    } finally {
+        Carbon::setTestNow();
+    }
 
     expect(array_keys($report->enginesRun))->toBe(['gsb:daily-cutoff']);
 

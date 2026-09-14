@@ -19,11 +19,18 @@ use Illuminate\Support\Carbon;
  * engines; this is the same rule for the command line, which the scheduler,
  * the runbooks and the operators use.
  *
- * `--in-flight` overrides it. The recompute tool passes it for the month in
- * flight at its horizon, whose figures are provisional by construction (and
- * discarded by the next recompute); the admin console passes it only behind
- * the developer testing gate. An operator typing it by hand is stating that
- * they mean to freeze a partial month.
+ * `--in-flight` overrides it, and almost nothing passes it any more. The
+ * recompute used to, for the month in flight at its horizon; it now replays
+ * every engine at the instant the scheduler would have fired it, so the month
+ * it closes has always ended and the override is not needed. What is left is
+ * {@see self::overrideFor()} on `payout:monthly-run`, whose batch month is in
+ * flight BY DESIGN — the 8th of it is the day the batch runs — and an operator
+ * typing it by hand, who is stating that they mean to freeze a partial month.
+ *
+ * `compensation:monthly-close` no longer accepts it at all: closing an
+ * unfinished month is what let one engine's repurchase deductions land inside
+ * the month the next engine was judging (staging, 14 Sep 2026). Projecting an
+ * unfinished month is the recompute's job.
  */
 final class OpenMonthGuard
 {
@@ -51,7 +58,6 @@ final class OpenMonthGuard
         'adc:monthly-run',
         'offers:monthly-run',
         'payout:monthly-run',
-        'compensation:monthly-close',
         'compensation:monthly-payout-close',
     ];
 

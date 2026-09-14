@@ -327,6 +327,16 @@ final class FortuneBonusService
             ];
         }
 
+        // The month-end repurchase wallet gate, asked once for the whole roster —
+        // and asked BEFORE the pool is frozen. It refuses outright for a month
+        // that has not ended, and a refusal must leave nothing behind: freezing
+        // first would have written the month's economics permanently and then
+        // thrown, so the month could never be priced properly afterwards.
+        $cleared = $this->walletGate->clearedAtMonthEnd(
+            $participants->map(fn ($p): int => (int) $p->distributor_id)->all(),
+            $monthStartDate,
+        );
+
         $pool = $this->freezePoolForMonth(
             $monthStartDate,
             $month->copy()->endOfMonth(),
@@ -335,12 +345,6 @@ final class FortuneBonusService
 
         /** @var array<int, FortuneMonthlyPoolLevel> $frozenLevels */
         $frozenLevels = $pool->levels()->get()->keyBy('matrix_level')->all();
-
-        // The month-end repurchase wallet gate, asked once for the whole roster.
-        $cleared = $this->walletGate->clearedAtMonthEnd(
-            $participants->map(fn ($p): int => (int) $p->distributor_id)->all(),
-            $monthStartDate,
-        );
 
         $credited = 0;
         $walletBlocked = 0;

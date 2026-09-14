@@ -25,9 +25,23 @@ trait ResolvesMonthOption
 {
     /**
      * The month named by `--month`, or the calendar month that has just ended.
-     * Null (with the error already printed) when the option is malformed.
+     * Null (with the error already printed) when the option is malformed, or
+     * when the month has not ended and the caller did not allow that.
+     *
+     * @param  bool  $allowOpenMonth  the caller's own `--in-flight`. Passed in
+     *                                rather than read here: not every command
+     *                                using this trait declares that option, and
+     *                                `compensation:monthly-close` deliberately
+     *                                does not — closing an unfinished month is
+     *                                what let one engine's repurchase deductions
+     *                                land inside the month the next engine was
+     *                                judging (staging, 14 Sep 2026). The 1st of
+     *                                the following month is the only instant at
+     *                                which a month's figures are real, and
+     *                                projecting an unfinished month is the
+     *                                recompute's job.
      */
-    private function resolveMonth(): ?Carbon
+    private function resolveMonth(bool $allowOpenMonth = false): ?Carbon
     {
         $raw = trim((string) ($this->option('month') ?? ''));
 
@@ -49,10 +63,10 @@ trait ResolvesMonthOption
             return null;
         }
 
-        // Both closes freeze (or pay from) the month's economics through the
-        // engines they run — see OpenMonthGuard for why a month still in
-        // flight is refused, and why --in-flight is a testing override.
-        if (! $this->option(OpenMonthGuard::OPTION) && ($refusal = OpenMonthGuard::refusal($month)) !== null) {
+        // These commands freeze (or pay from) the month's economics — see
+        // OpenMonthGuard for why a month still in flight is refused, and why
+        // --in-flight is a testing override.
+        if (! $allowOpenMonth && ($refusal = OpenMonthGuard::refusal($month)) !== null) {
             $this->error($refusal);
 
             return null;

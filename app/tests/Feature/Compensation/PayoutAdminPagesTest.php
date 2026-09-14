@@ -6,6 +6,7 @@ use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\PayoutService;
+use App\Modules\Compensation\Services\Recompute\RecomputeState;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
@@ -471,4 +472,77 @@ it('exports a line whose bank details no longer decrypt with no account number',
         ->toContain($broken->adn)
         // No account number, no IFSC — the row cannot be executed by mistake.
         ->not->toContain('SBIN0009999');
+});
+
+/*
+|--------------------------------------------------------------------------
+| A projected environment may not sign off or export a batch
+|--------------------------------------------------------------------------
+|
+| A recompute at the `projection` horizon builds real payout batches for a date
+| that has not arrived, priced on bonuses nobody has earned yet. Reading one is
+| fine. Approving it, or handing a bank a file built from it, turns a forecast
+| into an instruction to move money.
+*/
+
+/** Put this environment on a standing projection, the way a recompute does. */
+function payoutMarkEnvironmentProjected(): void
+{
+    config(['arovolife.recompute.enabled' => true]);
+
+    AuditLog::create([
+        'actor_id' => null,
+        'action' => 'compensation.recompute_all',
+        'subject_type' => 'platform',
+        'subject_id' => 0,
+        'details' => [
+            'horizon' => 'projection',
+            'simulated_through' => '2026-10-08 04:00:00',
+        ],
+    ]);
+
+    app(RecomputeState::class)->forget();
+}
+
+it('refuses to approve a batch while the environment holds projected figures', function (): void {
+    $approver = smokeAdmin();
+    $approver->assignRole('developer');
+
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_PENDING,
+    ]);
+
+    payoutMarkEnvironmentProjected();
+
+    $this->actingAs($approver)
+        ->from(route('admin.compensation.weekly-payouts.show', $batch))
+        ->post(route('admin.compensation.weekly-payouts.approve', $batch))
+        ->assertRedirect(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertSessionHas('error');
+
+    expect($batch->fresh()->status)->toBe(PayoutBatch::STATUS_PENDING);
+});
+
+it('refuses to build a bank file while the environment holds projected figures', function (): void {
+    $finance = smokeAdmin();
+    $finance->assignRole('admin-finance');
+
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_APPROVED,
+    ]);
+
+    payoutMarkEnvironmentProjected();
+
+    $this->actingAs($finance)
+        ->from(route('admin.compensation.weekly-payouts.show', $batch))
+        ->get(route('admin.compensation.weekly-payouts.neft', $batch))
+        ->assertRedirect(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertSessionHas('error');
+
+    // And no export was recorded, because none happened.
+    expect(DB::table('audit_log')->where('action', 'payout.batch.bank_file_exported')->count())->toBe(0);
 });

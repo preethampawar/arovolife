@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Console\Commands;
 
+use App\Modules\Compensation\Exceptions\RepurchaseWalletVerdictNotAvailable;
 use App\Modules\Compensation\Services\FortuneBonusService;
+use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
@@ -45,7 +47,23 @@ final class FortuneBonusRunCommand extends Command
 
         $this->info("Fortune Bonus payout — {$month->format('F Y')}");
 
-        $result = $this->fortuneBonus->runForMonth($month);
+        // `--in-flight` freezes a partial month deliberately; it cannot conjure
+        // a month-end repurchase-wallet verdict for a month that has not ended,
+        // and the gate refuses rather than silently answering "as of now" —
+        // which is how one engine's own deductions came to be counted against
+        // the month it was judging (staging, 14 Sep 2026). Reported as a clean
+        // refusal rather than an uncaught exception; the message says what to
+        // do. With the repurchase engine off there is no verdict to want and
+        // this never fires.
+        try {
+            $result = $this->fortuneBonus->runForMonth($month);
+        } catch (RepurchaseWalletVerdictNotAvailable $e) {
+            $this->error($e->getMessage());
+
+            app(EngineRunContext::class)->noteSkipped($e->getMessage());
+
+            return self::FAILURE;
+        }
 
         $this->line('Pool: ₹'.Number::format($result['pool_paise'] / 100, 2));
         $this->line('Total FB points: '.Number::format($result['total_points']));

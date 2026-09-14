@@ -53,7 +53,7 @@ final class MonthlyPayoutCloseCommand extends Command
 
     public function handle(): int
     {
-        $month = $this->resolveMonth();
+        $month = $this->resolveMonth((bool) $this->option(OpenMonthGuard::OPTION));
 
         if ($month === null) {
             return self::FAILURE;

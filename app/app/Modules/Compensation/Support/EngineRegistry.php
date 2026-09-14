@@ -144,7 +144,7 @@ final class EngineRegistry
                 ],
                 featureFlagClass: GenosSalesBonusFeature::class,
                 reportRouteName: 'admin.compensation.daily-cutoffs.index',
-                cadence: EngineCadence::daily('00:10', 'runs the previous day'),
+                cadence: EngineCadence::dailyForPreviousDay('00:10'),
                 defaultPeriod: 'today',
                 requiresClosedPeriod: true,
             ),

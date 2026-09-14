@@ -64,7 +64,7 @@ it('passes a distributor with enough BV and an empty repurchase wallet at month 
     $dist = Distributor::factory()->create();
     requalSeedSufficientBv($dist->id);
 
-    expect(app(RankRequalificationGateService::class)->passes($dist->id, Carbon::parse('2026-06-01'), 1))
+    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
         ->toBeTrue();
 });
 
@@ -90,7 +90,7 @@ it('reads the wallet condition as the month-end balance, not the cycle verdict',
         'resolved_at' => Carbon::parse('2026-06-01 00:05:00'),
     ]);
 
-    expect(app(RankRequalificationGateService::class)->passes($dist->id, Carbon::parse('2026-06-01'), 1))
+    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
         ->toBeTrue();
 });
 
@@ -115,7 +115,7 @@ it('fails a distributor still holding repurchase wallet money at month end, even
         'resolved_at' => Carbon::parse('2026-06-01 00:05:00'),
     ]);
 
-    expect(app(RankRequalificationGateService::class)->passes($dist->id, Carbon::parse('2026-06-01'), 1))
+    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
         ->toBeFalse();
 });
 
@@ -129,7 +129,7 @@ it('ignores a repurchase-wallet balance that only appears after the month closed
     // after June closed and cannot retroactively fail June.
     requalSeedWalletEntry($dist->id, 50_000, 'repurchase_deduction', '2026-07-01 00:06:00');
 
-    expect(app(RankRequalificationGateService::class)->passes($dist->id, Carbon::parse('2026-06-01'), 1))
+    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
         ->toBeTrue();
 });
 
@@ -138,7 +138,7 @@ it('fails a distributor short of the rank\'s monthly repurchase BV whatever the 
 
     $dist = Distributor::factory()->create();
 
-    expect(app(RankRequalificationGateService::class)->passes($dist->id, Carbon::parse('2026-06-01'), 1))
+    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
         ->toBeFalse();
 });
 
@@ -147,6 +147,43 @@ it('leaves the wallet condition open when the repurchase engine is off', functio
     requalSeedSufficientBv($dist->id);
     requalSeedWalletEntry($dist->id, 50_000, 'repurchase_deduction', '2026-06-20 09:00:00');
 
-    expect(app(RankRequalificationGateService::class)->passes($dist->id, Carbon::parse('2026-06-01'), 1))
+    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
         ->toBeTrue();
+});
+
+it('shows the month a distributor is still living in as it stands, without refusing', function (): void {
+    // The dashboard checklist and the AO-GO card ask about the CURRENT month on
+    // every page load. The engine verdict does not exist for a month that has
+    // not ended and refuses outright; this view answers "as things stand" and
+    // must never throw, or the dashboard 500s for the first days of every month.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    $thisMonth = Carbon::now()->startOfMonth();
+
+    requalSeedMonthlyBv(
+        $dist->id,
+        app(CompensationPlanSettingsService::class)->rankRepurchaseBvPaise(1),
+        Carbon::now()->toDateString(),
+    );
+
+    expect(app(RankRequalificationGateService::class)->passesSoFar($dist->id, $thisMonth, 1))
+        ->toBeTrue();
+});
+
+it('counts repurchase-wallet money the distributor is still holding right now', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    $thisMonth = Carbon::now()->startOfMonth();
+
+    requalSeedMonthlyBv(
+        $dist->id,
+        app(CompensationPlanSettingsService::class)->rankRepurchaseBvPaise(1),
+        Carbon::now()->toDateString(),
+    );
+    requalSeedWalletEntry($dist->id, 50_000, 'repurchase_deduction', Carbon::now()->subHour()->toDateTimeString());
+
+    expect(app(RankRequalificationGateService::class)->passesSoFar($dist->id, $thisMonth, 1))
+        ->toBeFalse();
 });

@@ -118,6 +118,21 @@ final readonly class EngineDefinition
     }
 
     /**
+     * Which period a scheduled fire ON this calendar date produces.
+     *
+     * The twin of {@see periodRelativeTo()}, and the one a replay must use: the
+     * GSB cut-off fires at 00:10 on D + 1 and processes D, so a replay that
+     * asked periodRelativeTo() fired every cut-off a day early and left the next
+     * real scheduled run to trip the carry-forward out-of-order guard (F125).
+     */
+    public function periodForFireOn(Carbon $fireDay): Carbon
+    {
+        $period = $this->periodRelativeTo($fireDay);
+
+        return $this->cadence->previousDay ? $period->subDay() : $period;
+    }
+
+    /**
      * Parse a user- or job-supplied period string into a normalised Carbon:
      * start of day for date engines, first day of the month for month engines.
      */

@@ -19,8 +19,11 @@ use Throwable;
  * order of operations, because getting that order wrong is how you corrupt the
  * carry-forward chain.
  *
- * TESTING ONLY. Scheduled for deletion once the compensation plan is signed
- * off; see docs/runbooks/artisan-commands.md.
+ * TEST ENVIRONMENTS ONLY — {@see RecomputeGuard} refuses in production, where
+ * the engines stay write-once and forward-only. On dev and staging this is the
+ * whole compensation runner: it wipes the derived rows and replays every engine
+ * at the instant the scheduler would have fired it, up to a
+ * {@see RecomputeHorizon}. See docs/architecture/adr-0014-test-environment-recompute.md.
  */
 final class CompensationRecomputeRunner
 {
@@ -32,11 +35,18 @@ final class CompensationRecomputeRunner
         private readonly EngineReplayService $engines,
         private readonly DatabaseManager $db,
         private readonly RecomputeProgress $progress,
+        private readonly RecomputeState $state,
     ) {}
 
     /**
      * @param  Carbon|null  $from  first date to replay; null starts at the first
      *                             BV date
+     * @param  RecomputeHorizon  $horizon  how far the scheduler's calendar is
+     *                                     replayed — see the enum. `Now` is
+     *                                     production-faithful; the other two
+     *                                     simulate firings that have not
+     *                                     happened and mark the environment
+     *                                     projected.
      * @param  list<string>|null  $onlyEngineKeys  replay only these engines
      * @param  bool  $windowed  keep the history before $from instead of wiping
      *                          it — only the derived rows from $from onwards are
@@ -51,7 +61,7 @@ final class CompensationRecomputeRunner
      */
     public function run(
         ?Carbon $from = null,
-        ?Carbon $to = null,
+        RecomputeHorizon $horizon = RecomputeHorizon::Now,
         ?int $actorUserId = null,
         ?Closure $progress = null,
         ?array $onlyEngineKeys = null,
@@ -62,6 +72,8 @@ final class CompensationRecomputeRunner
         $log = $progress ?? static fn (string $_m): null => null;
         $startedAt = microtime(true);
         $warnings = [];
+        $callerClock = Carbon::getTestNow();
+        $horizonInstant = $horizon->instantFrom(Carbon::now());
 
         $this->progress->start();
 
@@ -89,8 +101,9 @@ final class CompensationRecomputeRunner
             if ($windowed) {
                 // A monthly engine's period is a whole month, so a window that
                 // opens mid-month can only be rebuilt from that month's first
-                // day — unless the month is still in flight, where the replay's
-                // catch-up pass recomputes it regardless of the start day.
+                // day — unless the month is still in flight, whose engines have
+                // not fired at all yet (they fire on the 1st of the next month),
+                // so there is nothing to rebuild whole.
                 $requestedFrom = $from->copy()->startOfDay();
                 $from = $requestedFrom->isSameMonth(Carbon::today())
                     ? $requestedFrom
@@ -114,16 +127,31 @@ final class CompensationRecomputeRunner
                 : $this->wiper->wipe($log);
             $this->progress->wiped(array_sum($rowsRemoved));
 
-            [$from, $to, $windowWarnings] = $this->resolveWindow($from, $to);
-            $warnings = [...$warnings, ...$windowWarnings];
+            $from = $this->resolveFrom($from, $warnings);
 
-            $log(sprintf('Replaying %s → %s', $from->toDateString(), $to->toDateString()));
+            if ($horizon->isProjected()) {
+                $warnings[] = sprintf(
+                    'Projected through %s. Every engine after %s fired on a simulated clock over the orders that '
+                        .'exist now, so the cycles, bonuses, wallet balances and payout batches it produced are '
+                        .'provisional. The scheduled engines are paused on this environment until the nightly reset '
+                        .'or an "up to now" recompute.',
+                    $horizonInstant->format('d M Y H:i'),
+                    Carbon::now()->format('d M Y H:i'),
+                );
+            }
+
+            $log(sprintf(
+                'Replaying %s → %s (%s)',
+                $from->toDateString(),
+                $horizonInstant->format('Y-m-d H:i'),
+                $horizon->value,
+            ));
 
             $log('Re-deriving group BV from paid orders...');
             $ordersPropagated = $this->groupBv->replay($log, $windowed ? $from : null);
 
-            $log('Replaying engines day by day...');
-            $replay = $this->engines->replay($from, $to, $log, $onlyEngineKeys);
+            $log('Replaying engines at the instants the scheduler would have used...');
+            $replay = $this->engines->replay($from, $horizonInstant, $log, $onlyEngineKeys);
 
             if ($replay['skipped'] !== []) {
                 $warnings[] = 'Engines not replayed: '.implode(', ', $replay['skipped'])
@@ -132,15 +160,25 @@ final class CompensationRecomputeRunner
 
             // Land on the real clock: today's repurchase status is what the
             // dashboards and the next scheduled cut-off will read.
-            Carbon::setTestNow();
-            $log('Rebuilding current repurchase state...');
-            $this->progress->phase('Rebuilding current repurchase state');
-            Artisan::call('repurchase:evaluate');
+            //
+            // Only for the `now` horizon. A projection has already evaluated
+            // cycles at instants beyond today; re-running the evaluation as at
+            // today would stamp today's purchases onto cycles the replay has
+            // moved past, which is the one thing the command's own description
+            // warns against.
+            if (! $horizon->isProjected()) {
+                Carbon::setTestNow($callerClock);
+                $log('Rebuilding current repurchase state...');
+                $this->progress->phase('Rebuilding current repurchase state');
+                Artisan::call('repurchase:evaluate');
+            }
 
             $report = new RecomputeReport(
                 mode: $windowed ? RecomputeReport::MODE_WINDOWED : RecomputeReport::MODE_FULL,
                 from: $from,
-                to: $to,
+                to: $horizonInstant->copy()->startOfDay(),
+                horizon: $horizon,
+                simulatedThrough: $horizon->isProjected() ? $horizonInstant->copy() : null,
                 rowsRemoved: $rowsRemoved,
                 ordersPropagated: $ordersPropagated,
                 daysReplayed: $replay['days'],
@@ -150,6 +188,7 @@ final class CompensationRecomputeRunner
             );
 
             $this->audit($report, $actorUserId);
+            $this->state->forget();
             $this->progress->complete($report);
 
             return $report;
@@ -160,81 +199,43 @@ final class CompensationRecomputeRunner
         } finally {
             // A replay that dies mid-flight must never leave the process — or a
             // queue worker reusing it — on a fake clock, on a fake notification
-            // channel manager, or on the array mailer.
-            Carbon::setTestNow();
+            // channel manager, or on the array mailer. The caller's own clock is
+            // put back, not cleared: a test that pinned one keeps it.
+            Carbon::setTestNow($callerClock);
             Notification::swap($realNotificationChannelManager);
             config(['mail.default' => $realMailer]);
         }
     }
 
     /**
-     * The window to replay: from the first BV or first paid order (whichever is
-     * earlier, since propagation keys on paid_at while the pools key on
-     * effective_at), through $to (default: today).
+     * The first day to replay: the caller's date, or the first BV / first paid
+     * order (whichever is earlier, since propagation keys on paid_at while the
+     * pools key on effective_at).
      *
-     * Today is included even though it is a partial day. Production stops at
-     * yesterday because a frozen result is never recomputed, so freezing half a
-     * day would underpay it permanently — but here every run begins by wiping
-     * the lot, so "partial" only ever means "as at the moment you clicked", and
-     * the next click supersedes it. Testing the plan on data up to and including
-     * today is the entire point of the tool.
+     * There is no `to`: where a replay stops is a {@see RecomputeHorizon}, and
+     * the horizon is an INSTANT rather than a date because the engines that
+     * settle a day fire in the small hours of the next one.
      *
-     * $to may extend up to the end of next calendar month — one month ahead is
-     * enough to verify the next 1st-of-month run without letting runaway inputs
-     * spin the replay for years. The cap is applied silently if the engine run
-     * page validates the field correctly; a warning is added if the caller sends
-     * a future $to, because a future-window replay uses simulated engine runs
-     * and produces partial, not-yet-final results.
-     *
-     * @return array{0: Carbon, 1: Carbon, 2: list<string>}
+     * @param  list<string>  $warnings
      */
-    private function resolveWindow(?Carbon $from, ?Carbon $to): array
+    private function resolveFrom(?Carbon $from, array &$warnings): Carbon
     {
-        $warnings = [];
-
-        if ($from === null) {
-            $firstBv = $this->db->table('bv_ledger_entries')->min('effective_at');
-            $firstOrder = $this->db->table('orders')->where('status', 'paid')->min('paid_at');
-
-            $candidates = array_filter([$firstBv, $firstOrder]);
-
-            if ($candidates === []) {
-                $warnings[] = 'No BV and no paid orders — there is nothing to replay.';
-                $from = Carbon::today();
-            } else {
-                $from = Carbon::parse(min($candidates))->startOfDay();
-            }
+        if ($from !== null) {
+            return $from;
         }
 
-        $to ??= Carbon::today()->startOfDay();
+        $firstBv = $this->db->table('bv_ledger_entries')->min('effective_at');
+        $firstOrder = $this->db->table('orders')->where('status', 'paid')->min('paid_at');
 
-        // Cap at the last day of next calendar month.
-        $maxTo = Carbon::today()->addMonthNoOverflow()->endOfMonth()->startOfDay();
+        $candidates = array_filter([$firstBv, $firstOrder]);
 
-        if ($to->gt($maxTo)) {
-            $to = $maxTo->copy();
-            $warnings[] = sprintf(
-                'Replay horizon capped at %s (the last day of next month). Simulated runs beyond that date are not supported.',
-                $maxTo->toDateString(),
-            );
+        if ($candidates === []) {
+            $warnings[] = 'No BV and no paid orders — there is nothing to replay.';
+
+            return Carbon::today();
         }
 
-        if ($to->gt(Carbon::today()->startOfDay())) {
-            $warnings[] = sprintf(
-                'Replay window extends into the future (%s). Engine runs after today are simulated at their scheduled instants and produce partial, not-yet-final results. Do not use these figures for payouts.',
-                $to->toDateString(),
-            );
-        }
-
-        if ($to->lt($from)) {
-            $warnings[] = sprintf(
-                'Replay window ends (%s) before it starts (%s) — nothing was replayed.',
-                $to->toDateString(),
-                $from->toDateString(),
-            );
-        }
-
-        return [$from, $to, $warnings];
+        return Carbon::parse(min($candidates))->startOfDay();
     }
 
     private function audit(RecomputeReport $report, ?int $actorUserId): void
@@ -247,6 +248,8 @@ final class CompensationRecomputeRunner
             'details' => [
                 'from' => $report->from->toDateString(),
                 'to' => $report->to->toDateString(),
+                'horizon' => $report->horizon->value,
+                'simulated_through' => $report->simulatedThrough?->toDateTimeString(),
                 'rows_removed' => $report->rowsRemoved,
                 'total_rows_removed' => $report->totalRowsRemoved(),
                 'orders_propagated' => $report->ordersPropagated,

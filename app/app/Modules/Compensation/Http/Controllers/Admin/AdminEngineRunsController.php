@@ -12,11 +12,11 @@ use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\EngineChainResolver;
 use App\Modules\Compensation\Services\EngineStatusService;
-use App\Modules\Compensation\Services\IncomeEligibilityService;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
-use App\Modules\Compensation\Services\Recompute\EngineReplayService;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
+use App\Modules\Compensation\Services\Recompute\RecomputeHorizon;
 use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
+use App\Modules\Compensation\Services\Recompute\RecomputeState;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
@@ -52,6 +52,7 @@ final class AdminEngineRunsController extends Controller
         private readonly RecomputeGuard $recomputeGuard,
         private readonly CompensationStateWiper $wiper,
         private readonly RecomputeProgress $recomputeProgress,
+        private readonly RecomputeState $recomputeState,
     ) {}
 
     public function index(Request $request): View
@@ -107,101 +108,61 @@ final class AdminEngineRunsController extends Controller
         // database name and row counts printed on them — exist at all.
         $destructiveToolsVisible = $this->destructiveToolsAllowed($request);
 
+        // On a test environment the recompute IS the runner: it replays every
+        // engine at the instant the scheduler would have fired it, which is what
+        // makes the figures match production. A manual trigger fires one engine
+        // at the wrong instant — the 24 Aug premature freeze, and the 14 Sep
+        // month-end-wallet bug, were both that — so the buttons are not rendered
+        // there at all. Production is untouched: the guard is always shut.
+        $manualTriggersDisabled = $this->recomputeGuard->isPermitted();
+
         return view('admin.compensation.engine-runs.index', [
             'engines' => $engines,
-            // TESTING-ONLY recompute. The view asks the controller rather than
-            // re-deciding; when it refuses, the card is not rendered at all.
-            'recomputeAllowed' => $this->recomputeGuard->isPermitted(),
+            'manualTriggersDisabled' => $manualTriggersDisabled,
             'destructiveToolsVisible' => $destructiveToolsVisible,
             'recomputeTargetDatabase' => $this->recomputeGuard->targetDatabase(),
             'recomputeRowCounts' => $destructiveToolsVisible ? $this->wiper->preview() : [],
-            // Engine checkboxes for a partial replay, and the purchase-reset
-            // card's own preview — both only when the guard permits.
-            // Orchestrators are excluded: the replay drives the individual
-            // engines directly and skips the closes, so a ticked box would
-            // silently replay nothing.
-            'recomputeEngines' => $destructiveToolsVisible
-                ? array_filter(
-                    EngineRegistry::all(),
-                    static fn (EngineDefinition $definition): bool => ! $definition->isOrchestrator,
-                )
-                : [],
             'purchaseResetRowCounts' => $destructiveToolsVisible
                 ? app(PurchaseDataResetAction::class)->preview()
                 : [],
-            'recomputePresets' => [
-                'today' => Carbon::today()->toDateString(),
-                'month_start' => Carbon::today()->startOfMonth()->toDateString(),
-                'month_end' => Carbon::today()->endOfMonth()->toDateString(),
-                'next_month_end' => Carbon::today()->addMonthNoOverflow()->endOfMonth()->toDateString(),
-                'max_to' => Carbon::today()->addMonthNoOverflow()->endOfMonth()->toDateString(),
-            ],
+            // The one choice a recompute offers: how far along the scheduler's
+            // calendar to replay. Everything else the run needs it works out
+            // for itself.
+            'recomputeHorizons' => $destructiveToolsVisible
+                ? array_map(
+                    static fn (RecomputeHorizon $horizon): array => [
+                        'value' => $horizon->value,
+                        'label' => $horizon->label(Carbon::now()),
+                        'description' => $horizon->describe(Carbon::now()),
+                        'projected' => $horizon->isProjected(),
+                    ],
+                    RecomputeHorizon::cases(),
+                )
+                : [],
+            'projectedThrough' => $this->recomputeState->projectedThrough(),
         ]);
     }
 
     /**
-     * TESTING ONLY — queue a full wipe-and-replay of every BV-derived row.
+     * TEST ENVIRONMENTS ONLY — queue a full wipe-and-replay of every BV-derived
+     * row, up to the chosen {@see RecomputeHorizon}.
      *
      * Dispatches rather than running inline: the replay takes minutes, and a
      * request timeout halfway through would leave the database wiped and only
-     * partly rebuilt. Removed with the recompute scaffold at client sign-off.
+     * partly rebuilt. The command line takes the window options (`--from`,
+     * `--windowed`, `--only`); the page deliberately offers only the horizon,
+     * because a partial rebuild is a debugging tool rather than a way to run an
+     * environment.
      */
-    public function recomputeAll(Request $request, IncomeEligibilityService $eligibility): RedirectResponse
+    public function recomputeAll(Request $request): RedirectResponse
     {
         abort_unless($this->destructiveToolsAllowed($request), 404);
 
         $validated = $request->validate([
-            'from' => ['nullable', 'date_format:Y-m-d'],
-            'to' => [
-                'nullable',
-                'date_format:Y-m-d',
-                'after_or_equal:from',
-                'before_or_equal:'.Carbon::today()->addMonthNoOverflow()->endOfMonth()->toDateString(),
-            ],
-            'windowed' => ['nullable', 'boolean'],
-            'engines' => ['nullable', 'array'],
-            'engines.*' => ['string', Rule::in(array_keys(EngineRegistry::all()))],
-
-            // A partial selection wipes every derived table for the window but
-            // rebuilds only the ticked engines, so the rest are left MISSING
-            // rather than stale. The run summary names them, but that arrives
-            // after the delete — this is the acknowledgement that arrives before.
-            'accept_missing_engines' => ['exclude_without:engines', 'accepted'],
-        ], [
-            'accept_missing_engines.accepted' => 'Replaying only some engines deletes the other engines\' '
-                .'results for this window without rebuilding them. Tick the acknowledgement to proceed.',
-            'to.before_or_equal' => 'The replay can run at most through the end of next month.',
+            'horizon' => ['required', 'string', Rule::in(RecomputeHorizon::values())],
         ]);
 
-        $from = $validated['from'] ?? null;
-        $to = $validated['to'] ?? null;
-        /** @var list<string> $engines */
-        $engines = array_values($validated['engines'] ?? []);
-
-        // The wipe deletes this window's repurchase cycles whatever is ticked,
-        // and the guarded engines then refuse to run without them — aborting
-        // the replay partway and leaving the database half-rebuilt. Refuse the
-        // selection here instead, before a single row is deleted, and name the
-        // box to tick.
-        $guarded = EngineReplayService::guardedEnginesMissingEvaluate($engines === [] ? null : $engines);
-
-        if ($guarded !== [] && $eligibility->engineActive()) {
-            throw ValidationException::withMessages([
-                'engines' => sprintf(
-                    '%s cannot be replayed without %s while the repurchase engine is on: %s reads the repurchase '
-                        .'verdict this replay is about to delete, and refuses to run until it has been rebuilt. '
-                        .'Tick %s as well, or leave every box clear to replay all engines.',
-                    $this->engineLabels($guarded),
-                    EngineRegistry::get('repurchase.evaluate')->label,
-                    count($guarded) === 1 ? 'it' : 'each',
-                    EngineRegistry::get('repurchase.evaluate')->label,
-                ),
-            ]);
-        }
-
-        // Keeping the earlier history is only meaningful with a start date;
-        // without one there is nothing to keep.
-        $windowed = (bool) ($validated['windowed'] ?? false) && $from !== null;
+        $horizon = RecomputeHorizon::fromValue($validated['horizon']);
 
         // The lock alone cannot tell a live run from one that died holding it: a
         // worker killed mid-replay never reaches its finally, so the lock sits
@@ -225,10 +186,7 @@ final class AdminEngineRunsController extends Controller
         $actorId = auth()->id();
         RecomputeAllJob::dispatch(
             actorUserId: is_numeric($actorId) ? (int) $actorId : null,
-            from: $from,
-            to: $to,
-            onlyEngineKeys: $engines === [] ? null : $engines,
-            windowed: $windowed,
+            horizon: $horizon->value,
         );
 
         AuditLog::create([
@@ -240,45 +198,33 @@ final class AdminEngineRunsController extends Controller
             // was asked for, which is what a later replay is judged against.
             'before_hash' => null,
             'after_hash' => AuditDigests::of([
-                'from' => $from,
-                'to' => $to,
-                'mode' => $windowed ? 'windowed' : 'full',
-                'engines' => $engines === [] ? 'all' : $engines,
+                'horizon' => $horizon->value,
+                'mode' => 'full',
             ]),
             'details' => [
-                'note' => 'Testing-only compensation recompute queued from the admin console.',
-                'from' => $from,
-                'to' => $to,
-                'mode' => $windowed ? 'windowed' : 'full',
-                'engines' => $engines === [] ? 'all' : $engines,
+                'note' => 'Test-environment compensation recompute queued from the admin console.',
+                'horizon' => $horizon->value,
+                'simulated_through' => $horizon->isProjected()
+                    ? $horizon->instantFrom(Carbon::now())->toDateTimeString()
+                    : null,
+                'mode' => 'full',
             ],
         ]);
 
+        // The banner, and the scheduler pause behind it, read the audit row this
+        // request just wrote — so the redirected page must not answer from a
+        // cache taken before it.
+        $this->recomputeState->forget();
+
         return redirect()->route('admin.compensation.engine-runs.index')
-            ->with('status', $windowed
-                ? 'Windowed recompute queued from '.$from.'. Only the derived rows from that date '
-                    .'onwards are being rebuilt — earlier history is left as it is.'
-                : 'Full recompute queued. Every BV-derived row is being wiped and rebuilt — '
-                    .'the runs below will repopulate as the replay progresses.');
-    }
-
-    /**
-     * "GSB Daily Cut-off (incl. MSB) and Rank Qualification Check" — engine
-     * keys are never shown to an admin, who ticked labels.
-     *
-     * @param  list<string>  $keys
-     */
-    private function engineLabels(array $keys): string
-    {
-        $labels = array_map(static fn (string $key): string => EngineRegistry::get($key)->label, $keys);
-
-        if (count($labels) === 1) {
-            return $labels[0];
-        }
-
-        $last = array_pop($labels);
-
-        return implode(', ', $labels).' and '.$last;
+            ->with('status', $horizon->isProjected()
+                ? sprintf(
+                    'Recompute queued — projecting through %s. Every BV-derived row is being wiped and rebuilt, and '
+                        .'the figures after now will be simulated until the nightly reset.',
+                    $horizon->instantFrom(Carbon::now())->format('d M Y'),
+                )
+                : 'Recompute queued, up to now. Every BV-derived row is being wiped and rebuilt exactly as the '
+                    .'scheduler would have produced it — the runs below will repopulate as the replay progresses.');
     }
 
     /**
@@ -515,6 +461,22 @@ final class AdminEngineRunsController extends Controller
 
         $engine = EngineRegistry::get($validated['engine']);
 
+        // On a test environment the recompute owns the calendar. Firing one
+        // engine by hand here runs it at the wrong instant — the period it
+        // judges is still open, and the rows it writes are dated inside that
+        // period — which is how a manual cut-off froze a day's pool at zero
+        // (24 Aug 2026) and how Rank Bonus's repurchase deductions blocked
+        // Growth Booster and Fortune for the month they belonged to
+        // (14 Sep 2026). Run a recompute instead; it fires every engine at the
+        // instant the scheduler would have.
+        if ($this->recomputeGuard->isPermitted()) {
+            throw ValidationException::withMessages([
+                'engine' => 'Engines are not triggered individually on this environment. Use the recompute at the '
+                    .'top of this page — it replays every engine at the instant the scheduler would have run it, '
+                    .'which is what makes the figures match production.',
+            ]);
+        }
+
         // Maker-checker: the payout-batch engines are created by the scheduler
         // and approved by finance — the same permission this route carries, so
         // a manual trigger would let one admin both create and approve a batch.
@@ -606,31 +568,14 @@ final class AdminEngineRunsController extends Controller
             : $default->format('Y-m-d');
     }
 
-    /**
-     * The `<input max>` attribute — the browser-side twin of parsePeriodOrFail()'s limit.
-     * With the recompute gate open the closed-period rule is lifted but the
-     * horizon is not: the ceiling drops to the same end-of-next-month the
-     * replay uses.
-     */
+    /** The `<input max>` attribute — the browser-side twin of parsePeriodOrFail()'s limit. */
     private function periodInputMax(EngineDefinition $definition): string
     {
-        $limit = $this->recomputeGuard->isPermitted()
-            ? self::testingPeriodCeiling()
-            : $definition->latestManualPeriod();
+        $limit = $definition->latestManualPeriod();
 
         return $definition->periodType === EnginePeriodType::Month
             ? $limit->format('Y-m')
             : $limit->format('Y-m-d');
-    }
-
-    /**
-     * The furthest period any manual run may target while the testing gate is
-     * open — the same end-of-next-month horizon CompensationRecomputeRunner
-     * caps its replay window at, so the two testing tools cannot disagree.
-     */
-    private static function testingPeriodCeiling(): Carbon
-    {
-        return Carbon::today()->addMonthNoOverflow()->endOfMonth()->startOfDay();
     }
 
     private function parsePeriodOrFail(EngineDefinition $engine, string $input): Carbon
@@ -643,27 +588,6 @@ final class AdminEngineRunsController extends Controller
                     ? 'Enter the period as YYYY-MM.'
                     : 'Enter the period as YYYY-MM-DD.',
             ]);
-        }
-
-        // The closed-period rule protects real money from being frozen before it
-        // has landed. On a gated testing database the recompute tool wipes and
-        // rebuilds everything, so an operator may run any period to preview it —
-        // but only inside the replay's own horizon. Rank Bonus, GBB, ADC and
-        // Fortune have no premature-freeze self-heal to fall back on, so an
-        // unbounded future period would freeze a pool no re-run can reopen.
-        if ($this->recomputeGuard->isPermitted()) {
-            $ceiling = self::testingPeriodCeiling();
-
-            if ($engine->periodStart($period)->gt($ceiling)) {
-                throw ValidationException::withMessages([
-                    'period' => sprintf(
-                        'Even with the testing gate open, runs are capped at %s (the last day of next month) — the same horizon as the replay.',
-                        $ceiling->format('d M Y'),
-                    ),
-                ]);
-            }
-
-            return $period;
         }
 
         // A future period has no sales data — and an economics-freezing engine

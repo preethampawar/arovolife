@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Jobs;
 
 use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
+use App\Modules\Compensation\Services\Recompute\RecomputeHorizon;
 use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
 use App\Modules\Compensation\Support\WorkerFreshness;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -29,7 +30,7 @@ use Throwable;
  * click the button again — every run begins by removing the rows it is about to
  * rebuild, so a re-run is a clean start rather than a resume.
  *
- * TESTING ONLY. Deleted with the rest of the recompute scaffold at sign-off.
+ * TEST ENVIRONMENTS ONLY — RecomputeGuard refuses in production.
  */
 final class RecomputeAllJob implements ShouldQueue
 {
@@ -43,14 +44,17 @@ final class RecomputeAllJob implements ShouldQueue
 
     /**
      * @param  string|null  $from  first date to replay (Y-m-d)
-     * @param  string|null  $to  last date to replay (Y-m-d)
+     * @param  string  $horizon  a {@see RecomputeHorizon} value — how far the
+     *                           scheduler's calendar is replayed. A string
+     *                           rather than the enum so an in-flight job payload
+     *                           survives a deploy that touches the enum.
      * @param  list<string>|null  $onlyEngineKeys  replay only these engines
      * @param  bool  $windowed  keep the history before $from rather than wiping it
      */
     public function __construct(
         private readonly ?int $actorUserId = null,
         private readonly ?string $from = null,
-        private readonly ?string $to = null,
+        private readonly string $horizon = 'now',
         private readonly ?array $onlyEngineKeys = null,
         private readonly bool $windowed = false,
     ) {
@@ -86,7 +90,7 @@ final class RecomputeAllJob implements ShouldQueue
         try {
             $report = $runner->run(
                 from: $this->from === null ? null : Carbon::parse($this->from),
-                to: $this->to === null ? null : Carbon::parse($this->to),
+                horizon: RecomputeHorizon::fromValue($this->horizon),
                 actorUserId: $this->actorUserId,
                 progress: static function (string $message): void {
                     Log::info('compensation.recompute', ['message' => $message]);
@@ -99,6 +103,7 @@ final class RecomputeAllJob implements ShouldQueue
                 'from' => $report->from->toDateString(),
                 'to' => $report->to->toDateString(),
                 'days' => $report->daysReplayed,
+                'horizon' => $report->horizon->value,
                 'rows_removed' => $report->totalRowsRemoved(),
                 'engine_runs' => $report->totalEngineRuns(),
                 'duration_seconds' => $report->durationSeconds,

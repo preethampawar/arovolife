@@ -229,9 +229,9 @@ final class AogoOfferService
         }
 
         $conditions[] = new AogoCondition(
-            label: "This month's requalification conditions",
-            met: $this->gate->passes($distributorId, $month, rank: 1),
-            note: 'The Rank-1 repurchase BV for the month completed and your repurchase wallet cleared. A month that misses this uses nothing — the offer stays available for a later month.',
+            label: "This month's requalification conditions (as things stand today)",
+            met: $this->gate->passesSoFar($distributorId, $month, rank: 1),
+            note: 'The Rank-1 repurchase BV for the month completed and your repurchase wallet cleared. This is how the month looks right now and it is checked again once the month has ended — money you are credited later this month lands in the repurchase wallet too. A month that misses this uses nothing: the offer stays available for a later month.',
         );
 
         return new AogoStatus(

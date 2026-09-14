@@ -395,13 +395,22 @@ drift out of date when a new bonus table is added.
 
 ### `compensation:recompute-all`
 
-> **⚠️ TESTING ONLY — scheduled for deletion.** This exists so the compensation
-> plan can be validated end to end against live data. Once the client signs off,
-> it is removed and the engines go back to freeze-once for good. See the revert
-> checklist at the end of this section.
+> **Dev and staging only — never production.** `RecomputeGuard` refuses there
+> outright, with no override and no flag. In production the engines stay
+> write-once and forward-only: a period already paid can never be re-priced.
 
-Wipes **every row computed from BV** and replays all engines from the first BV
-date up to right now, in the order the scheduler would have run them.
+On a test environment this command **is** how compensation is computed. It wipes
+every row derived from BV and replays every engine **at the instant the
+scheduler would have fired it, for the period the scheduler would have handed
+it** — the repurchase evaluation at 00:05, the GSB cut-off at 00:10 *for the
+previous day*, the monthly close on the 1st, the monthly payout batch on the 8th.
+
+That clock is the whole point, not a detail of the implementation. Three of the
+engines take a 10 % repurchase deduction at credit time and three others ask
+whether a distributor's repurchase wallet was empty at the last instant of the
+month; production gets the right answer only because a month's crediting runs on
+the 1st of the *following* month. Replaying at any other clock breaks that. See
+`docs/architecture/adr-0014-test-environment-recompute.md`.
 
 **What it destroys:** bonus results (GSB, MSB, GBB, Rank, Fortune, ADC), every
 frozen pool, carry-forwards, personal-BV top-ups, rank qualifications and AO/GO
@@ -412,68 +421,88 @@ wallet credits, payout batches and the engine-run log.
 sponsorship, KYC, consents, settings and all plan configuration (`gsb_slabs`,
 `rank_tiers`, Fortune levels/tiers, lifetime award rewards).
 
-**Why it has to exist.** Every engine is write-once by design: a period's pool,
-denominator and point value are frozen before the first credit and never
-recomputed, so nobody's rate can move after they were paid. That is right for
-production and wrong for testing — it means a single mistaken run permanently
-fixes a month's economics.
-
 **Four gates, all of which must open.** Never in production;
 `COMP_RECOMPUTE_ENABLED`; the connected database named in
 `COMP_RECOMPUTE_ALLOWED_DATABASES`; and the typed database name on the
-confirmation. The third exists because the first two describe the *build* —
-`APP_ENV` is a label an operator sets, and it cannot tell you the database
-behind it holds real cooling-off windows, invoices and a TDS trail. Staging's
-does. Naming the permitted databases makes the gate answerable from the data, so
-a correctly-flagged build pointed at the wrong database still refuses, and the
-refusal prints which database it read.
+confirmation (skipped by `--force` and by `--no-interaction`, which is how cron
+runs the nightly reset). The third exists because the first two describe the
+*build* — `APP_ENV` is a label an operator sets, and it cannot tell you the
+database behind it holds real cooling-off windows, invoices and a TDS trail.
+Staging's does. Naming the permitted databases makes the gate answerable from
+the data, so a correctly-flagged build pointed at the wrong database still
+refuses, and the refusal prints which database it read.
 
 The name is read off the LIVE connection (`getDatabaseName()`), not from
 `DB_DATABASE` — `DB_URL`, if set, silently overrides the configured name at
 connect time, and a stale `DB_DATABASE` would otherwise defeat both this gate
-and the typed confirmation at once. Staging's value is `arovolife_staging`;
-until that line is in staging's `.env`, the Engine Runs testing cards are
-hidden and both endpoints 404, which is the intended fail-closed behaviour.
+and the typed confirmation at once. Staging's value is `ahdhesuhty`; until that
+line is in staging's `.env`, the Engine Runs testing cards are hidden and both
+endpoints 404, which is the intended fail-closed behaviour.
 
 ```bash
 # Enable it first — it refuses without BOTH of these, and always in production
 COMP_RECOMPUTE_ENABLED=true
 COMP_RECOMPUTE_ALLOWED_DATABASES=ahdhesuhty          # comma-separated; empty = nowhere
-
-php artisan compensation:recompute-all              # confirms, naming the target DB
-php artisan compensation:recompute-all --force      # scripted, no prompt
-php artisan compensation:recompute-all --from=2026-07-01 --to=2026-07-31
 ```
 
-The name must match the *connected* `DB_DATABASE` exactly — when the staging
-database moved off RDS (2026-08-29) the stale RDS name here hid the tool. The
-`compensation` worker reads these keys at boot, so after editing them run
-`php artisan config:clear && php artisan queue:restart`; a worker still holding
-the old list refuses the job and the admin page sits on "Queued" (the job's
-`failed()` hook now surfaces that refusal on the progress bar instead).
+#### The horizon — how far the calendar is replayed
 
-**Stale-worker guard.** A `queue:work` process loads its classes once, so a
-worker that booted before the current code was deployed runs the OLD engines —
-silently, and with no error anywhere. Local, 5 Sep 2026: the compensation
-worker had booted before the repurchase-deduction-at-credit-time change landed,
-and an admin-triggered Rank Bonus run credited ₹6,30,644.28 with zero
-deduction. `App\Modules\Compensation\Support\WorkerFreshness` now compares the
-worker's boot time against the newest mtime under `app/`: a stale worker
-refuses both the engine chain (recorded as a skipped run with reason
-`stale_worker`) and the full recompute (surfaced on the progress bar) rather
-than moving money. `app:deploy` already runs `queue:restart`; locally, restart
-the workers yourself:
+This is the only choice the admin page offers, and the only one most runs need.
+
+| `--horizon` | Stops at | What it means | Marks the environment projected |
+|---|---|---|---|
+| `now` (default) | this instant | Exactly what the scheduler would have produced by now. Closed months credited on their 1st and paid on their 8th; daily cut-offs through yesterday. **Nothing is simulated.** | No |
+| `today` | tomorrow 00:10 IST | Also today's repurchase evaluation and GSB cut-off, which really fire at 00:05 and 00:10 tomorrow. No month is closed. | Yes |
+| `projection` | the 8th of next month, 04:00 IST | The rest of this month day by day, its monthly close on the 1st, and its payout batch on the 8th — on the orders that exist right now. | Yes |
 
 ```bash
-docker compose -f docker/docker-compose.yml restart queue queue-compensation scheduler
+php artisan compensation:recompute-all                          # up to now; confirms, naming the target DB
+php artisan compensation:recompute-all --horizon=projection     # simulate through next month's payout
+php artisan compensation:recompute-all --horizon=now --force    # scripted, no prompt
 ```
 
-#### Replay only what you need — `--windowed` and `--only`
+#### A projection is a state the environment is IN
 
-A full replay costs the same whatever you actually want to look at, and on a
-remote database (staging talks to RDS) that is dominated by round trips rather
-than computation. Two knobs cut it down; both are also on the admin panel as
-date inputs, `Today` / `This month` presets and engine checkboxes.
+A projection writes ordinary rows at instants that have not arrived: forfeited
+cycles, weekly sweeps, the monthly close, the 8th's batch. They change what a
+distributor's wallet reads at checkout and what every income page shows. So the
+environment declares it:
+
+- **A banner on every page** — admin, distributor, storefront and the
+  registration wizard — naming what was simulated and through when, plus the two
+  standalone printable pages (ID card, profile stats), outside `.no-print` so it
+  survives Save-as-PDF. A projected figure is not a fact, and hard rule 3 does
+  not soften on staging.
+- **Every report download is marked**: `ReportExport::respond()` renames the file
+  `PROJECTED-<date>-…` and writes a first row saying so, because a spreadsheet
+  outlives the page it came from and the banner does not travel with it.
+- **A payout batch cannot be approved, and no bank NEFT file can be built**,
+  while a projection stands. Reading a batch is fine; signing off amounts
+  computed on a clock that has not arrived is not.
+- **The scheduled compensation engines pause** — `repurchase:evaluate`,
+  `gsb:daily-cutoff`, `gsb:weekly-payout`, both monthly closes, the health digest
+  (every paused period would read as overdue) and `payout:auto-retry-failed`,
+  which is the only one of them that reaches a bank. The check fails CLOSED: if
+  the state cannot be read the engines stay paused, because a skipped nightly run
+  is recoverable and a corrupted carry-forward chain is not. They would
+  otherwise run tonight against a carry-forward store the projection has already
+  advanced past, and `GsbCutoffService` aborts on exactly that. This also
+  replaces the old operational rule about never recomputing between 00:00 and
+  00:10 IST (F125): a replay in flight pauses them too.
+- **A nightly reset at 23:30 IST** runs
+  `compensation:recompute-all --horizon=now --if-projected --force`, which puts
+  the environment back to production-faithful before the 00:05 engines are due —
+  and does nothing at all on an environment that is already faithful.
+
+The state is read from the newest `compensation.recompute_all` /
+`compensation.recompute_all.queued` audit row, so a projection whose run died
+half-way still counts as standing. Running any `--horizon=now` recompute clears
+it.
+
+#### Replay only what you need — `--from`, `--windowed` and `--only`
+
+Command line only: the admin page deliberately offers just the horizon, because
+a partial rebuild is a debugging tool rather than a way to run an environment.
 
 ```bash
 # Rebuild ONLY this month; everything before 1 August is left untouched
@@ -481,7 +510,7 @@ php artisan compensation:recompute-all --from=2026-08-01 --windowed --force
 
 # Just the daily cut-off and its prerequisites — no rank, GBB, Fortune or payouts
 php artisan compensation:recompute-all --from=2026-08-01 --windowed \
-    --only=gsb.daily-cutoff --force
+    --only=gsb.daily-cutoff --only=repurchase.evaluate --force
 ```
 
 `--from` on its own still wipes everything and replays from that date; adding
@@ -489,6 +518,12 @@ php artisan compensation:recompute-all --from=2026-08-01 --windowed \
 separate: "replay from Tuesday" and "rebuild only Tuesday onwards" are different
 operations, and one silently becoming the other would corrupt the
 carry-forward chain.
+
+Two engines cannot be replayed on their own while the repurchase engine is on —
+`gsb.daily-cutoff` and `rank.check` both refuse to run without a repurchase
+evaluation covering their period, and the wipe deletes this window's cycles
+whatever is selected. Such a selection is refused **before** anything is
+deleted, naming the key to add.
 
 Three rules make a windowed run reproduce a full one exactly:
 
@@ -502,238 +537,63 @@ Three rules make a windowed run reproduce a full one exactly:
 - **Monthly rows go from their month's first day.** A monthly bonus cannot be
   rebuilt for half a month, so a start date inside a *closed* month is widened to
   that month's 1st (with a warning). A start date in the current month is kept as
-  given: the replay's catch-up pass recomputes the month in flight anyway.
+  given.
 - **A wallet credit survives if its source row does.** Monthly engines run in
-  arrears — July's Growth Booster is credited on 2 August — so deleting wallet
+  arrears — July's Growth Booster is credited on 1 August — so deleting wallet
   entries purely by date would remove credits whose result row sits before the
   window and is never recomputed. Entries are removed only when the row that
   produced them is being rebuilt.
 
-**Empty weekly batch after a mid-week run.** When the replay ends on a day
-other than Tuesday, the catch-up pass creates an empty `pending`
-`gsb:weekly-payout` batch dated the previous Tuesday (zero distributors). The
-scheduler would never have written it. The client accepted this on 2026-09-10:
-the row is harmless, the next recompute wipes it, and the tool itself is deleted
-after the plan sign-off.
+#### Engines are not triggered one at a time on a test environment
 
-Verified on the reference dataset (288 distributors, 53 days): a windowed
-`--from` = 1st-of-month run produces a byte-identical database to a full replay —
-same 15,264 cut-off rows, same ₹67,62,369.54 of wallet credits, same
-carry-forwards, payout lines, mentorship results and group-BV projection.
+While the gate is open the Engine Runs page renders no per-engine trigger forms
+and the trigger endpoint refuses. Firing one engine by hand runs it at the wrong
+instant, against a period that has not finished forming — that is the 24 Aug 2026
+premature freeze and the 14 Sep 2026 month-end-wallet bug, both of which reached
+production-shaped data through that form. Production is unaffected: the gate is
+shut there and the buttons stay.
 
-Engines you leave out with `--only` are **not replayed at all**, so their results
-for the window are missing rather than stale. The run report names every one it
-skipped.
+#### Operational notes
 
-#### Why a replay is no longer slow
+The `compensation` worker reads the gate keys at boot, so after editing them run
+`php artisan config:clear && php artisan queue:restart`; a worker still holding
+the old list refuses the job and the admin page sits on "Queued" (the job's
+`failed()` hook surfaces that refusal on the progress bar).
 
-The nightly cut-off is O(distributors × days) but its outcome is O(distributors
-with business). On the reference dataset a full replay wrote 13,248 cut-off rows
-to produce 187 credits — 5,796 of them for 126 distributors who have never
-purchased anything, each costing a `firstOrCreate` + `update` + `insert`.
-
-{@see \App\Modules\Compensation\Services\GsbIdleCutoffBatch} now partitions the
-day's distributors first and writes the provably-inert ones in one batched
-`INSERT` per day: below the personal-BV minimum, or eligible with no group BV, no
-carry-forward and no existing row. It is a filter, never a second copy of the
-matching rules — anything with any state goes down the normal compute/settle
-path. `repurchase:evaluate` is narrowed the same way, to distributors who have a
-BV row or an open cycle.
-
-`engine_runs.duration_ms` records the real wall-clock time of each run.
-`started_at`/`finished_at` deliberately carry the *replayed* instant (the replay
-travels the clock so rows land on the date the scheduler would have written
-them), which made every replayed run read as 0 seconds — there was no way to see
-where a slow replay spent its time. The Engine Runs page shows the measured
-duration per engine.
-
-#### The admin button needs a worker that tolerates a long job
-
-The Engine Runs page queues `RecomputeAllJob` instead of running it inline — a
-request timeout halfway through leaves the database wiped and half-rebuilt. The
-replay takes minutes, so the worker draining that queue has to allow it:
+**Stale-worker guard.** A `queue:work` process loads its classes once, so a
+worker that booted before the current code was deployed runs the OLD engines —
+silently, and with no error anywhere. Local, 5 Sep 2026: the compensation
+worker had booted before the repurchase-deduction-at-credit-time change landed,
+and an admin-triggered Rank Bonus run credited ₹6,30,644.28 with zero
+deduction. `App\Modules\Compensation\Support\WorkerFreshness` now compares the
+worker's boot time against the newest mtime under `app/`: a stale worker
+refuses both the engine chain and the full recompute rather than moving money.
+`app:deploy` already runs `queue:restart`; locally, restart the workers
+yourself:
 
 ```bash
-php artisan queue:work --queue=compensation --timeout=7200 --tries=1 --memory=512
+docker compose -f docker/docker-compose.yml restart queue queue-compensation scheduler
 ```
 
-`--queue=compensation` is not optional: every compensation job tags itself onto
-that queue and a bare `queue:work` drains only `default`, so the job would sit
-untouched. On Cloudways this is Supervisord **Job 3** (`docs/runbooks/cloudways-deployment.md`
-§1.9): 1 process, timeout 7200, tries 1 — the single process is what stops a
-long job being re-reserved by a second worker, and tries 1 is what stops a
-half-finished replay being re-run on top of itself.
-
-**`php artisan queue:listen` cannot run this job.** It does not execute jobs
-itself; it spawns a child `queue:work --once` wrapped in a process with the
-listener's own `--timeout`, default **60 seconds**
-(`Illuminate\Queue\Listener::makeProcess()`). The child is killed from outside
-at 60s regardless of the job's `$timeout = 7200`, mid-replay, with the wipe
-already committed. That is how staging was left empty on 2026-08-24.
-
-A killed worker never reaches `fail()`, so the progress cache would keep saying
-"running" until its two-hour TTL. Every published update now carries a
-heartbeat, and a run silent for more than 15 minutes reads as failed — the
-console shows the error and the button unblocks, rather than refusing the retry
-that is the only way to finish the rebuild.
-
-On a box with no long-running worker at all, skip the queue and run the command
-under `nohup` so a dropped SSH session does not take the replay with it. It
-publishes the same progress, so the admin page's bar still tracks it:
-
-```bash
-nohup php artisan compensation:recompute-all --force > storage/logs/recompute.log 2>&1 &
-```
-
-#### Catch-up pass — testing only
-
-The day loop fires each engine on the calendar day the scheduler would have fired
-it. That leaves two gaps:
-
-1. **The period still in flight at the horizon** — the cut-off for today, the
-   payout for this week, this month's bonuses for the monthly engines.
-2. **Closed months whose scheduled run day has not arrived yet** — all monthly
-   engines run on the 1st. If you click Recompute at 00:20 on 1 September, the
-   Rank Bonus at 00:30 has not fired yet; August's Rank Bonus would be missing.
-   If you click on 5 September, August's Rank Bonus ran on 1 September so the day
-   loop covered it — but any month-engine moved back to the 1st of a later month
-   in the future would still fall into this gap.
-
-So after the day loop, **whenever the window reaches today or later**, a catch-up
-pass runs for both categories:
-
-| Engine | In-flight period | Arrears (next firing is still ahead) |
-|---|---|---|
-| GSB daily cut-off (incl. MSB), Repurchase evaluation | today | — (daily: never an arrears gap) |
-| GSB weekly payout | this week (the Tuesday batch) | — (weekly: same) |
-| GBB, Rank Bonus, ADC, Fortune (enrol + payout), Monthly payout | this month | the closed month the next 1st-of-month run would process, if that run is still ahead |
-
-Skipped when the day loop already covered that exact period (`rank.bonus @
-2026-08-01` flagged as invoked when the loop hit 1 Sep 00:30). Unscheduled
-prerequisites (the rank qualification check) are pulled in first.
-
-**Stamp time:** catch-up rows whose window ends today are stamped at the real
-clock (existing behaviour). A future-horizon catch-up is stamped at 23:59 of the
-last simulated day so the rows sort after every loop-stamped row (PayoutService
-windows on `wallet_ledger_entries.created_at`).
-
-#### Future horizon — testing only
-
-`--to` / the **To** field may extend **up to the last day of next calendar month**.
-The loop simulates future days on a future fake clock — each engine fires at its
-scheduled instant (e.g. Rank Bonus at 00:30 on 1 Oct for September's data) —
-then the catch-up pass fills any remaining gaps. Use this to preview "how the
-next 1st-of-month will look on the orders that exist right now" without waiting
-for the scheduler.
-
-Three consequences:
-
-- **Future rows carry future timestamps.** PayoutService windows on
-  `created_at`, so a payout batch dated 1 Oct exists in the wallet before that
-  date. On a testing database that is fine.
-- **The real scheduler will skip those periods as already computed.** After a
-  future-horizon replay, the 1 Oct run finds Rank Bonus already done and moves on.
-  Recompute again with **To empty** (defaults to today) to return to the live
-  picture.
-- **Repurchase state reflects the simulated horizon.** `repurchase:evaluate`
-  runs at the real clock at the end of every recompute, so the dashboard shows
-  today's eligibility — but the wallet ledger carries future-dated rows.
-
-A historical `--to` (before today) turns the catch-up pass off entirely, so
-`--from=2026-07-01 --to=2026-07-31` replays July exactly as the scheduler ran
-it and touches nothing in the current period.
-
-**None of this changes the schedule.** `routes/console.php` is untouched: the
-00:10 cut-off still processes the previous day, the payout still lands on
-Tuesday, the monthly engines still fire on the 1st for the month that closed,
-and every production run still freezes its period permanently. The catch-up and
-future simulation exist inside the replay and nowhere else.
-
-There is also a button on **Admin → Compensation → Engine Runs**, visible to
-`admin` and `developer`, which queues the same work in the background. It is
-rendered only when the gate is open, so on any environment where the flag is
-unset there is no trace of it. The `queue` container must be running or the
-click appears to do nothing.
-
-**Live progress.** Once a run starts, the page shows a progress bar that polls
-every two seconds: the current phase, percentage, which date is being replayed,
-the engines firing on that date, days done / total, orders re-propagated and a
-running engine-run count. It ends on a green summary or a red failure with the
-error. The bar is driven by a single cache key
-(`compensation:recompute:progress`), not the database — the replay truncates
-`engine_runs` as its first act, so progress cannot be stored anywhere it would
-wipe.
-
-Reading it from the CLI while a run is in flight:
-
-```bash
-php artisan tinker --execute 'echo json_encode(Cache::get("compensation:recompute:progress"), JSON_PRETTY_PRINT);'
-```
-
-**Restart the queue worker after touching this code.** The worker holds the
-application in memory, so a running worker replays with whatever version of the
-runner it booted with. The symptom is specific and misleading: the bar sits on
-"Queued", the worker log shows `RecomputeAllJob ... DONE`, and the data *is*
-rebuilt — only the progress writes came from stale code.
-
-```bash
-docker compose -f docker/docker-compose.yml restart queue
-```
-
-If the bar sits on "Queued" and the worker log shows nothing at all, the worker
-is simply down — start it, and the queued job runs.
-
-**The schedulers are unaffected.** `routes/console.php` is untouched: the daily
-00:10 cut-off, the Tuesday payout and the 2nd/8th/9th monthly runs keep running
-normally and each still freezes its period. This command is the only thing that
-throws those snapshots away.
-
-#### What it cannot reproduce faithfully
-
-1. **Today's tree, today's plan.** Placement and every plan setting are read
-   live, not as of the historical date. The replay answers "what would the
-   *current* plan pay over this history" — it will not reproduce the original
-   runs if the plan or the tree has changed since.
-2. **Cut-offs with no BV behind them vanish.** The replay window starts at the
-   first BV date; any older cut-off rows are deleted and not regenerated. On the
-   dev database this removed a month of June rows that had no BV behind them.
-3. **Repurchase history is obligation-periods, not calendar months** — the
-   rebuild rolls forward through completed cycles and parks on the first missed
-   one.
-4. **Wallet credits are deleted, not reversed.** Any figure a distributor has
-   already seen can change.
-
-Timestamps are back-dated during the replay (`Carbon::setTestNow` per replayed
-day) so the monthly income cap and repurchase deduction, which window on
+Timestamps are travelled during the replay (`Carbon::setTestNow` per engine
+firing) so the monthly income cap and the repurchase deduction, which window on
 `wallet_ledger_entries.created_at`, fall in the right months. Outbound mail and
 notifications are muted for the duration; domain events still fire, because
 listeners like `ReleaseHeldRankBonusOnReactivation` are part of a correct
 recomputation.
 
-#### Reverting it after sign-off
+#### What is production code and what is test tooling
 
-1. Delete `app/Modules/Compensation/Services/Recompute/` (including
-   `WindowedStateWiper.php`), `Services/DTOs/RecomputeReport.php`,
-   `Jobs/RecomputeAllJob.php`,
-   `Console/Commands/CompensationRecomputeAllCommand.php`,
-   `tests/Modules/Compensation/CompensationRecomputeTest.php` and
-   `tests/Modules/Compensation/WindowedRecomputeTest.php`
-2. Remove the `recompute` block from `config/arovolife.php`, the
-   `COMP_RECOMPUTE_ENABLED` and `COMP_RECOMPUTE_ALLOWED_DATABASES` lines from
-   `.env.example` and every `.env`, and the
-   command from `AppServiceProvider`
-3. Remove the `recompute-all` and `reset-purchase-data` routes,
-   `AdminEngineRunsController::recomputeAll()` and `::resetPurchaseData()`, both
-   danger-zone cards in the Engine Runs view, and the recompute + reset tests in
-   `AdminEngineRunsControllerTest`
-4. Remove the `notEngines` exclusion in `EngineRegistryTest`
-5. **Keep** `Support/DerivedTables.php` (including its `dateFilter()` map) and
-   the `EngineCadence` work — genuine single-source fixes, not scaffold
-6. **Keep** `Services/GsbIdleCutoffBatch.php` + its test, the
-   `repurchase:evaluate` narrowing, and `engine_runs.duration_ms`: they speed up
-   and instrument the *production* engines and have nothing to do with replaying
-7. **Keep** `PurchaseDataResetAction::preview()` — the CLI confirmation uses it
-8. Delete this runbook section
+There is no longer a "revert at sign-off" checklist: the recompute is how test
+environments run, permanently. What still matters is knowing which side of the
+line each piece sits on.
+
+| Piece | Side |
+|---|---|
+| `Services/Recompute/*`, `Jobs/RecomputeAllJob`, `Console/Commands/CompensationRecomputeAllCommand`, the two Engine Runs danger-zone cards | Test tooling — gated by `RecomputeGuard`, inert in production |
+| `Support/DerivedTables.php` (with `dateFilter()`), `Support/EngineCadence`, `EngineDefinition::periodForFireOn()` | Production code — single sources of truth the engines and the health digest read |
+| `Services/GsbIdleCutoffBatch.php`, the `repurchase:evaluate` narrowing, `engine_runs.duration_ms` | Production code — they speed up and instrument the real engines |
+| `RepurchaseWalletGateService` (both modes), `OpenMonthGuard` | Production code — the refusals fire in production too, they are simply unreachable there |
 
 ---
 
@@ -748,6 +608,12 @@ recomputation.
 | `gsb:weekly-payout` | Tuesday 03:00 | Aggregates credited cut-offs |
 | `compensation:monthly-payout-close` | 8th of month 04:00 | Runs `payout:monthly-run`, but only if every crediting engine for the month succeeded |
 | `compensation:engine-health-digest` | Daily 08:00 | Emails failed / missed / stuck runs; silent when healthy |
+| `compensation:recompute-all --horizon=now --if-projected` | Daily 23:30 | **Dev and staging only** — puts an environment holding simulated figures back to production-faithful before the 00:05 engines. A no-op elsewhere, and the whole entry is filtered out in production |
+
+The five compensation entries above (`repurchase:evaluate`, `gsb:daily-cutoff`,
+`gsb:weekly-payout` and both closes) carry a filter that pauses them on a dev or
+staging environment while a projection is standing or a recompute is running.
+In production the filter always passes.
 
 The seven steps `compensation:monthly-close` runs, in order. **None of these has
 its own scheduler entry any more** — clock offsets do not serialise commands

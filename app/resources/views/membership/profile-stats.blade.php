@@ -26,6 +26,12 @@
 </head>
 <body class="min-h-full text-gray-900 antialiased wizard-stage">
 
+    {{-- Deliberately OUTSIDE .no-print: this page is downloaded as a PDF, and a
+         projected figure that loses its disclosure on the way to the printer is
+         the artifact hard rule 3 exists to prevent. Renders nothing on a normal
+         environment. --}}
+    @include('partials.recompute-projection-banner')
+
     {{-- Toolbar (hidden when printing) --}}
     <div class="no-print sticky top-0 z-10 bg-white border-b border-gray-200">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3 flex-wrap">

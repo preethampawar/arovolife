@@ -35,6 +35,10 @@ it('has exactly one registry entry per compensation console command', function (
         // Reports on the engines by email; takes no period, computes nothing,
         // and must never appear on the Engine Runs page as something to run.
         'EngineHealthDigestCommand',
+        // The test-environment recompute. It RUNS the engines rather than being
+        // one — it takes a horizon, not a period — and RecomputeGuard refuses it
+        // in production outright.
+        'CompensationRecomputeAllCommand',
     ];
 
     $commandClasses = collect($commandFiles ?: [])
@@ -276,4 +280,13 @@ it('declares a cadence that matches what the scheduler actually registers', func
             );
         }
     }
+});
+
+it('runs the whole schedule on the timezone the cadences are written in', function (): void {
+    // Every cadence time in the registry is IST, and routes/console.php pins
+    // each entry with ->timezone('Asia/Kolkata'). The replay compares an
+    // engine's firing instant (EngineCadence::atOn, which inherits the app
+    // timezone) against a horizon computed in IST, so an APP_TIMEZONE anywhere
+    // else would shift every one of those comparisons.
+    expect(config('app.timezone'))->toBe('Asia/Kolkata');
 });

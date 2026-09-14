@@ -11,6 +11,7 @@ use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\PayoutGatewaySettings;
 use App\Modules\Compensation\Services\PayoutReconciliationService;
 use App\Modules\Compensation\Services\PayoutService;
+use App\Modules\Compensation\Services\Recompute\RecomputeState;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Support\Csv;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 /**
  * Everything an admin does TO a payout batch: approve it, reconcile the bank's
@@ -63,6 +65,10 @@ trait HandlesPayoutBatchActions
     {
         if ($batch->status !== PayoutBatch::STATUS_PENDING) {
             return back()->with('error', 'Batch cannot be approved in its current state.');
+        }
+
+        if (($projected = $this->projectedFiguresRefusal()) !== null) {
+            return back()->with('error', $projected);
         }
 
         // Maker-checker (QA F94). The route already restricts approval to
@@ -289,6 +295,10 @@ trait HandlesPayoutBatchActions
             return back()->with('error', 'This batch has not been approved yet. Approve it first — the NEFT file is the instruction the bank acts on, and it must not exist before finance has signed the amount off.');
         }
 
+        if (($projected = $this->projectedFiguresRefusal()) !== null) {
+            return back()->with('error', $projected);
+        }
+
         /** @var EloquentCollection<int, PayoutLineItem> $lines */
         $lines = $batch->lineItems()
             ->with('distributor.user')
@@ -329,6 +339,37 @@ trait HandlesPayoutBatchActions
         return response()->streamDownload(static function () use ($csv): void {
             echo $csv;
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Refuse while this environment is standing on simulated compensation.
+     *
+     * A projection replays the scheduler past today, so the batches it builds
+     * are priced on bonuses nobody has earned yet. Approving one, or handing the
+     * bank a file built from one, would turn a forecast into an instruction to
+     * move money. Reading such a batch is fine; signing it off is not.
+     *
+     * Production never reaches this — {@see RecomputeState} answers false before
+     * touching the database whenever the recompute gate is shut.
+     */
+    private function projectedFiguresRefusal(): ?string
+    {
+        try {
+            $through = app(RecomputeState::class)->projectedThrough();
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($through === null) {
+            return null;
+        }
+
+        return sprintf(
+            'This environment is holding projected compensation figures, simulated through %s. The amounts in this '
+                .'batch were computed on a clock that has not arrived, so they cannot be approved or sent to a bank. '
+                .'Run a recompute with "Up to now", or wait for the nightly reset, and check the batch again.',
+            $through->format('d M Y H:i'),
+        );
     }
 
     /**

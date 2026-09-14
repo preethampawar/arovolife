@@ -13,6 +13,7 @@
 <body class="min-h-full text-gray-900 antialiased wizard-stage overflow-x-hidden">
 
     @include('partials.impersonation-banner')
+    @include('partials.recompute-projection-banner')
     @include('partials.public-topnav')
 
     @php

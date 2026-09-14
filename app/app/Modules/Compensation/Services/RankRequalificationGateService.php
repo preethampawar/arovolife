@@ -21,6 +21,12 @@ use Illuminate\Support\Facades\DB;
  * failure. The question is answered in exactly one place,
  * {@see RepurchaseWalletGateService::clearedAtMonthEnd()}, so this gate, GBB
  * and Fortune can never disagree about a month.
+ *
+ * Two entry points, matching the two questions that service answers:
+ * {@see passMap()} decides money for a month that has ended, and
+ * {@see passesSoFar()} shows a distributor how the month they are in is going.
+ * There is deliberately no single-id `passes()` any more — it read as the first
+ * and was used as the second.
  */
 final class RankRequalificationGateService
 {
@@ -54,9 +60,24 @@ final class RankRequalificationGateService
         return $map;
     }
 
-    public function passes(int $distributorId, Carbon $month, int $rank): bool
+    /**
+     * The same two conditions, as they stand TODAY, for one distributor — the
+     * dashboard's requalification checklist and the AO-GO status card.
+     *
+     * Deliberately not a one-id wrapper around {@see passMap()}: that answers
+     * the engine's question, which only exists once the month has ended and
+     * REFUSES before then. These surfaces ask about the month the distributor is
+     * living in, on every page load, so they read the wallet as it stands and
+     * the month's BV so far. A checklist that says "not yet" mid-month is
+     * correct; one that throws is a 500 on the dashboard.
+     */
+    public function passesSoFar(int $distributorId, Carbon $month, int $rank): bool
     {
-        return $this->passMap([$distributorId], $month, $rank)[$distributorId] ?? false;
+        $requiredBvPaise = $this->plan->rankRepurchaseBvPaise($rank);
+        $bv = $this->monthlyPersonalBvMap([$distributorId], $month)[$distributorId] ?? 0;
+        $cleared = $this->walletGate->standingAtMonthEnd([$distributorId], $month)[$distributorId] ?? true;
+
+        return $bv >= $requiredBvPaise && $cleared;
     }
 
     /**

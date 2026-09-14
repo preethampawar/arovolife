@@ -8,6 +8,7 @@ use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
+use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Compensation\Support\ResolvesMonthOption;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
@@ -62,7 +63,7 @@ final class MonthlyPayoutCommand extends Command
             return self::SUCCESS;
         }
 
-        $month = $this->resolveMonth();
+        $month = $this->resolveMonth((bool) $this->option(OpenMonthGuard::OPTION));
 
         if ($month === null) {
             return self::FAILURE;

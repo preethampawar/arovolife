@@ -9,7 +9,6 @@ use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
-use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Compensation\Support\ResolvesMonthOption;
 use App\Modules\Compensation\Support\WorkerFreshness;
 use App\Modules\Compliance\Models\AuditLog;
@@ -58,7 +57,6 @@ final class MonthlyCloseCommand extends Command
     protected $signature = 'compensation:monthly-close
                             {--month= : Month to close (YYYY-MM, defaults to the month that has just ended)}
                             {--force : Run the steps even when the preflight refuses}
-                            {--in-flight : Testing only — close a month that has not ended; every freeze is provisional}
                             {--restart : Re-run every step, including ones already recorded as succeeded}';
 
     protected $description = 'Run the month\'s crediting engines in dependency order, resuming at the first step that has not succeeded';
@@ -96,23 +94,6 @@ final class MonthlyCloseCommand extends Command
         }
 
         $this->info("Monthly close — {$month->format('F Y')}");
-
-        if ($this->option(OpenMonthGuard::OPTION) && OpenMonthGuard::isOpen($month)) {
-            // A provisional freeze of a month still in flight is a plan-state
-            // decision, so it gets a retention-guaranteed audit row (R-35), not
-            // only a console line.
-            $this->warn('Running IN FLIGHT: every freeze this close makes is provisional.');
-            AuditLog::create([
-                'actor_id' => null,
-                'action' => 'compensation.monthly_close.in_flight',
-                'subject_type' => 'platform',
-                'subject_id' => 0,
-                'details' => [
-                    'month' => $month->format('Y-m'),
-                    'reason' => '--in-flight passed: month closed early on partial BV; figures are provisional',
-                ],
-            ]);
-        }
 
         $refusal = $this->preflight($month);
 
@@ -167,11 +148,16 @@ final class MonthlyCloseCommand extends Command
     private function runStep(EngineDefinition $definition, Carbon $period): int
     {
         try {
+            // No in-flight override: this close only ever runs a month that has
+            // ended. Closing an unfinished month used to be a testing shortcut
+            // (`--in-flight`), and it was the shortcut that made the engines
+            // credit each other's repurchase deductions into the month they were
+            // judging (staging, 14 Sep 2026). Projecting an unfinished month is
+            // now the recompute's job: it fires this close on the 1st of the
+            // following month, which is the only instant at which the month's
+            // figures are real.
             $exitCode = Artisan::call($definition->commandSignature, [
                 $definition->periodOption => $definition->formatPeriod($period),
-                // Only when this close itself was told to run in flight; a
-                // closed month never needs it and a step's own guard stays.
-                ...($this->option(OpenMonthGuard::OPTION) ? OpenMonthGuard::overrideFor($definition->commandSignature, $period) : []),
             ]);
         } catch (Throwable $e) {
             Log::error('compensation.monthly_close.step_crashed', [

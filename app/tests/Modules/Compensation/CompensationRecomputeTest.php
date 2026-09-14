@@ -6,11 +6,13 @@ use App\Console\Actions\PurchaseDataResetAction;
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Services\DTOs\RecomputeReport;
 use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
 use App\Modules\Compensation\Services\Recompute\EngineReplayService;
 use App\Modules\Compensation\Services\Recompute\GroupBvReplayService;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
+use App\Modules\Compensation\Services\Recompute\RecomputeHorizon;
 use App\Modules\Compensation\Services\Recompute\RecomputeNotPermitted;
 use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
 use App\Modules\Compensation\Support\DerivedTables;
@@ -24,6 +26,7 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Cache\Events\KeyWritten;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -107,6 +110,25 @@ function recomputeSeedPaidOrder(int $distributorId, string $paidAt, int $bvPaise
     ]);
 
     return $orderId;
+}
+
+/**
+ * Run a recompute as if "now" were $instant.
+ *
+ * There is no `to` any more: a recompute replays the scheduler's calendar up to
+ * a horizon, and the `now` horizon is this instant. Pinning the clock is
+ * therefore how a test asks for a historical window — and it is also the only
+ * honest way to ask, because the engines' own guards read the same clock.
+ */
+function recomputeAsAt(string $instant, ?Carbon $from = null, RecomputeHorizon $horizon = RecomputeHorizon::Now): RecomputeReport
+{
+    Carbon::setTestNow(Carbon::parse($instant));
+
+    try {
+        return app(CompensationRecomputeRunner::class)->run(from: $from, horizon: $horizon);
+    } finally {
+        Carbon::setTestNow();
+    }
 }
 
 /**
@@ -297,13 +319,12 @@ it('replays a window and leaves the clock on real time', function (): void {
     $dist = Distributor::factory()->create();
     recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
 
-    $report = app(CompensationRecomputeRunner::class)->run(
-        from: Carbon::parse('2026-06-05'),
-        to: Carbon::parse('2026-06-10'),
-    );
+    $report = app(CompensationRecomputeRunner::class)->run(from: Carbon::parse('2026-06-05'));
 
-    expect($report->daysReplayed)->toBe(6);
+    expect($report->daysReplayed)->toBeGreaterThan(0);
     expect($report->ordersPropagated)->toBe(1);
+    expect($report->horizon)->toBe(RecomputeHorizon::Now);
+    expect($report->simulatedThrough)->toBeNull();
     expect(Carbon::hasTestNow())->toBeFalse();
 });
 
@@ -322,10 +343,7 @@ it('leaves notifications on the real channel manager after a replay', function (
     $dist = Distributor::factory()->create();
     recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
 
-    app(CompensationRecomputeRunner::class)->run(
-        from: Carbon::parse('2026-06-05'),
-        to: Carbon::parse('2026-06-06'),
-    );
+    recomputeAsAt('2026-06-07 09:00:00', Carbon::parse('2026-06-05'));
 
     expect(Notification::getFacadeRoot())->not->toBeInstanceOf(NotificationFake::class);
     expect(Notification::getFacadeRoot())->toBe($realManager);
@@ -350,10 +368,7 @@ it('writes one audit-log row recording what it destroyed', function (): void {
     $dist = Distributor::factory()->create();
     recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
 
-    app(CompensationRecomputeRunner::class)->run(
-        from: Carbon::parse('2026-06-05'),
-        to: Carbon::parse('2026-06-06'),
-    );
+    recomputeAsAt('2026-06-07 09:00:00', Carbon::parse('2026-06-05'));
 
     $row = DB::table('audit_log')->where('action', 'compensation.recompute_all')->first();
 
@@ -361,7 +376,11 @@ it('writes one audit-log row recording what it destroyed', function (): void {
 
     $details = json_decode((string) $row->details, true);
     expect($details['from'])->toBe('2026-06-05');
-    expect($details['to'])->toBe('2026-06-06');
+    expect($details['to'])->toBe('2026-06-07');
+    // The horizon is what a later reader — the banner, the scheduler pause —
+    // judges the environment by, so it has to be on the row.
+    expect($details['horizon'])->toBe('now');
+    expect($details['simulated_through'])->toBeNull();
     expect($details)->toHaveKey('rows_removed');
 });
 
@@ -369,15 +388,13 @@ it('is idempotent — a second replay reproduces the first', function (): void {
     $dist = Distributor::factory()->create();
     recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
 
-    $runner = app(CompensationRecomputeRunner::class);
-
-    $runner->run(from: Carbon::parse('2026-06-05'), to: Carbon::parse('2026-06-08'));
+    recomputeAsAt('2026-06-09 09:00:00', Carbon::parse('2026-06-05'));
 
     $firstWallet = (int) DB::table('wallet_ledger_entries')->sum('amount_paise');
     $firstGroupBv = (int) DB::table('group_bv_daily')->sum('left_bv_paise');
     $firstCutoffs = DB::table('gsb_cutoff_results')->count();
 
-    $runner->run(from: Carbon::parse('2026-06-05'), to: Carbon::parse('2026-06-08'));
+    recomputeAsAt('2026-06-09 09:00:00', Carbon::parse('2026-06-05'));
 
     expect((int) DB::table('wallet_ledger_entries')->sum('amount_paise'))->toBe($firstWallet);
     expect((int) DB::table('group_bv_daily')->sum('left_bv_paise'))->toBe($firstGroupBv);
@@ -388,219 +405,175 @@ it('does not double-count group BV across repeated replays', function (): void {
     $dist = Distributor::factory()->create();
     recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
 
-    $runner = app(CompensationRecomputeRunner::class);
-
-    $runner->run(from: Carbon::parse('2026-06-05'), to: Carbon::parse('2026-06-06'));
+    recomputeAsAt('2026-06-07 09:00:00', Carbon::parse('2026-06-05'));
     $credits = DB::table('group_bv_credits')->count();
 
-    $runner->run(from: Carbon::parse('2026-06-05'), to: Carbon::parse('2026-06-06'));
+    recomputeAsAt('2026-06-07 09:00:00', Carbon::parse('2026-06-05'));
 
     expect(DB::table('group_bv_credits')->count())->toBe($credits);
 });
 
 /*
 |--------------------------------------------------------------------------
-| The period in flight — testing-only catch-up
+| The horizon — how far the scheduler's calendar is replayed
 |--------------------------------------------------------------------------
+|
+| Every engine fires at the instant the scheduler would have fired it, for the
+| period the scheduler would have handed it. The horizon decides only where that
+| stops. The clock is pinned in each of these: "what has the scheduler reached"
+| is a question about a moment, and a test that let the wall clock answer it
+| would pass or fail by the hour it ran at.
 */
 
-it('replays through today rather than stopping at yesterday', function (): void {
-    $dist = Distributor::factory()->create();
-    recomputeSeedPaidOrder($dist->id, Carbon::today()->subDay()->setTime(10, 0)->toDateTimeString(), 100_000);
+it('fires the daily cut-off at 00:10 the NEXT morning, for the day before it', function (): void {
+    // F125. The replay used to fire the cut-off for day D at D 00:10 — a day
+    // early. Two things went wrong with that, and only one of them was visible:
+    // the next real scheduled run tripped GsbCutoffService's out-of-order guard,
+    // and the repurchase deductions a cut-off writes were dated INSIDE the month
+    // whose month-end wallet gate they would then be counted against.
+    Feature::activate(GenosSalesBonusFeature::class);
 
-    $report = app(CompensationRecomputeRunner::class)->run();
-
-    expect($report->to->toDateString())->toBe(Carbon::today()->toDateString());
-});
-
-it('leaves no scheduled engine uncomputed for the period in flight', function (): void {
-    $dist = Distributor::factory()->create();
-    recomputeSeedPaidOrder($dist->id, Carbon::today()->subDay()->setTime(10, 0)->toDateTimeString(), 100_000);
-
-    $report = app(CompensationRecomputeRunner::class)->run(from: Carbon::today()->subDay());
-
-    // The day loop alone cannot produce these: the weekly payout only fires on
-    // Tuesdays and the monthly engines only on the 1st, so a two-day window
-    // reaches them only through the catch-up pass.
-    foreach (EngineRegistry::all() as $definition) {
-        // Orchestrators are deliberately not replayed: the replay fires the
-        // engines a close would have run, directly, so running the close too
-        // would invoke every step twice.
-        if ($definition->cadence->isScheduled() && ! $definition->isOrchestrator) {
-            expect($report->enginesRun)->toHaveKey($definition->commandSignature);
-        }
-    }
-});
-
-it('computes the month in flight, not only the months that have closed', function (): void {
-    $dist = Distributor::factory()->create();
-    recomputeSeedPaidOrder($dist->id, Carbon::today()->setTime(10, 0)->toDateTimeString(), 100_000);
-
-    app(CompensationRecomputeRunner::class)->run(from: Carbon::today());
-
-    // GBB fires on the 1st for the *previous* month, so a run whose period is
-    // the current month can only have come from the catch-up.
-    expect(DB::table('engine_runs')
-        ->where('engine_key', 'gbb.monthly')
-        ->whereDate('period_start', Carbon::today()->startOfMonth())
-        ->exists())->toBeTrue();
-});
-
-it('does not catch up the current period when replaying a historical window', function (): void {
     $dist = Distributor::factory()->create();
     recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
 
-    $report = app(CompensationRecomputeRunner::class)->run(
-        from: Carbon::parse('2026-06-05'),
-        to: Carbon::parse('2026-06-07'),
-    );
+    recomputeAsAt('2026-06-09 12:00:00', Carbon::parse('2026-06-05'));
 
-    // 5–7 June contains neither the 1st (crediting) nor the 8th (payment) and
-    // the window does not reach today, so no monthly engine should have run.
-    expect($report->enginesRun)->not->toHaveKey('gbb:monthly-run');
-    expect($report->enginesRun)->not->toHaveKey('payout:monthly-run');
+    $runs = EngineRun::where('engine_key', 'gsb.daily-cutoff')
+        ->orderBy('period_start')
+        ->get()
+        ->mapWithKeys(fn (EngineRun $run): array => [
+            $run->period_start->toDateString() => $run->started_at->format('Y-m-d H:i'),
+        ]);
+
+    expect($runs->all())->toBe([
+        '2026-06-05' => '2026-06-06 00:10',
+        '2026-06-06' => '2026-06-07 00:10',
+        '2026-06-07' => '2026-06-08 00:10',
+        '2026-06-08' => '2026-06-09 00:10',
+    ]);
 });
 
-it('freezes the period in flight at the real clock, not the simulated schedule instant', function (): void {
-    // The runner lands the clock on real time itself, so the test cannot pin
-    // "now" — instead it brackets the run with the wall clock. The day loop
-    // used to stamp today's cut-off at its simulated 00:10 schedule instant,
-    // which lies before this bracket for any test started after 00:10; the
-    // rare just-after-midnight run is covered too, because the day loop's
-    // future-clamp would then also collapse onto the wall clock.
+it('does not fire an engine whose scheduled instant has not arrived', function (): void {
+    // The `now` horizon is the production-faithful one: at 00:07 on the 9th the
+    // 00:05 evaluation has fired and the 00:10 cut-off has not, so the 8th is
+    // still uncut — exactly as it would be on the real box at 00:07.
+    Feature::activate(GenosSalesBonusFeature::class);
+
     $dist = Distributor::factory()->create();
-    recomputeSeedPaidOrder($dist->id, Carbon::today()->setTime(0, 1)->toDateTimeString(), 100_000);
+    recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
 
-    $before = Carbon::now()->subSecond();
-    app(CompensationRecomputeRunner::class)->run(from: Carbon::today());
+    recomputeAsAt('2026-06-09 00:07:00', Carbon::parse('2026-06-05'));
 
-    $run = DB::table('engine_runs')
-        ->where('engine_key', 'gsb.daily-cutoff')
-        ->whereDate('period_start', Carbon::today())
-        ->first();
-    expect($run)->not->toBeNull();
-    expect(Carbon::parse($run->started_at)->gte($before))->toBeTrue();
-    expect(Carbon::parse($run->started_at)->lte(Carbon::now()))->toBeTrue();
+    expect(EngineRun::where('engine_key', 'gsb.daily-cutoff')
+        ->whereDate('period_start', '2026-06-08')->exists())->toBeFalse();
+    expect(EngineRun::where('engine_key', 'gsb.daily-cutoff')
+        ->whereDate('period_start', '2026-06-07')->exists())->toBeTrue();
+    expect(EngineRun::where('engine_key', 'repurchase.evaluate')
+        ->whereDate('period_start', '2026-06-09')->exists())->toBeTrue();
 });
 
-it('never stamps a replayed run in the future when the window ends today', function (): void {
+it('never stamps a replayed run in the future under the now horizon', function (): void {
     $dist = Distributor::factory()->create();
-    recomputeSeedPaidOrder($dist->id, Carbon::today()->setTime(0, 1)->toDateTimeString(), 100_000);
+    recomputeSeedPaidOrder($dist->id, Carbon::today()->subDays(2)->setTime(10, 0)->toDateTimeString(), 100_000);
 
-    app(CompensationRecomputeRunner::class)->run(from: Carbon::today());
+    app(CompensationRecomputeRunner::class)->run(from: Carbon::today()->subDays(2));
 
-    // Today's engines are due at scheduled times that may not have arrived yet
-    // (the cut-off at 00:10, the payout at 09:00); those are clamped to now.
     expect(DB::table('engine_runs')->where('started_at', '>', Carbon::now()->addMinute())->count())->toBe(0);
 });
 
-it('catches up a closed month whose scheduled run has not happened yet', function (): void {
-    // Pin clock to 00:20 on 1 Sep — after the 00:06 snapshot and the 00:10
-    // cut-off, but before the 00:30 Rank Bonus. The day loop reaches 1 Sep and
-    // fires the snapshot + cut-off; Rank Bonus, GBB, ADC, Fortune and the
-    // monthly payout are all due at later instants on the 1st and are deferred
-    // to the catch-up pass (because they are in-flight at the horizon).
-    Carbon::setTestNow('2026-09-01 00:20:00');
+it('closes a month on the 1st of the next one, not while it is still in flight', function (): void {
+    // The month's crediting engines exist at one instant: 00:15-04:00 on the 1st
+    // of the following month. Running them at "now" mid-month — which the old
+    // catch-up pass did — priced the month on partial BV and dated every row it
+    // wrote inside the month it was judging.
+    Feature::activate(GenosSalesBonusFeature::class);
+    Feature::activate(RankBonusFeature::class);
 
-    $dist = Distributor::factory()->create();
+    $dist = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
+    DB::table('genealogy_closure')->insert([
+        'ancestor_id' => $dist->id, 'descendant_id' => $dist->id, 'depth' => 0,
+    ]);
     recomputeSeedPaidOrder($dist->id, '2026-08-20 10:00:00', 100_000);
 
-    app(CompensationRecomputeRunner::class)->run(from: Carbon::parse('2026-08-20'));
+    recomputeAsAt('2026-09-03 12:00:00', Carbon::parse('2026-08-20'));
 
-    // The catch-up pass stamps rows at the real clock (00:20), not at the
-    // simulated 00:30/00:45/… schedule instants.
-    $catchUpEngines = ['rank.bonus', 'gbb.monthly', 'adc.bonus', 'fortune.payout'];
-    foreach ($catchUpEngines as $key) {
-        $run = DB::table('engine_runs')
-            ->where('engine_key', $key)
-            ->whereDate('period_start', '2026-08-01')
-            ->first();
-        expect($run)->not->toBeNull("engine_runs missing {$key} for 2026-08-01");
-
-        // Stamped at the real clock, not the future 00:30 schedule instant.
-        expect(Carbon::parse($run->started_at)->toDateString())->toBe('2026-09-01');
-    }
-
-    // The day loop DID reach the GSB cut-off for 2026-08-31 and stamped it at 00:10.
-    $cutoffRun = DB::table('engine_runs')
-        ->where('engine_key', 'gsb.daily-cutoff')
-        ->whereDate('period_start', '2026-08-31')
+    $rankBonus = EngineRun::where('engine_key', 'rank.bonus')
+        ->whereDate('period_start', '2026-08-01')
+        ->latest('id')
         ->first();
-    expect($cutoffRun)->not->toBeNull();
-    expect(Carbon::parse($cutoffRun->started_at)->format('H:i'))->toBe('00:10');
 
-    Carbon::setTestNow();
+    expect($rankBonus)->not->toBeNull('August Rank Bonus never ran');
+    expect($rankBonus->started_at->format('Y-m-d H:i'))->toBe('2026-09-01 00:30');
+
+    // September is in flight at this horizon, so nothing has closed it.
+    expect(EngineRun::where('engine_key', 'rank.bonus')
+        ->whereDate('period_start', '2026-09-01')->exists())->toBeFalse();
 });
 
-it('replays into a future horizon, firing engines on their future scheduled instants', function (): void {
-    Carbon::setTestNow('2026-09-05 12:00:00');
+it('projects the month in flight by firing its close on the 1st of the next month', function (): void {
+    Feature::activate(GenosSalesBonusFeature::class);
+    Feature::activate(RankBonusFeature::class);
 
-    $dist = Distributor::factory()->create();
-    recomputeSeedPaidOrder($dist->id, '2026-09-01 10:00:00', 100_000);
+    $dist = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
+    DB::table('genealogy_closure')->insert([
+        'ancestor_id' => $dist->id, 'descendant_id' => $dist->id, 'depth' => 0,
+    ]);
+    recomputeSeedPaidOrder($dist->id, '2026-09-02 10:00:00', 100_000);
 
-    $report = app(CompensationRecomputeRunner::class)->run(
-        from: Carbon::parse('2026-09-01'),
-        to: Carbon::parse('2026-10-31'),
-    );
+    $report = recomputeAsAt('2026-09-14 19:15:00', Carbon::parse('2026-09-01'), RecomputeHorizon::Projection);
 
-    // Rank Bonus for September fires on 1 Oct at 00:30.
-    $rb = DB::table('engine_runs')
-        ->where('engine_key', 'rank.bonus')
+    expect($report->horizon)->toBe(RecomputeHorizon::Projection);
+    expect($report->simulatedThrough?->format('Y-m-d H:i'))->toBe('2026-10-08 04:00');
+
+    $rankBonus = EngineRun::where('engine_key', 'rank.bonus')
         ->whereDate('period_start', '2026-09-01')
-        ->first();
-    expect($rb)->not->toBeNull('rank.bonus for 2026-09-01 missing');
-    expect(Carbon::parse($rb->started_at)->format('Y-m-d H:i'))->toBe('2026-10-01 00:30');
+        ->latest('id')
+        ->firstOrFail();
 
-    // Monthly payout for October is in-flight at the 31-Oct horizon (same month),
-    // so the day loop skips it and the catch-up stamps it at 23:59 31 Oct.
-    $payout = DB::table('engine_runs')
-        ->where('engine_key', 'payout.monthly')
+    expect($rankBonus->started_at->format('Y-m-d H:i'))->toBe('2026-10-01 00:30');
+
+    // ...and the batch that pays it, a week later.
+    $payout = EngineRun::where('engine_key', 'payout.monthly')
         ->whereDate('period_start', '2026-10-01')
-        ->first();
-    expect($payout)->not->toBeNull('payout.monthly for 2026-10-01 missing');
-    expect(Carbon::parse($payout->started_at)->format('Y-m-d H:i'))->toBe('2026-10-31 23:59');
+        ->latest('id')
+        ->firstOrFail();
 
-    // GSB cut-off for a mid-October day stamps at the scheduled 00:10 instant.
-    $cutoff = DB::table('engine_runs')
-        ->where('engine_key', 'gsb.daily-cutoff')
-        ->whereDate('period_start', '2026-10-15')
-        ->first();
-    expect($cutoff)->not->toBeNull('gsb.daily-cutoff for 2026-10-15 missing');
-    expect(Carbon::parse($cutoff->started_at)->format('Y-m-d H:i'))->toBe('2026-10-15 00:10');
-
-    // Catch-up: GBB for Oct (in-flight at the horizon 31 Oct) stamped at 23:59.
-    $gbbCatchUp = DB::table('engine_runs')
-        ->where('engine_key', 'gbb.monthly')
-        ->whereDate('period_start', '2026-10-01')
-        ->first();
-    expect($gbbCatchUp)->not->toBeNull('catch-up gbb.monthly for 2026-10-01 missing');
-    expect(Carbon::parse($gbbCatchUp->started_at)->format('Y-m-d H:i'))->toBe('2026-10-31 23:59');
-
-    expect($report->to->toDateString())->toBe('2026-10-31');
-    expect(
-        collect($report->warnings)->contains(fn ($w) => str_contains($w, 'future'))
-    )->toBeTrue('Expected a future-window warning');
-
-    Carbon::setTestNow();
+    expect($payout->started_at->format('Y-m-d H:i'))->toBe('2026-10-08 04:00');
 });
 
-it('caps the horizon at the end of next month', function (): void {
-    Carbon::setTestNow('2026-09-05 12:00:00');
+it('keeps a month\'s own crediting deductions out of the month they are judged against', function (): void {
+    // THE staging bug, 14 Sep 2026. Rank Bonus takes a 10% repurchase deduction
+    // at credit time; Growth Booster and Fortune then ask whether the wallet was
+    // empty at the last instant of the same month. While the close ran at "now"
+    // — inside the month — those deductions landed on, say, 14 September and
+    // blocked September for everyone Rank Bonus had just paid. At the
+    // scheduler's own clock the close runs on 1 October, so every deduction it
+    // writes is dated after September ended and September's verdict cannot see
+    // them.
+    Feature::activate(GenosSalesBonusFeature::class);
+    Feature::activate(RankBonusFeature::class);
+    Feature::activate(RepurchaseEngineFeature::class);
 
-    $dist = Distributor::factory()->create();
-    recomputeSeedPaidOrder($dist->id, '2026-09-01 10:00:00', 100_000);
+    $dist = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
+    DB::table('genealogy_closure')->insert([
+        'ancestor_id' => $dist->id, 'descendant_id' => $dist->id, 'depth' => 0,
+    ]);
+    recomputeSeedPaidOrder($dist->id, '2026-09-02 10:00:00', 500_000);
 
-    $report = app(CompensationRecomputeRunner::class)->run(
-        from: Carbon::parse('2026-09-01'),
-        to: Carbon::parse('2026-12-15'),
+    recomputeAsAt('2026-09-14 19:15:00', Carbon::parse('2026-09-01'), RecomputeHorizon::Projection);
+
+    $inSeptember = DB::table('wallet_ledger_entries')
+        ->where('type', 'repurchase_deduction')
+        ->whereBetween('created_at', ['2026-09-01 00:00:00', '2026-09-30 23:59:59'])
+        ->whereIn('engine_run_id', EngineRun::whereIn('engine_key', [
+            'rank.bonus', 'gbb.monthly', 'fortune.payout',
+        ])->pluck('id'))
+        ->count();
+
+    expect($inSeptember)->toBe(
+        0,
+        'A monthly engine wrote a repurchase deduction dated inside September — the month its own wallet gate judges.',
     );
-
-    expect($report->to->toDateString())->toBe('2026-10-31');
-    expect(
-        collect($report->warnings)->contains(fn ($w) => str_contains($w, 'capped'))
-    )->toBeTrue('Expected a "capped" warning');
-
-    Carbon::setTestNow();
 });
 
 /*
@@ -644,14 +617,13 @@ it('really invokes the engines rather than passing vacuously', function (): void
     $dist = Distributor::factory()->create();
     recomputeSeedPaidOrder($dist->id, '2026-06-05 10:00:00', 100_000);
 
-    app(CompensationRecomputeRunner::class)->run(
-        from: Carbon::parse('2026-06-05'),
-        to: Carbon::parse('2026-06-08'),
-    );
+    // The 9th at noon: the cut-offs for the 5th-8th have all fired (each at
+    // 00:10 the morning after its day), the 9th's has not.
+    recomputeAsAt('2026-06-09 12:00:00', Carbon::parse('2026-06-05'));
 
-    // Four days replayed, one cut-off row per distributor per day. If the day
-    // loop were silently skipping (flag off, wrong signature, bad period) this
-    // would be zero and every other assertion in this file would pass anyway.
+    // Four days cut off, one row per distributor per day. If the loop were
+    // silently skipping (flag off, wrong signature, bad period) this would be
+    // zero and every other assertion in this file would pass anyway.
     expect(DB::table('gsb_cutoff_results')->count())->toBe(4);
     expect(DB::table('gsb_cutoff_results')->distinct()->count('cutoff_date'))->toBe(4);
 
@@ -679,19 +651,18 @@ it('publishes progress through every phase of a replay', function (): void {
 
     expect($progress->read())->toBeNull();
 
-    app(CompensationRecomputeRunner::class)->run(
-        from: Carbon::parse('2026-06-05'),
-        to: Carbon::parse('2026-06-08'),
-    );
+    recomputeAsAt('2026-06-09 12:00:00', Carbon::parse('2026-06-05'));
 
     $state = $progress->read();
 
     expect($state['state'])->toBe(RecomputeProgress::STATE_COMPLETE);
     expect($state['percent'])->toBe(100);
-    expect($state['days_total'])->toBe(4);
-    expect($state['days_done'])->toBe(4);
+    // 5-10 June: the loop runs one day past the horizon, because the engines
+    // that settle the horizon day fire the next morning.
+    expect($state['days_total'])->toBe(6);
+    expect($state['days_done'])->toBe(6);
     expect($state['orders_done'])->toBe(1);
-    expect($state['summary']['days'])->toBe(4);
+    expect($state['summary']['days'])->toBe(6);
     expect($state['summary']['engine_runs'])->toBeGreaterThan(0);
     expect($state['rows_removed'])->toBeGreaterThanOrEqual(0);
 });
@@ -868,7 +839,7 @@ it('lets the console start a new run once the previous one is confirmed dead', f
     Queue::fake();
 
     $this->actingAs(recomputeAdmin())
-        ->post(route('admin.compensation.engine-runs.recompute-all'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'), ['horizon' => 'now'])
         ->assertRedirect(route('admin.compensation.engine-runs.index'))
         ->assertSessionHas('status');
 
@@ -884,7 +855,7 @@ it('still refuses to start a second run while the first is reporting', function 
     Queue::fake();
 
     $this->actingAs(recomputeAdmin())
-        ->post(route('admin.compensation.engine-runs.recompute-all'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'), ['horizon' => 'now'])
         ->assertSessionHas('error');
 
     Queue::assertNothingPushed();
@@ -913,52 +884,77 @@ it('publishes propagation progress often enough to show a stall as a stall', fun
 });
 
 it('refuses a partial replay that leaves out the repurchase evaluation the cut-off needs', function (): void {
-    // The wipe deletes the window's repurchase cycles whatever is ticked, and
+    // The wipe deletes the window's repurchase cycles whatever is selected, and
     // gsb:daily-cutoff then refuses to run without them — aborting the replay
-    // partway through and leaving the database half-rebuilt. Refuse the
-    // selection before a row is deleted.
+    // partway and leaving the database half-rebuilt. Refuse the selection before
+    // a row is deleted. Partial replays live on the command line now; the page
+    // offers only a horizon.
     config(['arovolife.recompute.enabled' => true]);
     Feature::activate(RepurchaseEngineFeature::class);
-    Queue::fake();
 
-    $this->actingAs(recomputeAdmin())
-        ->post(route('admin.compensation.engine-runs.recompute-all'), [
-            'engines' => ['gsb.daily-cutoff'],
-            'accept_missing_engines' => '1',
-        ])
-        ->assertSessionHasErrors('engines');
+    $exit = Artisan::call('compensation:recompute-all', [
+        '--only' => ['gsb.daily-cutoff'],
+        '--force' => true,
+    ]);
 
-    Queue::assertNothingPushed();
+    expect($exit)->toBe(1)
+        ->and(Artisan::output())->toContain('repurchase.evaluate');
+
+    expect(DB::table('audit_log')->where('action', 'compensation.recompute_all')->count())->toBe(0);
 });
 
-it('accepts the same partial replay once the repurchase evaluation is ticked too', function (): void {
+it('accepts the same partial replay once the repurchase evaluation is selected too', function (): void {
     config(['arovolife.recompute.enabled' => true]);
     Feature::activate(RepurchaseEngineFeature::class);
-    Queue::fake();
 
-    $this->actingAs(recomputeAdmin())
-        ->post(route('admin.compensation.engine-runs.recompute-all'), [
-            'engines' => ['repurchase.evaluate', 'gsb.daily-cutoff'],
-            'accept_missing_engines' => '1',
-        ])
-        ->assertSessionHasNoErrors();
+    $exit = Artisan::call('compensation:recompute-all', [
+        '--only' => ['repurchase.evaluate', 'gsb.daily-cutoff'],
+        '--force' => true,
+    ]);
 
-    Queue::assertPushed(RecomputeAllJob::class);
+    expect($exit)->toBe(0);
 });
 
 it('allows a cut-off-only replay while the repurchase engine is off', function (): void {
     // Flag off, guards skipped: the selection is runnable exactly as before.
     config(['arovolife.recompute.enabled' => true]);
-    Queue::fake();
 
-    $this->actingAs(recomputeAdmin())
-        ->post(route('admin.compensation.engine-runs.recompute-all'), [
-            'engines' => ['gsb.daily-cutoff'],
-            'accept_missing_engines' => '1',
-        ])
-        ->assertSessionHasNoErrors();
+    $exit = Artisan::call('compensation:recompute-all', [
+        '--only' => ['gsb.daily-cutoff'],
+        '--force' => true,
+    ]);
 
-    Queue::assertPushed(RecomputeAllJob::class);
+    expect($exit)->toBe(0);
+});
+
+it('refuses outright in production, whatever it is asked for', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+    app()->detectEnvironment(fn (): string => 'production');
+
+    try {
+        $exit = Artisan::call('compensation:recompute-all', ['--force' => true]);
+    } finally {
+        app()->detectEnvironment(fn (): string => 'testing');
+    }
+
+    expect($exit)->toBe(1)
+        ->and(Artisan::output())->toContain('production');
+});
+
+it('does nothing when asked to reset an environment that holds no projection', function (): void {
+    // The nightly 23:30 entry passes --if-projected precisely so a faithful
+    // environment is never wiped and rebuilt for no reason.
+    config(['arovolife.recompute.enabled' => true]);
+
+    $exit = Artisan::call('compensation:recompute-all', [
+        '--if-projected' => true,
+        '--force' => true,
+    ]);
+
+    expect($exit)->toBe(0)
+        ->and(Artisan::output())->toContain('Nothing to reset');
+
+    expect(DB::table('audit_log')->where('action', 'compensation.recompute_all')->count())->toBe(0);
 });
 
 /** A distributor placed under $parent on $side, with its closure rows. */
@@ -1048,10 +1044,7 @@ it('a full replay of the client GSB example produces forfeited rows for 7–8 Au
     recomputeSeedPaidOrder($rightForfeited->id, '2026-08-08 09:00:00', 500_000);
     recomputeSeedPaidOrder($rightFulfilment->id, '2026-08-09 09:00:00', 500_000);
 
-    app(CompensationRecomputeRunner::class)->run(
-        from: Carbon::parse('2026-07-01'),
-        to: Carbon::parse('2026-09-05'),
-    );
+    recomputeAsAt('2026-09-05 12:00:00', Carbon::parse('2026-07-01'));
 
     $rows = DB::table('gsb_cutoff_results')
         ->where('distributor_id', $subject->id)
@@ -1103,12 +1096,13 @@ it('a full replay of the client GSB example produces forfeited rows for 7–8 Au
         ->and($first->status)->toBe('completed');
 });
 
-it('forces only the in-flight month past the rank check repurchase guard', function (): void {
+it('satisfies the rank check\'s repurchase guard from the 1st\'s own evaluation', function (): void {
     // rank:check-qualifications refuses without an evaluate run dated the 1st of
-    // the FOLLOWING month. For the month still in flight at the horizon that
-    // date has not arrived, so the catch-up pass could never satisfy it and the
-    // whole replay aborted — after the wipe. That one invocation is forced; the
-    // closed months keep their guard.
+    // the FOLLOWING month — proof that every cycle due in the month has been
+    // judged. The replay used to reach the check before that date existed and
+    // had to FORCE it past its own guard. At the scheduler's clock the guard is
+    // satisfied by construction: the check fires at 00:15 on the 1st, ten
+    // minutes after that morning's 00:05 evaluation.
     config(['arovolife.recompute.enabled' => true]);
     Feature::activate(GenosSalesBonusFeature::class);
     Feature::activate(RepurchaseEngineFeature::class);
@@ -1119,25 +1113,22 @@ it('forces only the in-flight month past the rank check repurchase guard', funct
         'ancestor_id' => $distributor->id, 'descendant_id' => $distributor->id, 'depth' => 0,
     ]);
 
-    $report = app(CompensationRecomputeRunner::class)->run(
-        from: Carbon::today()->subDays(3),
-        to: Carbon::today(),
-    );
+    $report = recomputeAsAt('2026-09-03 12:00:00', Carbon::parse('2026-08-28'));
 
     expect($report->enginesRun)->toHaveKey('rank:check-qualifications');
 
     $run = EngineRun::where('engine_key', 'rank.check')->latest('id')->firstOrFail();
+
     expect($run->status)->toBe(EngineRun::STATUS_SUCCEEDED)
-        ->and(Carbon::parse($run->period_start)->toDateString())
-        ->toBe(Carbon::today()->startOfMonth()->toDateString());
+        ->and(Carbon::parse($run->period_start)->toDateString())->toBe('2026-08-01')
+        ->and($run->started_at->format('Y-m-d H:i'))->toBe('2026-09-01 00:15');
 });
 
-it('runs the repurchase evaluation for the horizon day inside the loop, before the engines that need it', function (): void {
-    // A replay whose window ends on the 1st of a month runs rank:check for the
+it('runs the day\'s repurchase evaluation before the engines of that morning that need it', function (): void {
+    // A replay whose window reaches the 1st of a month runs rank:check for the
     // month that just closed, and that check needs an evaluate run dated the
-    // 1st. Deferring the 1st's evaluation to the catch-up pass put it AFTER the
-    // check and aborted the replay. Driven through EngineReplayService directly
-    // because the group-BV pass clears the test clock before the engine replay.
+    // 1st. Both fire that morning — 00:05 and 00:15 — and the loop runs a day's
+    // engines in scheduled-time order, so the order holds by itself.
     Feature::activate(GenosSalesBonusFeature::class);
     Feature::activate(RepurchaseEngineFeature::class);
     Feature::activate(RankBonusFeature::class);
@@ -1152,19 +1143,17 @@ it('runs the repurchase evaluation for the horizon day inside the loop, before t
     try {
         app(EngineReplayService::class)->replay(
             Carbon::parse('2026-08-28'),
-            Carbon::parse('2026-09-01'),
+            Carbon::parse('2026-09-01 02:00:00'),
         );
     } finally {
         Carbon::setTestNow();
     }
 
-    // The evaluation for the horizon day ran in the loop, not the catch-up...
     expect(EngineRun::where('engine_key', 'repurchase.evaluate')
         ->whereDate('period_start', '2026-09-01')
         ->where('status', EngineRun::STATUS_SUCCEEDED)
         ->exists())->toBeTrue();
 
-    // ...so August's rank check found it and did not have to be forced.
     $check = EngineRun::where('engine_key', 'rank.check')
         ->whereDate('period_start', '2026-08-01')
         ->latest('id')
@@ -1175,19 +1164,48 @@ it('runs the repurchase evaluation for the horizon day inside the loop, before t
 
 /*
 |--------------------------------------------------------------------------
-| Catch-up — the weekly payout batch is dated a Tuesday, whatever day it is
+| The weekly payout batch is dated a Tuesday, whatever day the horizon is
 |--------------------------------------------------------------------------
 |
-| The clock is pinned so these hold on every weekday. Driven through
-| EngineReplayService directly: CompensationRecomputeRunner::run() clears the
-| test clock itself. 8 Sep 2026 is a Tuesday; 10 Sep 2026 a Thursday.
+| The batch command refuses any --date that is not a Tuesday. Nothing hands it
+| one any more — it is fired by its own weekly cadence, on Tuesdays, like the
+| scheduler does — but the clock is pinned here so the expectation holds on
+| every weekday. 8 Sep 2026 is a Tuesday; 10 Sep 2026 a Thursday.
 */
 
-it('catches up the weekly payout for the preceding Tuesday when the horizon is not one', function (): void {
-    // The catch-up used to hand every date engine the horizon date. The weekly
-    // payout command refuses any --date that is not a Tuesday, so on six days
-    // out of seven the whole replay aborted — after the wipe. The window here
-    // holds no Tuesday at all, so the batch can only come from the catch-up.
+it('fires the weekly payout only on the Tuesdays inside the window', function (): void {
+    Feature::activate(GenosSalesBonusFeature::class);
+
+    $distributor = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
+    DB::table('genealogy_closure')->insert([
+        'ancestor_id' => $distributor->id, 'descendant_id' => $distributor->id, 'depth' => 0,
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2026-09-10 12:00:00')); // Thursday
+
+    try {
+        $result = app(EngineReplayService::class)->replay(
+            Carbon::parse('2026-09-07'),
+            Carbon::parse('2026-09-10 12:00:00'),
+        );
+    } finally {
+        Carbon::setTestNow();
+    }
+
+    expect($result['engines']['gsb:weekly-payout'] ?? 0)->toBe(1);
+
+    $run = EngineRun::where('engine_key', 'gsb.weekly-payout')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SUCCEEDED)
+        ->and(Carbon::parse($run->period_start)->toDateString())->toBe('2026-09-08')
+        ->and($run->started_at->format('Y-m-d H:i'))->toBe('2026-09-08 03:00');
+});
+
+it('does not invent a weekly batch for a Tuesday the window never reached', function (): void {
+    // The catch-up pass used to write an empty `pending` batch dated the
+    // previous Tuesday whenever the horizon was not one — a row the real
+    // scheduler would never have written, accepted by the client on 2026-09-10
+    // only because the tool was temporary. It is not written any more.
     Feature::activate(GenosSalesBonusFeature::class);
 
     $distributor = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
@@ -1200,79 +1218,12 @@ it('catches up the weekly payout for the preceding Tuesday when the horizon is n
     try {
         $result = app(EngineReplayService::class)->replay(
             Carbon::parse('2026-09-09'),
-            Carbon::parse('2026-09-10'),
+            Carbon::parse('2026-09-10 12:00:00'),
         );
     } finally {
         Carbon::setTestNow();
     }
 
-    expect($result['engines']['gsb:weekly-payout'] ?? 0)
-        ->toBe(1, 'The catch-up did not run the weekly payout: a non-Tuesday horizon must resolve to the preceding Tuesday, not be skipped');
-
-    $run = EngineRun::where('engine_key', 'gsb.weekly-payout')->latest('id')->firstOrFail();
-    expect($run->status)->toBe(EngineRun::STATUS_SUCCEEDED)
-        ->and(Carbon::parse($run->period_start)->toDateString())
-        ->toBe('2026-09-08', 'The weekly payout was dated the horizon (a Thursday) instead of the preceding Tuesday');
-
-    expect(DB::table('payout_batches')
-        ->where('batch_type', 'weekly')
-        ->whereDate('batch_date', '2026-09-08')
-        ->exists())->toBeTrue();
-});
-
-it('does not run the weekly payout twice when the preceding Tuesday lies inside the window', function (): void {
-    Feature::activate(GenosSalesBonusFeature::class);
-
-    $distributor = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
-    DB::table('genealogy_closure')->insert([
-        'ancestor_id' => $distributor->id, 'descendant_id' => $distributor->id, 'depth' => 0,
-    ]);
-
-    Carbon::setTestNow(Carbon::parse('2026-09-10 12:00:00')); // Thursday
-
-    try {
-        $result = app(EngineReplayService::class)->replay(
-            Carbon::parse('2026-09-07'),
-            Carbon::parse('2026-09-10'),
-        );
-    } finally {
-        Carbon::setTestNow();
-    }
-
-    // The day loop ran Tuesday's batch at its scheduled instant; the catch-up
-    // resolved to the same Tuesday and found it already invoked.
-    expect($result['engines']['gsb:weekly-payout'] ?? 0)->toBe(1);
-
-    $run = EngineRun::where('engine_key', 'gsb.weekly-payout')->sole();
-    expect(Carbon::parse($run->period_start)->toDateString())->toBe('2026-09-08')
-        ->and(Carbon::parse($run->started_at)->format('Y-m-d H:i'))->toBe('2026-09-08 03:00');
-});
-
-it('still catches up the weekly payout for the horizon itself when the horizon is a Tuesday', function (): void {
-    Feature::activate(GenosSalesBonusFeature::class);
-
-    $distributor = Distributor::factory()->create(['status' => 'active', 'depth' => 0]);
-    DB::table('genealogy_closure')->insert([
-        'ancestor_id' => $distributor->id, 'descendant_id' => $distributor->id, 'depth' => 0,
-    ]);
-
-    Carbon::setTestNow(Carbon::parse('2026-09-08 12:00:00')); // Tuesday
-
-    try {
-        $result = app(EngineReplayService::class)->replay(
-            Carbon::parse('2026-09-07'),
-            Carbon::parse('2026-09-08'),
-        );
-    } finally {
-        Carbon::setTestNow();
-    }
-
-    expect($result['engines']['gsb:weekly-payout'] ?? 0)->toBe(1);
-
-    // In flight at the horizon: the day loop stepped around it and the catch-up
-    // stamped it at the real clock, not the 03:00 schedule instant.
-    $run = EngineRun::where('engine_key', 'gsb.weekly-payout')->sole();
-    expect($run->status)->toBe(EngineRun::STATUS_SUCCEEDED)
-        ->and(Carbon::parse($run->period_start)->toDateString())->toBe('2026-09-08')
-        ->and(Carbon::parse($run->started_at)->format('Y-m-d H:i'))->toBe('2026-09-08 12:00');
+    expect($result['engines']['gsb:weekly-payout'] ?? 0)->toBe(0);
+    expect(DB::table('payout_batches')->where('batch_type', 'weekly')->count())->toBe(0);
 });

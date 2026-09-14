@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Exceptions\RepurchaseWalletVerdictNotAvailable;
 use App\Modules\Compensation\Services\RepurchaseWalletGateService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
@@ -108,4 +109,69 @@ it('returns a verdict for every id asked about, including one with no ledger at 
 it('returns an empty map for an empty id list', function (): void {
     expect(app(RepurchaseWalletGateService::class)->clearedAtMonthEnd([], Carbon::parse('2026-06-01')))
         ->toBe([]);
+});
+
+/*
+|--------------------------------------------------------------------------
+| The engine verdict does not exist before the month ends
+|--------------------------------------------------------------------------
+*/
+
+it('refuses to answer the engine question for a month that has not ended', function (): void {
+    // Staging, 14 Sep 2026. Asked mid-month the ledger sum silently degrades
+    // from "at the last instant of the month" to "as of right now" — a different
+    // question. Inside one monthly close that difference is money: Rank Bonus
+    // writes a 10% repurchase deduction at credit time, and Growth Booster and
+    // Fortune, running minutes later in the same close, counted it against the
+    // very month it belonged to and withheld the month from everyone Rank Bonus
+    // had just paid.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+
+    expect(fn () => app(RepurchaseWalletGateService::class)
+        ->clearedAtMonthEnd([$dist->id], Carbon::now()->startOfMonth()))
+        ->toThrow(RepurchaseWalletVerdictNotAvailable::class);
+});
+
+it('leaves the flag-off answer alone even for an open month', function (): void {
+    // Zero-trace gating comes first: with the repurchase engine off there is no
+    // condition to fail and nothing to refuse over.
+    $dist = Distributor::factory()->create();
+
+    expect(app(RepurchaseWalletGateService::class)
+        ->clearedAtMonthEnd([$dist->id], Carbon::now()->startOfMonth()))
+        ->toBe([$dist->id => true]);
+});
+
+it('answers the display question for an open month as of right now', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $holding = Distributor::factory()->create();
+    $clear = Distributor::factory()->create();
+
+    gateSeedWalletEntry($holding->id, 50_000, 'repurchase_deduction', Carbon::now()->subHour()->toDateTimeString());
+
+    $map = app(RepurchaseWalletGateService::class)
+        ->standingAtMonthEnd([$holding->id, $clear->id], Carbon::now()->startOfMonth());
+
+    expect($map[$holding->id])->toBeFalse()
+        ->and($map[$clear->id])->toBeTrue();
+});
+
+it('does not let the display view see money credited later in a closed month', function (): void {
+    // For a month that has ended the two questions coincide exactly — the
+    // display view is the same verdict, to the second.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $dist = Distributor::factory()->create();
+    gateSeedWalletEntry($dist->id, 50_000, 'repurchase_deduction', '2026-07-01 00:06:00');
+
+    $standing = app(RepurchaseWalletGateService::class)
+        ->standingAtMonthEnd([$dist->id], Carbon::parse('2026-06-01'));
+    $verdict = app(RepurchaseWalletGateService::class)
+        ->clearedAtMonthEnd([$dist->id], Carbon::parse('2026-06-01'));
+
+    expect($standing)->toBe($verdict)
+        ->and($verdict[$dist->id])->toBeTrue();
 });

@@ -218,16 +218,24 @@ How the 123 findings were fixed, and what to do differently next time.
 - **Decisions that came back from the client (2026-09-11)** are in `staging-qa-2026-09-10/fix-plan.md` §B and drive the next run's expectations: members pay the distributor price; MSB is a deduction source; company centres never earn ADC; maker-checker (`finance.approve`, admin only); NEFT export is a real bank file; self-service bank page; COD off; whole-order returns; guests may browse; several live announcements; helpline 10:00–18:00 Mon–Sat; malware scanning disabled by client decision (R-83); audit digests everywhere.
 - **Deploy/cleanup sequence** for a fix branch: `staging-qa-2026-09-10/deploy-checklist.md`.
 
-## 11. Full-recompute verification (added 2026-09-12)
+## 11. Full-recompute verification (updated 2026-09-14)
 
-After the client-side go-ahead and the 5-point warning, the user triggers the FULL `compensation:recompute-all` from the Engine Runs page (the assistant cannot type the unlock word). Verify it like this, in order, all read-only:
+Staging computes compensation **only** through `compensation:recompute-all` — there are no per-engine trigger buttons there any more. The user triggers it from the Engine Runs page (the assistant cannot type the unlock word) after the client-side go-ahead and the 5-point warning. Pick the horizon deliberately:
 
-1. `audit_log` rows `compensation.recompute_all.queued` / `compensation.recompute_all` — mode, from/to, `rows_removed`, `engines_run`, `duration_seconds`, `warnings` (must be `[]`).
+- **Up to now** — production-faithful; the state staging should be left in.
+- **Through today** / **Project through next month's payout** — simulated; the environment is then bannered, the scheduled engines pause, and the 23:30 IST nightly reset undoes it.
+
+Verify it like this, in order, all read-only:
+
+1. `audit_log` rows `compensation.recompute_all.queued` / `compensation.recompute_all` — `horizon`, `simulated_through`, `from`/`to`, `rows_removed`, `engines_run`, `duration_seconds`, `warnings` (`[]` for an "up to now" run; a projected run carries one warning saying so).
 2. `jobs` = 0; `engine_runs` all `succeeded`, earliest `period_start` = first paid order's month; no failed row survives.
-3. Pools by `cutoff_date` (`msb_daily_pools`, `gsb_daily_pools` — columns are `company_bv_paise`, `pool_paise`, `total_points`, `point_value_paise`, `payout_paise`); compare the busiest day with the previous run.
-4. Ledger: every `gsb_credit` / `mb_credit` / `rank_credit` has a `repurchase_transfer` + `repurchase_deduction`; `repurchase_wallet_used` rows preserved; batch debits (admin, TDS, payout) 3 per line.
-5. `payout_batches` + `payout_line_items` (column is `payout_batch_id`), `created_by` NULL, all pending; explain every count that moved against the previous run — expect August-period artefacts to disappear when the window starts in September (rank rows, AO-GO, lifetime milestones, and any offer grant that a stale rank qualification had blocked).
-6. `distributors.gsb_frozen_at` all NULL; `adc_bonus_results` 0 for the company centre.
-7. Reports: from the signed-in admin tab, `fetch()` each `/admin/compensation/...` report page (no `credentials` option — the browser safety filter blocks it; same-origin sends the cookie anyway), strip to text, grep `₹` figures and the words Failed/Exception; all must be 200. List in `deploy-checklist.md` §4a.
-8. `laravel.log` for the run's minute: no warning/error/exception/`premature_freeze`.
-9. Never run a recompute between 00:00 and 00:10 IST (F125), and expect the first scheduled cut-off afterwards to log the premature-freeze self-heal for the day the replay froze early.
+3. **The calendar.** `engine_runs` for `gsb.daily-cutoff` must be stamped 00:10 on the day AFTER their `period_start`; a month's `rank.bonus` / `gbb.monthly` / `fortune.payout` at 00:15–03:15 on the 1st of the FOLLOWING month; `payout.monthly` on the 8th at 04:00. Anything stamped inside the period it judges is the F125 / 14-Sep class of bug returning.
+4. Pools by `cutoff_date` (`msb_daily_pools`, `gsb_daily_pools` — columns are `company_bv_paise`, `pool_paise`, `total_points`, `point_value_paise`, `payout_paise`); compare the busiest day with the previous run.
+5. Ledger: every `gsb_credit` / `mb_credit` / `rank_credit` has a `repurchase_transfer` + `repurchase_deduction`; `repurchase_wallet_used` rows preserved; batch debits (admin, TDS, payout) 3 per line. **No `repurchase_deduction` written by a monthly engine may be dated inside the month that engine credited** — that is the check that the month-end wallet gate is sound.
+6. `payout_batches` + `payout_line_items` (column is `payout_batch_id`), `created_by` NULL, all pending; explain every count that moved against the previous run.
+7. `distributors.gsb_frozen_at` all NULL; `adc_bonus_results` 0 for the company centre.
+8. Reports: from the signed-in admin tab, `fetch()` each `/admin/compensation/...` report page (no `credentials` option — the browser safety filter blocks it; same-origin sends the cookie anyway), strip to text, grep `₹` figures and the words Failed/Exception; all must be 200. List in `deploy-checklist.md` §4a.
+9. `laravel.log` for the run's minute: no warning/error/exception/`premature_freeze`.
+10. If the run was projected: confirm the amber banner appears on an admin page AND a distributor page, and that `php artisan schedule:list` still lists the compensation entries (they are filtered at run time, not unregistered). Then either wait for the 23:30 reset or run **Up to now** and confirm the banner is gone.
+
+The old rule "never recompute between 00:00 and 00:10 IST" is retired: a replay in flight, and a standing projection, both pause the scheduled engines.

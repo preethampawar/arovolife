@@ -12,6 +12,7 @@
 </head>
 <body class="min-h-full text-gray-900 antialiased wizard-stage overflow-x-hidden">
 
+    @include('partials.recompute-projection-banner')
     @include('partials.public-topnav')
 
     {{-- Full-bleed banner slot — sits flush under the header, edge to edge. --}}

@@ -34,6 +34,12 @@ beforeEach(function (): void {
     // Outside the 00:00-05:00 IST engine window by default, so these tests
     // don't flake depending on the wall-clock time they happen to run at.
     Carbon::setTestNow(Carbon::parse('2026-01-01 12:00:00', 'Asia/Kolkata'));
+    // Gate shut by default — production behaviour, and the state most of this
+    // file is about. TestCase declares the connected test database destroyable,
+    // so without this the gate would be open or shut according to the
+    // developer's own COMP_RECOMPUTE_ENABLED and the trigger tests would pass or
+    // fail by machine. The recompute tests below open it explicitly.
+    config(['arovolife.recompute.enabled' => false]);
 });
 
 afterEach(function (): void {
@@ -287,12 +293,6 @@ it('forbids triggering without the finance.record permission', function (): void
 });
 
 it('rejects invalid engine keys, malformed periods, future periods and short reasons', function (): void {
-    // The closed-period rule is production behaviour, and an open recompute
-    // gate deliberately lifts it. TestCase declares the connected test database
-    // destroyable, so whether the gate is open here otherwise depends on the
-    // developer's own COMP_RECOMPUTE_ENABLED — which made this test pass or
-    // fail by machine. Pin it closed: that is the state the rule guards.
-    config(['arovolife.recompute.enabled' => false]);
     Queue::fake();
     Feature::activate(GrowthBoosterBonusFeature::class);
     $admin = engineRunsUser('admin');
@@ -334,12 +334,6 @@ it('refuses to run an economics-freezing engine for a period still in flight', f
     // ₹0 before the evening's BV landed, and the scheduled 00:10 run then paid
     // the day's real achievers out of the empty snapshot. A day is only
     // runnable once it has ended; a month once it has ended.
-    // The closed-period rule is production behaviour, and an open recompute
-    // gate deliberately lifts it. TestCase declares the connected test database
-    // destroyable, so whether the gate is open here otherwise depends on the
-    // developer's own COMP_RECOMPUTE_ENABLED — which made this test pass or
-    // fail by machine. Pin it closed: that is the state the rule guards.
-    config(['arovolife.recompute.enabled' => false]);
     Queue::fake();
     Feature::activate(GenosSalesBonusFeature::class);
     Feature::activate(GrowthBoosterBonusFeature::class);
@@ -404,28 +398,31 @@ it('still allows in-flight periods for engines that do not freeze economics', fu
 |--------------------------------------------------------------------------
 */
 
-it('warns on every reader that the recompute gate is open and the in-flight month is runnable (F82)', function (): void {
+it('tells every reader that engines are run by recompute on this environment', function (): void {
     config(['arovolife.recompute.enabled' => true]);
 
-    // Not only the developer: any admin on this page can trigger an engine, and
-    // with the gate open the period pickers accept the month still in flight.
+    // Not only the developer who can see the recompute card: every admin on this
+    // page used to have a trigger button, and the reason it is gone has to be
+    // where the button was.
     foreach (['developer', 'admin', 'admin-finance'] as $role) {
         $this->actingAs(engineRunsUser($role))
             ->get(route('admin.compensation.engine-runs.index'))
             ->assertOk()
-            ->assertSee('Recompute testing gate is OPEN on this database')
-            ->assertSee('Do not run a period that has not ended');
+            ->assertSee('Engines are not run one at a time on this environment')
+            ->assertSee('Run by recompute.')
+            ->assertDontSee('Preview &amp; Confirm', false);
     }
 });
 
-it('shows no trace of the gate warning when the gate is closed (F82)', function (): void {
+it('keeps the per-engine trigger forms in production, where the gate is shut', function (): void {
     config(['arovolife.recompute.enabled' => false]);
+    Feature::activate(GenosSalesBonusFeature::class);
 
     $this->actingAs(engineRunsUser('developer'))
         ->get(route('admin.compensation.engine-runs.index'))
         ->assertOk()
-        ->assertDontSee('Recompute testing gate is OPEN on this database')
-        ->assertDontSee('Do not run a period that has not ended');
+        ->assertDontSee('Engines are not run one at a time on this environment')
+        ->assertSee('Preview &amp; Confirm', false);
 });
 
 it('hides the recompute card entirely when the gate is closed', function (): void {
@@ -436,7 +433,7 @@ it('hides the recompute card entirely when the gate is closed', function (): voi
 
     $response->assertOk();
     // Zero-trace gating: not a disabled button, not a tooltip — no mention at all.
-    $response->assertDontSee('Recompute everything');
+    $response->assertDontSee('Recompute — rebuild every bonus from the orders', false);
     $response->assertDontSee('recompute-all');
 });
 
@@ -448,12 +445,13 @@ it('shows the recompute card to the developer and to admin when the gate is open
             ->get(route('admin.compensation.engine-runs.index'));
 
         $response->assertOk();
-        $response->assertSee('Testing tool — recompute everything from scratch', false);
+        $response->assertSee('Recompute — rebuild every bonus from the orders', false);
         $response->assertSee('Run recompute');
-        // The window controls and the engine picker are what make a partial
-        // replay reachable from the page at all.
-        $response->assertSee('Keep earlier history (rebuild only the window)');
-        $response->assertSee('name="engines[]"', false);
+        // The one choice the page offers: how far along the scheduler's
+        // calendar to replay.
+        $response->assertSee('name="horizon"', false);
+        $response->assertSee('Up to now');
+        $response->assertSee('Project through the');
         // ...and the purchase-data reset lives behind the same gate.
         $response->assertSee('Testing tool — reset purchase data (start a fresh test cycle)', false);
     }
@@ -593,13 +591,45 @@ it('queues the recompute rather than running it inline', function (): void {
     Queue::fake();
 
     $this->actingAs(engineRunsUser('developer'))
-        ->post(route('admin.compensation.engine-runs.recompute-all'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'), ['horizon' => 'now'])
         ->assertRedirect(route('admin.compensation.engine-runs.index'))
         ->assertSessionHas('status');
 
     Queue::assertPushed(RecomputeAllJob::class);
 
-    AuditLog::query()->where('action', 'compensation.recompute_all.queued')->firstOrFail();
+    $row = AuditLog::query()->where('action', 'compensation.recompute_all.queued')->firstOrFail();
+
+    expect($row->details['horizon'])->toBe('now')
+        ->and($row->details['simulated_through'])->toBeNull();
+});
+
+it('records what a projection will simulate, on the row the banner reads', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+    Queue::fake();
+
+    $this->actingAs(engineRunsUser('developer'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'), ['horizon' => 'projection'])
+        ->assertSessionHas('status');
+
+    $row = AuditLog::query()->where('action', 'compensation.recompute_all.queued')->firstOrFail();
+
+    expect($row->details['horizon'])->toBe('projection')
+        ->and($row->details['simulated_through'])->not->toBeNull();
+});
+
+it('rejects a horizon it does not know, and a missing one', function (): void {
+    config(['arovolife.recompute.enabled' => true]);
+    Queue::fake();
+
+    $this->actingAs(engineRunsUser('developer'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'), ['horizon' => 'next-year'])
+        ->assertSessionHasErrors('horizon');
+
+    $this->actingAs(engineRunsUser('developer'))
+        ->post(route('admin.compensation.engine-runs.recompute-all'))
+        ->assertSessionHasErrors('horizon');
+
+    Queue::assertNothingPushed();
 });
 
 it('replaces the previous run summary with a queued state the moment a new run is dispatched', function (): void {
@@ -622,7 +652,7 @@ it('replaces the previous run summary with a queued state the moment a new run i
     ));
 
     $this->actingAs(engineRunsUser('developer'))
-        ->post(route('admin.compensation.engine-runs.recompute-all'));
+        ->post(route('admin.compensation.engine-runs.recompute-all'), ['horizon' => 'now']);
 
     $state = $progress->read();
 
@@ -759,87 +789,24 @@ it('refuses a purchase reset while the replay lock is held rather than stealing 
     expect(DB::table('bv_ledger_entries')->count())->toBe(1);
 });
 
-it('requires the operator to acknowledge the engines a partial replay will not rebuild', function (): void {
-    config(['arovolife.recompute.enabled' => true]);
-    Queue::fake();
-
-    $this->actingAs(engineRunsUser('developer'))
-        ->from(route('admin.compensation.engine-runs.index'))
-        ->post(route('admin.compensation.engine-runs.recompute-all'), [
-            'from' => today()->toDateString(),
-            'windowed' => '1',
-            'engines' => ['gsb.daily-cutoff'],
-        ])
-        ->assertSessionHasErrors('accept_missing_engines');
-
-    Queue::assertNothingPushed();
-
-    $this->actingAs(engineRunsUser('developer'))
-        ->post(route('admin.compensation.engine-runs.recompute-all'), [
-            'from' => today()->toDateString(),
-            'windowed' => '1',
-            'engines' => ['gsb.daily-cutoff'],
-            'accept_missing_engines' => '1',
-        ])
-        ->assertSessionHas('status');
-
-    Queue::assertPushed(RecomputeAllJob::class);
-});
-
-it('accepts a To date through the end of next month and rejects later ones', function (): void {
-    config(['arovolife.recompute.enabled' => true]);
-    Queue::fake();
-
-    $nextMonthEnd = Carbon::today()->addMonthNoOverflow()->endOfMonth()->toDateString();
-
-    $this->actingAs(engineRunsUser('developer'))
-        ->post(route('admin.compensation.engine-runs.recompute-all'), [
-            'to' => $nextMonthEnd,
-        ])
-        ->assertSessionDoesntHaveErrors('to');
-
-    Queue::assertPushed(RecomputeAllJob::class);
-
-    Queue::clearResolvedInstances();
-    Queue::fake();
-
-    $tooFar = Carbon::today()->addMonthNoOverflow()->endOfMonth()->addDay()->toDateString();
-
-    $this->actingAs(engineRunsUser('developer'))
-        ->post(route('admin.compensation.engine-runs.recompute-all'), [
-            'to' => $tooFar,
-        ])
-        ->assertSessionHasErrors('to');
-
-    Queue::assertNothingPushed();
-});
-
-it('allows in-flight and future periods for economics-freezing engines while the recompute gate is open', function (): void {
+it('refuses a manual trigger outright while the recompute gate is open', function (): void {
+    // The gate used to LIFT the closed-period rule here, so an admin could
+    // freeze the live month from this page. That is the 24 Aug 2026 incident at
+    // month scale, and the 14 Sep 2026 month-end-wallet bug came through the
+    // same door. On a test environment the recompute runs the calendar instead.
     config(['arovolife.recompute.enabled' => true]);
     Queue::fake();
     Feature::activate(GrowthBoosterBonusFeature::class);
 
-    $user = engineRunsUser('admin');
-
-    // Current month (in-flight for GBB which requiresClosedPeriod).
-    $this->actingAs($user)
+    $this->actingAs(engineRunsUser('admin'))
         ->post(route('admin.compensation.engine-runs.trigger'), [
             'engine' => 'gbb.monthly',
-            'period' => Carbon::now()->format('Y-m'),
-            'reason' => 'Testing gate open — previewing in-flight period',
+            'period' => Carbon::now()->subMonthNoOverflow()->format('Y-m'),
+            'reason' => 'Trying to run one engine by hand on a test environment.',
         ])
-        ->assertSessionHas('status');
+        ->assertSessionHasErrors('engine');
 
-    // Next month (future period).
-    $this->actingAs($user)
-        ->post(route('admin.compensation.engine-runs.trigger'), [
-            'engine' => 'gbb.monthly',
-            'period' => Carbon::now()->addMonthNoOverflow()->format('Y-m'),
-            'reason' => 'Testing gate open — previewing future period',
-        ])
-        ->assertSessionHas('status');
-
-    Queue::assertPushed(RunEngineChainJob::class, 2);
+    Queue::assertNothingPushed();
 });
 
 it('filters the run events to failures and offers the status filter', function (): void {

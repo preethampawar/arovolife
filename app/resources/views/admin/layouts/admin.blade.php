@@ -394,6 +394,8 @@
             @endif
             @endif
 
+            @include('partials.recompute-projection-banner')
+
             {{-- Flash messages are rendered here for every admin page. Views must
                  NOT repeat these blocks — a page that renders its own
                  session('status') shows the message twice. --}}

@@ -12,16 +12,16 @@
     and every trigger is permanently audit-logged with your admin ID and the reason you provide.
 </div>
 
-{{-- The recompute testing gate lifts the closed-period rule for EVERY engine on
-     this page, so the period pickers accept the month that is still in flight —
-     the 24-Aug bug class, where a run froze a day's pool on partial sales. The
-     warning goes to every reader, not only the developer who can see the
-     recompute card: any admin here can trigger an engine (QA F82). --}}
-@if($recomputeAllowed)
-<div class="mb-5 rounded-lg border-2 border-red-400 bg-red-50 p-4 text-sm text-red-900">
-    <strong>Recompute testing gate is OPEN on this database</strong> — engines can be run for the current, in-flight
-    month. Do not run a period that has not ended: the engine freezes that period's pool economics on the sales
-    recorded so far, permanently, and everyone who earns later that period is priced against the partial figure.
+{{-- On a test environment the recompute owns the calendar, so the per-engine
+     trigger forms are not rendered at all and this explains why. Production
+     never sees it: RecomputeGuard is shut there and the buttons stay. --}}
+@if($manualTriggersDisabled)
+<div class="mb-5 rounded-lg border border-indigo-300 bg-indigo-50 p-4 text-sm text-indigo-900">
+    <strong>Engines are not run one at a time on this environment.</strong>
+    Use the recompute below: it wipes the derived rows and replays every engine at the instant the scheduler would
+    have fired it &mdash; the cut-off for a day at 00:10 the next morning, a month's bonuses on the 1st, its payout on
+    the 8th. That is what makes these figures match what production would produce. Firing one engine by hand instead
+    runs it at the wrong instant, against a period that has not finished forming.
 </div>
 @endif
 
@@ -107,39 +107,26 @@
 </script>
 @endif
 
-{{-- TESTING-ONLY full recompute. Rendered only when RecomputeGuard permits it
-     AND the reader holds the developer or admin role, so on any environment
-     where it is off — or for a scoped admin role — there is no trace of it here. --}}
+{{-- The recompute. Rendered only when RecomputeGuard permits it AND the reader
+     holds the developer or admin role, so on any environment where it is off —
+     or for a scoped admin role — there is no trace of it here. On the
+     environments where it IS rendered it is not a "testing tool" beside the
+     real controls: it is the only way compensation is computed there. --}}
 @if($destructiveToolsVisible)
 @php $recomputeTotal = array_sum($recomputeRowCounts); @endphp
 <div class="mb-6 rounded-xl border-2 border-red-300 bg-red-50 p-4">
-    <p class="text-sm font-bold text-red-900">Testing tool — recompute everything from scratch</p>
+    <p class="text-sm font-bold text-red-900">Recompute — rebuild every bonus from the orders</p>
     <p class="mt-1 text-xs text-red-800 max-w-4xl">
         Deletes <strong>every</strong> bonus result, frozen pool, carry-forward, rank qualification, repurchase cycle,
         wallet credit and payout batch
         (<strong>{{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }}</strong> rows on
         <code class="font-mono bg-red-100 px-1 rounded">{{ $recomputeTargetDatabase }}</code>)
-        and replays every engine from the first BV date up to right now — including today's cut-off, this week's
-        payout and this month's bonuses, computed as at this moment. Orders, the BV ledger, distributors, the Genos
-        and the plan settings are kept.
-        Set a <strong>To</strong> date after today (up to the end of next month) to see how the coming weeks
-        would pay: the engines run on their future scheduled instants — e.g. September's Rank Bonus at 00:30 on
-        1 October — on the orders that exist right now. A closed month whose run the scheduler has not reached
-        yet is always computed, whatever the To date.
-    </p>
-    <p class="mt-1 text-xs text-red-800 max-w-4xl">
-        <strong>Replaying everything takes the longest possible time.</strong> To check only what today or this month
-        pays, set a start date and tick <em>keep earlier history</em>: only the derived rows from that date onwards are
-        removed and rebuilt. A start date inside a closed month is widened to that month's first day, because a
-        monthly bonus can only be rebuilt for a whole month.
+        and replays every engine from the first BV date, each at the instant the scheduler would have fired it.
+        Orders, the BV ledger, distributors, the Genos and the plan settings are kept.
     </p>
     <p class="mt-1 text-xs text-red-700 max-w-4xl">
-        The daily and monthly schedulers are unaffected — they keep running normally and each run still freezes its
-        period as usual. This button is the only thing that throws those snapshots away. Wallet credits are deleted
-        outright, not reversed, so any figure a distributor has already seen will change.
-    </p>
-    <p class="mt-1 text-xs text-red-700 max-w-4xl">
-        Needs a queue worker that will let a job run for minutes —
+        Wallet credits are deleted outright, not reversed, so any figure a distributor has already seen will change.
+        Needs a queue worker that will let a job run for minutes &mdash;
         <code class="font-mono bg-red-100 px-1 rounded">queue:work</code>.
         <strong><code class="font-mono bg-red-100 px-1 rounded">queue:listen</code> cannot run this</strong>: it kills
         every job at 60 seconds, which leaves the database wiped and half-rebuilt.
@@ -202,74 +189,38 @@
           class="mt-4 flex flex-wrap items-end gap-3"
           data-confirm="Wipe every bonus, payout and wallet credit, then replay all engines?"
           data-confirm-title="Destroy and rebuild all compensation data?"
-          data-confirm-impact="This cannot be undone. {{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }} rows on {{ $recomputeTargetDatabase }} are deleted and rebuilt from the surviving orders. The replay runs in the background and takes several minutes."
-          data-confirm-full="This cannot be undone. {{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }} rows on {{ $recomputeTargetDatabase }} are deleted and rebuilt from the surviving orders. The replay runs in the background and takes several minutes."
-          data-confirm-full-title="Destroy and rebuild all compensation data?"
-          data-confirm-full-body="Wipe every bonus, payout and wallet credit, then replay all engines?">
+          data-confirm-impact="This cannot be undone. {{ \App\Modules\Shared\Support\IndianNumber::format($recomputeTotal) }} rows on {{ $recomputeTargetDatabase }} are deleted and rebuilt from the surviving orders. The replay runs in the background and takes several minutes.">
         @csrf
 
-        <div class="w-full rounded-lg border border-red-200 bg-white p-3">
-            <div class="flex flex-wrap items-end gap-3">
-                <div>
-                    <label for="recompute-from" class="block text-xs font-medium text-gray-700 mb-1">From</label>
-                    <input type="date" name="from" id="recompute-from" value="{{ old('from') }}"
-                           class="rounded-lg border-gray-300 text-sm focus:border-red-500 focus:ring-red-500">
-                </div>
-                <div>
-                    <label for="recompute-to" class="block text-xs font-medium text-gray-700 mb-1">To</label>
-                    <input type="date" name="to" id="recompute-to" value="{{ old('to') }}"
-                           max="{{ $recomputePresets['max_to'] }}"
-                           class="rounded-lg border-gray-300 text-sm focus:border-red-500 focus:ring-red-500">
-                </div>
-                <label class="flex items-center gap-2 pb-2 text-xs text-gray-700">
-                    <input type="checkbox" name="windowed" value="1" id="recompute-windowed" checked
-                           class="rounded border-gray-300 text-red-600 focus:ring-red-500">
-                    Keep earlier history (rebuild only the window)
-                </label>
-                <div class="flex flex-wrap gap-2 pb-1">
-                    <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 self-center">From:</span>
-                    <button type="button" data-preset-from="{{ $recomputePresets['today'] }}"
-                            class="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">Today</button>
-                    <button type="button" data-preset-from="{{ $recomputePresets['month_start'] }}"
-                            class="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">This month</button>
-                    <button type="button" data-preset-from=""
-                            class="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">Everything (slow)</button>
-                    <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 self-center ml-2">To:</span>
-                    <button type="button" data-preset-to="{{ $recomputePresets['month_end'] }}"
-                            class="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">Through this month</button>
-                    <button type="button" data-preset-to="{{ $recomputePresets['next_month_end'] }}"
-                            class="rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50">Through next month</button>
-                </div>
-            </div>
-
-            <details class="mt-3">
-                <summary class="cursor-pointer text-xs font-medium text-gray-700">
-                    Engines to replay <span class="font-normal text-gray-500">(none ticked = all of them)</span>
-                </summary>
-                <div class="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-3">
-                    @foreach($recomputeEngines as $key => $definition)
-                    <label class="flex items-center gap-2 text-xs text-gray-700">
-                        <input type="checkbox" name="engines[]" value="{{ $key }}"
-                               class="rounded border-gray-300 text-red-600 focus:ring-red-500">
-                        <span class="font-mono">{{ $definition->commandSignature }}</span>
-                    </label>
-                    @endforeach
-                </div>
-                <p class="mt-2 text-xs text-gray-500">
-                    An engine you leave out is not replayed at all, so its results for the window will be missing
-                    rather than merely stale. The run summary names every engine it skipped.
-                </p>
-                <label class="mt-2 flex items-start gap-2 text-xs text-red-900">
-                    <input type="checkbox" name="accept_missing_engines" id="recompute-accept-missing" value="1"
-                           class="mt-0.5 rounded border-gray-300 text-red-600 focus:ring-red-500">
+        <fieldset class="w-full rounded-lg border border-red-200 bg-white p-3">
+            <legend class="px-1 text-xs font-semibold uppercase tracking-wider text-gray-600">How far to replay</legend>
+            <div class="space-y-2">
+                @foreach($recomputeHorizons as $horizon)
+                <label class="flex items-start gap-2 text-xs text-gray-700">
+                    <input type="radio" name="horizon" value="{{ $horizon['value'] }}"
+                           @checked(old('horizon', 'now') === $horizon['value'])
+                           class="mt-0.5 border-gray-300 text-red-600 focus:ring-red-500">
                     <span>
-                        I understand that the bonuses, wallet credits and payouts of every engine I did
-                        <strong>not</strong> tick are deleted for this window and never rebuilt. Required
-                        before the run will start with a partial selection.
+                        <span class="font-semibold text-gray-900">{{ $horizon['label'] }}</span>
+                        @if($horizon['projected'])
+                        <span class="ml-1 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">
+                            simulated
+                        </span>
+                        @endif
+                        <span class="block text-gray-600">{{ $horizon['description'] }}</span>
                     </span>
                 </label>
-            </details>
-        </div>
+                @endforeach
+            </div>
+            <p class="mt-2 text-xs text-gray-500">
+                A simulated run marks this environment as holding projected figures: every page carries a banner
+                saying so, the scheduled engines pause (they would otherwise run against a carry-forward store that
+                has already moved past them), and the nightly reset at 23:30 IST puts it back to
+                <em>up to now</em>. Rebuilding only part of the history, or only some engines, is a debugging
+                shortcut and lives on the command line:
+                <code class="font-mono bg-gray-100 px-1 rounded">php artisan compensation:recompute-all --help</code>.
+            </p>
+        </fieldset>
 
         <div>
             <label for="recompute-confirm-db" class="block text-xs font-medium text-red-900 mb-1">
@@ -305,98 +256,6 @@
     input.addEventListener('input', function () {
         button.disabled = input.value.trim() !== input.dataset.expected;
     });
-})();
-
-// Window presets. "Everything" clears the start date, which is what makes the
-// run a full wipe — keeping earlier history is meaningless without one.
-(function () {
-    var from = document.getElementById('recompute-from');
-    var to = document.getElementById('recompute-to');
-    var windowed = document.getElementById('recompute-windowed');
-    if (!from || !to || !windowed) { return; }
-
-    var today = @json($recomputePresets['today']);
-
-    document.querySelectorAll('[data-preset-from]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            from.value = btn.dataset.presetFrom;
-            to.value = '';
-            windowed.checked = from.value !== '';
-            describe();
-        });
-    });
-
-    document.querySelectorAll('[data-preset-to]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            to.value = btn.dataset.presetTo;
-            describe();
-        });
-    });
-
-    windowed.addEventListener('change', function () {
-        if (windowed.checked && from.value === '') {
-            from.value = @json($recomputePresets['month_start']);
-        }
-        describe();
-    });
-
-    // Keep the confirmation modal honest about what THIS run will destroy.
-    var form = document.getElementById('recompute-form');
-
-    // Ticking any engine turns the run into a partial replay: the wipe still
-    // covers every derived table, but only the ticked engines rebuild. That is
-    // the one combination whose damage the modal must name BEFORE the delete —
-    // the run summary's skipped-engine warning arrives after the rows are gone.
-    function missingEngineWarning() {
-        var ticked = document.querySelectorAll('input[name="engines[]"]:checked').length;
-        var total = document.querySelectorAll('input[name="engines[]"]').length;
-
-        if (ticked === 0 || ticked === total) { return ''; }
-
-        return ' ' + (total - ticked) + ' engine(s) are NOT selected: their bonuses, wallet credits '
-            + 'and payouts inside this window are deleted and NOT rebuilt.';
-    }
-
-    function futureWindowNote() {
-        if (to.value && to.value > today) {
-            return ' The window runs beyond today (to ' + to.value + '): future days are simulated on a'
-                + ' future clock, the monthly engines fire on their future scheduled days, and the real'
-                + ' scheduler will then skip those periods as already computed. Recompute again with'
-                + ' To ≤ today to return to the live picture.';
-        }
-        return '';
-    }
-
-    function describe() {
-        if (!form) { return; }
-
-        if (windowed.checked && from.value !== '') {
-            form.dataset.confirmTitle = 'Rebuild compensation data from ' + from.value + '?';
-            form.dataset.confirm = 'Delete and rebuild every bonus, payout and wallet credit dated '
-                + from.value + ' onwards?';
-            form.dataset.confirmImpact = 'This cannot be undone, but it is limited to the window: '
-                + 'anything before ' + from.value + ' is left exactly as it is. A start date inside a '
-                + 'closed month is widened to that month’s first day. The replay runs in the background.'
-                + missingEngineWarning() + futureWindowNote();
-
-            return;
-        }
-
-        form.dataset.confirmTitle = form.dataset.confirmFullTitle;
-        form.dataset.confirm = form.dataset.confirmFullBody;
-        form.dataset.confirmImpact = form.dataset.confirmFull + missingEngineWarning() + futureWindowNote();
-    }
-
-    from.addEventListener('change', describe);
-    to.addEventListener('change', describe);
-    document.querySelectorAll('[data-preset-from]').forEach(function (btn) {
-        btn.addEventListener('click', describe);
-    });
-    document.querySelectorAll('input[name="engines[]"]').forEach(function (box) {
-        box.addEventListener('change', describe);
-    });
-
-    describe();
 })();
 
 // Live progress poller. The replay runs on the queue for minutes, so without
@@ -571,7 +430,13 @@
             </div>
 
             {{-- Run form --}}
-            @if(! $definition->manuallyTriggerable)
+            @if($manualTriggersDisabled)
+            <div class="w-full lg:w-80 shrink-0 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-600">
+                <span class="font-semibold text-gray-700">Run by recompute.</span>
+                On this environment every engine is fired by the recompute at the top of the page, at the instant the
+                scheduler would have fired it. Its last run and its results are still shown here.
+            </div>
+            @elseif(! $definition->manuallyTriggerable)
             <div class="w-full lg:w-80 shrink-0 rounded-lg border border-gray-100 bg-gray-50 p-3 text-xs text-gray-600">
                 <span class="font-semibold text-gray-700">Scheduler-only.</span>
                 @if($definition->isOrchestrator)
@@ -597,13 +462,9 @@
                 <div class="mb-2">
                     <label class="block text-xs font-medium text-gray-700 mb-1">
                         {{ $isMonth ? 'Month' : 'Date' }}
-                        @if($recomputeAllowed)
-                        <x-help-tip text="Testing gate open — any month/day may be chosen, including the current or a future one. The results are as partial as the data at that moment; a recompute supersedes them. In production only a period that has already ended can be chosen." />
-                        @else
                         <x-help-tip :text="$definition->requiresClosedPeriod
                             ? ($isMonth ? 'The month this engine should process. Only a month that has already ended can be chosen — this engine freezes the month\'s pool economics permanently, so running it mid-month would price the month on partial sales.' : 'The day this engine should process. Only a day that has already ended can be chosen — this engine freezes the day\'s pool economics permanently, so running it before the day closes would price the day on partial sales.')
                             : ($isMonth ? 'The month this engine should process. Pre-filled with the month the scheduler would use.' : 'The day this engine should process. Pre-filled with the day the scheduler would use.')" />
-                        @endif
                     </label>
                     <input type="{{ $isMonth ? 'month' : 'date' }}" name="period" value="{{ old('engine') === $definition->key ? old('period') : $engine['defaultPeriodValue'] }}" @if($engine['maxPeriodValue'] !== '') max="{{ $engine['maxPeriodValue'] }}" @endif required
                            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none">

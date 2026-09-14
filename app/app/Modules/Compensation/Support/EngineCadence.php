@@ -41,11 +41,27 @@ final readonly class EngineCadence
         public ?int $dayOfMonth = null,
         /** Parenthetical appended to the description, e.g. "runs the previous day". */
         public ?string $note = null,
+        /**
+         * True for an engine whose scheduled run works the day BEFORE it fires:
+         * routes/console.php passes the GSB cut-off `--date=yesterday`.
+         *
+         * Structured rather than sniffed out of {@see $note}: the replay and the
+         * health digest both have to know which period a fire on a given date
+         * produces, and reading it off a prose string is how the replay came to
+         * fire every cut-off a day early (F125).
+         */
+        public bool $previousDay = false,
     ) {}
 
     public static function daily(string $time, ?string $note = null): self
     {
         return new self(self::DAILY, time: $time, note: $note);
+    }
+
+    /** Daily, working the day before the one it fires on. */
+    public static function dailyForPreviousDay(string $time): self
+    {
+        return new self(self::DAILY, time: $time, note: 'runs the previous day', previousDay: true);
     }
 
     public static function weeklyOn(int $isoDayOfWeek, string $time): self
