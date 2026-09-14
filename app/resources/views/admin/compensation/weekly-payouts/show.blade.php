@@ -72,7 +72,7 @@
                   data-confirm="Dispatch {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s) through Razorpay Payouts?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this dispatch.' : '' }}"
                   data-confirm-impact="Impact: this initiates REAL BANK TRANSFERS immediately. Each transfer is confirmed by Razorpay's webhook and cannot be recalled from this screen.">
                 @csrf
-                <x-ui.button @disabled(! $gatewayReady)>
+                <x-ui.button :disabled="! $gatewayReady">
                     <x-lucide-zap class="w-4 h-4" /> Approve &amp; dispatch to bank
                 </x-ui.button>
             </form>

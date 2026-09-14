@@ -115,7 +115,7 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
                                                step="1"
                                                {{ $readOnly ? 'disabled' : '' }}
                                                class="w-28 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-right focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-500 font-mono">
-                                        <x-ui.button {{ $readOnly ? 'disabled' : '' }}>
+                                        <x-ui.button :disabled="$readOnly">
                                             Save
                                         </x-ui.button>
                                     </form>
@@ -139,7 +139,7 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
                                            maxlength="{{ $meta['max'] ?? 255 }}"
                                            {{ $readOnly ? 'disabled' : '' }}
                                            class="w-60 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100 disabled:text-gray-500">
-                                    <x-ui.button {{ $readOnly ? 'disabled' : '' }}>
+                                    <x-ui.button :disabled="$readOnly">
                                         Save
                                     </x-ui.button>
                                 </form>
@@ -160,7 +160,7 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
                                                 <option value="{{ $opt['value'] }}" @selected($opt['value'] === $value)>{{ $opt['label'] }}</option>
                                             @endforeach
                                         </select>
-                                        <x-ui.button {{ $readOnly ? 'disabled' : '' }}>
+                                        <x-ui.button :disabled="$readOnly">
                                             Save
                                         </x-ui.button>
                                     </form>
@@ -189,7 +189,7 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
                                     <textarea id="{{ $fieldId }}" name="state_age_minimums" data-field-label="State age minimums" rows="3" maxlength="2048"
                                               {{ $readOnly ? 'disabled' : '' }}
                                               class="w-full font-mono text-xs rounded-lg border border-gray-300 px-3 py-2 focus:border-brand-500 focus:ring-brand-500 disabled:bg-gray-100">{{ old('state_age_minimums', $value) }}</textarea>
-                                    <x-ui.button class="mt-1 w-full" {{ $readOnly ? 'disabled' : '' }}>
+                                    <x-ui.button class="mt-1 w-full" :disabled="$readOnly">
                                         Save
                                     </x-ui.button>
                                 </form>
