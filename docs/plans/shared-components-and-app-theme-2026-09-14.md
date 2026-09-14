@@ -373,23 +373,16 @@ loaded those pages at all.
 
 ### Coverage that is still open
 
-- **Wizard steps 3-12.** `EnsureRegistrationProgress` needs a real
-  in-progress registration, which means creating an account in the dev
-  database. Step 1 forwards to step 2 and **step 2 is swept** (via a referral
-  link, `THEME_WIZARD_ADN`), so the wizard layout, `.card-refined` and
-  `.input-refined` are covered; the step-specific bodies are not. The tint
-  generator walks `resources/views` in full, so those views did get dark rules
-  for every tint utility they use — the gap is verification, not theming.
-- **`/my/arete-centre/apply` returns 500 on this dev database.** A PII column
-  on the fixture's row was written outside `PiiCrypter`, so the prefill throws
-  `DecryptException`. Pre-existing and unrelated to this work; it is in `SKIP`
-  with that reason rather than papered over. Worth deciding separately whether
-  a single undecryptable field should take a page down.
+Three of the four items below were closed in a follow-up pass the same day —
+see "Closing the open coverage" at the end of this document.
+
+- **Wizard steps 3-12.** ~~`EnsureRegistrationProgress` needs a real
+  in-progress registration.~~ **Closed** — `theme-wizard.spec.js`.
+- **`/my/arete-centre/apply` returns 500.** ~~A PII column on the fixture's row
+  was written outside `PiiCrypter`.~~ **Closed** — the cast no longer rethrows.
 - **`partials/impersonation-banner`** — still deferred, still no fixture.
-- **Parameterised routes** (order detail, distributor detail, GRN, PO, batch
-  show) are outside the inventory by construction. The three 500s this pass
-  found were all on such pages, which is an argument for a small
-  seeded-id sweep later.
+- **Parameterised routes.** ~~Outside the inventory by construction.~~
+  **Closed** — `theme-detail.spec.js`.
 
 ### Acceptance
 
@@ -401,3 +394,101 @@ loaded those pages at all.
 - [x] Public canvas still `#f4f7f6`; `body.admin-shell` still owns the console ramp
 - [x] `npm run build`, `view:cache` + `php -l` on all 446 compiled views, full suite
 - [x] Suite at 211 passed / 33 skipped / 0 failed
+
+---
+
+## Closing the open coverage — 2026-09-14 (same day)
+
+Three of the four open items above, in three commits.
+
+### `fix(pii)` — the 500 was ours, not the data's
+
+`/my/arete-centre/apply` returned 500 for any distributor whose PAN or Aadhaar
+ciphertext will not decrypt. The diagnosis in the section above stopped at the
+data ("a PII column was seeded outside `PiiCrypter`"), and that was only half
+of it: the reason one bad row could take a page down is that
+`PiiEncrypted::get()` rethrew `DecryptException` straight out of an accessor.
+The value the page actually shows — the masked last 4 — is a separate column
+and was readable the whole time.
+
+Reads now degrade to null and log a warning naming the row. The cast already
+refused to let a stale row 500 a *save*, for exactly this reason; this extends
+that to the read. Payout paths, where a blank account number is worse than a
+failure, call `PiiCrypter::decryptString()` directly and still get the
+exception. `PiiCrypter::tryDecryptString()` is the shared read-path helper.
+
+**Found on the same page:** the applicant's bank account was read with `Crypt`
+(APP_KEY) rather than `PiiCrypter`, and the failure swallowed by a bare
+`catch`. That works only where the two keys coincide, as they do on this dev
+box — anywhere with a real `PII_ENCRYPTION_KEY` the account number has been
+silently blank on that form.
+
+`/my/arete-centre/apply` is out of `SKIP` and into the distributor tier.
+
+### `test(theme)` — the registration wizard
+
+`theme-wizard.spec.js` walks the wizard rather than navigating to it: eleven
+pages, each scanned in dark, each step posted with a field set that names
+where a successful post must land. Laravel redirects back to the same step on
+a validation failure, so a rejected post is reported as the step that was
+rejected instead of surfacing two pages later as a bounce.
+
+Safe against a real database because the wizard is pure session state — no
+user, distributor or placement row exists until `POST /register/complete`, and
+the spec GETs step 12 and stops. Verified: zero `users` rows created across
+runs. Email, mobile and PAN are generated per run, because each is checked
+against a real table before its step is let through and a fixed value would
+start failing the first time somebody finished a registration with it.
+
+One side effect, documented in the spec header: step 10 uploads five ~100-byte
+encrypted files under `reg_<session>/` on the `kyc` disk, which is what an
+abandoned registration leaves anyway.
+
+All eleven steps are clean in dark. `WIZARD_ROUTES` replaces the ten wizard
+entries in `SKIP`; the inventory still totals 200.
+
+### `test(theme)` — the detail pages
+
+`theme-detail.spec.js` + `theme-detail-routes.js` cover the 68 GET routes that
+take a required parameter — every detail, edit and show page in the
+application, and the shape all three of this pass's 500s had.
+
+Ids are resolved by **following links**, not seeded and not pinned: each entry
+names a list page and the shape of the href it wants, and the spec opens the
+first row the database actually has. A pinned id rots when the dev database is
+rebuilt, and fails as a broken page rather than a stale fixture. Two-hop
+entries handle edit screens linked from the detail page and only while the
+document is still a draft.
+
+A route whose list is empty is **unresolved, not skipped** — declared in
+`EXPECTED_UNRESOLVED` with a reason and asserted in both directions, so an
+emptied table cannot quietly shrink the run and a list that gains its first row
+fails until the line is deleted. 46 routes covered, 22 skipped with a reason,
+68 reconciled against `route:list`.
+
+What the first run found:
+
+| Where | What | Ratio |
+|---|---|---|
+| `/admin/help/{slug}` | Only `.markdown-doc`'s base colour was ever remapped. Headings, `<strong>`, table headers and row stripes kept the hex they were given for a white page — the half-remapped case, and the worst kind: `#0c1727` on `#19212b` is not low-contrast, it is invisible. The blockquote needed its ground naming explicitly too, because it reads `var(--color-brand-50)` and the dark layer remaps class names, not tokens. | 1.1:1 → 14.7:1 |
+| `/admin/distributors/{id}`, `/edit` | Three white-on-`amber-600` buttons, the same family already fixed elsewhere and missed here because the pages were unreachable. | 3.2:1 → 5.03:1 |
+
+### Still open after this pass
+
+- **`partials/impersonation-banner`** — no fixture, unchanged.
+- **17 detail routes have no row to open** on this dev database (empty KYC
+  queue, no grievances, no announcements, no coupons…). Each is declared with
+  its reason in `EXPECTED_UNRESOLVED`; a database with more history sweeps
+  more, and the assertion fails the day one gains a row.
+- **Abandoned registration uploads are never purged.** 329 `reg_<session>/`
+  prefixes sit on the `kyc` disk with no `kyc_documents` row pointing at them —
+  KYC scans belonging to people who never finished registering.
+  `kyc:purge-expired-documents` works off the table, so it cannot see them, and
+  only `PlatformResetAction` touches the prefix. Noticed while documenting the
+  wizard spec's one side effect; a storage-limitation gap under DPDP §8(7)
+  rather than a theme issue, and a deletion job, so it is flagged here and not
+  acted on.
+
+### Suite
+
+216 passed / 33 skipped / 0 failed — up from 211/33/0 (+1 wizard, +4 detail).
