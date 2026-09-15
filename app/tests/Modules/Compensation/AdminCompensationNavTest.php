@@ -160,11 +160,11 @@ it('shows the report title on the page itself, not only in the header bar', func
     $this->actingAs($admin)
         ->get(route('admin.compensation.gbb-input-output.index'))
         ->assertOk()
-        ->assertSee('<h2 class="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight mb-4">GBB Input &amp; Output Per Month Calculation</h2>', false);
+        ->assertSee('<h2 class="text-base font-semibold text-gray-900 tracking-tight mb-5">GBB Input &amp; Output Per Month Calculation</h2>', false);
 
     $this->actingAs($admin)
         ->get(route('admin.compensation.rb-input-output.index'))
         ->assertOk()
-        ->assertSee('<h2 class="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight mb-4">', false)
+        ->assertSee('<h2 class="text-base font-semibold text-gray-900 tracking-tight mb-5">', false)
         ->assertSee('Rank Bonus Input &amp; Output', false);
 });

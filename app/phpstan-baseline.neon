@@ -169,30 +169,6 @@ parameters:
 			path: app/Modules/Catalog/Models/ProductImage.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$distributor_price_paise\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Modules/Catalog/Models/ProductVariant.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$mrp_paise\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Modules/Catalog/Models/ProductVariant.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
-			identifier: property.notFound
-			count: 5
-			path: app/Modules/Catalog/Models/ProductVariant.php
-
-		-
-			message: '#^Method App\\Modules\\Catalog\\Models\\ProductVariant\:\:inventory\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasOne does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Catalog/Models/ProductVariant.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductImage\:\:\$s3_key\.$#'
 			identifier: property.notFound
 			count: 1
@@ -551,12 +527,6 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: app/Modules/Commerce/Services/BvLedgerService.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$bv_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Commerce/Services/CartService.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Cart\:\:\$coupon_id\.$#'
@@ -1379,11 +1349,6 @@ parameters:
 			identifier: method.notFound
 			count: 6
 			path: tests/Feature/ActionCenter/ActionCenterScreensTest.php
-		-
-			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
-			identifier: method.notFound
-			count: 7
-			path: tests/Modules/Shared/DistributorFilterScopeTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:assertNotNull\(\)\.$#'
@@ -1694,6 +1659,12 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
+			count: 4
+			path: tests/Feature/Commerce/AdminOrderRepurchaseWalletTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
 			count: 2
 			path: tests/Feature/Commerce/AdminOrderTransitionTest.php
 
@@ -1742,7 +1713,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 18
+			count: 20
 			path: tests/Feature/Compensation/PayoutAdminPagesTest.php
 
 		-
@@ -1862,7 +1833,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
 			identifier: method.notFound
-			count: 1
+			count: 2
 			path: tests/Feature/Console/PlatformResetTest.php
 
 		-
@@ -1874,7 +1845,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
 			identifier: method.notFound
-			count: 4
+			count: 5
 			path: tests/Feature/Console/PurchaseDataResetTest.php
 
 		-
@@ -2172,6 +2143,18 @@ parameters:
 			path: tests/Feature/Inventory/StockIndexScreenTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 8
+			path: tests/Feature/Reports/ProfitReportTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Reports/ProfitReportTest.php
+
+		-
 			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$app\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2322,36 +2305,6 @@ parameters:
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$bv_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Admin/AdminCatalogTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$distributor_price_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Admin/AdminCatalogTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$landing_price_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Admin/AdminCatalogTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$mrp_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Admin/AdminCatalogTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Admin/AdminCatalogTest.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$label\.$#'
 			identifier: property.notFound
 			count: 2
@@ -2384,7 +2337,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TValue in call to function expect$#'
 			identifier: argument.templateType
-			count: 19
+			count: 14
 			path: tests/Modules/Admin/AdminCatalogTest.php
 
 		-
@@ -2700,18 +2653,6 @@ parameters:
 			path: tests/Modules/Admin/ProductCatalogSeederTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$bv_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Admin/ProductCatalogSeederTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$distributor_price_paise\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Modules/Admin/ProductCatalogSeederTest.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$label\.$#'
 			identifier: property.notFound
 			count: 2
@@ -2744,19 +2685,7 @@ parameters:
 		-
 			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<mixed\>\:\:and\(\)$#'
 			identifier: argument.templateType
-			count: 6
-			path: tests/Modules/Admin/ProductCatalogSeederTest.php
-
-		-
-			message: '#^Unable to resolve the template type TAndValue in call to method Pest\\Expectation\<string\|null\>\:\:and\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: tests/Modules/Admin/ProductCatalogSeederTest.php
-
-		-
-			message: '#^Unable to resolve the template type TValue in call to function expect$#'
-			identifier: argument.templateType
-			count: 1
+			count: 5
 			path: tests/Modules/Admin/ProductCatalogSeederTest.php
 
 		-
@@ -3216,18 +3145,6 @@ parameters:
 			path: tests/Modules/Commerce/PurchaseOffersTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$bv_paise\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Modules/Commerce/SharedCartTest.php
-
-		-
-			message: '#^Access to an undefined property App\\Modules\\Catalog\\Models\\ProductVariant\:\:\$sale_price_paise\.$#'
-			identifier: property.notFound
-			count: 2
-			path: tests/Modules/Commerce/SharedCartTest.php
-
-		-
 			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\Cart\:\:\$anonymous_key\.$#'
 			identifier: property.notFound
 			count: 4
@@ -3410,7 +3327,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 56
+			count: 55
 			path: tests/Modules/Compensation/AdminEngineRunsControllerTest.php
 
 		-
@@ -3620,7 +3537,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 5
 			path: tests/Modules/Compensation/CompensationRecomputeTest.php
 
 		-
@@ -3968,7 +3885,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 12
 			path: tests/Modules/Genealogy/TreeCardStatsTest.php
 
 		-
@@ -4118,7 +4035,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 15
+			count: 18
 			path: tests/Modules/Identity/DashboardRenderTest.php
 
 		-
@@ -4822,6 +4739,12 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Modules/Returns/ReturnReceiptServiceTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Modules/Shared/DistributorFilterScopeTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'

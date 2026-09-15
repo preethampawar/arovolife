@@ -363,14 +363,14 @@ it('lists a month whose pool is frozen even though it credited nobody', function
         ->assertOk()
         ->assertSee('August 2026')
         ->assertSee('Not credited')
-        ->assertDontSee('the engine has not run for any month');
+        ->assertDontSee('The engine has not run for any month.');
 });
 
 it('still says the engine has not run when there is neither a pool nor a result', function () {
     $this->actingAs(gbbReportAdmin())
         ->get(route('admin.compensation.gbb.index'))
         ->assertOk()
-        ->assertSee('the engine has not run for any month');
+        ->assertSee('The engine has not run for any month.');
 });
 
 it('hides the GBB calculation report while the feature is off', function (): void {

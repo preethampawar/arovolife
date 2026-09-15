@@ -286,14 +286,14 @@ it('lists a month whose pool is frozen even though it credited nobody', function
         ->assertSee('September 2026')
         ->assertSee('Not credited')
         ->assertSee('₹89,440.00')
-        ->assertDontSee('the engine has not run for any month');
+        ->assertDontSee('The engine has not run for any month.');
 });
 
 it('still says the engine has not run when there is neither a pool nor a result', function () {
     $this->actingAs(fbReportAdmin())
         ->get(route('admin.compensation.fortune-bonus.index'))
         ->assertOk()
-        ->assertSee('the engine has not run for any month');
+        ->assertSee('The engine has not run for any month.');
 });
 
 it('shows the distributor their own FB points times the frozen point value', function () {
