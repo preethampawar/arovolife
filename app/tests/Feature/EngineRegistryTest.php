@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
@@ -64,12 +65,12 @@ it('has exactly one registry entry per compensation console command', function (
     expect($registered)->toBe($commandClasses);
 });
 
-it('registers thirteen engines with unique keys and signatures', function (): void {
+it('registers fourteen engines with unique keys and signatures', function (): void {
     $all = EngineRegistry::all();
 
-    expect($all)->toHaveCount(13);
+    expect($all)->toHaveCount(14);
     expect(array_keys($all))->toBe(EngineRegistry::keys());
-    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(13);
+    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(14);
 });
 
 it('points every orchestrated engine at a registered orchestrator', function (): void {
@@ -84,7 +85,22 @@ it('points every orchestrated engine at a registered orchestrator', function ():
         expect(EngineRegistry::get($definition->orchestratedBy)->isOrchestrator)->toBeTrue(
             "Engine [{$key}] is orchestrated by an engine that is not an orchestrator."
         );
-        expect($definition->isOrchestrator)->toBeFalse("Engine [{$key}] orchestrates and is orchestrated.");
+    }
+});
+
+it('nests orchestrators without ever looping', function (): void {
+    // An orchestrator may be orchestrated: the nightly chain fires the monthly
+    // close, which fires the seven crediting engines. What must never happen is
+    // a cycle — a chain that invokes something that eventually invokes it back
+    // would recurse until the process died mid-credit.
+    foreach (EngineRegistry::keys() as $key) {
+        $seen = [];
+
+        for ($at = $key; $at !== null; $at = EngineRegistry::get($at)->orchestratedBy) {
+            expect(in_array($at, $seen, true))->toBeFalse("Orchestration cycle through [{$at}].");
+
+            $seen[] = $at;
+        }
     }
 });
 
@@ -225,27 +241,40 @@ it('declares a cadence that matches what the scheduler actually registers', func
             continue;
         }
 
-        // An orchestrated engine is fired by a close command, not by its own
-        // cron entry: the scheduler must register the ORCHESTRATOR, and the two
-        // must agree on the day. The times deliberately differ — the close runs
-        // its steps in sequence from its own start time.
+        // An orchestrated engine is fired by a chain, not by its own cron entry:
+        // the scheduler must register the ROOT of that chain, and the root must
+        // fire on every day the engine is due. The times deliberately differ —
+        // a chain runs its steps in sequence from its own start instant, which
+        // is the whole point of replacing the clock offsets.
         if ($definition->orchestratedBy !== null) {
-            $orchestrator = EngineRegistry::get($definition->orchestratedBy);
+            $root = $definition;
+
+            while ($root->orchestratedBy !== null) {
+                $root = EngineRegistry::get($root->orchestratedBy);
+            }
 
             expect($expression)->toBeNull(
                 "Engine [{$key}] is orchestrated but the scheduler still registers it directly as [{$expression}]."
             );
 
-            $orchestratorExpression = $registered[$orchestrator->commandSignature] ?? null;
-
-            expect($orchestratorExpression)->not->toBeNull(
-                "Engine [{$key}] is orchestrated by [{$orchestrator->key}], which nothing registers in routes/console.php."
+            expect($registered[$root->commandSignature] ?? null)->not->toBeNull(
+                "Engine [{$key}] is fired by [{$root->key}], which nothing registers in routes/console.php."
             );
 
-            expect($definition->cadence->dayOfMonth)->toBe(
-                $orchestrator->cadence->dayOfMonth,
-                "Engine [{$key}] runs on a different day from the close that fires it."
-            );
+            // Over a full year of calendar days, so a monthly engine's day and a
+            // weekly engine's weekday are both actually exercised.
+            for ($day = Carbon::today(), $i = 0; $i < 366; $i++, $day = $day->addDay()) {
+                if (! $definition->cadence->runsOn($day)) {
+                    continue;
+                }
+
+                expect($root->cadence->runsOn($day))->toBeTrue(sprintf(
+                    'Engine [%s] is due on %s but [%s], which fires it, is not.',
+                    $key,
+                    $day->toDateString(),
+                    $root->key,
+                ));
+            }
 
             continue;
         }

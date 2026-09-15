@@ -311,6 +311,62 @@ final class EngineStatusService
     }
 
     /**
+     * Every day in the inclusive range whose cut-off is proven COMPLETE.
+     *
+     * The stricter twin of {@see computedCutoffDatesBetween()}, and the one to
+     * ask when the answer decides whether money may be frozen. That method
+     * counts a day as done if ANY `gsb_cutoff_results` row exists for it — the
+     * right question for "has this day been started, so a dependency can
+     * proceed", and the wrong one here, because the cut-off commits per
+     * distributor: a run that died half way through leaves a partial day that
+     * looks finished. It also counts a succeeded run stamped INSIDE its own day
+     * (an admin retry at noon, a recompute), which cannot have seen the
+     * evening's sales.
+     *
+     * This one reads the run log alone and applies the same period-end rule as
+     * {@see hasSucceededRun()}: a succeeded run that started after the day it
+     * cut off had ended. Filtered in PHP rather than in SQL because the
+     * comparison is between two columns a day apart, and the range is capped at
+     * about a month by every caller.
+     *
+     * @return list<string> Y-m-d
+     */
+    public function completedCutoffDatesBetween(Carbon $from, Carbon $to): array
+    {
+        $completed = EngineRun::query()
+            ->where('engine_key', 'gsb.daily-cutoff')
+            ->where('status', EngineRun::STATUS_SUCCEEDED)
+            ->whereBetween('period_start', [$from->toDateString(), $to->copy()->endOfDay()->toDateTimeString()])
+            ->get(['period_start', 'started_at'])
+            ->filter(fn (EngineRun $run): bool => $run->started_at !== null
+                && $run->started_at->greaterThanOrEqualTo($run->period_start->copy()->startOfDay()->addDay()))
+            ->map(fn (EngineRun $run): string => $run->period_start->toDateString())
+            ->unique()
+            ->sort();
+
+        return array_values($completed->all());
+    }
+
+    /**
+     * Has a payout batch already been built for this date?
+     *
+     * Derived proof, deliberately: a batch is the thing that exists, and the
+     * run log is not the record of it. The batch runners are idempotent per
+     * date, but only up to a point — once finance has APPROVED a batch, a
+     * re-run returns it untouched and the command reports FAILURE, because a
+     * batch waiting for the bank is not a batch anyone may add lines to. An
+     * orchestrator that re-invokes it would abort its own chain over a batch
+     * that is not merely fine but already signed off.
+     */
+    public function payoutBatchExists(string $batchType, Carbon $batchDate): bool
+    {
+        return PayoutBatch::query()
+            ->where('batch_type', $batchType)
+            ->whereDate('batch_date', $batchDate->toDateString())
+            ->exists();
+    }
+
+    /**
      * Every day in the inclusive range for which a GSB cut-off is proven done.
      * One query per source, so a month-wide dependency check stays at two
      * queries regardless of how many days are missing.

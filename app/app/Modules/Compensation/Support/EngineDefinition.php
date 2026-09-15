@@ -43,10 +43,11 @@ final readonly class EngineDefinition
      *                                       cadence — that is when it actually runs — but nothing in
      *                                       routes/console.php registers it directly, so
      *                                       EngineRegistryTest looks for the orchestrator instead.
-     * @param  bool  $isOrchestrator  True for the two monthly close commands, which run other engines
-     *                                rather than computing anything themselves. The recompute replay
-     *                                drives the individual engines directly, so it must skip these or
-     *                                every step would be invoked twice.
+     * @param  bool  $isOrchestrator  True for the nightly chain and the two monthly close commands,
+     *                                which run other engines rather than computing anything
+     *                                themselves. The recompute replay drives the individual engines
+     *                                directly, so it must skip these or every step would be invoked
+     *                                twice.
      */
     public function __construct(
         public string $key,
@@ -86,10 +87,38 @@ final readonly class EngineDefinition
     /**
      * Human sentence for the admin console. Generated from {@see $cadence} so
      * the schedule is described in exactly one place.
+     *
+     * An orchestrated engine borrows the clock from the chain that fires it —
+     * it no longer has one of its own, and printing the minute it used to fire
+     * at is the kind of small lie an operator plans a morning around.
      */
     public function scheduleText(): string
     {
-        return $this->cadence->describe();
+        return $this->cadence->describe($this->chainStartsAt());
+    }
+
+    /**
+     * The time the chain that fires this engine starts, or null when the
+     * scheduler fires the engine directly.
+     *
+     * Walks to the ROOT of the orchestration, because an orchestrator may
+     * itself be orchestrated: the monthly close is fired by the nightly chain,
+     * so the clock a crediting engine answers to is the chain's, not the
+     * close's.
+     */
+    public function chainStartsAt(): ?string
+    {
+        if ($this->orchestratedBy === null) {
+            return null;
+        }
+
+        $root = EngineRegistry::get($this->orchestratedBy);
+
+        while ($root->orchestratedBy !== null) {
+            $root = EngineRegistry::get($root->orchestratedBy);
+        }
+
+        return $root->cadence->time;
     }
 
     /** The period an operator most likely wants, matching the command's own default. */

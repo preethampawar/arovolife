@@ -16,6 +16,7 @@ namespace App\Modules\Compensation\Services\DTOs;
  * @phpstan-type MissingItem array{engine: string, key: string, period: string, period_value: string, due_at: string, steps: list<string>}
  * @phpstan-type StuckItem array{engine: string, key: string, period: string, period_value: string, started_at: string, steps: list<string>}
  * @phpstan-type PrematureFreezeItem array{engine: string, key: string, period: string, period_value: string, frozen_at: string, detected_at: string, steps: list<string>}
+ * @phpstan-type ChainAlertItem array{kind: string, headline: string, date: string, recorded_at: string, steps: list<string>}
  */
 final readonly class EngineHealthReport
 {
@@ -24,12 +25,14 @@ final readonly class EngineHealthReport
      * @param  list<MissingItem>  $missing  Scheduled periods for which no run of any kind was recorded.
      * @param  list<StuckItem>  $stuck  Runs still `running` long after they started.
      * @param  list<PrematureFreezeItem>  $prematureFreezes  Pools frozen too early that the self-heal had to keep.
+     * @param  list<ChainAlertItem>  $chainAlerts  What the nightly chain could not do: a night it never started, a gap too wide to heal, a month it would not close.
      */
     public function __construct(
         public array $failures,
         public array $missing,
         public array $stuck,
         public array $prematureFreezes = [],
+        public array $chainAlerts = [],
     ) {}
 
     public function isHealthy(): bool
@@ -39,6 +42,10 @@ final readonly class EngineHealthReport
 
     public function total(): int
     {
-        return count($this->failures) + count($this->missing) + count($this->stuck) + count($this->prematureFreezes);
+        return count($this->failures)
+            + count($this->missing)
+            + count($this->stuck)
+            + count($this->prematureFreezes)
+            + count($this->chainAlerts);
     }
 }

@@ -23,11 +23,13 @@ use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
+use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
 use App\Modules\Compensation\Listeners\RecordEngineRun;
+use App\Modules\Compensation\Listeners\RecordSkippedNightlyRun;
 use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Identity\Models\User;
@@ -38,6 +40,7 @@ use App\Modules\Returns\Events\OrderRefundApproved;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Blade;
@@ -119,6 +122,11 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(CommandStarting::class, [RecordEngineRun::class, 'starting']);
         Event::listen(CommandFinished::class, [RecordEngineRun::class, 'finished']);
 
+        // A nightly chain the scheduler skipped because the previous one was
+        // still running leaves no run, no exit code and no engine_runs row.
+        // This is the only trace such a night gets.
+        Event::listen(ScheduledTaskFinished::class, [RecordSkippedNightlyRun::class, 'handle']);
+
         // Super staff: `developer` and `admin` bypass every permission check
         // (R-17 separation of duties). The specialised roles (admin-operations
         // / admin-finance / admin-compliance) carry only their scoped
@@ -166,6 +174,7 @@ class AppServiceProvider extends ServiceProvider
                 MonthlyPayoutCommand::class,
                 CompensationRecomputeAllCommand::class,
                 MonthlyCloseCommand::class,
+                NightlyRunCommand::class,
                 MonthlyPayoutCloseCommand::class,
                 EngineHealthDigestCommand::class,
                 AutoRetryFailedPayoutsCommand::class,

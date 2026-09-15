@@ -14,6 +14,7 @@ use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
+use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
@@ -129,6 +130,7 @@ final class EngineRegistry
                 reportRouteName: 'admin.compensation.carry-forwards.index',
                 cadence: EngineCadence::daily('00:05'),
                 defaultPeriod: 'today',
+                orchestratedBy: 'compensation.nightly-run',
             ),
 
             new EngineDefinition(
@@ -147,6 +149,7 @@ final class EngineRegistry
                 cadence: EngineCadence::dailyForPreviousDay('00:10'),
                 defaultPeriod: 'today',
                 requiresClosedPeriod: true,
+                orchestratedBy: 'compensation.nightly-run',
             ),
 
             new EngineDefinition(
@@ -165,6 +168,7 @@ final class EngineRegistry
                 cadence: EngineCadence::weeklyOn(2, '03:00'),
                 defaultPeriod: 'today',
                 manuallyTriggerable: false,
+                orchestratedBy: 'compensation.nightly-run',
             ),
 
             new EngineDefinition(
@@ -246,7 +250,14 @@ final class EngineRegistry
                 dependencies: [],
                 featureFlagClass: AreteDevelopmentCenterBonusFeature::class,
                 reportRouteName: 'admin.compensation.adc-calculation.index',
-                cadence: EngineCadence::monthlyOn(1, '01:15'),
+                // After Fortune payout, matching MonthlyCloseCommand::STEPS —
+                // ADC is off the crediting critical path, so it runs once the
+                // money is credited. The minute is a POSITION in the night, not
+                // a promise about the clock (see EngineCadence::$time), and the
+                // recompute replay orders a replayed day by it: declaring it
+                // before Fortune payout would have dev and staging replay the
+                // month in an order production no longer uses.
+                cadence: EngineCadence::monthlyOn(1, '03:15'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
                 orchestratedBy: 'compensation.monthly-close',
@@ -301,7 +312,7 @@ final class EngineRegistry
                 ],
                 featureFlagClass: FortuneBonusFeature::class,
                 reportRouteName: 'admin.compensation.fb-calculation.index',
-                cadence: EngineCadence::monthlyOn(1, '03:15'),
+                cadence: EngineCadence::monthlyOn(1, '01:15'),
                 defaultPeriod: 'prev-month',
                 requiresClosedPeriod: true,
                 orchestratedBy: 'compensation.monthly-close',
@@ -353,6 +364,7 @@ final class EngineRegistry
                 // outcome onto that step's row.
                 manuallyTriggerable: false,
                 requiresClosedPeriod: true,
+                orchestratedBy: 'compensation.nightly-run',
                 isOrchestrator: true,
             ),
 
@@ -373,6 +385,29 @@ final class EngineRegistry
                 // that would trigger it is the one that approves the batch.
                 manuallyTriggerable: false,
                 requiresClosedPeriod: true,
+                orchestratedBy: 'compensation.nightly-run',
+                isOrchestrator: true,
+            ),
+
+            new EngineDefinition(
+                key: 'compensation.nightly-run',
+                label: 'Nightly Run (the chain)',
+                description: "Runs every engine tonight is due, in dependency order, in ONE process: the repurchase evaluation for tonight, the GSB cut-off for yesterday, and — when the night calls for them — the monthly crediting close, the Tuesday weekly payout batch and the 8th's monthly payout close. Impact: writes nothing of its own; every credit, result row and payout batch is written by the engine it invokes, each recording its own run. Each step fires the moment the step before it has exited 0, which is what replaced the clock offsets that used to sequence these five entries and did not actually hold the order. A re-run resumes at the first step that has not succeeded, so the steps that already landed are never touched again.",
+                periodType: EnginePeriodType::Date,
+                commandClass: NightlyRunCommand::class,
+                commandSignature: 'compensation:nightly-run',
+                periodOption: '--date',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: 'admin.compensation.engine-runs.events',
+                cadence: EngineCadence::daily('00:05'),
+                defaultPeriod: 'today',
+                // Scheduler-only, like the closes it fires. A manual trigger goes
+                // through EngineRunService, which reads back the run id the
+                // console listener recorded — with the whole chain nested inside
+                // it, the last step's id is what it would find, and it would
+                // stamp the chain's outcome onto that step's row.
+                manuallyTriggerable: false,
                 isOrchestrator: true,
             ),
         ];

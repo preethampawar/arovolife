@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Support;
 
+use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
 use App\Modules\Compensation\Models\EngineRun;
 use Illuminate\Support\Carbon;
 use Laravel\Pennant\Feature;
@@ -46,9 +47,15 @@ use Throwable;
 final class MonthlyEngineCompletionGate
 {
     /**
-     * The crediting engines `compensation:monthly-close` runs, in the order it
-     * runs them — so the refusal names the earliest failure, which is the one
-     * to fix first.
+     * Every crediting engine a month owes, in the order
+     * {@see MonthlyCloseCommand::STEPS}
+     * runs them — so the refusal names the earliest failure, which is the one to
+     * fix first.
+     *
+     * Membership and order are different questions, and only order moved when
+     * ADC and Purchase Offers came off the crediting critical path. All seven
+     * are still required before the 8th pays: an engine that no longer blocks
+     * the close is not an engine a month can do without.
      *
      * @var list<string>
      */
@@ -57,8 +64,8 @@ final class MonthlyEngineCompletionGate
         'rank.bonus',
         'gbb.monthly',
         'fortune.enroll',
-        'adc.bonus',
         'fortune.payout',
+        'adc.bonus',
         'offers.monthly',
     ];
 
