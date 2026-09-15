@@ -172,7 +172,7 @@ test.describe('the inventory itself', () => {
         // the wizard steps too — they are unreachable by navigation and are
         // swept by theme-wizard.spec.js, which walks the wizard to get to
         // them, so they are covered rather than excused.
-        expect(ALL_ROUTES.length + Object.keys(SKIP).length).toBe(200);
+        expect(ALL_ROUTES.length + Object.keys(SKIP).length).toBe(205);
         expect(new Set(ALL_ROUTES).size, 'no route listed in two tiers').toBe(ALL_ROUTES.length);
         for (const path of ALL_ROUTES) {
             expect(SKIP[path], `${path} is both swept and skipped`).toBeUndefined();

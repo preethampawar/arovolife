@@ -26,6 +26,7 @@ use App\Modules\Commerce\Http\Controllers\Admin\AdminBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOfferController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminProfitReportController;
 use App\Modules\Commerce\Http\Controllers\Storefront\AddressController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CartController;
 use App\Modules\Commerce\Http\Controllers\Storefront\CheckoutController;
@@ -432,6 +433,17 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         });
     });
 
+    // Profit on sales. Separate from `inventory.view` because these screens
+    // put supplier cost and company margin on one page — commercially more
+    // sensitive than either stock levels or revenue, and never distributor-facing.
+    Route::prefix('reports/profit')->name('reports.profit.')->middleware('can:profit.report.view')->group(function (): void {
+        Route::get('/', [AdminProfitReportController::class, 'index'])->name('index');
+        Route::get('/summary', [AdminProfitReportController::class, 'summary'])->name('summary');
+        Route::get('/by-product', [AdminProfitReportController::class, 'byProduct'])->name('by-product');
+        Route::get('/by-category', [AdminProfitReportController::class, 'byCategory'])->name('by-category');
+        Route::get('/register', [AdminProfitReportController::class, 'register'])->name('register');
+    });
+
     // Inventory — suppliers, purchase orders, goods receipts (GRNs), warehouses,
     // transfers, adjustments. Every write here commits spend or moves stock, so
     // all of it sits behind `inventory.manage` (admin-operations, R-17).
@@ -785,6 +797,15 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::get('/catalog/products/{product}/edit', [AdminProductController::class, 'edit'])->name('catalog.products.edit');
     Route::put('/catalog/products/{product}', [AdminProductController::class, 'update'])->name('catalog.products.update');
     Route::post('/catalog/products/{product}/archive', [AdminProductController::class, 'archive'])->name('catalog.products.archive');
+    // The audit trail behind a variant's landing price. Read-only: the price
+    // itself is owned by LandingPriceService and derived from posted GRNs.
+    // Gated on `inventory.view` rather than the catalog group's role list: the
+    // trail is a supplier cost sheet (what we paid, per receipt, over time), so
+    // it belongs to the roles that already see stock cost — not to
+    // admin-compliance, which has no duty needing the company's margin (R-17).
+    Route::get('/catalog/variants/{productVariant}/landing-price-history', [AdminProductController::class, 'landingPriceHistory'])
+        ->middleware('can:inventory.view')
+        ->name('catalog.products.landing-price-history');
     Route::delete('/catalog/images/{image}', [AdminProductController::class, 'deleteImage'])->name('catalog.images.destroy');
     // WYSIWYG inline-image upload target (Trix attachment add event).
     Route::post('/catalog/trix-upload', [AdminProductController::class, 'trixUpload'])->name('catalog.trix-upload');

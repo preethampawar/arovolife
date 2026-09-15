@@ -26,6 +26,32 @@ class WalletService
     public const REPURCHASE_TYPES = ['repurchase_deduction', 'repurchase_wallet_used'];
 
     /**
+     * Every wallet entry type that is a commission the company paid out.
+     *
+     * The single source of truth for "what the plan cost us" (plan D5). The
+     * profit report's contribution block reads this; nothing may hardcode its
+     * own list, because a bonus type added later and missed here would make
+     * the company look more profitable than it is, silently and forever.
+     *
+     * Note this is deliberately WIDER than the six rows
+     * IncomeOverviewService::bonusSummaryFromTotals() shows a distributor:
+     * that list is a feature-gated display of the bonuses they can earn, while
+     * this is every rupee that left the company as commission — awards,
+     * franchise payouts and manual credits included.
+     */
+    public const BONUS_CREDIT_TYPES = [
+        'gsb_credit',
+        'mb_credit',
+        'gbb_credit',
+        'rank_credit',
+        'fortune_credit',
+        'adc_credit',
+        'awards_credit',
+        'franchise_credit',
+        'manual_credit',
+    ];
+
+    /**
      * Suffix appended to the reversed row's reference_type by
      * {@see reverseBonusCredit()} so the unwinding `repurchase_deduction` entry
      * does not collide with the original credit's row on
@@ -59,6 +85,29 @@ class WalletService
         return WalletLedgerEntry::where('distributor_id', $distributorId)
             ->where('amount_paise', '>', 0)
             ->when($from !== null, fn ($q) => $q->where('created_at', '>=', $from))
+            ->groupBy('type')
+            ->selectRaw('type, SUM(amount_paise) as total_paise')
+            ->pluck('total_paise', 'type')
+            ->map(fn ($total): int => (int) $total)
+            ->all();
+    }
+
+    /**
+     * Commission credited company-wide in a period, by type.
+     *
+     * The per-distributor sibling above answers "what did they earn"; this
+     * answers "what did the plan cost us", which is the figure the profit
+     * report deducts. Same table, same types, one owner.
+     *
+     * @return array<string, int>
+     */
+    public function commissionTotalsByType(?\DateTimeInterface $from = null, ?\DateTimeInterface $to = null): array
+    {
+        return WalletLedgerEntry::query()
+            ->whereIn('type', self::BONUS_CREDIT_TYPES)
+            ->where('amount_paise', '>', 0)
+            ->when($from !== null, fn ($q) => $q->where('created_at', '>=', $from))
+            ->when($to !== null, fn ($q) => $q->where('created_at', '<=', $to))
             ->groupBy('type')
             ->selectRaw('type, SUM(amount_paise) as total_paise')
             ->pluck('total_paise', 'type')

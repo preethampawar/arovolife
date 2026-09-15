@@ -113,6 +113,16 @@ final class RolesAndPermissionsSeeder extends Seeder
         // and report without being able to write off a shortage it found.
         'inventory.view' => ['admin-operations', 'admin-finance'],
 
+        // Revenue. admin-compliance is deliberately absent: compliance polices
+        // conduct, not the order book, and handing it the company's sales
+        // figures widens its reach for no duty it actually has (R-17).
+        'sales.report.view' => ['admin-operations', 'admin-finance'],
+
+        // Margin. Separate from sales.report.view because these screens expose
+        // what we PAY suppliers, which is commercially more sensitive than what
+        // we charge — a leaked cost sheet is a negotiating position given away.
+        'profit.report.view' => ['admin-operations', 'admin-finance'],
+
         // Added 2026-09-12 with the Action Center. The screen itself only
         // aggregates what each viewer can already see: the rows inside it are
         // scoped per provider by that provider's own permission, so this grant

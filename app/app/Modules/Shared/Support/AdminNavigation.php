@@ -220,6 +220,12 @@ final class AdminNavigation
             ...($user?->can('audit.read')
                 ? [['route' => 'admin.commerce.bv-ledger.index', 'label' => 'BV Ledger', 'icon' => 'chart-column', 'prefix' => 'admin.commerce.bv-ledger']]
                 : []),
+            // Profit sits behind its own permission, not `audit.read`: these
+            // screens show what we pay suppliers, and admin-compliance has no
+            // duty that needs the company's margin (R-17).
+            ...($user?->can('profit.report.view')
+                ? [['route' => 'admin.reports.profit.index', 'label' => 'Profit on Sales', 'icon' => 'trending-up', 'prefix' => 'admin.reports.profit']]
+                : []),
         ];
     }
 
