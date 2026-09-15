@@ -31,6 +31,9 @@ use Illuminate\Support\Facades\DB;
  */
 final class EngineStatusService
 {
+    /** The orchestrator an operator may retry: the night, not a single engine. */
+    public const CHAIN_KEY = 'compensation.nightly-run';
+
     /**
      * @param  Carbon  $period  Normalised by the caller: the date, or the first of the month.
      */
@@ -41,6 +44,69 @@ final class EngineStatusService
         }
 
         return $this->hasDerivedProof($key, $period);
+    }
+
+    /**
+     * The nightly chain's last finished attempt, when that attempt FAILED.
+     *
+     * Deliberately "the latest attempt", not "the oldest unhealed failure". A
+     * night that fails is not a night that is lost: the next chain backfills the
+     * cut-offs it missed and rebuilds a missed Tuesday batch still dated that
+     * Tuesday, so once any later night has exited 0 the gap is closed and a
+     * banner pointing at the old failure would be telling an operator to fix
+     * something that has already fixed itself.
+     *
+     * RUNNING rows are excluded — a chain in flight is not a failure — and so
+     * are SKIPPED ones: a preflight refusal is a decision (a stale worker, a
+     * standing projection), and retrying it would only refuse again. Those
+     * surface through {@see EngineHealthService} chain alerts, which say what to
+     * actually do.
+     */
+    public function failedChainRun(): ?EngineRun
+    {
+        $latest = EngineRun::query()
+            ->where('engine_key', self::CHAIN_KEY)
+            ->whereIn('status', [EngineRun::STATUS_SUCCEEDED, EngineRun::STATUS_FAILED])
+            ->orderByDesc('id')
+            ->first();
+
+        return $latest?->status === EngineRun::STATUS_FAILED ? $latest : null;
+    }
+
+    /**
+     * The steps of a failed night, in chain order, with what each one did.
+     *
+     * Read from the step engines' own `engine_runs` rows for that period rather
+     * than from the chain's summary: the chain aborts at the first non-zero exit
+     * and never reaches the steps after it, so the only honest account of which
+     * engines ran is the rows they wrote themselves.
+     *
+     * @return list<array{label: string, status: string, error: string|null}>
+     */
+    public function chainStepOutcomes(Carbon $night): array
+    {
+        $rows = EngineRun::query()
+            ->where('engine_key', '!=', self::CHAIN_KEY)
+            ->whereDate('period_start', $night->toDateString())
+            ->orderBy('id')
+            ->get()
+            ->keyBy('engine_key');
+
+        $steps = [];
+
+        foreach ($rows as $key => $run) {
+            if (! EngineRegistry::has((string) $key)) {
+                continue;
+            }
+
+            $steps[] = [
+                'label' => EngineRegistry::get((string) $key)->label,
+                'status' => (string) $run->status,
+                'error' => is_string($run->error) ? $run->error : null,
+            ];
+        }
+
+        return $steps;
     }
 
     /**

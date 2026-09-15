@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 use App\Console\Actions\PurchaseDataResetAction;
 use App\Console\Actions\PurchaseResetBlocked;
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
+use App\Modules\Compensation\Jobs\RetryNightlyChainJob;
 use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -140,7 +141,48 @@ final class AdminEngineRunsController extends Controller
                 )
                 : [],
             'projectedThrough' => $this->recomputeState->projectedThrough(),
+            // Null on every healthy night, which is what keeps the retry banner
+            // off a page nobody needs to act on.
+            'failedChain' => $this->failedChainPayload(),
         ]);
+    }
+
+    /**
+     * What the retry banner renders, or null when the chain is healthy.
+     *
+     * @return array{night: string, nightValue: string, failedAt: string, inFlight: bool, error: string|null, steps: list<array{label: string, status: string, error: string|null}>}|null
+     */
+    private function failedChainPayload(): ?array
+    {
+        $run = $this->status->failedChainRun();
+
+        if ($run === null) {
+            return null;
+        }
+
+        $night = $run->period_start instanceof Carbon
+            ? $run->period_start
+            : Carbon::parse((string) $run->period_start);
+
+        return [
+            'night' => $night->format('d M Y'),
+            'nightValue' => $night->toDateString(),
+            'failedAt' => ($run->finished_at ?? $run->started_at ?? $run->created_at)?->format('d M Y H:i') ?? '—',
+            // A retry does not clear the banner while it runs — failedChainRun()
+            // ignores `running` rows on purpose, so the newest FINISHED attempt
+            // is still the failure. Without this the operator sees an unchanged
+            // page and clicks again, queueing a second full night.
+            'inFlight' => $this->status->hasRunInFlight(EngineStatusService::CHAIN_KEY),
+            // Capped like the events page caps it. `error` can carry a raw
+            // exception, and a QueryException carries SQL plus its bindings —
+            // a distributor's name or ADN can ride in on one. Same audience and
+            // same data as Run events, but this is the landing page, so it gets
+            // the same ceiling rather than an unbounded dump.
+            'error' => is_string($run->error) && $run->error !== ''
+                ? Str::limit($run->error, 1000)
+                : null,
+            'steps' => $this->status->chainStepOutcomes($night),
+        ];
     }
 
     /**
@@ -551,6 +593,106 @@ final class AdminEngineRunsController extends Controller
         }
 
         return redirect()->route('admin.compensation.engine-runs.index')->with('status', $message);
+    }
+
+    /**
+     * Re-run the night the chain failed on, from the step that failed.
+     *
+     * Unlike {@see trigger()} this is offered on every environment, including
+     * the ones where per-engine triggers are refused. The reason those are
+     * refused is that they fire one engine at the wrong instant; this fires the
+     * whole night, for the night it belongs to, through the same command the
+     * scheduler uses — the instant is the one thing it does not get wrong. The
+     * cases that genuinely must not proceed (a standing projection, a stale
+     * worker) are refused by the command's own preflight, which says what to do
+     * about each.
+     */
+    public function retryChain(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'night' => ['required', 'date_format:Y-m-d'],
+            'reason' => ['required', 'string', 'min:10', 'max:500'],
+        ]);
+
+        // Re-read rather than trust the posted night: the banner may have been
+        // open in a tab since before a later night healed the chain, and
+        // re-running an old night on a healthy chain would recompute days that
+        // are already settled.
+        $failed = $this->status->failedChainRun();
+
+        if ($failed === null) {
+            throw ValidationException::withMessages([
+                'night' => 'The nightly chain is not currently failed — there is nothing to retry. Refresh the page '
+                    .'to see its current state.',
+            ]);
+        }
+
+        $night = $failed->period_start instanceof Carbon
+            ? $failed->period_start
+            : Carbon::parse((string) $failed->period_start);
+
+        if ($night->toDateString() !== $validated['night']) {
+            throw ValidationException::withMessages([
+                'night' => sprintf(
+                    'This page was showing the %s chain, but the one that needs retrying is %s. Refresh and try again.',
+                    Carbon::parse($validated['night'])->format('d M Y'),
+                    $night->format('d M Y'),
+                ),
+            ]);
+        }
+
+        $actorId = $request->user()?->id;
+        // Joins this audit row to every `engine_runs` row the retry goes on to
+        // write, exactly as a manual trigger's chain id does. Without it the
+        // authorisation and the runs it caused sit in two stores with nothing
+        // linking them.
+        $chainId = (string) Str::uuid();
+
+        AuditLog::create([
+            'actor_id' => $actorId,
+            'action' => 'compensation.nightly_chain.retried',
+            'subject_type' => 'engine',
+            'subject_id' => null,
+            // The retry itself changes nothing; the digest pins which night was
+            // authorised, what it had failed with, and that no payout batch was
+            // in scope.
+            'before_hash' => null,
+            'after_hash' => AuditDigests::of([
+                'night' => $night->toDateString(),
+                'failed_run_id' => $failed->id,
+                'error' => $failed->error,
+                'chain_id' => $chainId,
+                'payouts_in_scope' => false,
+            ]),
+            'details' => [
+                'night' => $night->toDateString(),
+                'failed_run_id' => $failed->id,
+                'reason' => $validated['reason'],
+                'chain_id' => $chainId,
+                // Recorded explicitly, not implied: what an operator authorised
+                // here is a crediting run, and the weekly/monthly sweeps stay
+                // with the scheduler so no admin is ever a batch's maker.
+                'payouts_in_scope' => false,
+            ],
+            'ip' => $request->ip(),
+        ]);
+
+        RetryNightlyChainJob::dispatch($night->toDateString(), $actorId, $chainId);
+
+        Log::info('compensation.nightly_chain.retry_queued', [
+            'night' => $night->toDateString(),
+            'failed_run_id' => $failed->id,
+            'actor_id' => $actorId,
+            'chain_id' => $chainId,
+        ]);
+
+        return redirect()->route('admin.compensation.engine-runs.index')->with('status', sprintf(
+            'Queued a retry of the %s chain. It resumes where the night stopped, and every engine skips a '
+            .'distributor already credited for the period, so nothing is paid twice. It credits wallets but '
+            .'builds no payout batch — the weekly and monthly sweeps stay with the scheduler. Refresh this page '
+            .'to follow progress.',
+            $night->format('d M Y'),
+        ));
     }
 
     /**

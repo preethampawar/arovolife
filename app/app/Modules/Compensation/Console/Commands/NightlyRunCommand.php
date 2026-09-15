@@ -81,7 +81,8 @@ final class NightlyRunCommand extends Command
                             {--date= : The night to run (YYYY-MM-DD, defaults to tonight)}
                             {--force : Run the steps even when the preflight refuses}
                             {--restart : Re-run every step, including ones already recorded as succeeded}
-                            {--with-payouts : Include the payout steps when --date names a night other than tonight}';
+                            {--with-payouts : Include the payout steps when --date names a night other than tonight}
+                            {--without-payouts : Credit the night but build no payout batch, whatever the date}';
 
     protected $description = 'Run tonight\'s compensation engines in dependency order, resuming at the first step that has not succeeded';
 
@@ -222,6 +223,20 @@ final class NightlyRunCommand extends Command
         }
 
         if (! $this->payoutsAllowed($night)) {
+            // SAY SO. Every other omission this command makes is loud — a
+            // deferred month close, a backfill gap, a batch built late — and
+            // this one would otherwise record SUCCEEDED for a night whose sweep
+            // was deliberately dropped, with nothing in the run summary to show
+            // it. The console capture lands this line in `engine_runs.summary`,
+            // which is the evidence for the claim that no admin-console path
+            // builds a payout batch.
+            if ($this->option('without-payouts')) {
+                $this->warn(
+                    'Payout steps excluded (--without-payouts): this run credits wallets only. The weekly and '
+                    .'monthly sweeps are built by the scheduler on its next night, still dated their own period.'
+                );
+            }
+
             return $steps;
         }
 
@@ -246,9 +261,30 @@ final class NightlyRunCommand extends Command
      * has gone by is a decision, so it takes `--with-payouts` to say so. The
      * batch would still land `pending` and still need a second person to
      * approve it — this keeps the surprise out, not the money.
+     *
+     * `--without-payouts` is the opposite decision, and it exists for the admin
+     * retry button. The payout-batch engines are `manuallyTriggerable = false`
+     * precisely because `finance.record` both triggers them and approves the
+     * batch they create — one admin would be maker and checker. A retry of a
+     * night that IS today would otherwise reach them through `isToday()` below,
+     * which is exactly the window the button is most used in, so the button
+     * pins this off. Nobody loses income: the crediting engines still run, the
+     * money still lands in wallets, and the batch that sweeps it is built by
+     * the scheduler — the maker it has always been.
      */
     private function payoutsAllowed(Carbon $night): bool
     {
+        // NO LOCK GUARDS TWO CONCURRENT RUNS OF THIS COMMAND, and that is a
+        // deliberate reading of ADR-0011 rather than an oversight: the
+        // `compensation` queue runs on exactly one process, so two retries of
+        // the same night serialise; the engines are idempotent per period; and
+        // with the switch below no batch can be created either way. If that
+        // queue ever grows a second worker, this command needs a cache lock
+        // before it is safe again.
+        if ($this->option('without-payouts')) {
+            return false;
+        }
+
         return $night->isToday() || (bool) $this->option('with-payouts');
     }
 

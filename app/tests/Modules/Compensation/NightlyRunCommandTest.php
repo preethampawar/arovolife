@@ -672,3 +672,62 @@ it('satisfies the real monthly close preflight with its own cut-off step', funct
     expect(EngineRun::where('engine_key', 'compensation.monthly-close')->sole()->status)
         ->toBe(EngineRun::STATUS_SUCCEEDED);
 });
+
+/*
+|--------------------------------------------------------------------------
+| --without-payouts (the admin retry path)
+|--------------------------------------------------------------------------
+|
+| The payout-batch engines are `manuallyTriggerable = false` because
+| `finance.record` both fires them and approves the batch they create. The admin
+| retry button runs a whole night, and a night that IS today would otherwise
+| reach them through payoutsAllowed()'s isToday() rule — making one admin maker
+| and checker for a real payout. These pin the switch that stops it.
+*/
+
+it('builds no weekly payout batch when the night is retried without payouts', function (): void {
+    // Tuesday 22 September 2026 — the day the weekly sweep is due, and the
+    // exact case isToday() would otherwise let through.
+    Carbon::setTestNow('2026-09-22 09:00:00');
+    seedMonthlyBatch('2026-09-01');
+
+    Artisan::call('compensation:nightly-run', ['--without-payouts' => true]);
+
+    expect(StubChainStepCommand::$calls)->toBe([
+        'repurchase.evaluate',
+        'gsb.daily-cutoff',
+    ])->and(StubChainStepCommand::$calls)->not->toContain('gsb.weekly-payout');
+});
+
+it('builds no monthly payout close when the eighth is retried without payouts', function (): void {
+    Carbon::setTestNow('2026-09-08 09:00:00');
+    seedMonthlyBatch('2026-09-01');
+
+    Artisan::call('compensation:nightly-run', ['--without-payouts' => true]);
+
+    expect(StubChainStepCommand::$calls)->not->toContain('compensation.monthly-payout-close');
+});
+
+it('still credits the night when payouts are excluded, because the income is the point', function (): void {
+    // Excluding the sweep must not exclude the crediting engines — a retry that
+    // skipped those would leave distributors uncredited, which is the opposite
+    // of what the button is for.
+    Carbon::setTestNow('2026-09-22 09:00:00');
+    seedMonthlyBatch('2026-09-01');
+
+    Artisan::call('compensation:nightly-run', ['--without-payouts' => true]);
+
+    expect(StubChainStepCommand::$calls)->toContain('repurchase.evaluate')
+        ->and(StubChainStepCommand::$calls)->toContain('gsb.daily-cutoff');
+});
+
+it('still allows the scheduler its payout steps when the switch is not passed', function (): void {
+    // The guard must be opt-in only: the scheduler's own nightly run is
+    // unchanged, or the weekly sweep would simply stop happening.
+    Carbon::setTestNow('2026-09-22 00:05:00');
+    seedMonthlyBatch('2026-09-01');
+
+    Artisan::call('compensation:nightly-run');
+
+    expect(StubChainStepCommand::$calls)->toContain('gsb.weekly-payout');
+});
