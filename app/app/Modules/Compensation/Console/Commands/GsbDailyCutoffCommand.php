@@ -21,12 +21,22 @@ use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Laravel\Pennant\Feature;
 
 final class GsbDailyCutoffCommand extends Command
 {
+    /**
+     * Distributors loaded, warmed and computed at a time.
+     *
+     * Small enough that the chunk's warmed caches are a few megabytes, large
+     * enough that the bulk warm queries still amortise across it. 2,000 keeps
+     * both true at ten lakh.
+     */
+    private const ROSTER_CHUNK = 2000;
+
     protected $signature = 'gsb:daily-cutoff
                             {--date= : Override the cut-off date (YYYY-MM-DD, default: today)}
                             {--distributor= : Run for a single distributor ID only (admin retry)}
@@ -171,32 +181,11 @@ final class GsbDailyCutoffCommand extends Command
         // on its own flag — GSB can run without MB, but not the reverse.
         $mentorshipActive = Feature::for(null)->active(MentorshipBonusFeature::class);
 
-        $distributors = $query->get(['id', 'gsb_frozen_at']);
-        $total = $distributors->count();
+        $total = (clone $query)->count();
         $credited = 0;
         $failed = 0;
         $mbFailed = 0;
-
-        // Batch-load per-distributor data before the loop: personal BV totals,
-        // repurchase cycles, and frozen status — replaces ~3 N+1 queries with
-        // 2–3 bulk queries regardless of distributor count.
-        $this->cutoff->warmBatch($distributors);
-
-        // Distributors who cannot match today (below the personal-BV minimum,
-        // or eligible but with no group BV, no carry-forward and no row for the
-        // date) get their rows written in one batched INSERT instead of a
-        // compute+settle cycle each. On the reference dataset that is ~98% of
-        // the day's rows. Single-distributor retries never take the shortcut.
         $skipped = 0;
-        if ($singleId === null) {
-            $partition = $this->idleBatch->partition($distributors, $date);
-            $skipped = $this->idleBatch->write($partition['below_min'], $partition['idle'], $date);
-            $distributors = $partition['engine'];
-
-            if ($skipped > 0) {
-                $this->line("  {$skipped} distributor(s) with no possible match — rows written in bulk.");
-            }
-        }
 
         $poolPricingActive = Feature::for(null)->active(GsbDailyPoolPricingFeature::class);
 
@@ -206,21 +195,67 @@ final class GsbDailyCutoffCommand extends Command
         // (same snapshot-not-recompute tolerance as the rest of the engine).
         /** @var array<int, GsbCutoffComputation> $computations */
         $computations = [];
-        foreach ($distributors as $distributor) {
-            $distributorId = (int) $distributor->id;
 
-            try {
-                $computations[$distributorId] = $this->cutoff->computeForDistributor($distributorId, $date);
-            } catch (\Throwable $e) {
-                $failed++;
-                Log::error('gsb.cutoff.exception', [
-                    'distributor_id' => $distributorId,
-                    'error' => $e->getMessage(),
-                    'exception' => get_class($e),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ]);
+        // CHUNKED, not `->get()`. The roster used to be materialised whole:
+        // every active distributor as a model, with warmBatch() then holding
+        // every one of their personal-BV totals and repurchase cycles for the
+        // length of the run. The scale harness measured 485 MB at a hundred
+        // thousand distributors, growing linearly — roughly 4.8 GB at ten lakh,
+        // which is the chain running out of memory rather than out of time
+        // (R-90). Warming, computing and forgetting one chunk at a time bounds
+        // that by the chunk instead of by the population.
+        //
+        // What does NOT move into the chunk is the pool: it is still frozen
+        // once, below, from the aggregate of EVERY computation, because the
+        // day's economics are the day's — a pool frozen per chunk would price
+        // each chunk against its own denominator.
+        $query->chunkById(self::ROSTER_CHUNK, function (Collection $chunk) use (
+            $date,
+            $singleId,
+            &$computations,
+            &$failed,
+            &$skipped,
+        ): void {
+            // Batch-load per-distributor data before the loop: personal BV
+            // totals, repurchase cycles, and frozen status — replaces ~3 N+1
+            // queries with 2–3 bulk queries per chunk.
+            $this->cutoff->warmBatch($chunk);
+
+            // Distributors who cannot match today (below the personal-BV
+            // minimum, or eligible but with no group BV, no carry-forward and
+            // no row for the date) get their rows written in one batched INSERT
+            // instead of a compute+settle cycle each. On the reference dataset
+            // that is ~98% of the day's rows. Single-distributor retries never
+            // take the shortcut.
+            if ($singleId === null) {
+                $partition = $this->idleBatch->partition($chunk, $date);
+                $skipped += $this->idleBatch->write($partition['below_min'], $partition['idle'], $date);
+                $chunk = $partition['engine'];
             }
+
+            foreach ($chunk as $distributor) {
+                $distributorId = (int) $distributor->id;
+
+                try {
+                    $computations[$distributorId] = $this->cutoff->computeForDistributor($distributorId, $date);
+                } catch (\Throwable $e) {
+                    $failed++;
+                    Log::error('gsb.cutoff.exception', [
+                        'distributor_id' => $distributorId,
+                        'error' => $e->getMessage(),
+                        'exception' => get_class($e),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                    ]);
+                }
+            }
+
+            // The chunk is computed; nothing downstream reads these caches.
+            $this->cutoff->forgetBatch();
+        }, 'id');
+
+        if ($skipped > 0) {
+            $this->line("  {$skipped} distributor(s) with no possible match — rows written in bulk.");
         }
 
         // Freeze the day's pool economics BEFORE any credit, so a crash
@@ -329,7 +364,7 @@ final class GsbDailyCutoffCommand extends Command
         }
 
         $msbValue = number_format($msbPointValuePaise / 100, 2);
-        $this->info("Done — total: {$total}, engine: ".$distributors->count().", bulk: {$skipped}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}, msb-points: {$msbTotalPoints}, msb-point-value: ₹{$msbValue}");
+        $this->info("Done — total: {$total}, engine: ".count($computations).", bulk: {$skipped}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}, msb-points: {$msbTotalPoints}, msb-point-value: ₹{$msbValue}");
 
         return ($failed > 0 || $mbFailed > 0) ? self::FAILURE : self::SUCCESS;
     }

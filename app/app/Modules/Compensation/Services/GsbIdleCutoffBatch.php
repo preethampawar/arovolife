@@ -48,12 +48,32 @@ final class GsbIdleCutoffBatch
     ) {}
 
     /**
+     * Run a chunked `whereIn` and return the ids it found, keyed for `has()`.
+     *
+     * @param  callable(array<int, int>): Collection<int, mixed>  $query
+     * @param  array<int, int>  $ids
+     * @return Collection<int, int>
+     */
+    private function idSet(callable $query, array $ids): Collection
+    {
+        $found = [];
+
+        foreach (array_chunk($ids, self::CHUNK) as $chunk) {
+            foreach ($query($chunk) as $id) {
+                $found[(int) $id] = true;
+            }
+        }
+
+        return collect($found)->map(static fn (): int => 1);
+    }
+
+    /**
      * Split the day's distributors into those the engine must actually run for
      * and those whose rows can be written in bulk.
      *
      * @param  Collection<int, Distributor>  $distributors  as loaded by the command (id, gsb_frozen_at)
      * @return array{engine: Collection<int, Distributor>, below_min: list<int>, idle: array<int, string|null>}
-     *                                                                                                          idle maps distributor id => the power side stored
+     *                                                                                                          `idle` maps distributor id => the power side stored
      *                                                                                                          on their all-zero carry-forward row, which the
      *                                                                                                          engine records as power_side_before
      */
@@ -72,22 +92,29 @@ final class GsbIdleCutoffBatch
         $minBvPaise = $this->plan->gsbMinBvPaise();
         $dateStr = $date->toDateString();
 
-        $alreadyHasRow = DB::table('gsb_cutoff_results')
-            ->whereIn('distributor_id', $ids)
-            ->whereDate('cutoff_date', $dateStr)
-            ->pluck('distributor_id')
-            ->map(fn ($id): int => (int) $id)
-            ->flip();
+        // Every read below is chunked over $ids for the same reason the writes
+        // further down are: `whereIn` becomes a placeholder per id and MySQL
+        // refuses a prepared statement past 65,535 of them. The cut-off
+        // partitions every active distributor at once, so at ten lakh this was
+        // not slow, it was fatal (R-90).
+        $alreadyHasRow = $this->idSet(
+            fn (array $chunk) => DB::table('gsb_cutoff_results')
+                ->whereIn('distributor_id', $chunk)
+                ->whereDate('cutoff_date', $dateStr)
+                ->pluck('distributor_id'),
+            $ids,
+        );
 
-        $hasGroupBv = DB::table('group_bv_daily')
-            ->whereIn('distributor_id', $ids)
-            ->whereDate('date', $dateStr)
-            ->where(function ($q): void {
-                $q->where('left_bv_paise', '!=', 0)->orWhere('right_bv_paise', '!=', 0);
-            })
-            ->pluck('distributor_id')
-            ->map(fn ($id): int => (int) $id)
-            ->flip();
+        $hasGroupBv = $this->idSet(
+            fn (array $chunk) => DB::table('group_bv_daily')
+                ->whereIn('distributor_id', $chunk)
+                ->whereDate('date', $dateStr)
+                ->where(function ($q): void {
+                    $q->where('left_bv_paise', '!=', 0)->orWhere('right_bv_paise', '!=', 0);
+                })
+                ->pluck('distributor_id'),
+            $ids,
+        );
 
         // A carry-forward row carrying nothing is not state. After one idle day
         // every eligible distributor HAS such a row — settle()'s no-match branch
@@ -95,23 +122,31 @@ final class GsbIdleCutoffBatch
         // shortcut to the first day of a replay. What matters is whether it
         // carries BV; its recorded power side is read rather than ignored,
         // because the next row's power_side_before is exactly that value.
-        $carryforward = DB::table('gsb_carryforward')
-            ->whereIn('distributor_id', $ids)
-            ->get(['distributor_id', 'power_side', 'power_side_bv_paise', 'slab1_weaker_bv_paise']);
-
         $zeroCarryforwardSide = [];
         $hasCarryforward = [];
 
-        foreach ($carryforward as $row) {
-            $id = (int) $row->distributor_id;
+        // Folded chunk by chunk into the two maps rather than accumulated into
+        // one collection first: the accumulation was O(n²) in the very method
+        // whose memory ceiling is the finding, and it was the last surviving
+        // `Collection::merge()` over chunked results — the pattern that
+        // reassigned every repurchase cycle to the wrong distributor when it
+        // met integer keys.
+        foreach (array_chunk($ids, self::CHUNK) as $chunk) {
+            $rows = DB::table('gsb_carryforward')
+                ->whereIn('distributor_id', $chunk)
+                ->get(['distributor_id', 'power_side', 'power_side_bv_paise', 'slab1_weaker_bv_paise']);
 
-            if ((int) $row->power_side_bv_paise !== 0 || (int) $row->slab1_weaker_bv_paise !== 0) {
-                $hasCarryforward[$id] = true;
+            foreach ($rows as $row) {
+                $id = (int) $row->distributor_id;
 
-                continue;
+                if ((int) $row->power_side_bv_paise !== 0 || (int) $row->slab1_weaker_bv_paise !== 0) {
+                    $hasCarryforward[$id] = true;
+
+                    continue;
+                }
+
+                $zeroCarryforwardSide[$id] = $row->power_side;
             }
-
-            $zeroCarryforwardSide[$id] = $row->power_side;
         }
 
         $belowMin = [];

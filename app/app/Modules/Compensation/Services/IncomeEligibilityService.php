@@ -40,6 +40,12 @@ final class IncomeEligibilityService
     /** The day fell inside a failed cycle's window — its BV and income are lost. */
     public const FORFEITED = 'forfeited';
 
+    /**
+     * Ids per `whereIn` when warming the cache: a placeholder each, and MySQL
+     * refuses a prepared statement past 65,535 of them.
+     */
+    private const WARM_CHUNK = 500;
+
     /** @var array<int, Collection<int, RepurchaseCycle>> Cycles per distributor, newest first. */
     private array $cycleCache = [];
 
@@ -56,17 +62,49 @@ final class IncomeEligibilityService
             return;
         }
 
-        $byDistributor = RepurchaseCycle::query()
-            ->whereIn('distributor_id', $distributorIds)
-            ->orderByDesc('cycle_start_date')
-            ->get()
-            ->groupBy('distributor_id');
+        // Chunked: `whereIn` becomes a placeholder per id, and MySQL refuses a
+        // prepared statement past 65,535 of them. The GSB cut-off warms this
+        // for every active distributor at once, so on the scale harness the
+        // cut-off died here between 10k and 100k (R-90).
+        // Accumulated into a plain array keyed by distributor id, NOT merged
+        // chunk by chunk: Collection::merge() is array_merge(), which renumbers
+        // integer keys — and these keys ARE distributor ids, so merging silently
+        // reassigns every cycle to the wrong person. The suite caught it as a
+        // forfeited day reading as no_match.
+        $byDistributor = [];
+
+        foreach (array_chunk($distributorIds, self::WARM_CHUNK) as $chunk) {
+            $grouped = RepurchaseCycle::query()
+                ->whereIn('distributor_id', $chunk)
+                ->orderByDesc('cycle_start_date')
+                ->get()
+                ->groupBy('distributor_id');
+
+            foreach ($grouped as $distributorId => $cycles) {
+                $byDistributor[(int) $distributorId] = $cycles;
+            }
+        }
 
         foreach ($distributorIds as $id) {
             /** @var Collection<int, RepurchaseCycle> $cycles */
-            $cycles = $byDistributor->get($id) ?? collect();
+            $cycles = $byDistributor[(int) $id] ?? collect();
             $this->cycleCache[$id] = $cycles;
         }
+    }
+
+    /**
+     * Drop the warmed cycles.
+     *
+     * Every cycle of every warmed distributor is held as a model, which is the
+     * single largest thing the cut-off keeps in memory. A caller working in
+     * chunks calls this at the end of each one. Safe because only
+     * {@see GsbCutoffService::computeForDistributor()}
+     * reads it — pricing and settling work from the computation object, which
+     * already carries the verdict.
+     */
+    public function forgetCycleCache(): void
+    {
+        $this->cycleCache = [];
     }
 
     /** Whether the repurchase engine is enabled. */

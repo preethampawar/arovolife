@@ -73,6 +73,22 @@ final class GsbCutoffService
     }
 
     /**
+     * Release everything {@see warmBatch()} loaded.
+     *
+     * The twin of warming, and the reason a chunked caller can bound its
+     * memory: warm a chunk, compute it, forget it. Only
+     * {@see computeForDistributor()} reads these caches — `price()` reads none
+     * and `settle()` reads only the computation's own `isFrozen` — so dropping
+     * them after a chunk's computations cannot change what anybody is paid.
+     */
+    public function forgetBatch(): void
+    {
+        $this->frozenCache = [];
+        $this->bvLedger->forgetPersonalBvCache();
+        $this->eligibility->forgetCycleCache();
+    }
+
+    /**
      * Run (or re-run) the 23:59 cut-off for one distributor on one date.
      * Idempotent: if a 'credited' result already exists for this date, return it unchanged.
      */

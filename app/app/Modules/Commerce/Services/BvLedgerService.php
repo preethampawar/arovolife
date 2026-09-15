@@ -23,6 +23,12 @@ use Illuminate\Support\Facades\DB;
 final class BvLedgerService
 {
     /**
+     * Ids per `whereIn` when warming the cache: a placeholder each, and MySQL
+     * refuses a prepared statement past 65,535 of them.
+     */
+    private const WARM_CHUNK = 500;
+
+    /**
      * Credit the order's BV to the attributing distributor's personal ledger.
      * Idempotent (UNIQUE(order_id, type)) and a no-op when the order is not a
      * self-consumption purchase, BV is zero, or self-purchase BV is disabled.
@@ -117,15 +123,40 @@ final class BvLedgerService
             return;
         }
 
-        $rows = BvLedgerEntry::query()
-            ->whereIn('distributor_id', $distributorIds)
-            ->selectRaw('distributor_id, SUM(bv_paise) as total')
-            ->groupBy('distributor_id')
-            ->pluck('total', 'distributor_id');
+        // Chunked, because `whereIn` becomes a placeholder per id and MySQL
+        // refuses a prepared statement past 65,535 of them. The GSB cut-off
+        // warms this for every active distributor at once, so on the scale
+        // harness the whole cut-off died here between 10k and 100k (R-90).
+        $totals = [];
+
+        foreach (array_chunk($distributorIds, self::WARM_CHUNK) as $chunk) {
+            $rows = BvLedgerEntry::query()
+                ->whereIn('distributor_id', $chunk)
+                ->selectRaw('distributor_id, SUM(bv_paise) as total')
+                ->groupBy('distributor_id')
+                ->pluck('total', 'distributor_id');
+
+            foreach ($rows as $id => $total) {
+                $totals[(int) $id] = (int) $total;
+            }
+        }
 
         foreach ($distributorIds as $id) {
-            $this->personalBvCache[$id] = (int) ($rows[$id] ?? 0);
+            $this->personalBvCache[$id] = $totals[$id] ?? 0;
         }
+    }
+
+    /**
+     * Drop the warmed totals.
+     *
+     * The cache is keyed by distributor and never expires, so a caller that
+     * warms it for the whole population holds the whole population. A caller
+     * working in chunks calls this at the end of each one: the next chunk warms
+     * what it needs, and peak memory is the chunk rather than the roster.
+     */
+    public function forgetPersonalBvCache(): void
+    {
+        $this->personalBvCache = [];
     }
 
     /** A distributor's total accumulated personal BV (in paise). */
