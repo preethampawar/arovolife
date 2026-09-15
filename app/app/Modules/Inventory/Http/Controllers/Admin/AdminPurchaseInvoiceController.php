@@ -10,6 +10,7 @@ use App\Modules\Inventory\Models\PurchaseInvoice;
 use App\Modules\Inventory\Models\PurchaseOrder;
 use App\Modules\Inventory\Models\Supplier;
 use App\Modules\Inventory\Models\Warehouse;
+use App\Modules\Inventory\Services\LandedCostAllocator;
 use App\Modules\Inventory\Services\PurchaseInvoiceService;
 use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
@@ -85,7 +86,7 @@ final class AdminPurchaseInvoiceController extends Controller
                 'supplier_invoice_no' => $data['supplier_invoice_no'],
                 'supplier_invoice_date' => $data['supplier_invoice_date'],
                 'notes' => $data['notes'] ?? null,
-            ],
+            ] + $this->chargesFromRequest($data),
             $this->linesFromRequest($data['lines']),
             (int) Auth::id(),
         );
@@ -130,8 +131,9 @@ final class AdminPurchaseInvoiceController extends Controller
                     'supplier_invoice_no' => $data['supplier_invoice_no'],
                     'supplier_invoice_date' => $data['supplier_invoice_date'],
                     'notes' => $data['notes'] ?? null,
-                ],
+                ] + $this->chargesFromRequest($data),
                 $this->linesFromRequest($data['lines']),
+                (int) Auth::id(),
             );
         } catch (RuntimeException $e) {
             return redirect()->route('admin.inventory.grns.show', $purchaseInvoice)->withErrors(['grn' => $e->getMessage()]);
@@ -181,6 +183,28 @@ final class AdminPurchaseInvoiceController extends Controller
                 ->orderByDesc('id')->get(['id', 'po_no', 'supplier_id']),
             'variants' => ProductVariant::query()->where('status', 'active')->with('product:id,name')
                 ->orderBy('variant_sku')->get(['id', 'product_id', 'variant_sku', 'name', 'gst_rate_bp']),
+        ];
+    }
+
+    /**
+     * Invoice-level charges, rupees to paise. Kept separate from the line
+     * mapper because they belong to the document, not to any one line — it is
+     * LandedCostAllocator that decides how they land on lines.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{freight_paise: int, insurance_paise: int, handling_paise: int,
+     *               other_charges_paise: int, allocation_basis: string}
+     */
+    private function chargesFromRequest(array $data): array
+    {
+        $paise = static fn (string $key): int => (int) round(((float) ($data[$key] ?? 0)) * 100);
+
+        return [
+            'freight_paise' => $paise('freight'),
+            'insurance_paise' => $paise('insurance'),
+            'handling_paise' => $paise('handling'),
+            'other_charges_paise' => $paise('other_charges'),
+            'allocation_basis' => (string) ($data['allocation_basis'] ?? LandedCostAllocator::BASIS_VALUE),
         ];
     }
 

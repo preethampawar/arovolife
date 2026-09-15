@@ -65,6 +65,42 @@
         </label>
     </x-ui.card>
 
+    <x-ui.card padding="p-6 space-y-4">
+        <div>
+            <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Landed cost charges</h2>
+            <p class="text-xs text-gray-500 mt-1">
+                What it cost to get these goods into the warehouse, over and above the supplier's price.
+                These are spread across the lines below to give each item its true landed cost —
+                which becomes the stock value, the cost of sale, and the product's landing price.
+                Leave them at zero if the supplier price is already delivered-to-door.
+            </p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            @foreach ([
+                'freight' => ['Freight', $invoice->freight_paise, 'Transport from the supplier to your warehouse.'],
+                'insurance' => ['Insurance', $invoice->insurance_paise, 'Transit insurance on this consignment.'],
+                'handling' => ['Loading / handling', $invoice->handling_paise, 'Loading, unloading and clearing charges.'],
+                'other_charges' => ['Other charges', $invoice->other_charges_paise, 'Any other non-recoverable cost of bringing these goods in. Do not put GST here — it is input credit, not a cost.'],
+            ] as $field => [$label, $value, $tip])
+                <label class="block">
+                    <span class="block text-xs text-gray-700 mb-1 font-medium">{{ $label }} (₹) <x-help-tip :text="$tip" /></span>
+                    <input type="number" step="0.01" min="0" name="{{ $field }}"
+                        value="{{ old($field, number_format(($value ?? 0) / 100, 2, '.', '')) }}"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </label>
+            @endforeach
+            <label class="block">
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Spread by <x-help-tip text="How the charges are divided across the lines. Value is the usual choice. Use Weight when freight is the dominant charge and the items differ a lot in weight; use Quantity when every unit costs the same to ship." /></span>
+                <select name="allocation_basis"
+                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    @foreach (['value' => 'Line value', 'qty' => 'Quantity', 'weight' => 'Weight'] as $basis => $label)
+                        <option value="{{ $basis }}" @selected(old('allocation_basis', $invoice->allocation_basis ?? 'value') === $basis)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </label>
+        </div>
+    </x-ui.card>
+
     <x-ui.card padding="p-6 space-y-4 overflow-x-auto">
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Line items</h2>
         <table class="w-full text-sm min-w-[900px]" id="grnLinesTable">

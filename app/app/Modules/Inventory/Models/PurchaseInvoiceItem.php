@@ -26,6 +26,8 @@ use Illuminate\Support\Carbon;
  * @property int $unit_cost_paise
  * @property int $gst_rate_bp
  * @property int $taxable_value_paise
+ * @property int $allocated_charges_paise
+ * @property int $landed_unit_cost_paise
  * @property int $gst_paise
  * @property int $line_total_paise
  */
@@ -36,6 +38,7 @@ final class PurchaseInvoiceItem extends Model
     protected $fillable = [
         'purchase_invoice_id', 'product_variant_id', 'batch_no', 'mfg_date', 'expiry_date',
         'qty', 'unit_cost_paise', 'gst_rate_bp', 'taxable_value_paise', 'gst_paise', 'line_total_paise',
+        'allocated_charges_paise', 'landed_unit_cost_paise',
     ];
 
     protected function casts(): array
@@ -47,6 +50,8 @@ final class PurchaseInvoiceItem extends Model
             'unit_cost_paise' => 'int',
             'gst_rate_bp' => 'int',
             'taxable_value_paise' => 'int',
+            'allocated_charges_paise' => 'int',
+            'landed_unit_cost_paise' => 'int',
             'gst_paise' => 'int',
             'line_total_paise' => 'int',
             'mfg_date' => 'date',

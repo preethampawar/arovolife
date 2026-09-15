@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Inventory\Http\Requests;
 
 use App\Modules\Inventory\Models\PurchaseInvoice;
+use App\Modules\Inventory\Services\LandedCostAllocator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -42,6 +43,13 @@ final class PurchaseInvoiceRequest extends FormRequest
             ],
             'supplier_invoice_date' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            // Landed-cost charges, in rupees like every other money input here.
+            // These are what separate cost price from landing price.
+            'freight' => ['nullable', 'numeric', 'min:0'],
+            'insurance' => ['nullable', 'numeric', 'min:0'],
+            'handling' => ['nullable', 'numeric', 'min:0'],
+            'other_charges' => ['nullable', 'numeric', 'min:0'],
+            'allocation_basis' => ['nullable', Rule::in(LandedCostAllocator::BASES)],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
             'lines.*.batch_no' => ['required', 'string', 'max:64'],

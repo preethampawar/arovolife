@@ -22,6 +22,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $warehouse_code
  * @property string $status
  * @property int $subtotal_paise
+ * @property int $freight_paise
+ * @property int $insurance_paise
+ * @property int $handling_paise
+ * @property int $other_charges_paise
+ * @property int $landed_total_paise
+ * @property string $allocation_basis
  * @property int $gst_paise
  * @property int $total_paise
  * @property CarbonInterface|null $posted_at
@@ -37,10 +43,27 @@ final class PurchaseInvoice extends Model
 
     protected $table = 'purchase_invoices';
 
+    /**
+     * The DB defaults these to 0, but a model built by create() and used
+     * before it is re-read has no value for them at all — and NULL in the
+     * landed-cost arithmetic silently becomes 0 charges on a GRN that had
+     * charges. Defaulting on the model closes that window.
+     */
+    protected $attributes = [
+        'freight_paise' => 0,
+        'insurance_paise' => 0,
+        'handling_paise' => 0,
+        'other_charges_paise' => 0,
+        'landed_total_paise' => 0,
+        'allocation_basis' => 'value',
+    ];
+
     protected $fillable = [
         'grn_no', 'supplier_id', 'purchase_order_id', 'warehouse_code',
         'supplier_invoice_no', 'supplier_invoice_date', 'status',
         'subtotal_paise', 'gst_paise', 'total_paise', 'notes',
+        'freight_paise', 'insurance_paise', 'handling_paise', 'other_charges_paise',
+        'landed_total_paise', 'allocation_basis',
         'posted_at', 'posted_by_user_id', 'cancelled_at', 'created_by_user_id',
     ];
 
@@ -54,6 +77,11 @@ final class PurchaseInvoice extends Model
             'subtotal_paise' => 'int',
             'gst_paise' => 'int',
             'total_paise' => 'int',
+            'freight_paise' => 'int',
+            'insurance_paise' => 'int',
+            'handling_paise' => 'int',
+            'other_charges_paise' => 'int',
+            'landed_total_paise' => 'int',
             'supplier_invoice_date' => 'date',
             'posted_at' => 'datetime',
             'cancelled_at' => 'datetime',
