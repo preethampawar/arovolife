@@ -40,6 +40,12 @@ it('has exactly one registry entry per compensation console command', function (
         // one — it takes a horizon, not a period — and RecomputeGuard refuses it
         // in production outright.
         'CompensationRecomputeAllCommand',
+        // The scale harness. One writes a synthetic population and the other
+        // times the engines against it; neither computes a period or pays
+        // anybody, and ScaleEnvironment refuses every database that holds real
+        // data.
+        'ScaleSeedCommand',
+        'ScaleBenchmarkCommand',
     ];
 
     $commandClasses = collect($commandFiles ?: [])

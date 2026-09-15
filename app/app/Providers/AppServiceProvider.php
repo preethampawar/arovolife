@@ -27,6 +27,8 @@ use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
+use App\Modules\Compensation\Console\Commands\ScaleBenchmarkCommand;
+use App\Modules\Compensation\Console\Commands\ScaleSeedCommand;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
 use App\Modules\Compensation\Listeners\RecordEngineRun;
 use App\Modules\Compensation\Listeners\RecordSkippedNightlyRun;
@@ -175,6 +177,8 @@ class AppServiceProvider extends ServiceProvider
                 CompensationRecomputeAllCommand::class,
                 MonthlyCloseCommand::class,
                 NightlyRunCommand::class,
+                ScaleSeedCommand::class,
+                ScaleBenchmarkCommand::class,
                 MonthlyPayoutCloseCommand::class,
                 EngineHealthDigestCommand::class,
                 AutoRetryFailedPayoutsCommand::class,
