@@ -7,6 +7,7 @@ namespace App\Modules\Inventory\Services;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Inventory\Models\StockAdjustment;
+use App\Modules\Inventory\Models\StockBatch;
 use App\Modules\Inventory\Models\StockMovement;
 use Illuminate\Database\DatabaseManager;
 use InvalidArgumentException;
@@ -57,6 +58,15 @@ final class StockAdjustmentService
         return $this->db->transaction(function () use ($warehouseCode, $variantId, $batchId, $qtyDelta, $reason, $notes, $actorUserId, $type): StockAdjustment {
             $occurredAt = now();
 
+            // Without a cost, a write-off removes stock but not its value, and
+            // the Trading Account identity (opening + purchases - closing =
+            // COGS) silently stops holding. Transfers already stamp the batch
+            // cost this way; adjustments were the one movement type that did
+            // not.
+            $unitCostPaise = $batchId !== null
+                ? (int) (StockBatch::query()->whereKey($batchId)->value('unit_cost_paise') ?? 0)
+                : 0;
+
             $adjustment = StockAdjustment::create([
                 'adjustment_no' => $this->numbering->next('ADJ'),
                 'warehouse_code' => $warehouseCode,
@@ -75,6 +85,7 @@ final class StockAdjustmentService
                 'warehouse_code' => $warehouseCode,
                 'batch_id' => $batchId,
                 'qty' => $qtyDelta,
+                'unit_cost_paise' => $unitCostPaise,
                 'reference_type' => 'stock_adjustment',
                 'reference_id' => $adjustment->id,
                 'reason' => $reason,

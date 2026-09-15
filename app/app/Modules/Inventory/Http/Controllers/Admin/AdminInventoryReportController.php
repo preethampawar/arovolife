@@ -13,6 +13,7 @@ use App\Modules\Inventory\Models\StockMovement;
 use App\Modules\Inventory\Models\StockTransfer;
 use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\InventoryAlertService;
+use App\Modules\Inventory\Services\StockValuationService;
 use App\Modules\Returns\Models\ReturnRequest;
 use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
@@ -37,6 +38,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 final class AdminInventoryReportController extends Controller
 {
+    public function __construct(private readonly StockValuationService $valuation) {}
+
     public function index(): View
     {
         return view('admin.inventory.reports.index');
@@ -57,7 +60,7 @@ final class AdminInventoryReportController extends Controller
                 'product_variants.variant_sku', 'products.name as product_name',
             ]);
 
-        $values = $this->batchValueByVariantWarehouse($levels->pluck('product_variant_id')->unique(), $warehouseCode);
+        $values = $this->valuation->currentValueByVariantWarehouse($levels->pluck('product_variant_id')->unique(), $warehouseCode);
 
         $rows = $levels->map(function (InventoryLevel $level) use ($values): array {
             $available = max(0, $level->on_hand - $level->reserved);
@@ -173,7 +176,7 @@ final class AdminInventoryReportController extends Controller
                 'days_to_expiry' => $days ?? '',
                 'bucket' => $bucket,
                 'qty_on_hand' => $b->qty_on_hand,
-                'value' => $this->money($b->qty_on_hand * $b->unit_cost_paise),
+                'value' => $this->money($this->valuation->batchValuePaise($b)),
             ];
         });
 
@@ -247,7 +250,7 @@ final class AdminInventoryReportController extends Controller
                 'warehouse' => $warehouse,
                 'category' => $category,
                 'qty_on_hand' => $group->sum('qty_on_hand'),
-                'value' => $this->money((int) $group->sum(fn (StockBatch $b): int => $b->qty_on_hand * $b->unit_cost_paise)),
+                'value' => $this->money((int) $group->sum(fn (StockBatch $b): int => $this->valuation->batchValuePaise($b))),
             ];
         })->values();
 
@@ -529,23 +532,6 @@ final class AdminInventoryReportController extends Controller
      * @param  Collection<int, int>  $variantIds
      * @return array<string, int>
      */
-    private function batchValueByVariantWarehouse(Collection $variantIds, string $warehouseCode): array
-    {
-        $batches = StockBatch::query()
-            ->whereIn('product_variant_id', $variantIds)
-            ->when($warehouseCode !== '', fn ($q) => $q->where('warehouse_code', $warehouseCode))
-            ->get(['product_variant_id', 'warehouse_code', 'qty_on_hand', 'unit_cost_paise']);
-
-        $values = [];
-
-        foreach ($batches as $batch) {
-            $key = $batch->product_variant_id.'|'.$batch->warehouse_code;
-            $values[$key] = ($values[$key] ?? 0) + ($batch->qty_on_hand * $batch->unit_cost_paise);
-        }
-
-        return $values;
-    }
-
     /** @return array{0: Carbon|null, 1: Carbon|null} */
     private function dateRange(Request $request): array
     {

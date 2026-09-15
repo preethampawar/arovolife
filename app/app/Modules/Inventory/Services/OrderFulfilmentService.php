@@ -480,7 +480,9 @@ final class OrderFulfilmentService
             [
                 'mfg_date' => $earliest?->mfg_date,
                 'expiry_date' => $earliest?->expiry_date,
-                'unit_cost_paise' => $earliest->unit_cost_paise ?? (int) $variant->getAttribute('cost_paise'),
+                'unit_cost_paise' => $earliest === null
+                    ? (int) $variant->getAttribute('cost_paise')
+                    : $earliest->unit_cost_paise,
                 'qty_on_hand' => 0,
                 'received_at' => now(),
                 'source_type' => self::REFERENCE_RETURN_REQUEST,

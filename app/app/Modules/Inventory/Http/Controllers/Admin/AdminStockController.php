@@ -7,6 +7,7 @@ namespace App\Modules\Inventory\Http\Controllers\Admin;
 use App\Modules\Catalog\Models\InventoryLevel;
 use App\Modules\Inventory\Models\StockBatch;
 use App\Modules\Inventory\Models\Warehouse;
+use App\Modules\Inventory\Services\StockValuationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -19,6 +20,8 @@ use Illuminate\Routing\Controller;
  */
 final class AdminStockController extends Controller
 {
+    public function __construct(private readonly StockValuationService $valuation) {}
+
     public function index(Request $request): View
     {
         $warehouseCode = (string) $request->query('warehouse_code', '');
@@ -56,6 +59,10 @@ final class AdminStockController extends Controller
         return view('admin.inventory.stock.index', [
             'levels' => $levels,
             'batchesByKey' => $batchesByKey,
+            // Valuation belongs to StockValuationService, not to a Blade @php
+            // block — the Value column here and the one on the stock reports
+            // must never be able to disagree.
+            'valueByKey' => $this->valuation->currentValueByVariantWarehouse($variantIds, $warehouseCode),
             'warehouses' => Warehouse::query()->orderBy('name')->get(['code', 'name']),
             'warehouseCode' => $warehouseCode,
             'search' => $search,

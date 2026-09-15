@@ -41,7 +41,7 @@
                     $status = $available <= 0 ? 'OUT' : ($reorderLevel > 0 && $available <= $reorderLevel ? 'LOW' : 'OK');
                     $key = $level->product_variant_id.'|'.$level->warehouse_code;
                     $batches = $batchesByKey->get($key, collect());
-                    $value = $batches->sum(fn ($b) => $b->qty_on_hand * $b->unit_cost_paise);
+                    $value = $valueByKey[$key] ?? 0;
                     $statusClasses = match ($status) {
                         'OUT' => 'bg-red-50 text-red-700 border-red-200',
                         'LOW' => 'bg-amber-50 text-amber-700 border-amber-200',
@@ -55,7 +55,7 @@
                     <td class="px-4 py-3 text-right font-mono">{{ $level->reserved }}</td>
                     <td class="px-4 py-3 text-right font-mono">{{ $available }}</td>
                     <td class="px-4 py-3 text-right font-mono text-gray-500">{{ $reorderLevel }}</td>
-                    <td class="px-4 py-3 text-right font-mono">₹{{ number_format($value / 100, 2) }}</td>
+                    <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::rupees($value) }}</td>
                     <td class="px-4 py-3">
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $statusClasses }}">{{ $status }}</span>
                     </td>
