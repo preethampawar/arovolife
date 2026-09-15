@@ -6,11 +6,13 @@ namespace App\Modules\Catalog\Http\Controllers\Admin;
 
 use App\Modules\Catalog\Http\Requests\ProductRequest;
 use App\Modules\Catalog\Models\InventoryLevel;
+use App\Modules\Catalog\Models\LandingPriceHistory;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductAttribute;
 use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Catalog\Models\ProductVariant;
+use App\Modules\Catalog\Services\LandingPriceService;
 use App\Modules\Catalog\Services\ProductImageStorage;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
@@ -28,7 +30,10 @@ use Mews\Purifier\Facades\Purifier;
 
 final class AdminProductController extends Controller
 {
-    public function __construct(private readonly ProductImageStorage $images) {}
+    public function __construct(
+        private readonly ProductImageStorage $images,
+        private readonly LandingPriceService $landingPrices,
+    ) {}
 
     public function index(Request $request): View
     {
@@ -58,6 +63,7 @@ final class AdminProductController extends Controller
             'variant' => new ProductVariant(['gst_rate_bp' => 1800, 'inventory_policy' => 'track']),
             'categories' => $this->categoryOptions(),
             'galleryImages' => collect(),
+            'landingDerived' => false,
         ]);
     }
 
@@ -100,12 +106,14 @@ final class AdminProductController extends Controller
     public function edit(Product $product): View
     {
         $product->load('galleryImages', 'productAttributes');
+        $variant = $product->primaryVariant() ?? new ProductVariant(['gst_rate_bp' => 1800, 'inventory_policy' => 'track']);
 
         return view('admin.catalog.products.form', [
             'product' => $product,
-            'variant' => $product->primaryVariant() ?? new ProductVariant(['gst_rate_bp' => 1800, 'inventory_policy' => 'track']),
+            'variant' => $variant,
             'categories' => $this->categoryOptions(),
             'galleryImages' => $product->galleryImages,
+            'landingDerived' => $variant->exists && $this->landingPrices->isDerivable($variant->id),
         ]);
     }
 
@@ -202,7 +210,6 @@ final class AdminProductController extends Controller
             'mrp_paise' => $this->toPaise($data['mrp']),
             'sale_price_paise' => $this->toPaise($data['sale_price']),
             'cost_paise' => $this->toPaise($data['cost_price'] ?? 0),
-            'landing_price_paise' => $this->toPaise($data['landing_price'] ?? 0),
             'distributor_price_paise' => $this->toPaise($data['distributor_price'] ?? 0),
             'bv_paise' => $this->toPaise($data['bv'] ?? 0),
             'gst_rate_bp' => (int) round(((float) $data['gst_rate']) * 100),
@@ -211,9 +218,54 @@ final class AdminProductController extends Controller
         ]);
         $variant->save();
 
+        $this->syncLandingPrice($variant, $data);
+
         InventoryLevel::updateOrCreate(
             ['product_variant_id' => $variant->id, 'warehouse_code' => 'DEFAULT'],
             ['reorder_level' => (int) ($data['reorder_level'] ?? 0)],
+        );
+    }
+
+    /**
+     * Every movement of this variant's landing price, newest first.
+     *
+     * Read-only and admin-only: it is the audit trail behind a cost figure the
+     * profit report depends on, so it is shown rather than editable.
+     */
+    public function landingPriceHistory(ProductVariant $productVariant): View
+    {
+        return view('admin.catalog.products.landing-price-history', [
+            'variant' => $productVariant->load('product'),
+            'rows' => LandingPriceHistory::query()
+                ->with('changedBy:id,name', 'purchaseInvoice:id,grn_no')
+                ->where('product_variant_id', $productVariant->id)
+                ->orderByDesc('id')
+                ->paginate(50),
+            'derived' => $this->landingPrices->isDerivable($productVariant->id),
+        ]);
+    }
+
+    /**
+     * Landing price is owned by LandingPriceService, not by this form.
+     *
+     * Once the variant has a posted GRN the system knows what the goods
+     * actually landed at, and a typed value is silently ignored — the view
+     * disables the input, and this is the backstop for a crafted POST. Before
+     * that there is nothing to derive from, so an admin may set a bootstrap
+     * value, and that too is written to the history.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function syncLandingPrice(ProductVariant $variant, array $data): void
+    {
+        if (! array_key_exists('landing_price', $data) || $this->landingPrices->isDerivable($variant->id)) {
+            return;
+        }
+
+        $this->landingPrices->recordManual(
+            $variant,
+            $this->toPaise($data['landing_price'] ?? 0),
+            Auth::id() !== null ? (int) Auth::id() : null,
         );
     }
 

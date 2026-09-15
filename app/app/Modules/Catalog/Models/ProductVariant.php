@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Models;
 
-use App\Modules\Shared\Support\IndianNumber as Number;
+use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -16,6 +16,22 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $gst_rate_bp
  * @property string $inventory_policy
  * @property-read InventoryLevel|null $inventory
+ */
+/**
+ * @property int $id
+ * @property int $product_id
+ * @property string $variant_sku
+ * @property string $name
+ * @property int $mrp_paise
+ * @property int $sale_price_paise
+ * @property int $cost_paise
+ * @property int $landing_price_paise
+ * @property int $distributor_price_paise
+ * @property int $bv_paise
+ * @property int $weight_g
+ * @property int $gst_rate_bp
+ * @property string $inventory_policy
+ * @property string $status
  */
 final class ProductVariant extends Model
 {
@@ -49,6 +65,7 @@ final class ProductVariant extends Model
         return $this->belongsTo(Product::class);
     }
 
+    /** @return HasOne<InventoryLevel, $this> */
     public function inventory(): HasOne
     {
         return $this->hasOne(InventoryLevel::class, 'product_variant_id');
@@ -56,12 +73,12 @@ final class ProductVariant extends Model
 
     public function displayPrice(): string
     {
-        return '₹'.Number::format($this->sale_price_paise / 100, 2);
+        return IndianNumber::rupees($this->sale_price_paise);
     }
 
     public function displayMrp(): string
     {
-        return '₹'.Number::format($this->mrp_paise / 100, 2);
+        return IndianNumber::rupees($this->mrp_paise);
     }
 
     /**
@@ -76,7 +93,7 @@ final class ProductVariant extends Model
 
     public function displayDistributorPrice(): string
     {
-        return '₹'.Number::format($this->distributor_price_paise / 100, 2);
+        return IndianNumber::rupees($this->distributor_price_paise);
     }
 
     /**

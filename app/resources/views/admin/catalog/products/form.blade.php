@@ -118,7 +118,9 @@
                 <label class="block">
                     <span class="block text-xs text-gray-700 mb-1 font-medium">{{ $label }} <x-help-tip :text="[
                         'cost_price' => 'Your internal purchase cost for this product. Not shown to customers.',
-                        'landing_price' => 'Landed cost including freight and duties. Not shown to customers.',
+                        'landing_price' => $landingDerived
+                            ? 'Worked out by the system: the weighted-average landed cost of the stock on hand, from your posted GRNs. Edit the freight and other charges on a GRN to change it. Not shown to customers.'
+                            : 'Landed cost including freight and duties. You can set a starting value now; once this product has its first posted GRN the system takes it over. Not shown to customers.',
                         'distributor_price' => 'The price charged to distributors when they buy this product.',
                         'mrp' => 'Maximum retail price printed on the product. Used as the strike-through price.',
                         'sale_price' => 'The actual selling price charged at checkout.',
@@ -127,7 +129,22 @@
                     <input type="number" step="0.01" min="0" name="{{ $field }}"
                         value="{{ old($field, $paise($val)) }}"
                         @if(in_array($field, ['mrp', 'sale_price'])) required @endif
-                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        @if($field === 'landing_price' && $landingDerived) readonly tabindex="-1" @endif
+                        class="w-full rounded-lg border px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500
+                            {{ $field === 'landing_price' && $landingDerived ? 'border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed' : 'border-gray-300' }}">
+                    @if($field === 'landing_price')
+                        <span class="block text-xs text-gray-600 mt-1">
+                            @if($landingDerived)
+                                Derived from posted GRNs.
+                                @if($variant?->exists)
+                                    <a href="{{ route('admin.catalog.products.landing-price-history', $variant) }}"
+                                        class="text-brand-600 hover:underline">View history</a>
+                                @endif
+                            @else
+                                Starting value — the system takes this over after the first GRN.
+                            @endif
+                        </span>
+                    @endif
                 </label>
             @endforeach
             <label class="block">
