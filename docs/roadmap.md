@@ -348,10 +348,10 @@ The code and the schema both went on 2026-09-01, when
 `orders.franchise_id` for `orders.arete_center_id`, dropped all three franchise
 tables and narrowed the `wallet_ledger_entries.type` enum. Nothing is pending.
 §11.1 of the plan source was removed on 2026-09-17 (the redeem-points offer moved
-up from §11.2 to §11.1) — but **the published page has not changed**: the content
-seeder never overwrites an existing row, so `/p/compensation` still shows the
-franchise commission until `php artisan content:publish compensation` is run on
-each environment. See the note under the table in
+up from §11.2 to §11.1). The content seeder never overwrites an existing row, so
+that edit only reaches a page via `php artisan content:publish compensation`,
+**run on local dev 2026-09-17 and still owed on staging and production** — a
+`git pull` will not move it. See the note under the table in
 `docs/compliance/risk-register.md`.
 
 **What did not go away.** R-21, R-25, R-45 and R-46 close with the programme.

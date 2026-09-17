@@ -68,8 +68,9 @@ Still open from this run: **F125** (replay calendar) — check that the 13 Sept 
 
 ## 5. Production notes (for launch, not now)
 - `COMP_RECOMPUTE_ENABLED` must be unset (F82).
-- `CLAMAV_ENABLED=false` per client (R-83) — revisit at the Phase 12 gate.
+- `CLAMAV_ENABLED=false` per client (R-83) — **permanent, no Phase 12 revisit**: the client's position (reaffirmed 2026-09-17) is that there is no malware-scanning feature.
 - Seeder + `consent:backfill-agreements` + `content:publish compensation` on first install (B7 runbook step 9).
+- **`php artisan content:publish compensation` on EVERY deploy that changed `database/seeders/content/compensation.md`, not only first install.** `compensation` is a held slug and `seedAsDraft()` skips rows that already exist, so a `git pull` + seeder run leaves the old text published. Owed now on staging and production: the 2026-09-17 removal of §11.1 Franchise commission (dropped programme) is live on dev only.
 - NEFT narration format `arovolife <ADN> B<batch id>` — confirm with the client before the first live batch.
 - Payout day needs an `admin`-role approver (admin-finance can no longer approve).
 - Lifetime Award cash credits released by hand in month M now pay in M's batch on the 8th of M+1.
