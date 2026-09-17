@@ -133,7 +133,7 @@ final class AdminFeatureFlagController extends Controller
             'commerce.purchase_offers' => [
                 'class' => PurchaseOffersFeature::class,
                 'label' => 'Purchase offers (half-price product + redeem points)',
-                'description' => 'Enables the two offers for distributors who hold no rank: one company-announced product at half the distributor price in a month they repurchased the qualifying volume, and redeem points for a six-month purchase streak (one point = one rupee off a future purchase). Both hang entirely off the distributor\'s own purchases — the "joining" trigger in the original spec was dropped, since an offer earned by joining would break hard rules 1 and 2. OFF leaves no trace. Gates: the DSA 6.2 notice, the effective date on /p/compensation 11.2, and KP confirming the two readings in R-47.',
+                'description' => 'Enables the two offers for distributors who hold no rank: one company-announced product at half the distributor price in a month they repurchased the qualifying volume, and redeem points for a six-month purchase streak (one point = one rupee off a future purchase). Both hang entirely off the distributor\'s own purchases — the "joining" trigger in the original spec was dropped, since an offer earned by joining would break hard rules 1 and 2. OFF leaves no trace. Gates: the DSA 6.2 notice, the effective date on /p/compensation 11.1, and the client confirming the two readings in R-48.',
                 'owner' => 'developer',
                 'requires' => [],
             ],

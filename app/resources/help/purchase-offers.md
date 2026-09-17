@@ -1,6 +1,6 @@
 # Purchase Offers
 
-Two offers for distributors who hold **no rank**, specified by KP on
+Two offers for distributors who hold **no rank**, specified by the client on
 2026-06-26. Both hang entirely off BV the distributor personally purchased —
 purchases they made for themselves, not sales to other people. A month's
 qualifying volume is filtered to `orders.self_consumption`, so retail sales
@@ -118,8 +118,8 @@ checkout, no admin screens, no settings keys.
 
 1. **DSA §6.2 thirty-day written notice** — the offers change what a distributor
    gets for their purchases and so form part of the plan.
-2. **`/p/compensation` §11.2** must carry the effective date from that notice.
-3. **KP must confirm the two readings in R-48** — see below.
+2. **`/p/compensation` §11.1** must carry the effective date from that notice.
+3. **The client must confirm the two readings in R-48** — see below.
 4. **A decision from counsel on the §15(3)(a) reduction.** The code no longer
    leaves this implicit: it takes the conservative position that a coupon and
    redeemed points reduce the **amount payable**, not the taxable value, so the
@@ -133,14 +133,14 @@ checkout, no admin screens, no settings keys.
 6. **An accounting position** recognising the outstanding balance as a
    liability (Ind AS 115).
 
-### The two readings that need KP (R-48)
+### The two readings that need the client (R-48)
 
 Both are implemented as literally written, and both change who gets paid and
 how much:
 
 - **"do not hold any rank"** is read as *has never qualified for a rank*. Rank
   achievement is permanent in this plan, so "currently unranked" and "never
-  ranked" are the same set today — but if KP meant "not ranked in the qualifying
+  ranked" are the same set today — but if the client meant "not ranked in the qualifying
   month", the eligible population is larger and the cost is higher.
 - **"20% of total BV"** is read as 20% of the BV accumulated over the streak, at
   one point per rupee of BV. The alternative — 20% of the rupee value spent —

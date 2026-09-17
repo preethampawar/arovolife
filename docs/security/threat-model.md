@@ -151,7 +151,14 @@ Trust boundaries: browser → API → MySQL
 
 ---
 
-## [2026-08-17] Franchise commission
+## [2026-08-17] Franchise commission — programme withdrawn 2026-09-17
+
+> **Withdrawn 2026-09-17.** The franchise programme was dropped and the Arete
+> Development Centre replaces it; `FranchiseCommissionService` and the
+> `/admin/commerce/franchises/*` routes no longer exist. The review is kept as the
+> record of what was assessed — the flag was never enabled in an environment
+> paying real distributors and no franchise was ever appointed. The ADC bonus
+> surface has not been threat-modelled and needs its own entry.
 
 Scope: `FranchiseCommissionService`, `/admin/commerce/franchises/*`
 Assets: a 3% commission on delivered order value

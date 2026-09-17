@@ -125,7 +125,7 @@ final class PurchaseOfferService
      *
      * **Own purchases, not attributed sales.** The ledger credits a distributor
      * for retail sales to third parties as well as for what they bought
-     * themselves. The published §11.2 says these offers are "earned entirely
+     * themselves. The published §11.1 says these offers are "earned entirely
      * from a Distributor's own product purchases", so the base is filtered to
      * `orders.self_consumption` — otherwise the plan page and the engine
      * describe two different systems.

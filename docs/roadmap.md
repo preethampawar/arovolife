@@ -25,7 +25,7 @@
 | 5 | Compensation — ranks, Rank Bonus, Lifetime Awards | ✅ shipped |
 | 6 | Compensation — Fortune Bonus cascade (replaced Auto Pool) | ✅ shipped |
 | 7 | Arete Development Center bonus | ✅ shipped |
-| — | Operations build-out (grievance, termination, franchise, offers, analytics, GST invoice) | ✅ shipped |
+| — | Operations build-out (grievance, termination, offers, analytics, GST invoice) | ✅ shipped |
 | — | Razorpay payment gateway (R-56) | ⏳ built 2026-09-04, flag OFF, awaiting credentials + live smoke test |
 | 12 | Production hardening (MFA, observability, Redis, couple follow-ups) | ⏸ deferred |
 | — | Final sign-off gate | ⏳ batched to launch |
@@ -332,36 +332,35 @@ sweep that terminates real distributors on its first scheduled run, before
 anyone has seen what it would do, is not a switch to leave on by default.
 Admin → Dormancy shows exactly who the sweep would touch. 12 tests.
 
-### 3. Franchise + 3% payout
+### 3. Franchise + 3% payout — dropped 2026-09-17
 
-**Unparked 2026-08-16 — the Product Owner confirmed the model and that the
-3% payout may exist.**
+**Dropped in full (client decision 2026-09-17). The Arete Development Centre
+takes its place.** The programme was unparked on 2026-08-16 and built behind
+`FranchiseFeature` (default OFF, zero-trace) with an application → approval
+lifecycle, `FR-XXXXX` codes that could not be mistaken for an ADN, and a monthly
+commission engine. **The flag was never enabled in any environment paying real
+distributors and no franchise was ever appointed**, so none of its activation
+gates — the DSA §6.2 notice, a published effective date, R-24's counsel opinion
+— was ever exercised and no §6.2 breach occurred.
 
-- A franchise is a company-owned pickup/fulfilment point operated by a
-  distributor. Stock is company consignment; sales stay online and
-  ADN-attributed. Not a walk-in retail shop.
-- **Commission base: 3% of the order's sale rupee value** (not 3% of
-  lifetime BV) — PO decision 2026-08-16.
-- **Attribution: chosen per order at checkout** (not a registration step)
-  — PO decision 2026-08-16. `WizardStateService::STEPS` stays at 10.
-- Franchise code is separate from the ADN and never enters the Genos.
-- Design constraints DC-01..DC-05 and risks R-21..R-25 remain binding.
-  R-24 (combined binary-tree + franchise pyramid surface) stays open in
-  the risk register as a launch-sign-off item.
+The code and the schema both went on 2026-09-01, when
+`2026_09_01_200000_replace_franchise_with_arete_center_on_orders.php` swapped
+`orders.franchise_id` for `orders.arete_center_id`, dropped all three franchise
+tables and narrowed the `wallet_ledger_entries.type` enum. Nothing is pending.
+§11.1 of the plan source was removed on 2026-09-17 (the redeem-points offer moved
+up from §11.2 to §11.1) — but **the published page has not changed**: the content
+seeder never overwrites an existing row, so `/p/compensation` still shows the
+franchise commission until `php artisan content:publish compensation` is run on
+each environment. See the note under the table in
+`docs/compliance/risk-register.md`.
 
-**Built 2026-08-16** behind `FranchiseFeature` (default OFF, zero-trace).
-Franchise register with an application → approval lifecycle, `FR-XXXXX` codes
-that cannot be mistaken for an ADN, and a monthly commission engine (`franchise:monthly-run`, 8th at 09:45 IST).
-Base is the product value of orders **delivered** through the franchise —
-subtotal less discount, excluding GST and shipping. Including GST would have
-paid 3.54% while the plan says 3%. Exempt from the admin charge. 15 tests.
-
-The checkout collection-point picker was **removed** (R-47): nothing fulfils
-through a franchise yet, so the picker offered customers a delivery
-arrangement the platform could not honour. Three gates before any real payout: the DSA §6.2 notice,
-the effective date on `/p/compensation` §11.1, and R-24's counsel opinion.
-Consignment **stock tracking is not built** — see R-46; until it is, a
-franchise can only be a handover point, not a stockist.
+**What did not go away.** R-21, R-25, R-45 and R-46 close with the programme.
+R-22 (no per-sale `product_sale_id` chain), R-23 (later-month refunds never
+clawed back), R-24 (stacked Genos + centre overrides) and R-47 (fulfilment not
+wired) describe defects that moved to the ADC with the column, and are re-scoped
+rather than withdrawn. R-47 is **worse** than it was: the franchise
+collection-point picker was pulled before merge precisely because nothing
+fulfilled through a franchise, and the ADC picker shipped anyway.
 
 ### 4. Purchase offers (KP 2026-06-26)
 
@@ -388,7 +387,7 @@ never wallet money: not withdrawable, no TDS, no admin charge, and a refund
 returns them **in points** with the cash refund reduced by their value.
 
 **Only the redeem-points half is live.** Nothing applies the half-price offer
-at cart or checkout, so its paragraph was removed from published §11.2 and its
+at cart or checkout, so its paragraph was removed from published §11.1 and its
 card from My Offers, and the admin screen carries the same warning (R-49). 18
 tests. Flag-on gated on R-48 (a)–(f), including two readings only KP can
 settle and a GST question for counsel.
@@ -555,13 +554,13 @@ All stock movements record regardless of flag state. No data loss; ledger is app
 ### Deliberately not built (deferred or blocked)
 
 - **S7: Financial postings** (deferred) — GRN post writes Dr asset.inventory / Cr liability.supplier_payable; pack writes Dr expense.cogs / Cr asset.inventory at batch cost. Accounts are seeded; postings await accountant guidance on valuation method.
-- **R-46: Franchise consignment stock tracking** — The franchise module (Operations build-out) has entity and commission but **no stock ledger**. A `franchises` table exists but is not a warehouse; transfers cannot route there. A `franchise_stock` tracking ledger was deferred pending the franchise fulfilment pipeline.
-- **R-47: Franchise order fulfilment** — The checkout collection-point picker was removed pre-merge (2026-08-17); offering a buyer a choice the system cannot honour is misrepresentation. Until shipment routes to a franchise, returns appear on the admin order screen, and the buyer sees their pickup point in My Orders / confirmation / invoice, no order can reach a franchise.
+- **R-46: Franchise consignment stock tracking** — *Withdrawn 2026-09-17: the franchise programme is dropped.* The `franchise_stock` ledger contemplated here will not be built; an Arete Development Centre holds no consignment and is not a warehouse.
+- **R-47: ADC order fulfilment** — *Re-scoped 2026-09-17 from the dropped franchise programme.* The franchise collection-point picker was removed pre-merge (2026-08-17) because offering a buyer a choice the system cannot honour is misrepresentation; the ADC picker then shipped with the same gap. `orders.arete_center_id` is written at checkout and read only by the commission engine — no shipment routing, no admin display, no buyer-facing confirmation, no handover record.
 
 ### Risks
 
-- **R-46** — stock record now exists for warehouses and transfers; franchise still not a fulfilling warehouse (status: Open, unblocks with S7 + franchise fulfilment).
-- **R-47** — fulfilment not wired (status: Open, blocks franchise flag-on and R-24 sign-off).
+- **R-46** — closed 2026-09-17 with the franchise programme; the warehouse/transfer stock ledger stands on its own and meets DC-03.
+- **R-47** — fulfilment not wired (status: Open, re-scoped to the ADC; blocks offering collection at checkout and R-24 sign-off).
 
 See `docs/compliance/risk-register.md` for both.
 
@@ -621,7 +620,7 @@ want per-phase sign-offs.
 | T-6.3 UAT with PO sign-off | Product Owner |
 | Named officers — the published content now names G. Shankar (Grievance Officer, DPO) and L. Rajender (Nodal Officer) on a +91 88866 62949 helpline. What remains is **company confirmation that those are the right people** and that eight mailboxes are provisioned and monitored: `grievance@`, `nodal@`, `dpo@`, `privacy@`, `compliance@`, `ethics@`, `support@`, `cooling-off@` | company |
 | KP's four open compensation questions (§ Phase 5) | KP |
-| R-24 legal-counsel opinion on the franchise + binary surface | counsel |
+| R-24 legal-counsel opinion on the Genos + Arete Development Centre payout surface | counsel |
 | DSA §6.2 30-day notice before enabling the flagged bonus engines | compliance |
 
 ---

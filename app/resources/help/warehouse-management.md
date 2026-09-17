@@ -10,12 +10,12 @@ and how it moves between locations.
 
 A warehouse is a location that can hold stock: `DEFAULT` (seeded as the
 Central Hub) plus whatever you add — a second hub, a regional warehouse, or a
-franchise handover point. Each has a **code** (e.g. `HYD-01`), a name, a
+collection point. Each has a **code** (e.g. `HYD-01`), a name, a
 type, an address, and a **"fulfils orders"** flag.
 
 **Only warehouses with "fulfils orders" ON are ever picked when an order is
 packed.** Turn it off for a warehouse that holds stock but should never be
-used to ship a customer order — a franchise location that only receives
+used to ship a customer order — a collection point that only receives
 transfers, for instance.
 
 The **default warehouse** (`inventory.default_warehouse_code`, an

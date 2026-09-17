@@ -327,5 +327,5 @@ Every report is CSV-exportable (`?export=csv`).
 ## See also
 
 - `docs/architecture/adr-0012-stock-ledger.md` — design decisions.
-- `docs/compliance/risk-register.md` — R-46, R-47 (franchise stock not tracked / fulfilment not wired).
+- `docs/compliance/risk-register.md` — R-47 (ADC fulfilment not wired). R-46 closed 2026-09-17 with the dropped franchise programme.
 - `docs/plans/2026-09-11-inventory-warehouse-order-management.md` — full specification.

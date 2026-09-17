@@ -31,7 +31,7 @@ final class AdminWarehouseController extends Controller
             FilterField::select('type', 'Type', [
                 Warehouse::TYPE_HUB => 'Hub',
                 Warehouse::TYPE_WAREHOUSE => 'Warehouse',
-                Warehouse::TYPE_FRANCHISE => 'Franchise',
+                Warehouse::TYPE_FRANCHISE => 'Collection point',
             ], column: 'warehouses.type', placeholder: 'All types'),
             FilterField::boolean('fulfils_orders', 'Fulfils orders', column: 'warehouses.fulfils_orders'),
         ]);

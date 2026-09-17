@@ -23,6 +23,12 @@ final class Warehouse extends Model
 
     public const TYPE_WAREHOUSE = 'warehouse';
 
+    /**
+     * Stored as 'franchise' for historical reasons — the franchise programme was
+     * dropped on 2026-09-17 and the label everywhere it is shown is now
+     * "Collection point". Renaming the stored value would need a data migration
+     * against rows that already carry it, for a string nobody sees.
+     */
     public const TYPE_FRANCHISE = 'franchise';
 
     public const STATUS_ACTIVE = 'active';

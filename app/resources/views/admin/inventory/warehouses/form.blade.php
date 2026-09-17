@@ -35,7 +35,7 @@
                 <select name="type" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
                     <option value="hub" @selected(old('type', $warehouse->type ?? 'warehouse') === 'hub')>Hub</option>
                     <option value="warehouse" @selected(old('type', $warehouse->type ?? 'warehouse') === 'warehouse')>Warehouse</option>
-                    <option value="franchise" @selected(old('type', $warehouse->type ?? 'warehouse') === 'franchise')>Franchise</option>
+                    <option value="franchise" @selected(old('type', $warehouse->type ?? 'warehouse') === 'franchise')>Collection point</option>
                 </select>
             </label>
             <label class="block flex items-end gap-2 pb-2">

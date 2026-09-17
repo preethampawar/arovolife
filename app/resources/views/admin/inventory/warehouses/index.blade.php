@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="flex items-center justify-between gap-3 mb-6 flex-wrap">
-    <p class="text-sm text-gray-600">Physical and franchise locations stock can be received into, transferred between, or shipped from.</p>
+    <p class="text-sm text-gray-600">Physical and collection locations stock can be received into, transferred between, or shipped from.</p>
     <x-ui.button href="{{ route('admin.inventory.warehouses.create') }}">
         {{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} New warehouse
     </x-ui.button>

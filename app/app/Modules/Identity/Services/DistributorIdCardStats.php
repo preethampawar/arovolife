@@ -464,7 +464,7 @@ final class DistributorIdCardStats
 
         return array_merge($compact, [
             'registration_date' => $distributor->effective_date,
-            'franchise' => 'Arovolife Private Limited',
+            'company' => 'Arovolife Private Limited',
             'personal_sales_title' => $this->ownPersonalTitle($distributor),
             'left_team' => $teamCounts['left_team'],
             'right_team' => $teamCounts['right_team'],
