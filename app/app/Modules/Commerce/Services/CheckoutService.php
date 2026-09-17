@@ -146,12 +146,25 @@ final class CheckoutService
                 }
             }
 
+            // A buyer who names a collection centre is collecting. The centre id
+            // is only ever passed for a collection, so deriving here cannot
+            // disagree with the buyer's choice — and `delivery_type` is then
+            // persisted as a fact of its own, so that later readers never have
+            // to infer it from a foreign key that `nullOnDelete` can erase.
+            $isCollection = $areteCenterId !== null;
+
             // 1b. Persist the shipping address into the customer's saved-address
             // book (label-aware, de-duped, single-default) so it can be reused
             // next time — unless the buyer opted out at checkout. Billing keeps
             // its single "on file" default and falls back to shipping when
             // "same as shipping" was chosen.
-            if ($saveShippingAddress) {
+            // A collection order has no address to remember, and `line1` is
+            // NOT NULL on customer_addresses — so a caller passing
+            // $saveShippingAddress for a collection would hit an integrity
+            // violation rather than a useful error. Guarded here rather than
+            // trusted to the caller: place() is a public service API, not only
+            // the HTTP path.
+            if ($saveShippingAddress && ! $isCollection) {
                 $this->addressBook->save($customer->id, $shipping, $shippingLabel);
             }
             $this->saveAddress($customer->id, 'billing', ! empty($billing) ? $billing : $shipping);
@@ -181,9 +194,14 @@ final class CheckoutService
                 }
             }
 
-            // Shipping is a function of the cart's merchandise value (before
-            // the coupon), via the single-source ShippingService.
-            $shippingPaise = $this->shipping->feePaise($subtotalPaise);
+            // Fulfilment charge, from the single-source ShippingService. A
+            // collection is charged the collection fee INSTEAD of the delivery
+            // fee — never as well, and never the delivery fee, which was R-94:
+            // paying for a delivery that does not happen.
+            $fees = $this->shipping->feeForOrderPaise($subtotalPaise, $isCollection);
+            $shippingPaise = $fees['shipping'];
+            $collectionFeePaise = $fees['collection'];
+            $fulfilmentPaise = $shippingPaise + $collectionFeePaise;
 
             // Redeem points come off the NET product value only. Prices here
             // are GST-inclusive, so the tax has to come out of the cap before
@@ -196,7 +214,7 @@ final class CheckoutService
             $redeemPointsPaise = $buyerDistributorId === null
                 ? 0
                 : min($redeemPoints * 100, max(0, $subtotalPaise - $gstPaise - $discountPaise));
-            $totalPaise = max(0, $subtotalPaise - $discountPaise - $redeemPointsPaise) + $shippingPaise;
+            $totalPaise = max(0, $subtotalPaise - $discountPaise - $redeemPointsPaise) + $fulfilmentPaise;
 
             // Auto-apply repurchase wallet credit for logged-in distributors.
             // Capped at the order total so the payable amount never goes below
@@ -226,7 +244,7 @@ final class CheckoutService
             if ($payableFloorAdjustmentPaise > 0) {
                 $repurchaseCreditPaise = $floor['credit'];
                 $discountPaise = $floor['discount'];
-                $totalPaise = max(0, $subtotalPaise - $discountPaise - $redeemPointsPaise) + $shippingPaise;
+                $totalPaise = max(0, $subtotalPaise - $discountPaise - $redeemPointsPaise) + $fulfilmentPaise;
                 $finalTotalPaise = $floor['total'];
             }
 
@@ -238,6 +256,7 @@ final class CheckoutService
                 // central despatch. It never affects attribution: the sale
                 // still belongs to the referring distributor.
                 'arete_center_id' => $areteCenterId,
+                'delivery_type' => $isCollection ? Order::DELIVERY_COLLECT : Order::DELIVERY_SHIP,
                 'attribution_source' => $attributionSource,
                 'payment_method' => $paymentMethod,
                 'status' => Order::STATUS_PLACED,
@@ -255,14 +274,23 @@ final class CheckoutService
                 'buyer_gstin' => $buyerGstin,
                 'buyer_legal_name' => $buyerLegalName,
                 'shipping_paise' => $shippingPaise,
+                'collection_fee_paise' => $collectionFeePaise,
                 'total_paise' => $finalTotalPaise,
+                // A collection order keeps the buyer's NAME and PHONE — the
+                // centre has to know who may take the parcel — and stores no
+                // address at all. Writing the centre's postal address into
+                // these columns was R-47: the confirmation page and the invoice
+                // then rendered an address the buyer never gave, under the
+                // heading "Shipping to", beside the buyer's own name. Enforced
+                // here rather than trusted to the caller, because these columns
+                // are read by the invoice, the address book and RefundOrder.
                 'ship_name' => $shipping['name'],
                 'ship_phone_e164' => $shipping['phone'],
-                'ship_line1' => $shipping['line1'],
-                'ship_line2' => $shipping['line2'] ?? null,
-                'ship_city' => $shipping['city'],
-                'ship_state' => $shipping['state'],
-                'ship_pincode' => $shipping['pincode'],
+                'ship_line1' => $isCollection ? null : $shipping['line1'],
+                'ship_line2' => $isCollection ? null : ($shipping['line2'] ?? null),
+                'ship_city' => $isCollection ? null : $shipping['city'],
+                'ship_state' => $isCollection ? null : $shipping['state'],
+                'ship_pincode' => $isCollection ? null : $shipping['pincode'],
                 'placed_at' => Carbon::now(),
                 'idempotency_key' => $idempotencyKey,
                 'tnc_of_sale_consent_id' => $consentId,

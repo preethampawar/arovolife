@@ -99,6 +99,8 @@
                         <x-profit-section label="Memo" />
                         <x-profit-line label="Shipping collected" :value="$rupees($data['shipping_collected_paise'])"
                             tip="What customers were charged for delivery. What the courier charged us is not recorded anywhere, so it is not deducted above." />
+                        <x-profit-line label="Collection fees collected" :value="$rupees($data['collection_fee_collected_paise'])"
+                            tip="What buyers who collected from an Arete Development Centre were charged. Kept separate from shipping: a collection is not a delivery, and only one of the two is ever charged on an order." />
                         <x-profit-line label="GST output (on sales)" :value="$rupees($data['gst_output_paise'])" />
                         <x-profit-line label="GST input credit (on purchases)" :value="$rupees($data['gst_input_paise'])" />
                         <x-profit-line label="BV released" :value="\App\Modules\Shared\Support\IndianNumber::format($data['bv_paise'] / 100, 2)"

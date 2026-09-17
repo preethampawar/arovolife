@@ -105,7 +105,7 @@ final class SalesReportService
      * Period totals for the counted set.
      *
      * @return array{orders: int, gross_ex_gst_paise: int, gst_paise: int, discount_paise: int,
-     *               points_paise: int, shipping_paise: int, cash_paise: int}
+     *               points_paise: int, shipping_paise: int, collection_fee_paise: int, cash_paise: int}
      */
     public function totals(
         SalesScope $scope,
@@ -121,7 +121,7 @@ final class SalesReportService
      * caller can subtract field by field without reshaping anything.
      *
      * @return array{orders: int, gross_ex_gst_paise: int, gst_paise: int, discount_paise: int,
-     *               points_paise: int, shipping_paise: int, cash_paise: int}
+     *               points_paise: int, shipping_paise: int, collection_fee_paise: int, cash_paise: int}
      */
     public function refundTotals(
         SalesScope $scope,
@@ -179,7 +179,7 @@ final class SalesReportService
 
     /**
      * @return array{orders: int, gross_ex_gst_paise: int, gst_paise: int, discount_paise: int,
-     *               points_paise: int, shipping_paise: int, cash_paise: int}
+     *               points_paise: int, shipping_paise: int, collection_fee_paise: int, cash_paise: int}
      */
     private function totalsFor(Builder $query): array
     {
@@ -191,6 +191,7 @@ final class SalesReportService
             'COALESCE(SUM(orders.discount_paise), 0) as discount_paise, '.
             'COALESCE(SUM(orders.redeem_points_paise), 0) as points_paise, '.
             'COALESCE(SUM(orders.shipping_paise), 0) as shipping_paise, '.
+            'COALESCE(SUM(orders.collection_fee_paise), 0) as collection_fee_paise, '.
             'COALESCE(SUM(orders.total_paise), 0) as cash_paise'
         )->first();
 
@@ -201,6 +202,10 @@ final class SalesReportService
             'discount_paise' => (int) ($row->discount_paise ?? 0),
             'points_paise' => (int) ($row->points_paise ?? 0),
             'shipping_paise' => (int) ($row->shipping_paise ?? 0),
+            // Kept apart from shipping, not folded into it: they are
+            // different revenue lines and only one is ever non-zero on an
+            // order. Summing them would hide which service was sold.
+            'collection_fee_paise' => (int) ($row->collection_fee_paise ?? 0),
             'cash_paise' => (int) ($row->cash_paise ?? 0),
         ];
     }

@@ -15,12 +15,20 @@ use Illuminate\Support\Facades\DB;
  * fee. Every surface that needs a shipping number — the cart, the checkout
  * summary and {@see CheckoutService::place()} — MUST call this service so the
  * figure can never diverge between display and the persisted order.
+ *
+ * A collection order is charged {@see collectionFeePaise()} INSTEAD of the
+ * delivery fee, never as well as it, and the free-shipping threshold does not
+ * apply to it. Charging a buyer who collects for a delivery that never happens
+ * is what R-94 was: a fee for a service not rendered.
  */
 final class ShippingService
 {
     private const DEFAULT_FEE_RUPEES = 60;
 
     private const DEFAULT_FREE_THRESHOLD_RUPEES = 4000;
+
+    /** Collection is free at launch. The client can price it without a deploy. */
+    private const DEFAULT_COLLECTION_FEE_RUPEES = 0;
 
     /**
      * Pincode ranges outside mainland India, as [first, last] inclusive.
@@ -37,8 +45,11 @@ final class ShippingService
     ];
 
     /**
-     * Shipping charge (in paise) for a cart whose merchandise value (before any
+     * Delivery charge (in paise) for a cart whose merchandise value (before any
      * coupon) is $subtotalPaise. Returns 0 once the free-shipping threshold is met.
+     *
+     * DELIVERY ONLY. A collection order must not be charged this — see
+     * {@see feeForOrderPaise()}, which is what checkout should call.
      */
     public function feePaise(int $subtotalPaise): int
     {
@@ -47,6 +58,33 @@ final class ShippingService
         }
 
         return $this->settingRupeesToPaise('commerce.shipping.fee_rupees', self::DEFAULT_FEE_RUPEES);
+    }
+
+    /**
+     * What this cart is actually charged for fulfilment, given how the buyer
+     * chose to receive it. The one method checkout, the cart and the summary
+     * should call, so a collection can never be quoted a delivery fee.
+     *
+     * @return array{shipping: int, collection: int}
+     */
+    public function feeForOrderPaise(int $subtotalPaise, bool $isCollection): array
+    {
+        return $isCollection
+            ? ['shipping' => 0, 'collection' => $this->collectionFeePaise()]
+            : ['shipping' => $this->feePaise($subtotalPaise), 'collection' => 0];
+    }
+
+    /**
+     * The handling charge for collecting from an Arete Development Centre.
+     *
+     * Deliberately not subject to the free-shipping threshold: that threshold
+     * buys off a delivery cost, and there is no delivery here. A collection fee
+     * of ₹0 — the launch position — makes this moot, but the rule has to be
+     * right before the lever is ever moved.
+     */
+    public function collectionFeePaise(): int
+    {
+        return $this->settingRupeesToPaise('commerce.collection_fee_rupees', self::DEFAULT_COLLECTION_FEE_RUPEES);
     }
 
     /** The cart value (in paise) at or above which shipping is free. */

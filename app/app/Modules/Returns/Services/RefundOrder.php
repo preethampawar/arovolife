@@ -101,7 +101,13 @@ final class RefundOrder
         $taxable = $order->subtotal_paise - $order->gst_paise;
         $isCoolingOff = $reason === ReturnRequest::REASON_COOLING_OFF;
         $gstRefundPaise = $policy['refund_gst'] ? $order->gst_paise : 0;
-        $shippingRefundPaise = $isCoolingOff ? $order->shipping_paise : 0;
+        // A collection fee follows the same rule as a delivery fee: refunded
+        // inside cooling-off, kept outside it. Only one of the two is ever
+        // non-zero on an order, so this sum is the fulfilment charge whichever
+        // way the buyer received it.
+        $shippingRefundPaise = $isCoolingOff
+            ? $order->shipping_paise + $order->collection_fee_paise
+            : 0;
         // The coupon comes off for every reason: a discount the buyer never
         // paid cannot be refunded as cash. It used to be unwound only inside
         // cooling-off, which on a damage or dissatisfaction return refunded

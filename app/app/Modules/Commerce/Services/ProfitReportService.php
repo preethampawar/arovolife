@@ -136,6 +136,7 @@ final class ProfitReportService
             'contribution_pct' => $this->pct($grossProfit - $commissionTotal, $netSales),
 
             'shipping_collected_paise' => $sales['shipping_paise'] - $refunds['shipping_paise'],
+            'collection_fee_collected_paise' => $sales['collection_fee_paise'] - $refunds['collection_fee_paise'],
             'gst_output_paise' => $sales['gst_paise'] - $refunds['gst_paise'],
             'gst_input_paise' => $purchases['gst_paise'],
             'bv_paise' => $this->bvForPeriod($scope, $from, $to, $basis),

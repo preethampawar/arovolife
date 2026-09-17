@@ -46,6 +46,29 @@ final class InvoiceGenerator
         private readonly InvoiceNumberSequence $numbers,
     ) {}
 
+    /**
+     * The state whose tax applies: where delivery terminates.
+     *
+     * For a home delivery that is the buyer's address. For a collection it is
+     * the CENTRE's state, and reading `orders.ship_state` would be wrong twice
+     * over — a collection order stores no address (R-47), so the column is
+     * null, and the `?? $sellerState` fallback behind it would then quietly
+     * make every inter-state collection look intra-state. CGST/SGST would be
+     * charged where IGST is due, and the split is frozen onto the invoice at
+     * checkout where no later render can correct it.
+     *
+     * Derived from the centre record rather than copied onto the order,
+     * deliberately: the order must not assert an address the buyer never gave.
+     */
+    private function placeOfSupplyState(Order $order): ?string
+    {
+        if ($order->isCollection()) {
+            return $order->areteCenter?->state;
+        }
+
+        return $order->ship_state;
+    }
+
     public function generate(Order $order): Invoice
     {
         $existing = Invoice::where('order_id', $order->id)->first();
@@ -55,7 +78,7 @@ final class InvoiceGenerator
         }
 
         $sellerState = $this->settings->sellerState();
-        $placeOfSupply = strtoupper($order->ship_state ?? $sellerState);
+        $placeOfSupply = strtoupper($this->placeOfSupplyState($order) ?? $sellerState);
         $isIntraState = $placeOfSupply === $sellerState;
 
         // Everything that reduced what the buyer actually paid for goods: a

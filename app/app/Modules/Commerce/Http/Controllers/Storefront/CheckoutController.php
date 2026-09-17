@@ -113,6 +113,10 @@ final class CheckoutController extends Controller
             'cart' => $cart,
             'couponDiscount' => $couponDiscount,
             'shippingPaise' => $this->shipping->feePaise($cart->subtotalPaise()),
+            // The checkout summary swaps between these two live when the buyer
+            // toggles delivery method, so the figure on screen always matches
+            // what CheckoutService will charge.
+            'collectionFeePaise' => $this->shipping->collectionFeePaise(),
             'guestAllowed' => $guestAllowed,
             'onlineEnabled' => $this->onlineEnabled(),
             'gatewayState' => $this->gateways->state(),
@@ -264,20 +268,30 @@ final class CheckoutController extends Controller
         );
 
         if ($isCollection) {
-            // For ADC collection orders the "shipping" address records
-            // the centre's address so the invoice has a delivery address.
+            // A collection order records NO delivery address. The buyer did not
+            // give one, and copying the centre's postal address in here was
+            // R-47: the confirmation page and the invoice then rendered an
+            // address the buyer had never seen, under "Shipping to", beside
+            // their own name. The invoice derives its place of supply from the
+            // centre record instead (InvoiceGenerator::placeOfSupplyState()).
+            //
+            // Name and phone stay: the centre has to know who may collect.
+            // With line1 null, saveAddress() declines to write this to the
+            // buyer's address book, which is what stops the centre's address
+            // prefilling their next order.
+            //
             // Validation has already confirmed the id is one of the offered
             // centres, so a miss here is a genuine race (centre deactivated
             // between page and submit) and a 404 is the honest answer.
-            $center = AreteCenter::findOrFail((int) $validated['arete_center_id']);
+            AreteCenter::findOrFail((int) $validated['arete_center_id']);
             $shipping = [
                 'name' => $validated['buyer_name'],
                 'phone' => '+91'.$validated['buyer_phone'],
-                'line1' => $center->address_line_1 ?? ($center->location ?? 'Arete Development Centre'),
-                'line2' => $center->city,
-                'city' => $center->city ?? $center->district ?? '',
-                'state' => $center->state ?? '',
-                'pincode' => $center->pincode ?? '000000',
+                'line1' => null,
+                'line2' => null,
+                'city' => null,
+                'state' => null,
+                'pincode' => null,
             ];
         } else {
             $shipping = [

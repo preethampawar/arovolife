@@ -134,7 +134,7 @@
         @if(($areteCenters ?? collect())->isNotEmpty())
         <div id="adcSection" class="bg-white rounded-2xl border border-gray-200 p-6 hidden">
             <h2 class="font-semibold text-gray-900 mb-1">Select Arete Development Centre</h2>
-            <p class="text-xs text-gray-600 mb-4">Your order will be held at the centre for collection and its BV is collected at that centre.
+            <p class="text-xs text-gray-600 mb-4">Your order will be held at this centre for you to collect. We will tell you when it has arrived.
                 @auth
                     @if(auth()->user()->distributor)
                         You can collect from your own centre or the company centre. To change your centre, update it from <a href="{{ route('profile.show') }}" class="text-brand-700 underline">My Profile</a>.
@@ -389,22 +389,43 @@
         </div>
 
         @php
-            $couponDiscount = $couponDiscount ?? 0;
+            $baseCouponDiscount = $couponDiscount ?? 0;
             $shippingPaise = $shippingPaise ?? 0;
-            $finalTotal = max(0, $cart->totalPaise() - $couponDiscount) + $shippingPaise;
-            $repurchaseCredit = min($repurchaseWalletBalancePaise ?? 0, $finalTotal);
-            $finalTotal = max(0, $finalTotal - $repurchaseCredit);
-            // Same ₹1 floor the order will carry: a 1–99 paise payable is
-            // taken up to ₹1 by applying a little less credit (or coupon).
-            try {
-                $floor = \App\Modules\Commerce\Services\CheckoutService::floorPayable($finalTotal, $repurchaseCredit, $couponDiscount);
-            } catch (\RuntimeException) {
-                $floor = ['total' => $finalTotal, 'credit' => $repurchaseCredit, 'discount' => $couponDiscount, 'adjustment' => 0];
-            }
-            $floorAdjustment = $floor['adjustment'];
-            $finalTotal = $floor['total'];
-            $repurchaseCredit = $floor['credit'];
-            $couponDiscount = $floor['discount'];
+            $collectionFeePaise = $collectionFeePaise ?? 0;
+
+            // Both delivery methods are costed here, on the server, using the
+            // same pipeline the order itself will run — including the ₹1
+            // payable floor, which can shift the credit or the coupon. The
+            // toggle below shows one of these and hides the other; it never
+            // does arithmetic of its own, because a client-side total that
+            // disagreed with the charge is exactly the kind of quiet
+            // misstatement R-94 was.
+            $summaryFor = function (int $fulfilmentPaise) use ($cart, $baseCouponDiscount, $repurchaseWalletBalancePaise) {
+                $couponDiscount = $baseCouponDiscount;
+                $finalTotal = max(0, $cart->totalPaise() - $couponDiscount) + $fulfilmentPaise;
+                $repurchaseCredit = min($repurchaseWalletBalancePaise ?? 0, $finalTotal);
+                $finalTotal = max(0, $finalTotal - $repurchaseCredit);
+                try {
+                    $floor = \App\Modules\Commerce\Services\CheckoutService::floorPayable($finalTotal, $repurchaseCredit, $couponDiscount);
+                } catch (\RuntimeException) {
+                    $floor = ['total' => $finalTotal, 'credit' => $repurchaseCredit, 'discount' => $couponDiscount, 'adjustment' => 0];
+                }
+
+                return [
+                    'fee' => $fulfilmentPaise,
+                    'total' => $floor['total'],
+                    'credit' => $floor['credit'],
+                    'discount' => $floor['discount'],
+                    'adjustment' => $floor['adjustment'],
+                    'floor' => $floor,
+                ];
+            };
+
+            $summaries = [
+                'ship' => $summaryFor($shippingPaise),
+                'collect' => $summaryFor($collectionFeePaise),
+            ];
+            $activeMode = old('delivery_type', 'ship') === 'collect' ? 'collect' : 'ship';
         @endphp
         @auth
             @php $bvTotal = auth()->user()->distributor ? $cart->bvTotalPaise() : 0; @endphp
@@ -418,31 +439,40 @@
             </div>
             @endif
         @endauth
+        @foreach($summaries as $mode => $sum)
+        {{-- One block per delivery method, both costed on the server. The
+             toggle swaps which is visible; nothing is recalculated in the
+             browser. --}}
+        <div data-summary="{{ $mode }}" @if($mode !== $activeMode) hidden @endif>
         <div class="space-y-2 text-sm mb-4 pb-4 border-b border-gray-200">
             <div class="flex justify-between"><span class="text-gray-600">Subtotal</span><span class="font-medium">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($cart->subtotalPaise() - $cart->gstPaise()) / 100, 2) }}</span></div>
             <div class="flex justify-between"><span class="text-gray-600">GST</span><span class="font-medium">₹{{ \App\Modules\Shared\Support\IndianNumber::format($cart->gstPaise() / 100, 2) }}</span></div>
-            <div class="flex justify-between"><span class="text-gray-600">Shipping</span>
-                @if($shippingPaise > 0)<span class="font-medium">₹{{ \App\Modules\Shared\Support\IndianNumber::format($shippingPaise / 100, 2) }}</span>
+            <div class="flex justify-between">
+                <span class="text-gray-600">{{ $mode === 'collect' ? 'Collection' : 'Shipping' }}</span>
+                @if($sum['fee'] > 0)<span class="font-medium">₹{{ \App\Modules\Shared\Support\IndianNumber::format($sum['fee'] / 100, 2) }}</span>
+                @elseif($mode === 'collect')<span class="font-medium text-green-700">No charge</span>
                 @else<span class="font-medium text-green-700">Free</span>@endif
             </div>
-            @if($couponDiscount > 0)
-            <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($couponDiscount / 100, 2) }}</span></div>
+            @if($sum['discount'] > 0)
+            <div class="flex justify-between text-green-700"><span>Discount ({{ $cart->coupon->code }})</span><span class="font-medium">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($sum['discount'] / 100, 2) }}</span></div>
             @endif
-            @if($repurchaseCredit > 0)
-            <div class="flex justify-between text-green-700"><span>Repurchase Credit</span><span class="font-medium">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($repurchaseCredit / 100, 2) }}</span></div>
+            @if($sum['credit'] > 0)
+            <div class="flex justify-between text-green-700"><span>Repurchase Credit</span><span class="font-medium">−₹{{ \App\Modules\Shared\Support\IndianNumber::format($sum['credit'] / 100, 2) }}</span></div>
             @endif
-            @if($floorAdjustment > 0)
+            @if($sum['adjustment'] > 0)
             <p class="text-xs text-gray-600 pt-1">
-                The minimum online payment is ₹1, so ₹{{ \App\Modules\Shared\Support\IndianNumber::format($floorAdjustment / 100, 2) }} of your
-                {{ $floor['credit'] < min($repurchaseWalletBalancePaise ?? 0, $cart->totalPaise()) ? 'repurchase credit stays in your wallet' : 'coupon discount is not applied' }}.
+                The minimum online payment is ₹1, so ₹{{ \App\Modules\Shared\Support\IndianNumber::format($sum['adjustment'] / 100, 2) }} of your
+                {{ $sum['floor']['credit'] < min($repurchaseWalletBalancePaise ?? 0, $cart->totalPaise()) ? 'repurchase credit stays in your wallet' : 'coupon discount is not applied' }}.
             </p>
             @endif
         </div>
 
         <div class="flex justify-between mb-5">
             <span class="font-semibold text-gray-900">Total</span>
-            <span class="font-bold text-lg text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($finalTotal / 100, 2) }}</span>
+            <span class="font-bold text-lg text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($sum['total'] / 100, 2) }}</span>
         </div>
+        </div>
+        @endforeach
 
         <button type="submit"
            class="block w-full text-center py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors">
@@ -556,6 +586,13 @@
         const shipReqFields = shipSection
             ? shipSection.querySelectorAll('input[name="ship_line1"], input[name="ship_city"], input[name="ship_state"], input[name="ship_pincode"]')
             : [];
+
+        // Show the summary the server costed for this method. No arithmetic
+        // happens here: both totals were produced by the same code that will
+        // charge the order, so the figure on screen cannot drift from it.
+        document.querySelectorAll('[data-summary]').forEach(function (el) {
+            el.hidden = el.getAttribute('data-summary') !== mode;
+        });
 
         if (mode === 'collect') {
             if (shipSection) { shipSection.classList.add('hidden'); }
