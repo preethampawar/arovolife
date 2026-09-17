@@ -129,6 +129,9 @@ Step-by-step fresh install + DB reset procedures live in
 [`docs/runbooks/fresh-install-and-reset.md`](docs/runbooks/fresh-install-and-reset.md).
 Cloudways production deployment lives in
 [`docs/runbooks/cloudways-deployment.md`](docs/runbooks/cloudways-deployment.md).
+When a nightly job or a compensation engine has failed, start at
+[`docs/runbooks/engine-failure-triage.md`](docs/runbooks/engine-failure-triage.md)
+— symptom, cause and the exact command, for every failure mode the engines have.
 
 Quick start (assumes Docker + Node 20+ on the host):
 

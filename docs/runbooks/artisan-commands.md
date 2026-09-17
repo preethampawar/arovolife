@@ -7,6 +7,12 @@ All examples assume you are running inside Docker — prefix every command with:
 docker compose -f docker/docker-compose.yml exec app php artisan <command>
 ```
 
+> **Something has already failed?** This file is the reference for what each
+> command does. [`engine-failure-triage.md`](engine-failure-triage.md) is the
+> decision tree for *which* one to run: symptom → cause → command, covering a
+> skipped night, a stuck run, a missing or stranded payout batch, a month that
+> will not close, and the payout holds that are not failures at all.
+
 ---
 
 ## Compensation Engine
