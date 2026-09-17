@@ -648,31 +648,39 @@ final class AdminEngineRunsController extends Controller
         // linking them.
         $chainId = (string) Str::uuid();
 
+        // What the retry is authorised to REBUILD, recorded rather than
+        // implied. A missed weekly batch is in scope because no later night can
+        // reach the first payout Tuesday; the monthly close never is, because
+        // every night from the 8th rebuilds it unaided. An unattributed retry
+        // builds no batch at all — there would be no maker to bar from
+        // approving it.
+        $payoutsInScope = $actorId === null ? 'none' : 'weekly_only';
+
         AuditLog::create([
             'actor_id' => $actorId,
             'action' => 'compensation.nightly_chain.retried',
             'subject_type' => 'engine',
             'subject_id' => null,
             // The retry itself changes nothing; the digest pins which night was
-            // authorised, what it had failed with, and that no payout batch was
-            // in scope.
+            // authorised, what it had failed with, and how much of the sweep
+            // was in scope.
             'before_hash' => null,
             'after_hash' => AuditDigests::of([
                 'night' => $night->toDateString(),
                 'failed_run_id' => $failed->id,
                 'error' => $failed->error,
                 'chain_id' => $chainId,
-                'payouts_in_scope' => false,
+                'payouts_in_scope' => $payoutsInScope,
             ]),
             'details' => [
                 'night' => $night->toDateString(),
                 'failed_run_id' => $failed->id,
                 'reason' => $validated['reason'],
                 'chain_id' => $chainId,
-                // Recorded explicitly, not implied: what an operator authorised
-                // here is a crediting run, and the weekly/monthly sweeps stay
-                // with the scheduler so no admin is ever a batch's maker.
-                'payouts_in_scope' => false,
+                // The trail that matters if a weekly batch is ever questioned:
+                // this row names who authorised the run that made it, and the
+                // batch names the same person as its maker.
+                'payouts_in_scope' => $payoutsInScope,
             ],
             'ip' => $request->ip(),
         ]);
@@ -688,9 +696,11 @@ final class AdminEngineRunsController extends Controller
 
         return redirect()->route('admin.compensation.engine-runs.index')->with('status', sprintf(
             'Queued a retry of the %s chain. It resumes where the night stopped, and every engine skips a '
-            .'distributor already credited for the period, so nothing is paid twice. It credits wallets but '
-            .'builds no payout batch — the weekly and monthly sweeps stay with the scheduler. Refresh this page '
-            .'to follow progress.',
+            .'distributor already credited for the period, so nothing is paid twice. If that night owed a weekly '
+            .'payout batch that was never started, it is built too and recorded in your name — which means '
+            .'someone else has to approve '
+            .'it. The monthly payout close is left to the scheduler, which rebuilds it on any night from the 8th. '
+            .'Refresh this page to follow progress.',
             $night->format('d M Y'),
         ));
     }

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
+use App\Modules\Compensation\Jobs\RetryNightlyChainJob;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Services\EngineHealthService;
@@ -11,6 +12,7 @@ use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
 use App\Modules\Compensation\Support\NightlyRunAlert;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -115,6 +117,11 @@ beforeEach(function (): void {
 it('runs only the two nightly steps on an ordinary night', function (): void {
     // Wednesday 16 September 2026: not the 1st, not a Tuesday, not the 8th.
     Carbon::setTestNow('2026-09-16 00:05:00');
+    // Last Tuesday was paid, which is what a running platform looks like and
+    // what makes tonight an ORDINARY night: with no weekly batch behind it at
+    // all the chain has no frontier to backfill from, and builds the most
+    // recent Tuesday rather than assuming it was never owed.
+    seedWeeklyBatch('2026-09-15');
     seedMonthlyBatch('2026-09-01');
 
     $exitCode = Artisan::call('compensation:nightly-run');
@@ -138,6 +145,7 @@ it('evaluates tonight and cuts off yesterday', function (): void {
 
 it('closes the month on the first night of the next one', function (): void {
     Carbon::setTestNow('2026-10-01 00:05:00');
+    seedWeeklyBatch('2026-09-29');
     seedComputedCutoffs('2026-09-01', '2026-09-29');
 
     $exitCode = Artisan::call('compensation:nightly-run');
@@ -172,6 +180,7 @@ it('adds the weekly payout batch on a Tuesday', function (): void {
 it('adds the monthly payout close on the eighth', function (): void {
     // Thursday 8 October 2026 — the 8th, and not a Tuesday.
     Carbon::setTestNow('2026-10-08 00:05:00');
+    seedWeeklyBatch('2026-10-06');
 
     Artisan::call('compensation:nightly-run');
 
@@ -202,6 +211,7 @@ it('runs every due step when a night is the 1st and a Tuesday at once', function
 
 it('resumes past a cut-off that already succeeded', function (): void {
     Carbon::setTestNow('2026-09-16 00:05:00');
+    seedWeeklyBatch('2026-09-15');
     seedMonthlyBatch('2026-09-01');
 
     EngineRun::create([
@@ -243,6 +253,7 @@ it('re-runs a step whose succeeded run started while its period was still in fli
 
 it('stops the chain at the first failing step and says what did not run', function (): void {
     Carbon::setTestNow('2026-10-01 00:05:00');
+    seedWeeklyBatch('2026-09-29');
     seedComputedCutoffs('2026-09-01', '2026-09-29');
     StubChainStepCommand::$exitCodes['gsb.daily-cutoff'] = 1;
 
@@ -271,6 +282,7 @@ it('refuses a night that has not arrived', function (): void {
 
 it('re-runs every step under --restart', function (): void {
     Carbon::setTestNow('2026-09-16 00:05:00');
+    seedWeeklyBatch('2026-09-15');
     seedMonthlyBatch('2026-09-01');
 
     EngineRun::create([
@@ -331,6 +343,7 @@ it('backfills every missed night, oldest first', function (): void {
     // lost; under the old fixed --date=yesterday schedule they were lost for
     // good, and a day never cut off is a day nobody is credited for.
     Carbon::setTestNow('2026-09-16 00:05:00');
+    seedWeeklyBatch('2026-09-15');
     seedMonthlyBatch('2026-09-01');
     seedComputedCutoffs('2026-09-12', '2026-09-12');
 
@@ -357,6 +370,7 @@ it('backfills every missed night, oldest first', function (): void {
 it('heals a single missed night on the next run', function (): void {
     // The 16th never started — the 15th was still running at 00:05.
     Carbon::setTestNow('2026-09-17 00:05:00');
+    seedWeeklyBatch('2026-09-15');
     seedMonthlyBatch('2026-09-01');
     seedComputedCutoffs('2026-09-14', '2026-09-14');
 
@@ -374,6 +388,7 @@ it('leaves a gap longer than the cap to a human', function (): void {
     // outage of months. Replaying either unattended at 00:05 is a decision
     // nobody made, so only last night runs and the rest reads as missing.
     Carbon::setTestNow('2026-09-16 00:05:00');
+    seedWeeklyBatch('2026-09-15');
     seedMonthlyBatch('2026-09-01');
 
     Artisan::call('compensation:nightly-run');
@@ -386,6 +401,7 @@ it('closes a month the backfill completed', function (): void {
     // The 29th and 30th were missed; the chain cuts them off and only then
     // closes September.
     Carbon::setTestNow('2026-10-01 00:05:00');
+    seedWeeklyBatch('2026-09-29');
     seedComputedCutoffs('2026-09-01', '2026-09-28');
 
     Artisan::call('compensation:nightly-run');
@@ -405,6 +421,7 @@ it('refuses to close a month whose days are not all cut off', function (): void 
     // permanently priced short — and re-running the close reuses the frozen
     // pool rather than repairing it.
     Carbon::setTestNow('2026-10-01 00:05:00');
+    seedWeeklyBatch('2026-09-29');
     seedComputedCutoffs('2026-09-25', '2026-09-28');
 
     Artisan::call('compensation:nightly-run');
@@ -440,6 +457,7 @@ it('records a gap it will not heal, because nothing else can see one', function 
     // EngineHealthService::missing() judges each engine on its most recent fire
     // — which just succeeded — so this is recorded here or nowhere.
     Carbon::setTestNow('2026-09-16 00:05:00');
+    seedWeeklyBatch('2026-09-15');
     seedMonthlyBatch('2026-09-01');
     seedComputedCutoffs('2026-06-01', '2026-06-01');
 
@@ -476,6 +494,7 @@ it('does not count a cut-off that only left result rows behind', function (): vo
     // leaves rows for a day nobody finished. Counting that day as done would
     // close the month against it, and the monthly pools freeze what they price.
     Carbon::setTestNow('2026-09-16 00:05:00');
+    seedWeeklyBatch('2026-09-15');
     seedMonthlyBatch('2026-09-01');
     seedComputedCutoffs('2026-09-12', '2026-09-12');
 
@@ -502,6 +521,7 @@ it('does not count a cut-off that only left result rows behind', function (): vo
 it('does not count a cut-off run inside its own day', function (): void {
     // An admin retry at noon cannot have seen the evening's sales.
     Carbon::setTestNow('2026-09-16 00:05:00');
+    seedWeeklyBatch('2026-09-15');
     seedMonthlyBatch('2026-09-01');
     seedComputedCutoffs('2026-09-12', '2026-09-12');
 
@@ -638,6 +658,7 @@ it('satisfies the real monthly close preflight with its own cut-off step', funct
     // close's count add up. Everywhere else in this file the close is a stub,
     // so nothing else proves the two halves actually agree.
     Carbon::setTestNow('2026-10-01 00:05:00');
+    seedWeeklyBatch('2026-09-29');
     seedComputedCutoffs('2026-09-01', '2026-09-29');
 
     // The real close, over the stub — with its seven steps still stubbed, so
@@ -678,11 +699,11 @@ it('satisfies the real monthly close preflight with its own cut-off step', funct
 | --without-payouts (the admin retry path)
 |--------------------------------------------------------------------------
 |
-| The payout-batch engines are `manuallyTriggerable = false` because
-| `finance.record` both fires them and approves the batch they create. The admin
-| retry button runs a whole night, and a night that IS today would otherwise
-| reach them through payoutsAllowed()'s isToday() rule — making one admin maker
-| and checker for a real payout. These pin the switch that stops it.
+| The fail-closed half of the retry path, used when no actor can be recorded as
+| the batch's maker. `finance.approve` is held only by `admin` and `developer`,
+| never by the `admin-finance` holder of `finance.record`; for a user holding
+| both, `payout_batches.created_by` is what bars them from approving their own
+| batch. An unattributed run can stamp no maker, so it builds nothing at all.
 */
 
 it('builds no weekly payout batch when the night is retried without payouts', function (): void {
@@ -730,4 +751,129 @@ it('still allows the scheduler its payout steps when the switch is not passed', 
     Artisan::call('compensation:nightly-run');
 
     expect(StubChainStepCommand::$calls)->toContain('gsb.weekly-payout');
+});
+
+/*
+|--------------------------------------------------------------------------
+| The first payout Tuesday
+|--------------------------------------------------------------------------
+|
+| Weekly batches are backfilled from the last one that EXISTS, so a Tuesday with
+| no predecessor is reachable only from its own night. If that night failed, the
+| batch was owed and nothing would ever build it — the one Tuesday on the
+| platform that could be lost for a week.
+*/
+
+it('builds the first payout Tuesday on a later night when nothing was ever paid', function (): void {
+    // Wednesday. No weekly batch has ever been built, so there is no frontier —
+    // which used to mean "nothing to backfill" and cost this Tuesday a week.
+    Carbon::setTestNow('2026-09-23 00:05:00');
+    seedMonthlyBatch('2026-09-01');
+
+    Artisan::call('compensation:nightly-run');
+
+    expect(StubChainStepCommand::$calls)->toContain('gsb.weekly-payout')
+        ->and(StubChainStepCommand::$periods['gsb.weekly-payout'])->toBe('2026-09-22');
+});
+
+it('builds one Tuesday and not a month when nothing was ever paid', function (): void {
+    // Friday, four days after that first Tuesday. The guard that mattered is
+    // still in force: with no frontier the chain reaches exactly the most
+    // recent Tuesday, never the four behind it.
+    Carbon::setTestNow('2026-09-25 00:05:00');
+    seedMonthlyBatch('2026-09-01');
+
+    Artisan::call('compensation:nightly-run');
+
+    $weekly = array_filter(StubChainStepCommand::$calls, fn (string $call): bool => $call === 'gsb.weekly-payout');
+
+    expect($weekly)->toHaveCount(1)
+        ->and(StubChainStepCommand::$periods['gsb.weekly-payout'])->toBe('2026-09-22');
+});
+
+/*
+|--------------------------------------------------------------------------
+| --weekly-payouts-only (the admin retry path)
+|--------------------------------------------------------------------------
+|
+| What the retry button may rebuild. A missed Tuesday is in scope because
+| nothing else can reach it; the monthly payout close never is, because every
+| night from the 8th rebuilds it unaided — so the largest sweep on the platform
+| stays out of admin hands.
+*/
+
+it('rebuilds a missed Tuesday under --weekly-payouts-only', function (): void {
+    Carbon::setTestNow('2026-09-23 09:00:00');
+    seedMonthlyBatch('2026-09-01');
+
+    Artisan::call('compensation:nightly-run', ['--weekly-payouts-only' => true]);
+
+    expect(StubChainStepCommand::$calls)->toContain('gsb.weekly-payout')
+        ->and(StubChainStepCommand::$periods['gsb.weekly-payout'])->toBe('2026-09-22');
+});
+
+it('never reaches the monthly payout close under --weekly-payouts-only', function (): void {
+    // The 8th: the night the monthly sweep is due, and the one case where
+    // letting the retry through would put an admin's hand on Groups B/C/D.
+    Carbon::setTestNow('2026-10-08 09:00:00');
+
+    Artisan::call('compensation:nightly-run', ['--weekly-payouts-only' => true]);
+
+    expect(StubChainStepCommand::$calls)->not->toContain('compensation.monthly-payout-close');
+});
+
+it('excludes every payout when both switches are passed', function (): void {
+    // Fail closed, not open: --without-payouts is read first, so a caller that
+    // somehow sets both builds nothing rather than a batch.
+    Carbon::setTestNow('2026-09-23 09:00:00');
+    seedMonthlyBatch('2026-09-01');
+
+    Artisan::call('compensation:nightly-run', [
+        '--weekly-payouts-only' => true,
+        '--without-payouts' => true,
+    ]);
+
+    expect(StubChainStepCommand::$calls)->not->toContain('gsb.weekly-payout');
+});
+
+it('lets an attributed retry rebuild the Tuesday nothing else can reach', function (): void {
+    Carbon::setTestNow('2026-09-23 09:00:00');
+    seedMonthlyBatch('2026-09-01');
+    $admin = User::factory()->create();
+
+    (new RetryNightlyChainJob('2026-09-23', $admin->id, 'chain-1'))->handle();
+
+    expect(StubChainStepCommand::$calls)->toContain('gsb.weekly-payout')
+        ->and(StubChainStepCommand::$periods['gsb.weekly-payout'])->toBe('2026-09-22');
+});
+
+it('carries the clicking admin into the run the weekly sweep is recorded under', function (): void {
+    // The load-bearing claim of the whole retry path, and it depends on a chain
+    // of three things holding at once: the job attributes EngineRunContext, the
+    // context survives the nested Artisan::call into the step, and
+    // PayoutService::batchCreatorId() reads it when Auth::id() is null. This
+    // pins the middle link, which is the one a refactor could silently break —
+    // if the context were lost, this row would name nobody and the batch would
+    // be built with `created_by` NULL, approvable by whoever asked for it.
+    Carbon::setTestNow('2026-09-23 09:00:00');
+    seedMonthlyBatch('2026-09-01');
+    $admin = User::factory()->create();
+
+    (new RetryNightlyChainJob('2026-09-23', $admin->id, 'chain-3'))->handle();
+
+    $sweep = EngineRun::where('engine_key', 'gsb.weekly-payout')->sole();
+
+    expect($sweep->actor_id)->toBe($admin->id)
+        ->and($sweep->trigger)->toBe(EngineRun::TRIGGER_MANUAL);
+});
+
+it('builds no batch for a retry with nobody to record as its maker', function (): void {
+    // No actor means `payout_batches.created_by` would land NULL, and a batch
+    // with no maker is approvable by anyone — including whoever caused it.
+    Carbon::setTestNow('2026-09-23 09:00:00');
+    seedMonthlyBatch('2026-09-01');
+
+    (new RetryNightlyChainJob('2026-09-23', null, 'chain-2'))->handle();
+
+    expect(StubChainStepCommand::$calls)->not->toContain('gsb.weekly-payout');
 });

@@ -1158,10 +1158,11 @@ it('still offers the retry on an environment where per-engine triggers are refus
         ->assertSee('Retry this night');
 });
 
-it('records that no payout batch was in scope, and joins the audit row to the runs it causes', function (): void {
+it('records how much of the sweep was in scope, and joins the audit row to the runs it causes', function (): void {
     // Two separate findings in one assertion because they are one record: the
-    // audit row has to say WHAT was authorised (a crediting run, no batch) and
-    // has to be joinable to the `engine_runs` rows the retry goes on to write.
+    // audit row has to say WHAT was authorised (a crediting run plus, at most,
+    // a missed weekly batch) and has to be joinable to the `engine_runs` rows
+    // the retry goes on to write.
     Queue::fake();
     chainRun('2025-12-31', EngineRun::STATUS_FAILED, 'boom');
 
@@ -1173,7 +1174,7 @@ it('records that no payout batch was in scope, and joins the audit row to the ru
 
     $audit = AuditLog::where('action', 'compensation.nightly_chain.retried')->sole();
 
-    expect($audit->details['payouts_in_scope'])->toBeFalse()
+    expect($audit->details['payouts_in_scope'])->toBe('weekly_only')
         ->and($audit->details['chain_id'])->toBeString()
         ->and($audit->details['chain_id'])->not->toBe('');
 

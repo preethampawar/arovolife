@@ -901,7 +901,10 @@ final class PayoutService
 
         if ($changes !== []) {
             AuditLog::create([
-                'actor_id' => Auth::id(),
+                // batchCreatorId() for the same reason as the rows above: this
+                // is reachable from the sweep, and a hold release decides
+                // whether a distributor is paid in this batch.
+                'actor_id' => $this->batchCreatorId(),
                 'action' => 'payout.batch.holds_reevaluated',
                 'subject_type' => 'payout_batch',
                 'subject_id' => (int) $batch->id,
@@ -1124,6 +1127,10 @@ final class PayoutService
         }
 
         AuditLog::create([
+            // A forfeit destroys income permanently, so the record of it must
+            // name whoever ran the batch that destroyed it. This row carried no
+            // actor at all while only the scheduler could reach the sweep.
+            'actor_id' => $this->batchCreatorId(),
             'action' => 'payout.income_cap_forfeited',
             'subject_type' => 'distributor',
             'subject_id' => $distributorId,
@@ -1292,7 +1299,12 @@ final class PayoutService
         ]);
 
         AuditLog::create([
-            'actor_id' => Auth::id(),
+            // batchCreatorId(), not Auth::id(): a batch built from a queue
+            // worker has no session, so Auth::id() is NULL there and this row
+            // would name nobody for a run an admin asked for. Before the retry
+            // button could reach the weekly sweep, NULL here unambiguously
+            // meant "the scheduler"; it no longer does.
+            'actor_id' => $this->batchCreatorId(),
             'action' => 'payout.batch.finalised',
             'subject_type' => 'payout_batch',
             'subject_id' => $batch->id,
@@ -1318,7 +1330,10 @@ final class PayoutService
     private function auditBatchCreated(PayoutBatch $batch, string $period, int $distributorCount): void
     {
         AuditLog::create([
-            'actor_id' => Auth::id(),
+            // Matches `payout_batches.created_by`, which is stamped from the
+            // same source — the maker named on the row and the maker named in
+            // the audit trail must not disagree.
+            'actor_id' => $this->batchCreatorId(),
             'action' => 'payout.batch.created',
             'subject_type' => 'payout_batch',
             'subject_id' => $batch->id,

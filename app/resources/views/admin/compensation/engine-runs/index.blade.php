@@ -53,9 +53,11 @@
                 unchanged. Retry here once the cause is fixed if you would rather not wait a day.
             </p>
             <p class="mb-3">
-                A retry <strong>credits wallets but never creates a payout batch</strong> &mdash; the weekly and monthly
-                sweeps stay with the scheduler, so the person who approves a batch is never the person who created it.
-                Distributors are credited either way; only the sweep waits for tonight.
+                A retry credits wallets and, if this night owed a weekly payout batch that was never started,
+                <strong>rebuilds it in your name</strong> &mdash; so someone else has to approve it. A batch that
+                started and was killed part-way is <em>not</em> rebuilt by this button and needs the platform team.
+                The monthly payout close is left alone: the scheduler rebuilds that on any night from the 8th,
+                unaided.
             </p>
 
             @if($failedChain['inFlight'])
@@ -70,7 +72,7 @@
                   class="mt-3 border-t border-rose-200 pt-3"
                   data-confirm="Re-run the {{ $failedChain['night'] }} chain from the step that failed?"
                   data-confirm-title="Retry the {{ $failedChain['night'] }} chain?"
-                  data-confirm-impact="The chain resumes where it stopped, and every engine skips a distributor already credited for the period, so nobody is paid twice. It credits wallets but builds no payout batch; the scheduler still does that. It runs in the background and can take several minutes.">
+                  data-confirm-impact="The chain resumes where it stopped, and every engine skips a distributor already credited for the period, so nobody is paid twice. A weekly payout batch this night owed, and never started, is rebuilt and recorded as created by you, so a second person must approve it. It runs in the background and can take several minutes.">
                 @csrf
                 <input type="hidden" name="night" value="{{ $failedChain['nightValue'] }}">
                 <label for="retry-chain-reason" class="block text-xs font-medium text-rose-900 mb-1">

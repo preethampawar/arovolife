@@ -648,7 +648,14 @@ freezes what it prices, so a month closed short stays short.
 
 **Catching up by hand.** `compensation:nightly-run --date=<past night>` replays
 that night's cut-offs but builds no payout batch; add `--with-payouts` to
-include steps 4 and 5.
+include steps 4 and 5, or `--weekly-payouts-only` for the weekly batch alone
+(what the admin retry button passes). **Both create real payout batches, and
+from a shell both create them with no maker** — there is no `Auth::id()` and no
+attributed `EngineRunContext` outside the queue worker, so `created_by` lands
+NULL and the platform cannot stop whoever ran the command from also approving
+the batch. Keep that separation by hand, or use the retry button, which records
+a maker and enforces it. `--without-payouts` is the opposite switch and wins
+over both.
 
 The seven steps `compensation:monthly-close` runs, in order. **None of these has
 its own scheduler entry** — clock offsets do not serialise commands, so the

@@ -15,6 +15,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Re-runs one night of the compensation chain, from the step that failed.
@@ -35,7 +36,8 @@ use Illuminate\Support\Facades\Log;
  * not because the chain skipped them. Anything that later trusts the resume to
  * be the guard would be removing the wrong safety net.
  *
- * Nothing is validated here beyond the date. Every reason a retry should be
+ * What it may REBUILD is narrower than what it may run: see
+ * {@see payoutOption()}. Nothing is validated here beyond the date. Every reason a retry should be
  * refused — a standing recompute projection, a worker running pre-deploy code —
  * is already decided by {@see NightlyRunCommand::preflight()}, which refuses
  * with a message written for an operator. Duplicating those checks here would
@@ -87,17 +89,9 @@ final class RetryNightlyChainJob implements ShouldQueue
         $runContext->attribute(EngineRun::TRIGGER_MANUAL, $this->actorId, $this->chainId);
 
         try {
-            // `--without-payouts`: never a payout batch from this path. The
-            // payout engines are scheduler-only because `finance.record` both
-            // fires them and approves the batch they create, and a retry of a
-            // night that IS today would otherwise reach them through the
-            // command's `isToday()` rule — making one admin maker and checker
-            // for a real payout. The crediting engines still run, so the income
-            // still lands in wallets; only the sweep stays with the scheduler,
-            // which builds it on the next night still dated its own Tuesday.
             $exitCode = Artisan::call($signature, [
                 '--date' => $this->night,
-                '--without-payouts' => true,
+                $this->payoutOption() => true,
             ]);
         } finally {
             // Defensive, not load-bearing on the queue: Laravel flushes
@@ -126,5 +120,63 @@ final class RetryNightlyChainJob implements ShouldQueue
         }
 
         Log::error('compensation.nightly_chain.retry_failed', $logContext);
+    }
+
+    /**
+     * A killed retry must not leave its runs reading `running` for ever.
+     *
+     * Mirrors {@see RunEngineChainJob::failed()}. `tries = 1` and an hour-long
+     * timeout mean this fires on a genuine kill — OOM, the worker restarted
+     * mid-night — and the rows the chain had open would otherwise stay
+     * `running` with nothing ever closing them, which reads on the Engine Runs
+     * page as a retry still in flight and suppresses the button that would
+     * start another.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        EngineRun::query()
+            ->where('chain_id', $this->chainId)
+            ->where('status', EngineRun::STATUS_RUNNING)
+            ->update([
+                'status' => EngineRun::STATUS_FAILED,
+                'error' => 'Retry job died: '.($exception?->getMessage() ?? 'timeout'),
+                'finished_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        Log::error('compensation.nightly_chain.retry_crashed', [
+            'night' => $this->night,
+            'actor_id' => $this->actorId,
+            'chain_id' => $this->chainId,
+            'exception' => $exception === null ? null : $exception::class,
+            'error' => $exception?->getMessage(),
+        ]);
+    }
+
+    /**
+     * How much of the sweep this retry may rebuild.
+     *
+     * `--weekly-payouts-only` exists because a missed Tuesday can be permanently
+     * unreachable: the chain backfills weekly batches from the last one that
+     * exists, so the FIRST payout Tuesday — which has no predecessor — is built
+     * on its own night or not at all. If that night is the one that fails, the
+     * batch is owed to distributors and nothing else on the platform will ever
+     * build it. The monthly close is deliberately NOT included: every night from
+     * the 8th rebuilds it when missing, so it heals itself and stays out of
+     * admin hands.
+     *
+     * Maker-checker survives this. Approval requires `finance.approve`, which
+     * the `admin-finance` holder of `finance.record` does not have; and for an
+     * `admin` or `developer` holding both, the batch records this actor as its
+     * maker and {@see HandlesPayoutBatchActions} refuses their own approval.
+     *
+     * An unattributed retry gets `--without-payouts` instead, and that is the
+     * fail-closed half rather than a formality: with no actor there is no maker
+     * to stamp, `created_by` lands NULL, and a null maker is approvable by
+     * anyone — so the one path where the guard cannot hold builds nothing.
+     */
+    private function payoutOption(): string
+    {
+        return $this->actorId === null ? '--without-payouts' : '--weekly-payouts-only';
     }
 }

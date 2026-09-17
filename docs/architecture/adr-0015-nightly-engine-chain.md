@@ -111,6 +111,14 @@ deliberately one process, and the win available is ordering, not concurrency.
   payout batch unless `--with-payouts` is passed; the command also re-checks the
   recompute gate itself, so a hand-typed run on a projected environment is paused
   like the scheduled one.
+- Payout scope is a three-way switch, not a boolean (amended 2026-09-17).
+  `--without-payouts` builds none and is read first; `--weekly-payouts-only`
+  admits the weekly sweep and never the monthly payout close; neither switch
+  admits anything the frontier logic has not already found genuinely unbuilt.
+  The admin retry passes one of the first two depending on whether an actor can
+  be recorded as the batch's maker, which is what keeps maker-checker intact on
+  a path that now reaches a payout batch. The monthly close is excluded because
+  it needs no help: every night from the 8th rebuilds it while none exists.
 
 ## Alternatives rejected
 

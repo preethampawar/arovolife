@@ -82,7 +82,8 @@ final class NightlyRunCommand extends Command
                             {--force : Run the steps even when the preflight refuses}
                             {--restart : Re-run every step, including ones already recorded as succeeded}
                             {--with-payouts : Include the payout steps when --date names a night other than tonight}
-                            {--without-payouts : Credit the night but build no payout batch, whatever the date}';
+                            {--without-payouts : Credit the night but build no payout batch, whatever the date}
+                            {--weekly-payouts-only : Build a missed weekly batch but never the monthly payout close (the admin retry)}';
 
     protected $description = 'Run tonight\'s compensation engines in dependency order, resuming at the first step that has not succeeded';
 
@@ -227,9 +228,7 @@ final class NightlyRunCommand extends Command
             // deferred month close, a backfill gap, a batch built late — and
             // this one would otherwise record SUCCEEDED for a night whose sweep
             // was deliberately dropped, with nothing in the run summary to show
-            // it. The console capture lands this line in `engine_runs.summary`,
-            // which is the evidence for the claim that no admin-console path
-            // builds a payout batch.
+            // it. The console capture lands this line in `engine_runs.summary`.
             if ($this->option('without-payouts')) {
                 $this->warn(
                     'Payout steps excluded (--without-payouts): this run credits wallets only. The weekly and '
@@ -242,6 +241,22 @@ final class NightlyRunCommand extends Command
 
         foreach ($this->weeklyPayoutDays($night) as $batchDay) {
             $steps[] = ['gsb.weekly-payout', $batchDay];
+        }
+
+        // The retry button stops here, and the asymmetry is not arbitrary: a
+        // missed Tuesday can be UNREACHABLE by every later night (see
+        // {@see weeklyPayoutDays()}), which is the whole reason the button may
+        // build one. The monthly payout close has no such gap — from the 8th
+        // onwards every night rebuilds it if it is missing, and a missed month
+        // is picked up the following month — so it needs no admin hand, and the
+        // largest sweep on the platform stays where it has always been.
+        if ($this->option('weekly-payouts-only')) {
+            $this->warn(
+                'Monthly payout close excluded (--weekly-payouts-only): the scheduler rebuilds it on any night from '
+                .'the 8th, so it never needs an admin to trigger it.'
+            );
+
+            return $steps;
         }
 
         foreach ($this->monthlyPayoutMonths($night) as $creditingMonth) {
@@ -262,27 +277,43 @@ final class NightlyRunCommand extends Command
      * batch would still land `pending` and still need a second person to
      * approve it — this keeps the surprise out, not the money.
      *
-     * `--without-payouts` is the opposite decision, and it exists for the admin
-     * retry button. The payout-batch engines are `manuallyTriggerable = false`
-     * precisely because `finance.record` both triggers them and approves the
-     * batch they create — one admin would be maker and checker. A retry of a
-     * night that IS today would otherwise reach them through `isToday()` below,
-     * which is exactly the window the button is most used in, so the button
-     * pins this off. Nobody loses income: the crediting engines still run, the
-     * money still lands in wallets, and the batch that sweeps it is built by
-     * the scheduler — the maker it has always been.
+     * `--weekly-payouts-only` is the admin retry button, and it is narrow on
+     * purpose. Maker-checker survives it on two independent layers: approval
+     * needs `finance.approve`, which the `admin-finance` role that holds
+     * `finance.record` does not have, and for the `admin`/`developer` roles that
+     * hold both, `payout_batches.created_by` bars whoever made a batch from
+     * approving it. The retry job binds {@see EngineRunContext} before calling
+     * this command precisely so that stamp lands on the admin who clicked — a
+     * batch built by this path always has a named maker.
+     *
+     * `--without-payouts` is that path's fail-closed twin, used when the actor
+     * is unknown. No maker can be recorded for an unattributed run, so the
+     * `created_by` layer would be the one that is absent, and an unattributed
+     * batch is approvable by anyone — including whoever caused it. Checked
+     * first below, so passing both flags excludes payouts rather than admitting
+     * them.
      */
     private function payoutsAllowed(Carbon $night): bool
     {
         // NO LOCK GUARDS TWO CONCURRENT RUNS OF THIS COMMAND, and that is a
         // deliberate reading of ADR-0011 rather than an oversight: the
         // `compensation` queue runs on exactly one process, so two retries of
-        // the same night serialise; the engines are idempotent per period; and
-        // with the switch below no batch can be created either way. If that
-        // queue ever grows a second worker, this command needs a cache lock
-        // before it is safe again.
+        // the same night serialise, and the engines are idempotent per period.
+        // The payout sweep does not rely on that argument at all — it takes its
+        // own named lock and is idempotent on the batch date, so one Tuesday
+        // yields one batch however many runs reach it. If that queue ever grows
+        // a second worker, the crediting steps need a cache lock here before
+        // this command is safe again.
         if ($this->option('without-payouts')) {
             return false;
+        }
+
+        // A retry names the night that failed, which is routinely yesterday by
+        // the time an operator has diagnosed it — so this cannot lean on
+        // `isToday()`. The step list it reaches is still only the Tuesdays
+        // `weeklyPayoutDays()` finds genuinely unbuilt.
+        if ($this->option('weekly-payouts-only')) {
+            return true;
         }
 
         return $night->isToday() || (bool) $this->option('with-payouts');
@@ -438,6 +469,11 @@ final class NightlyRunCommand extends Command
      * so a later batch would collect the missed week too. What is at stake is
      * when they are paid, not whether.)
      *
+     * That includes the very first payout Tuesday, which has no earlier batch
+     * to be backfilled from. It is built on the next night like any other missed
+     * Tuesday — one batch, never a month, because nothing before `$latest` is
+     * reachable without a frontier.
+     *
      * Proven from the batch itself, not from the run log: a batch is the thing
      * that exists. It also keeps the chain from re-invoking a batch finance has
      * already APPROVED — the runner returns such a batch untouched and the
@@ -455,9 +491,8 @@ final class NightlyRunCommand extends Command
         $frontier = null;
 
         // Newest first: the first Tuesday that HAS a batch is the frontier.
-        // Before it is history the chain does not reopen, and on an environment
-        // that has never built a weekly batch there is no frontier and nothing
-        // to backfill — a fresh install must not invent a month of batches.
+        // Before it is history the chain does not reopen — a fresh install must
+        // not invent a month of batches.
         for ($weeksBack = 0; $weeksBack <= self::MAX_BACKFILL_WEEKS; $weeksBack++) {
             $tuesday = $latest->copy()->subWeeks($weeksBack);
 
@@ -469,14 +504,27 @@ final class NightlyRunCommand extends Command
         }
 
         if ($frontier === null) {
-            return $night->dayOfWeekIso === Carbon::TUESDAY ? [$night->copy()] : [];
-        }
+            // No batch anywhere in the window, so there is no frontier to
+            // backfill FROM — but `$latest` is still owed, and it is ONE
+            // Tuesday at most six days old, not an invented month.
+            //
+            // Returning [] here on a non-Tuesday is what used to cost the FIRST
+            // payout Tuesday a full week. Its own chain failed before the sweep;
+            // the retry button THEN passed `--without-payouts` unconditionally,
+            // so it credited wallets and built nothing; and no later night could
+            // name that Tuesday again, because the backfill loop below needs an
+            // earlier batch to start from and there is none. (The button now
+            // passes `--weekly-payouts-only` when it can record a maker.) Every LATER Tuesday was
+            // always safe — it has the week before it as its frontier. Only the
+            // first one was unreachable, on the one night it mattered most.
+            $days = [$latest->copy()];
+        } else {
+            $days = [];
 
-        $days = [];
-
-        for ($tuesday = $frontier->copy()->addWeek(); $tuesday->lessThanOrEqualTo($latest); $tuesday->addWeek()) {
-            if (! $this->status->payoutBatchExists(PayoutBatch::TYPE_WEEKLY, $tuesday)) {
-                $days[] = $tuesday->copy();
+            for ($tuesday = $frontier->copy()->addWeek(); $tuesday->lessThanOrEqualTo($latest); $tuesday->addWeek()) {
+                if (! $this->status->payoutBatchExists(PayoutBatch::TYPE_WEEKLY, $tuesday)) {
+                    $days[] = $tuesday->copy();
+                }
             }
         }
 
