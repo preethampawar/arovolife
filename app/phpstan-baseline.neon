@@ -3267,8 +3267,44 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 4
+			count: 1
 			path: tests/Modules/Compensation/AdminBonusReversalTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Modules/Compensation/AdminBonusReversalTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 12
+			path: tests/Modules/Compensation/AdminGsbReversalMakerCheckerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:from\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Modules/Compensation/AdminGsbReversalMakerCheckerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminGsbReversalMakerCheckerTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 6
+			path: tests/Feature/ActionCenter/GsbReversalAwaitingApprovalProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/ActionCenter/UnpayableManualCreditProviderTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'

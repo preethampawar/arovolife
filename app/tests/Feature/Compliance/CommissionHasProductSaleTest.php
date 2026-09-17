@@ -261,6 +261,11 @@ final class CommissionHasProductSaleTest extends TestCase
      * has to settle the payout sweep set and the Action Center
      * `payouts.bank_details_missing` whitelist first, then amend this list.
      *
+     * It matches the literal, so it cannot tell a read from a write and catches
+     * both. That is the right way round — a reader is a one-line allow-list
+     * entry with a reason, while the failure it must never miss is a writer
+     * slipping in unremarked.
+     *
      * Scope, deliberately narrow on two axes — widen only with a reason, not
      * reflexively. It matches the single-quoted literal because Pint's
      * `single_quote` rule makes that the only spelling the codebase keeps, and
@@ -275,6 +280,14 @@ final class CommissionHasProductSaleTest extends TestCase
             // The type's own declarations, not writers of it.
             'Compensation/Services/WalletService.php',
             'Compensation/Models/WalletLedgerEntry.php',
+
+            // Added 2026-09-17. Reads the type to surface the rows written
+            // before the control was deleted — a `where`, never a `create`.
+            // The scan cannot tell a read from a write, so an allow-list entry
+            // is the honest way to record one; if this file ever gains a
+            // WalletService::credit() call, that is exactly the change R-74
+            // says must reopen the entry first.
+            'ActionCenter/Providers/Money/UnpayableManualCreditProvider.php',
         ];
 
         $offenders = [];

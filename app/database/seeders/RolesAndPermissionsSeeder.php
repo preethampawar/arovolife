@@ -154,6 +154,17 @@ final class RolesAndPermissionsSeeder extends Seeder
         // On top of that, whoever created a batch cannot approve that batch,
         // checked against `payout_batches.created_by` at approval time.
         'finance.approve',          // sign a payout batch off for payment
+
+        // Added 2026-09-17 (R-92). The checker half of maker-checker on GSB
+        // reversals. `compliance.discipline` is the maker: admin-compliance
+        // raises a reversal request and may withdraw it. Signing it off — the
+        // decision that permanently takes commission back out of a
+        // distributor's wallet, with nothing in the platform able to restore
+        // it — is deliberately NOT in the same hand, so admin-compliance does
+        // not hold this. On top of that, whoever raised a request cannot
+        // approve that request, checked against
+        // `gsb_reversal_requests.requested_by` at approval time.
+        'compensation.reversal.approve', // sign a GSB reversal off
     ];
 
     public function run(): void

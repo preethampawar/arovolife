@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\GsbReversalRequest;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
@@ -12,7 +13,9 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
 use Laravel\Pennant\Feature;
+use Symfony\Component\HttpFoundation\Response;
 
 uses(RefreshDatabase::class);
 
@@ -88,6 +91,32 @@ function creditedGsbRow(): array
     return [$distributor, $result];
 }
 
+/**
+ * Drive a reversal end to end the way it now works: one admin raises the
+ * request, a different one signs it off (R-92). Returns the approval response
+ * so a test can assert on it.
+ *
+ * @return TestResponse<Response>
+ */
+function reverseViaMakerChecker(
+    Distributor $distributor,
+    string $reason = 'Slab was matched against a reversed order.',
+    string $date = '2026-08-14',
+): TestResponse {
+    test()->actingAs(reversalAdmin())->post(route('admin.compensation.manual-controls.reverse'), [
+        'adn' => $distributor->adn,
+        'date' => $date,
+        'reason' => $reason,
+    ]);
+
+    $pending = GsbReversalRequest::where('distributor_id', $distributor->id)
+        ->where('status', GsbReversalRequest::STATUS_PENDING)
+        ->firstOrFail();
+
+    return test()->actingAs(reversalAdmin())
+        ->post(route('admin.compensation.manual-controls.reversals.approve', $pending->id));
+}
+
 it('reverses both wallets and audits the repurchase side', function () {
     [$distributor, $result] = creditedGsbRow();
     $wallet = app(WalletService::class);
@@ -95,13 +124,8 @@ it('reverses both wallets and audits the repurchase side', function () {
     expect($wallet->balancePaise($distributor->id))->toBe(4_500_000)
         ->and($wallet->repurchaseWalletBalancePaise($distributor->id))->toBe(500_000);
 
-    $this->actingAs(reversalAdmin())
-        ->post(route('admin.compensation.manual-controls.reverse'), [
-            'adn' => $distributor->adn,
-            'date' => '2026-08-14',
-            'reason' => 'Slab was matched against a reversed order.',
-        ])
-        ->assertRedirect(route('admin.compensation.distributors.show', $distributor));
+    reverseViaMakerChecker($distributor)
+        ->assertRedirect(route('admin.compensation.distributors.show', $distributor->id));
 
     expect($result->fresh()->status)->toBe(GsbCutoffResult::STATUS_REVERSED)
         ->and($wallet->balancePaise($distributor->id))->toBe(0)
@@ -129,13 +153,8 @@ it('records the shortfall when the repurchase credit was already spent', functio
 
     $wallet->debit($distributor->id, 300_000, 'repurchase_wallet_used', walletRef(), 'order', 'Applied at checkout');
 
-    $this->actingAs(reversalAdmin())
-        ->post(route('admin.compensation.manual-controls.reverse'), [
-            'adn' => $distributor->adn,
-            'date' => '2026-08-14',
-            'reason' => 'Slab was matched against a reversed order.',
-        ])
-        ->assertRedirect(route('admin.compensation.distributors.show', $distributor));
+    reverseViaMakerChecker($distributor)
+        ->assertRedirect(route('admin.compensation.distributors.show', $distributor->id));
 
     $audit = AuditLog::where('action', 'compensation.gsb.reversed')->sole();
 
@@ -148,19 +167,18 @@ it('records the shortfall when the repurchase credit was already spent', functio
 it('cannot reverse the same cut-off row twice', function () {
     [$distributor] = creditedGsbRow();
     $wallet = app(WalletService::class);
-    $admin = reversalAdmin();
 
-    $payload = [
-        'adn' => $distributor->adn,
-        'date' => '2026-08-14',
-        'reason' => 'Slab was matched against a reversed order.',
-    ];
+    reverseViaMakerChecker($distributor)->assertRedirect();
 
-    $this->actingAs($admin)->post(route('admin.compensation.manual-controls.reverse'), $payload)->assertRedirect();
-
-    // The row is no longer `credited`, so the second submit finds nothing to
-    // reverse rather than debiting the wallet a second time.
-    $this->actingAs($admin)->post(route('admin.compensation.manual-controls.reverse'), $payload)->assertNotFound();
+    // The row is no longer `credited`, so a second request finds nothing to
+    // reverse rather than queueing a second debit of the same money.
+    $this->actingAs(reversalAdmin())
+        ->post(route('admin.compensation.manual-controls.reverse'), [
+            'adn' => $distributor->adn,
+            'date' => '2026-08-14',
+            'reason' => 'Slab was matched against a reversed order.',
+        ])
+        ->assertNotFound();
 
     expect($wallet->balancePaise($distributor->id))->toBe(0)
         ->and($wallet->repurchaseWalletBalancePaise($distributor->id))->toBe(0)

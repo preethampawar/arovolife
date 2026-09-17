@@ -19,7 +19,7 @@ only thing it writes is a **snooze**.
 |---|---|---|
 | **Orders & fulfilment** | Placement, payment, packing, shipping, delivery tracking, returns. | `commerce.order.manage` |
 | **Stock** | On-hand levels, batch expiry, transfers, purchase orders. Hidden entirely when `InventoryFeature` is OFF. | `inventory.view` |
-| **Money** | Failed/overdue refunds, payout batch approvals, missing bank details, payment reconciliation gaps. | `finance.record` / `finance.approve` |
+| **Money** | Failed/overdue refunds, payout batch approvals, GSB reversals awaiting a second admin, wallet credits no batch can pay, missing bank details, payment reconciliation gaps. | `finance.record` / `finance.approve` / `compensation.reversal.approve` |
 | **People** | KYC review, distributor requests, line-change decisions, Arete Development Centre applications, cooling-off expiry, dormant accounts. | `kyc.review`, `distributor.request.handle`, `placement.decide`, `adc.application.review` |
 | **Compliance & platform** | Grievance SLA clocks, message moderation, unpublished consent-linked pages, compensation engine health. | `grievance.handle`, `messaging.moderate`, `content.publish` |
 

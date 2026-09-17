@@ -492,9 +492,26 @@ behaves exactly as it always did.
 `GsbIdleCutoffBatch` writes a `no_match` row for every idle distributor each
 night and `no_match` advances the store, so one chain run closes the window for
 essentially the whole roster. A failed night found the next morning is already
-past retry. Treat a failed cut-off as same-day work, and see **R-91** in the
-risk register for what is still owed here — there is no rehearsed production
-rebuild behind the escalation below, and writing one is a pre-launch gate.
+past retry. Treat a failed cut-off as same-day work.
+
+**What is lost is not only that day's bonus.** A cut-off reads exactly one
+day's `group_bv_daily` row (`GsbCutoffService.php:162`) and nothing else ever
+re-reads it — the next night reads its own date plus the carry-forward store.
+So a night that never settled successfully strands that day's group BV outside
+the store permanently: it is not matched, its remainder never reaches the
+carry-forward, and no later night picks it up. The distributor loses the day's
+match *and* the BV that would have fed every match after it.
+
+**And the chain will not come back for it.**
+`EngineStatusService::computedCutoffDatesBetween()` treats a date as done if
+*any* `gsb_cutoff_results` row exists for it. A `failed` row counts. So does a
+`no_match` row written for a completely different distributor by the idle
+batch. That is the difference between §6 — a night the chain never started,
+which the next backfill genuinely does fix — and this section: a night the
+chain *ran* and failed part-way through already looks computed, is never
+proposed again, and is walled off by the guard the following morning. When you
+read "a failed night is not a lost night" on the admin Engine Runs help, it
+means §6. It does not mean this.
 
 The admin sees the refusal message verbatim on the Manual Controls page (a
 `compensation.cutoff.manual_retry_refused` audit row is written with it, and
@@ -545,14 +562,262 @@ php artisan tinker --execute '
   echo App\Modules\Compensation\Models\EngineRun::where("status","failed")->count();'
 ```
 
-**Production** — `compensation:recompute-all` refuses in production
-unconditionally (`RecomputeGuard`), by design: it wipes and rebuilds every
-BV-derived row. There is no self-service path. Escalate with §"Escalate with
-this" below, including the full refusal message and the result-row listing
-above. Treat the affected distributor's GSB figures as provisional until it is
-resolved; do not re-run the date by hand and do not reverse-and-recredit to
-paper over it, because neither touches the carry-forward store the next night
-will read.
+### 14a. Production: decide whether to rebuild at all
+
+`compensation:recompute-all` refuses in production unconditionally
+(`RecomputeGuard`), by design: it wipes and rebuilds every BV-derived row.
+There is no override — not a flag, not a `--force`, not an environment
+variable. The procedure below is the only sanctioned remedy, and it restates
+production data, so it is justified by the size of what is owed and by nothing
+else. **Do not** re-run the date by hand and **do not** reverse-and-recredit to
+paper over it: neither touches the carry-forward store the next night reads.
+
+Measure the loss before waking anyone. This lists who failed on the date and
+the group BV each of them had stranded:
+
+```bash
+php artisan tinker --execute '
+  $d = "2026-09-14";
+  App\Modules\Compensation\Models\GsbCutoffResult::whereDate("cutoff_date", $d)
+    ->where("status", "failed")
+    ->get(["distributor_id", "failure_reason"])
+    ->each(function ($r) use ($d) {
+      $bv = App\Modules\Compensation\Models\GroupBvDaily::where("distributor_id", $r->distributor_id)
+        ->whereDate("date", $d)->first();
+      printf("%d\tL=%d\tR=%d\t%s\n", $r->distributor_id,
+        $bv->left_bv_paise ?? 0, $bv->right_bv_paise ?? 0, $r->failure_reason);
+    });'
+```
+
+A distributor with zero BV on both sides that day lost nothing — a cut-off that
+would have written `no_match` strands nothing, and the guard refusing it is
+harmless. Take them off the list before going further. What remains is the
+population the rebuild is for.
+
+**Rebuilding is not automatically the right answer.** It restates rows on a
+live money system to recover a known amount. If the whole recoverable sum is
+small enough that the client would rather carry it as a goodwill correction,
+say so and let them choose — but the choice has to be made with the figure in
+hand, recorded, and communicated to the distributor. Silently leaving it is not
+one of the options: the day was earned against product sales (hard rule 2), and
+DSA §6 undertakes to pay the plan as published.
+
+### 14b. Who authorises it
+
+Two people, and never the same person twice:
+
+| Role | What they are signing |
+|---|---|
+| **Platform owner** (engineering) | that the diff in step 4 is the whole of the change, and that the rollback in step 7 has been tested on the clone first |
+| **Finance authoriser** (`finance.approve` holder, and not the operator running it) | that the money the rebuild moves matches the figure measured in §14a |
+
+The names behind those two roles are a pre-launch fill-in, tracked with the
+other named-officer placeholders (Grievance Officer, DPO, Nodal Officer) — the
+rebuild is not authorised until they are real names in this table. Separation
+of duties is not satisfied by one engineer with both credentials, and that is
+not only a matter of discipline: `Gate::before` answers true for every super
+staff account (`AppServiceProvider.php:140`), so a platform running on a single
+shared super-staff login has **no** second pair of eyes anywhere — not here, and
+not on the R-92 reversal approval either. Two distinct super-staff accounts held
+by two different people is a launch prerequisite, not a nicety.
+
+The operator records the authorisation in `audit_log` before touching anything,
+and again after step 6, with the distributor list and the measured figure.
+
+### 14c. The procedure
+
+It runs against a **clone**; nothing touches production until step 6. Budget one
+working day, and do not let step 6 straddle any of these:
+
+- **00:05 IST**, the nightly chain — it would advance the store underneath you
+  mid-procedure.
+- **Tuesday 03:00**, the weekly payout sweep — it can sweep a credit between
+  6.0's check and 6.3's delete, which silently invalidates the gate that 6.0
+  exists to be.
+- **The 1st and the 8th**, the monthly close and monthly payout.
+
+If the window is too tight, stop after step 5 and resume in the next one. The
+clone keeps.
+
+1. **Snapshot production.** This is both the input to the clone and the only
+   rollback. Take it with the platform's own backup, verify it restores, and do
+   not proceed on an unverified snapshot.
+2. **Restore into the rebuild database.** `RecomputeGuard` has three locks and
+   all of them must open: the build must not be `APP_ENV=production`,
+   `arovolife.recompute.enabled` must be on, and the **connected database name**
+   must be in `arovolife.recompute.allowed_databases`. Lock 3 reads the live
+   connection, not config, so a stale `DB_DATABASE` will not fool it.
+   **This step copies real distributor PII into a lower environment**, which is
+   a DPDP processing event in its own right. Flagging it is not a control; these
+   are:
+   - **Restore without the PII key.** The rebuild reads BV, orders, wallet and
+     cut-off rows and never reads the KYC document vault, the bank ciphertext or
+     a PAN. So restore the clone with the `APP_KEY`/PII key **absent**, and
+     exclude `kyc_document_vault` from the dump. Everything hard rule 8 protects
+     is then unreadable by construction rather than by restraint, and the
+     rebuild still runs.
+   - **48 hours, not "time-boxed".** If it is not finished by then, stop and
+     re-authorise rather than letting the copy age.
+   - **Its own machine.** Never a staging environment anyone else is using, and
+     never one reachable from the public internet.
+   - **Same jurisdiction.** The clone stays where production is (DPDP §16).
+   - **Open a processing record** naming the purpose, the dataset, the operator,
+     the start and end times, and the destruction confirmation from step 8. Tell
+     the DPO once that role is a named person.
+   - **A leak from the clone is a reportable personal data breach** (§8(6)),
+     exactly as it would be from production. It is the same data.
+3. **Rebuild on the clone**, from the first wrong day forward:
+   ```bash
+   php artisan compensation:recompute-all --horizon=now --from=2026-09-14 --windowed
+   ```
+4. **Diff clone against production** for the affected distributors — every
+   `gsb_cutoff_results` row from the first wrong day forward, and the
+   `gsb_carryforwards` row. The diff is the change set. If it touches a
+   distributor who was not on the §14a list, stop: the rebuild reached further
+   than the incident, and nobody has authorised that.
+
+   **Diff the monthly engines too, and read §14d before going on.** Step 3
+   rebuilt *every* engine on the clone, not just GSB, and a GSB day carries a
+   `repurchase_deduction_paise` — and a zero repurchase wallet is a hard
+   eligibility gate for Fortune, Growth Booster, Rank requalification and AO-GO.
+   Restoring a missing GSB day into a month that has already closed changes the
+   history those engines read without changing what they paid. So compare
+   `rank_bonus_results`, the Growth Booster and Fortune tables and ADC for the
+   affected distributors as well. **Steps 5–8 restate GSB only.** If the monthly
+   diff is non-empty, the rebuild crosses a closed month and needs its own
+   decision from §14b before you touch production: re-run that month's close, or
+   settle the difference as a correction. Do not proceed on the assumption that
+   GSB is self-contained; it is not.
+
+5. **Rehearse steps 6 and 7 on a second restore.** This is what makes the
+   procedure rehearsed rather than written down: you are proving the walls in
+   §14d behave the way this page says they do, on this release, before doing it
+   for real. It has to be a **fresh restore of the step-1 snapshot**, not the
+   clone step 3 rebuilt — that clone holds the corrected rows, so rehearsing on
+   it never exercises production's actual failed state, and reversing and
+   deleting on it would destroy the reference step 7 compares against. Re-run
+   the step-4 diff afterwards to confirm the reference clone is intact.
+
+6. **Apply to production**, per affected distributor, in one transaction each,
+   in this order — the order is not a preference, it is the only one that works:
+
+   0. **Check what has already been paid, and stop if anything has.** For every
+      credit in scope, read `swept_by_payout_batch_id` on its `gsb_credit`
+      entry. The weekly sweep selects by *entry* — unswept, not-reversed, earned
+      on or before the window end, with no lower date bound
+      (`PayoutService.php:404`) — and `scopeNotReversed()` masks a credit only
+      by matching `(reference_type, reference_id)`
+      (`WalletLedgerEntry.php:110`). Step 6.2 deletes the result row, so the
+      replay in 6.4 writes a **new** row id, and the new `gsb_credit` carries a
+      reference the old reversal does not mask. It is unswept, it is dated
+      inside the next batch's window, and **it will be paid a second time on top
+      of the transfer that already went out.** Nothing downstream catches that;
+      the scheduler decides it days before anyone looks. So: if every credit in
+      scope is unswept, carry on. If any is swept, **that distributor comes out of
+      scope entirely** — no reversal, no delete, no replay for them. Their case
+      is a finance decision under §14d, and there is no version of this
+      procedure that handles it.
+   1. **Record the carry-forward the rebuild will restore, before deleting
+      anything.** `gsb_carryforwards` holds one rolling row per distributor with
+      no history, so once step 6.2 has run, the day-before state exists nowhere
+      in production. It lives on the first wrong day's result row, in
+      `power_cf_before_paise`, `slab1_weaker_cf_before_paise` and
+      `power_side_before` — the columns `computeForDistributor()` rewinds from
+      (`GsbCutoffService.php:178`). Read those three from production, reconcile
+      them against the same row on the clone, and write both down.
+   2. `reverseBonusCredit()` every `credited` **or** `reversed` row from the
+      first wrong day forward. Both, not just credited: a row an admin reversed
+      earlier in the range is still terminal to the engine, so leaving it in
+      place means step 6.4 short-circuits it as `ALREADY_SETTLED` and every
+      later date computes off a stale carry-forward. Reversing is idempotent, so
+      a row already reversed is a no-op here. The money is neutralised, the
+      original credit stays visible on the statement, and `scopeNotReversed()`
+      keeps both out of any payout sweep. This is the service call, not the
+      admin control: Manual Controls → Request GSB Reversal raises a request for
+      a second admin (R-92) and would also flip the row to `reversed`, which
+      step 6.3 then has to delete anyway. **Using the service bypasses R-92's
+      maker-checker** — §14b's two-role authorisation is what stands in for it,
+      and the reversals here are not per-row audited by the controller, so write
+      one `audit_log` row per distributor by hand with the before/after digests.
+   3. **Delete** those `gsb_cutoff_results` rows. Reversing is not enough:
+      `computeForDistributor()` short-circuits both `credited` and `reversed` as
+      `ALREADY_SETTLED` (`GsbCutoffService.php:128`), so a reversed row can
+      never be replayed. The reversal entries are left pointing at deleted row
+      ids — dangling, deliberate, and harmless to every sweep, because the
+      reversal already excluded them. The `gsb_reversal_requests` rows for those
+      results survive with their id nulled, so who asked and who signed is not
+      lost with the row. **Reject any still-pending reversal request for a row
+      you are about to delete, first.** Once the row is gone the request can
+      never be approved — the approval looks the credit up and will not find it
+      — but it stays `pending`, so it sits in the Action Center and on the
+      Manual Controls card until somebody rejects it. **Never restore a deleted result row under its original
+      id**: the replay would then write a `gsb_credit` whose
+      `(type, reference_type, reference_id)` collides with the original on
+      `uniq_wallet_ledger_source` and fail mid-range.
+   4. Restate the `gsb_carryforwards` row to the figures recorded in 6.1.
+   5. Replay the dates in order, oldest first, through the ordinary Engine Runs
+      GSB trigger. With no later row present the guard opens, and the engine
+      does the crediting through its own normal path — `gsb_credit`, swept by
+      the weekly batch, carrying the product-sale chain. **Nothing here writes a
+      credit by hand.** That is the point of doing it this way.
+
+7. **Verify, or roll back.** Two checks, and both have to pass.
+   - Production `gsb_cutoff_results` and `gsb_carryforwards` for the authorised
+     distributors match the clone row-for-row.
+   - **Nothing outside the authorised set moved.** A replay runs the whole date,
+     and `computeForDistributor()` short-circuits only `credited` and
+     `reversed` — a `no_match` row is recomputed, against *today's* running
+     personal-BV total (`GsbCutoffService.php:146` reads
+     `totalPersonalBvPaise()`, not an as-of-date figure) and today's repurchase
+     verdict. A distributor who was idle on that date can therefore flip
+     `no_match` → `credited`: a real credit for someone nobody authorised. Take
+     a row count and a status checksum for each replayed date before step 6 and
+     again after, and stop if they differ outside the §14a list.
+
+   If either check fails, restore the step-1 snapshot; do not iterate on a
+   half-applied rebuild.
+8. **Destroy every copy**, record the completion in `audit_log`, and tell the
+   affected distributors what changed and why. "Every copy" is literal: the
+   restored clone database, the dump file it came from, any container volume or
+   provider snapshot holding it, the rehearsal restore from step 5, and any copy
+   on the operator's own machine. The step-1 production snapshot is itself a
+   full PII copy — give it a stated retention and destroy it on that date.
+   Record the destruction against the processing record opened in step 2, and
+   tell the DPO once that role is a named person.
+
+### 14d. The three things this cannot fix
+
+- **Money already paid to a bank.** Reversal writes a debit; it does not recall
+  a transfer. If the affected week's payout batch has already settled, the
+  rebuild can restate the ledger but not the bank. This is not a footnote to the
+  procedure — it is a **gate before step 6**, because the replay would pay the
+  day a second time (see 6.0). Those distributors come out of scope.
+
+  **And there is nowhere for them to go yet.** Neutralising a day that has
+  already been paid would mean a new offsetting ledger entry, and no such entry
+  type exists — the ledger is append-only, so hand-setting
+  `swept_by_payout_batch_id` or editing a line item is not an alternative (see
+  "Never do these"), and a payout *hold* cannot be used either:
+  `PayoutLineItem::HELD_STATUSES` is derived from distributor state at sweep
+  time — web-only, KYC-pending, no bank account, bank decrypt failed — not
+  something an admin can set on one entry. This is the same missing capability
+  R-92 records as its open gap: a credit paid out against a fraudulent or
+  cancelled order has no authorised recovery path today, and the DSA does not
+  publish whether netting a negative wallet against future bonuses is permitted
+  at all. Until both are settled, an already-paid day is escalated, not fixed.
+- **A rebuild range that crosses a closed month.** GSB feeds the repurchase
+  wallet, and a zero repurchase wallet gates Fortune, Growth Booster, Rank
+  requalification and AO-GO. Steps 5–8 restate GSB only, so restoring a day into
+  a closed month leaves those engines' outcomes computed from a history that no
+  longer exists. Step 4's monthly diff is what detects it; the decision is
+  §14b's.
+- **A wrong `group_bv_daily` row.** The rebuild replays the cut-off against the
+  BV on record. If the BV itself is wrong, this recovers the same wrong answer
+  faithfully. Fix the BV first, then rebuild.
+
+Escalate with §"Escalate with this" below, including the full refusal message,
+the §14a listing and the result-row listing above. Until it is resolved, treat
+the affected distributors' GSB figures as provisional and say so if they ask.
 
 ---
 

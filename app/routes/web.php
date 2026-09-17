@@ -742,7 +742,17 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::prefix('manual-controls')->name('manual-controls.')->group(function (): void {
             Route::get('/', [AdminManualControlsController::class, 'index'])->name('index');
             Route::post('retry', [AdminManualControlsController::class, 'retryCutoff'])->name('retry')->middleware('can:finance.record');
+            // Maker-checker on GSB reversals (R-92). `reverse` only RAISES a
+            // request; `reversals/{...}/approve` is what moves the money, and it
+            // sits behind a permission the scoped admin-compliance role that
+            // raises the request does not hold. Rejecting moves nothing, so it
+            // stays on the maker's own permission — which also lets a requester
+            // withdraw their own request.
             Route::post('reverse', [AdminManualControlsController::class, 'reverseCredit'])->name('reverse')->middleware('can:compliance.discipline');
+            Route::post('reversals/{reversalRequest}/approve', [AdminManualControlsController::class, 'approveReversal'])
+                ->name('reversals.approve')->whereNumber('reversalRequest')->middleware('can:compensation.reversal.approve');
+            Route::post('reversals/{reversalRequest}/reject', [AdminManualControlsController::class, 'rejectReversal'])
+                ->name('reversals.reject')->whereNumber('reversalRequest')->middleware('can:compliance.discipline');
             Route::post('freeze-gsb', [AdminManualControlsController::class, 'freezeGsb'])->name('freeze-gsb')->middleware('can:compliance.discipline');
         });
 
