@@ -29,6 +29,11 @@ use Illuminate\Support\Collection;
  * If `holdStatusFor()` ever gains another gate ahead of its bank check, this
  * query must gain it too, or the two ladders silently drift.
  *
+ * The rung BELOW the bank check — `bank_decrypt_failed`, an account on file
+ * that will not decrypt — belongs to {@see PayoutsBankUndecryptableProvider}.
+ * The two candidate sets are disjoint: this one wants `bank_account_enc`
+ * absent, empty or `'stub'`; that one wants it present and none of those.
+ *
  * `PayoutService::hasBankAccountOnFile()` treats the pre-encryption `'stub'`
  * placeholder as present; everywhere else in the codebase (including this
  * provider) treats it as missing, because a stub can never decrypt to a real
