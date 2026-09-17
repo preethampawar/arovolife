@@ -101,3 +101,65 @@ returned goods never come back.
   Reports "stock in/out" reconciliation and confirm the cancellation reversal
   was written — see the Action Center's `orders.restock_not_reconciled`
   alert.
+
+---
+
+## Orders collected from an Arete Development Centre
+
+A buyer can choose, at checkout, to collect their order from an Arete
+Development Centre instead of having it delivered. These orders look different
+in three ways, and each difference matters.
+
+**They have no delivery address.** Not a blank one — none. The buyer never gave
+one, so `ship_line1` and the rest are null and the order page shows the centre
+under **Collection** instead. If you are looking for an address to give a
+courier, it is the centre's, and it is on the order page. Do not type the
+buyer's address in from somewhere else; the parcel is not going to them.
+
+**They are charged a collection fee, not a delivery fee.** It is ₹0 unless
+someone has changed *Settings → Commerce → Collection fee*. The free-shipping
+threshold does not apply to it: that threshold exists to waive a delivery cost,
+and there is no delivery here.
+
+**They have one extra step.** The order goes:
+
+| Step | What it means | What you do |
+|---|---|---|
+| `shipped` | The parcel has been consigned **to the centre**. | Dispatch as normal; the consignee is the centre. |
+| `awaiting_collection` | The centre has it and has acknowledged holding it. | Press **Arrived at centre**. The screen shows the buyer's collection code **once** — pass it to them. It cannot be shown again. |
+| `delivered` | The buyer has collected it. | Press **Record collection** and enter the code the buyer presents. |
+
+### The collection code
+
+Six digits, issued to the **buyer**, and the centre cannot produce it. That is
+deliberate: the centre earns a commission on parcels it hands over, so the
+authentication for a handover must not come from the party being paid for it.
+
+Five wrong attempts locks the parcel and staff have to release it. The code is
+stored only as a keyed hash — nobody, including us, can read it back out of the
+database, so if the buyer loses it the parcel must be re-issued a new one rather
+than looked up.
+
+### Why the cooling-off clock starts late
+
+The statutory 30-day window opens when the buyer **collects**, not when the
+parcel reaches the centre. A parcel can sit at a centre for days; starting the
+clock on arrival would burn the buyer's statutory window before they had the
+goods.
+
+### If the centre has been deleted
+
+Dispatch will refuse, and it is right to. The order still records that the buyer
+chose collection, so the system will not quietly turn it into a home delivery —
+there is no address to send it to. Contact the buyer and agree either a
+different centre or a delivery address.
+
+### If dispatch says the centre has not accepted its declarations
+
+A centre may not receive parcels until its owner has accepted the current centre
+declarations. A centre created directly in the admin console has accepted
+nothing, because no application was ever filled in for it. This is a compliance
+gate, not a glitch: the declaration is the company's evidence that a centre is
+not a retail outlet, and sending parcels to an operator who has undertaken not
+to receive them is worse than having no declaration at all. Route the order
+another way and ask the centre owner to complete their declarations.

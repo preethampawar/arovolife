@@ -554,3 +554,102 @@ docblocks resolved suppressions that had been carried in
 `Shipment::order()` has a baselined `missingType.generics` error. The new
 `areteCenter()` beside it carries its generics, so the two now read
 inconsistently. One line, but it is not this slice's change to make.
+
+---
+
+## Outcome — Slices 3, 2, 5 and 7's mechanism (2026-09-18, overnight)
+
+Commits `7d610f42` (Slice 1), `3ecfec16` (3), `10543422` (2), `cbac8c6e` (5),
+`095eee97` (7's mechanism). Every one verified with Pint, Larastan level 7, the
+full Pest suite on `arovolife_test`, and — for the slices that touch views — a
+`view:cache` plus a `php -l` over all 452 compiled Blade files.
+
+Final suite: **3024 passed, 1 skipped, 0 failed.**
+
+### What is now true
+
+- A buyer who collects is charged a collection fee, not a delivery fee (**R-94
+  closed**). ₹0 at launch; an admin lever thereafter.
+- A collection order stores **no delivery address**. The centre's address is
+  never presented as the buyer's own, on any surface.
+- The invoice derives place of supply from the centre, so an inter-state
+  collection is charged IGST. This defect did not exist before and would have
+  been introduced by the obvious fix.
+- The parcel is consigned to the centre, tracked, and visible: named on the
+  admin order page and on the buyer's own order page under "Collect from".
+- `awaiting_collection` exists, so the buyer can be told the parcel arrived
+  without the cooling-off clock starting before they have the goods.
+- A handover is recorded, authenticated by a code only the **buyer** holds.
+- The ADC bonus reads that record: a centre earns on parcels it handed over,
+  not on every order that named it (**H5**).
+- A centre cannot receive a consignment without having accepted every
+  declaration at the version in force (**H2 mechanism**).
+
+### Deviations from the plan, and why
+
+1. **`Consignee` and `DispatchInstruction` were added** beyond the planned
+   `CourierShipment`. Passing a consignee and an operator's docket as arrays
+   would have contradicted the project's own "return typed objects, not arrays"
+   convention.
+2. **`handover_code_hash` exists after all**, which M1 told me to drop. M1 was
+   right that I had two columns for one proof; the answer is that a *verifier*
+   (written at arrival, checked against a typed code) and a *receipt* (written
+   at collection, proving it happened) are two artefacts, not one.
+3. **`OtpService` was not used**, against M2's recommendation. It is cache-backed
+   with a ten-minute TTL and a collection code must survive until the buyer
+   walks in. Under `allkeys-lfu` a long-lived cache key can be evicted silently
+   (ADR-0011), and an evicted code is a buyer unable to take their own parcel.
+   An HMAC keyed on `APP_KEY`, with the same attempt cap and constant-time
+   compare, gets the security properties without the lifetime problem.
+4. **`Shipment::order()`'s missing generics were fixed**, having been explicitly
+   left alone in Slice 1 as pre-existing. Slice 3's code depends on that
+   relation resolving, so it stopped being adjacent and became in scope.
+5. **`AdcBonusServiceTest` fixtures were updated, not its assertions.** Those
+   tests were always named for BV "collected at the centre"; the implementation
+   never checked. The fixtures now record the handover the tests describe, and
+   a new test asserts the exclusion H5 requires.
+6. **No browser click-through.** Authenticated pages need a password typed into
+   a login form, which I do not do. Both order pages and the checkout summary
+   are instead asserted by rendering tests, which are repeatable and run in CI —
+   a better control than a one-off screenshot. All 452 views compile and lint.
+
+### Still open, and why each is not something I could close
+
+| Item | Blocked on |
+|---|---|
+| **H1 — declaration v3 wording** | Client. Rewording a contract existing centres have signed is not an engineering decision. `VERSION` stays `v2`; draft below. |
+| **H4 — DPDP notice** | Client, then a destructive `content:publish` per environment. |
+| Centre-operator self-service surface | Not started. Today an operator tells staff, who record the handover. Weaker than R-47 asks for, but the code authenticating it still comes from the buyer. |
+| Ready-for-collection / despatch notifications | Not started. The collection code is currently read out by staff from a one-time flash message. |
+| Slices 4 and 6 (Shiprocket client, webhook, buyer tracking) | Not started. No account exists, so nothing here is on the critical path. |
+| R-91 §14 rehearsal | Destructive on staging; needs the five-part warning and an explicit go-ahead. |
+
+### Drafted declaration v3 — for client approval, NOT yet in code
+
+Replaces `training_use_only` in `AreteCenterDeclarations` and adds a sixth key.
+Bumping `VERSION` to `v3` will immediately block every existing centre from
+receiving a consignment until each re-accepts — that is intended, and it is why
+this is a decision rather than a patch.
+
+> **training_use_only (v3)** — "I will use the centre only for training, product
+> demonstration, distributor support, and the supervised collection of orders
+> that a buyer has already placed and paid for on arovolife's own platform and
+> has chosen to collect at this centre. I will not use it as a retail store or
+> outlet. I will not hold, display, stock or offer any product for sale at the
+> centre; I will not quote a price, raise a bill or accept any payment from any
+> person at the centre; and I will not accept or fulfil an order from any
+> e-commerce marketplace or from any channel other than arovolife's own
+> platform. I will release a parcel only to the named buyer or their authorised
+> representative, only against the collection code, and I will record every
+> handover on the platform on the day it happens. I will not hold an uncollected
+> parcel beyond the period arovolife publishes, after which I will return it.
+> (Direct Seller Agreement §5.1 and §5.2.)"
+
+> **buyer_data_duty (new, v3)** — "Any buyer's name, contact details or order
+> information I am shown so that I can hand over a parcel belongs to arovolife,
+> not to me. I will use it only to complete that handover; I will not copy,
+> retain, publish, share or use it to market anything; and I will delete or
+> return it when arovolife asks or when my centre closes."
+
+Note the citation fix (**M5**): the current text cites DSA §9, which is PII
+Handling. The prohibited-channels clause is §5.2 and direct-to-consumer is §5.1.

@@ -103,8 +103,9 @@ themselves carry **flag columns** rather than a status enum:
 | `placed` | Order placed (COD / unpaid sits here until collected). |
 | `paid` | Payment captured. |
 | `ready_to_ship` | Picked / packed, awaiting dispatch. |
-| `shipped` | Handed to courier. |
-| `delivered` | Delivered to the customer. |
+| `shipped` | Handed to courier. For a collection order this means consigned **to the centre**, not to the buyer. |
+| `awaiting_collection` | Collection orders only. The parcel has reached the Arete centre and the centre has acknowledged holding it. The buyer has been given a collection code. Cooling-off has **not** started — the buyer does not have the goods yet. |
+| `delivered` | Delivered to the customer. For a collection order this means the buyer collected it, and it is the moment the 30-day cooling-off clock starts. |
 | `confirmed` | Delivery confirmed / cooling-off window running. |
 | `cancelled` | Cancelled before fulfilment. |
 | `refund_requested` | Customer has opened a return request; awaiting admin inspection (non-cooling-off) or auto-processing (cooling-off). |
@@ -140,7 +141,8 @@ themselves carry **flag columns** rather than a status enum:
 
 | Module · field | Values | Default | Meaning |
 |---|---|---|---|
-| Fulfilment · `shipments.status` | `created` · `picked` · `dispatched` · `delivered` · `returned_to_origin` | `created` | Courier-side movement of a shipment. (Scaffolded — later phases.) |
+| Commerce · `orders.delivery_type` | `ship` · `collect` | `ship` | How the buyer chose to receive the order. Recorded as a fact of its own — never inferred from `arete_center_id`, because that FK nulls when a centre is deleted and the order would silently become a home delivery with no address. (Live.) |
+| Fulfilment · `shipments.status` | `created` · `picked` · `dispatched` · `at_centre` · `delivered` · `returned_to_origin` | `created` | Courier-side movement of a shipment. `at_centre` is a collection parcel the centre has acknowledged receiving. (Live since 2026-09-18.) |
 | Returns · `return_requests.reason` | `cooling_off` · `damage` · `dissatisfaction` · `general_buyback` · `termination_buyback` | — | T&C §8 / BuybackMatrix return reason. (Phase 2 — live.) |
 | Returns · `return_requests.status` | `opened` · `approved` · `rejected` | `opened` | Return request lifecycle. `opened` = awaiting review; `approved` = refund executed; `rejected` = admin rejected. (Phase 2 — live.) |
 | Grievance · `grievances.status` | `open` · `acknowledged` · `in_progress` · `resolved` · `closed` | `open` | DSR-2021 grievance-redressal SLA workflow. (Scaffolded.) |
