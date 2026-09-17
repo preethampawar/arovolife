@@ -49,7 +49,11 @@
                 @if($repurchaseWalletDebit)
                 <div class="flex gap-8 text-green-700"><span>Repurchase wallet used</span><span class="w-32 text-right">−₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($repurchaseWalletDebit->amount_paise) / 100, 2) }}</span></div>
                 @endif
+                @if($order->isCollection())
+                <div class="flex gap-8"><span class="text-gray-600">Collection</span><span class="w-32 text-right">@if($order->collection_fee_paise > 0)₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->collection_fee_paise / 100, 2) }}@else<span class="text-green-700">No charge</span>@endif</span></div>
+                @else
                 <div class="flex gap-8"><span class="text-gray-600">Shipping</span><span class="w-32 text-right">@if($order->shipping_paise > 0)₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}@else<span class="text-green-700">Free</span>@endif</span></div>
+                @endif
                 <div class="flex gap-8 font-semibold pt-2 border-t border-gray-100 mt-2"><span>Total</span><span class="w-32 text-right">{{ $order->displayTotal() }}</span></div>
             </div>
         </x-ui.card>
@@ -86,7 +90,7 @@
                     class="flex flex-wrap items-end gap-3"
                     data-confirm="Mark this order as shipped?"
                     data-confirm-title="Confirm shipment"
-                    data-confirm-impact="Impact: sets the order to SHIPPED, recognises revenue in the ledger, and emails the customer their shipping details. This is not easily reversible — make sure the courier and tracking number are correct first.">@csrf
+                    data-confirm-impact="{{ $order->isCollection() ? 'Impact: sets the order to SHIPPED and consigns the parcel to the Arete centre the buyer chose — not to the buyer. It also recognises revenue in the ledger. Not easily reversible.' : 'Impact: sets the order to SHIPPED, recognises revenue in the ledger, and emails the customer their shipping details. This is not easily reversible — make sure the courier and tracking number are correct first.' }}">@csrf
                     <div>
                         <label class="block text-xs font-medium text-gray-600 mb-1">Courier / carrier <x-help-tip text="The delivery company handling this shipment; shown to the customer in their shipping email." /></label>
                         <input name="ship_carrier" type="text" maxlength="120" placeholder="e.g. Delhivery, BlueDart"
@@ -101,12 +105,23 @@
                 </form>
                 @endif
 
-                @if($order->status === 'shipped')
+                @if($order->status === 'shipped' && $order->isCollection())
+                {{-- A collection parcel reaches the centre first. The buyer has
+                     not received anything yet, so cooling-off must not open. --}}
+                <form method="POST" action="{{ route('admin.commerce.orders.awaiting-collection', $order) }}"
+                    data-confirm="Record this parcel as arrived at the centre?"
+                    data-confirm-title="Confirm arrival at centre"
+                    data-confirm-impact="Impact: sets the order to READY TO COLLECT and lets the buyer be told it has arrived. It does NOT open the cooling-off window — that starts when the buyer actually collects.">@csrf
+                    <button class="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium">Arrived at centre</button>
+                </form>
+                @endif
+
+                @if(($order->status === 'shipped' && ! $order->isCollection()) || $order->status === 'awaiting_collection')
                 <form method="POST" action="{{ route('admin.commerce.orders.deliver', $order) }}"
                     data-confirm="Mark this order as delivered?"
                     data-confirm-title="Confirm delivery"
                     data-confirm-impact="Impact: sets the order to DELIVERED and OPENS the statutory 30-day cooling-off window (the customer may return for a full refund until it closes). This is not easily reversible.">@csrf
-                    <button class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium">Mark as Delivered (opens cooling-off)</button>
+                    <button class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium">{{ $order->isCollection() ? 'Record collection (opens cooling-off)' : 'Mark as Delivered (opens cooling-off)' }}</button>
                 </form>
                 @endif
 
@@ -266,13 +281,38 @@
         </x-ui.card>
 
         <x-ui.card padding="p-5">
-            <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Shipping</p>
-            <p class="text-sm text-gray-700">
-                {{ $order->ship_name }}<br>
-                {{ $order->ship_phone_e164 }}<br>
-                {{ $order->ship_line1 }}@if($order->ship_line2), {{ $order->ship_line2 }}@endif<br>
-                {{ $order->ship_city }}, {{ $order->ship_state }} {{ $order->ship_pincode }}
-            </p>
+            @if($order->isCollection())
+                {{-- R-47: the centre the buyer chose was written nowhere any
+                     member of staff could see it. A collection order holds no
+                     delivery address by design, so this panel is the only place
+                     the destination appears. --}}
+                <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Collection</p>
+                @if($order->areteCenter)
+                    <p class="text-sm text-gray-700">
+                        <span class="font-medium text-gray-900">{{ $order->areteCenter->name }}</span><br>
+                        {{ $order->areteCenter->displayAddress() }}
+                        @if($order->areteCenter->contact_number)<br>{{ $order->areteCenter->contact_number }}@endif
+                    </p>
+                    <p class="text-xs text-gray-600 mt-3">Consign the parcel to this centre, not to the buyer.</p>
+                @else
+                    <p class="text-sm text-red-700">
+                        This order was placed for collection, but the centre no longer exists.
+                    </p>
+                    <p class="text-xs text-gray-600 mt-2">
+                        There is no delivery address to fall back on. Agree a centre or an address with the buyer before dispatching.
+                    </p>
+                @endif
+                <p class="text-xs uppercase tracking-wider text-gray-600 mt-4 mb-1">Collected by</p>
+                <p class="text-sm text-gray-700">{{ $order->ship_name }}<br>{{ $order->ship_phone_e164 }}</p>
+            @else
+                <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Shipping</p>
+                <p class="text-sm text-gray-700">
+                    {{ $order->ship_name }}<br>
+                    {{ $order->ship_phone_e164 }}<br>
+                    {{ $order->ship_line1 }}@if($order->ship_line2), {{ $order->ship_line2 }}@endif<br>
+                    {{ $order->ship_city }}, {{ $order->ship_state }} {{ $order->ship_pincode }}
+                </p>
+            @endif
         </x-ui.card>
     </div>
 </div>

@@ -10,6 +10,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property string $status
+ * @property Carbon $opened_at
  * @property Carbon $ends_at
  */
 final class OrderCoolingOff extends Model

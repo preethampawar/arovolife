@@ -62,9 +62,15 @@
             @if($order->discount_paise > 0)
             <div class="flex justify-between text-sm text-green-700"><span>Discount</span><span>−₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->discount_paise / 100, 2) }}</span></div>
             @endif
+            @if($order->isCollection())
+            <div class="flex justify-between text-sm"><span class="text-gray-600">Collection</span>
+                @if($order->collection_fee_paise > 0)<span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->collection_fee_paise / 100, 2) }}</span>@else<span class="text-green-700">No charge</span>@endif
+            </div>
+            @else
             <div class="flex justify-between text-sm"><span class="text-gray-600">Shipping</span>
                 @if($order->shipping_paise > 0)<span>₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->shipping_paise / 100, 2) }}</span>@else<span class="text-green-700">Free</span>@endif
             </div>
+            @endif
             <div class="flex justify-between font-semibold pt-2 border-t border-gray-100 mt-2"><span>Total</span><span>{{ $order->displayTotal() }}</span></div>
         </div>
     </div>
@@ -89,15 +95,40 @@
         @include('shop.orders._timeline', ['order' => $order])
     </div>
 
-    {{-- Shipping --}}
+    {{-- Where this order is going --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 class="font-semibold text-gray-900 mb-3">Shipping to</h2>
-        <p class="text-sm text-gray-700">
-            {{ $order->ship_name }}<br>
-            {{ $order->ship_phone_e164 }}<br>
-            {{ $order->ship_line1 }}@if($order->ship_line2), {{ $order->ship_line2 }}@endif<br>
-            {{ $order->ship_city }}, {{ $order->ship_state }} {{ $order->ship_pincode }}
-        </p>
+        @if($order->isCollection())
+            {{-- R-47: this used to read "Shipping to" above the centre's postal
+                 address, beside the buyer's own name — an address they never
+                 gave, labelled as a delivery that would not happen. --}}
+            <h2 class="font-semibold text-gray-900 mb-3">Collect from</h2>
+            @if($order->areteCenter)
+                <p class="text-sm text-gray-700">
+                    <span class="font-medium text-gray-900">{{ $order->areteCenter->name }}</span><br>
+                    {{ $order->areteCenter->displayAddress() }}
+                    @if($order->areteCenter->contact_number)<br>{{ $order->areteCenter->contact_number }}@endif
+                </p>
+                @if($order->status === \App\Modules\Commerce\Models\Order::STATUS_AWAITING_COLLECTION)
+                <p class="mt-3 text-sm font-medium text-purple-700">Your order has arrived and is ready to collect.</p>
+                @elseif(in_array($order->status, [\App\Modules\Commerce\Models\Order::STATUS_DELIVERED, \App\Modules\Commerce\Models\Order::STATUS_CONFIRMED], true))
+                <p class="mt-3 text-sm text-gray-600">Collected. Thank you.</p>
+                @else
+                <p class="mt-3 text-sm text-gray-600">We will let you know as soon as it arrives at the centre.</p>
+                @endif
+            @else
+                <p class="text-sm text-gray-700">
+                    The centre you chose is no longer available. Please contact us and we will arrange another way to get your order to you.
+                </p>
+            @endif
+        @else
+            <h2 class="font-semibold text-gray-900 mb-3">Shipping to</h2>
+            <p class="text-sm text-gray-700">
+                {{ $order->ship_name }}<br>
+                {{ $order->ship_phone_e164 }}<br>
+                {{ $order->ship_line1 }}@if($order->ship_line2), {{ $order->ship_line2 }}@endif<br>
+                {{ $order->ship_city }}, {{ $order->ship_state }} {{ $order->ship_pincode }}
+            </p>
+        @endif
         @if($order->ship_carrier || $order->ship_tracking_no)
         <div class="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700">
             <span class="font-medium text-gray-900">Tracking:</span>

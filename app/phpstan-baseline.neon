@@ -1789,12 +1789,6 @@ parameters:
 			path: tests/Feature/Compliance/AuditRowsCarryDigestsTest.php
 
 		-
-			message: '#^Access to an undefined property App\\Modules\\Commerce\\Models\\OrderCoolingOff\:\:\$opened_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: tests/Feature/Compliance/CoolingOffReconciliationTest.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$ends_at\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1919,6 +1913,24 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Feature/Fulfilment/CollectionFeeAndInvoiceTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\Mixins\\Expectation\<mixed\>\:\:\$not\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Fulfilment/DispatchAndCollectionTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Feature/Fulfilment/DispatchAndCollectionTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Feature/Fulfilment/DispatchAndCollectionTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'

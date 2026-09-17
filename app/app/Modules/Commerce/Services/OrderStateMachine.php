@@ -10,6 +10,7 @@ use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
 use App\Modules\Ledger\Models\LedgerEntry;
 use App\Modules\Ledger\Models\LedgerTx;
@@ -211,11 +212,62 @@ final class OrderStateMachine
         event(new OrderStatusChanged($order->id, $oldStatus, Order::STATUS_SHIPPED));
     }
 
+    /**
+     * The parcel has reached the collection centre and the centre has
+     * acknowledged holding it. The buyer can now be told it is ready.
+     *
+     * Collection orders only. A home delivery goes straight from `shipped` to
+     * `delivered`; there is no third party holding it in between.
+     */
+    public function markAwaitingCollection(Order $order, ?int $actorUserId = null): void
+    {
+        if (! $order->isCollection()) {
+            throw new RuntimeException("Order {$order->order_no} is a home delivery; there is no centre holding it.");
+        }
+
+        if ($order->status !== Order::STATUS_SHIPPED) {
+            throw new RuntimeException("Cannot mark awaiting collection from status {$order->status}");
+        }
+
+        $this->db->transaction(function () use ($order, $actorUserId): void {
+            $arrivedAt = Carbon::now();
+
+            $order->update(['status' => Order::STATUS_AWAITING_COLLECTION]);
+
+            $shipment = Shipment::where('order_id', $order->id)->first();
+            $shipment?->update([
+                'status' => Shipment::STATUS_AT_CENTRE,
+                'at_centre_at' => $arrivedAt,
+            ]);
+
+            AuditLog::create([
+                'actor_id' => $actorUserId,
+                'action' => 'order.awaiting_collection',
+                'subject_type' => 'order',
+                'subject_id' => $order->id,
+                'details' => [
+                    'order_no' => $order->order_no,
+                    'arete_center_id' => $order->arete_center_id,
+                    'arrived_at' => $arrivedAt->toIso8601String(),
+                ],
+            ]);
+        });
+
+        event(new OrderStatusChanged($order->id, Order::STATUS_SHIPPED, Order::STATUS_AWAITING_COLLECTION));
+    }
+
     public function markDelivered(Order $order, ?int $actorUserId = null): OrderCoolingOff
     {
-        if ($order->status !== Order::STATUS_SHIPPED) {
+        // A collection is delivered when the buyer takes it, which is the
+        // handover at the centre — so `awaiting_collection` is a legitimate
+        // from-state and `delivered_at` is the collection time. The 30-day
+        // per-order cooling-off clock therefore starts when the buyer actually
+        // has the goods, not when the parcel reached the centre.
+        if (! in_array($order->status, [Order::STATUS_SHIPPED, Order::STATUS_AWAITING_COLLECTION], true)) {
             throw new RuntimeException("Cannot mark delivered from status {$order->status}");
         }
+
+        $deliveredFrom = $order->status;
 
         $coolingOff = $this->db->transaction(function () use ($order, $actorUserId): OrderCoolingOff {
             $deliveredAt = Carbon::now();
@@ -248,7 +300,7 @@ final class OrderStateMachine
             return $coolingOff;
         });
 
-        event(new OrderStatusChanged($order->id, Order::STATUS_SHIPPED, Order::STATUS_DELIVERED));
+        event(new OrderStatusChanged($order->id, $deliveredFrom, Order::STATUS_DELIVERED));
 
         return $coolingOff;
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Fulfilment;
 
 use App\Modules\Fulfilment\Services\CourierGatewayResolver;
+use App\Modules\Fulfilment\Services\DispatchService;
 use App\Modules\Fulfilment\Services\ManualCourier;
 use App\Modules\Fulfilment\Support\FulfilmentSettings;
 use Illuminate\Support\ServiceProvider;
@@ -21,6 +22,7 @@ final class FulfilmentServiceProvider extends ServiceProvider
         $this->app->singleton(FulfilmentSettings::class);
         $this->app->singleton(ManualCourier::class);
         $this->app->singleton(CourierGatewayResolver::class);
+        $this->app->singleton(DispatchService::class);
     }
 
     public function boot(): void

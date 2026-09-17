@@ -75,7 +75,7 @@ final class AdminOrderController extends Controller
 
     public function show(Order $order): View
     {
-        $order->load(['customer', 'items.variant', 'coolingOff', 'distributor']);
+        $order->load(['customer', 'items.variant', 'coolingOff', 'distributor', 'areteCenter']);
 
         // The tax invoice and the gateway intent are owned by other modules but
         // belong on this page: support could otherwise neither see a buyer's
@@ -145,6 +145,32 @@ final class AdminOrderController extends Controller
         }
 
         return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} marked shipped.");
+    }
+
+    /**
+     * The parcel has reached the collection centre. Until R-47's centre-side
+     * surface ships, an operator records this on the centre's word — which is
+     * still a recorded acknowledgement, and strictly better than the buyer
+     * being told nothing at all.
+     */
+    public function markAwaitingCollection(Order $order): RedirectResponse
+    {
+        $actorId = auth()->id();
+
+        try {
+            $this->stateMachine->markAwaitingCollection($order, is_numeric($actorId) ? (int) $actorId : null);
+        } catch (\RuntimeException $e) {
+            Log::warning('Order awaiting-collection transition refused', [
+                'order_id' => $order->id,
+                'order_no' => $order->order_no,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['collection' => $e->getMessage()]);
+        }
+
+        return redirect()->route('admin.commerce.orders.show', $order)
+            ->with('status', 'Recorded as ready to collect. The buyer can be told it has arrived.');
     }
 
     public function markDelivered(Order $order): RedirectResponse
