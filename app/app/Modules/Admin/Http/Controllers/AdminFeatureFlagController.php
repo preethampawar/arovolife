@@ -25,6 +25,7 @@ use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RegistrationKillswitch;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
+use App\Modules\Shared\Features\ShiprocketFulfilmentFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -188,6 +189,14 @@ final class AdminFeatureFlagController extends Controller
                 'class' => InventoryFeature::class,
                 'label' => 'Inventory enforcement',
                 'description' => 'Turns the stock ledger from a record into a constraint. ON, checkout refuses a tracked item the warehouses cannot cover and the daily low-stock / expiry alert runs. OFF, stock is still recorded in full — every receipt, sale, transfer, adjustment and return — but checkout no longer blocks on availability and the alerts stop. Leave it off until inventory:backfill-opening has opened the existing on-hand figures, inventory:verify reports no drift, and ops has entered a real goods receipt.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
+
+            'fulfilment.shiprocket' => [
+                'class' => ShiprocketFulfilmentFeature::class,
+                'label' => 'Shiprocket courier integration',
+                'description' => 'ON, the dispatch queue offers a per-order choice between Shiprocket and a manual courier, labels can be fetched, and the tracking webhook accepts deliveries. OFF, manual dispatch is the only route, the Fulfilment settings group is hidden and the webhook route 404s. There is no Shiprocket account yet, so this stays off — and switching it on alone still cannot send a request, because the gateway refuses while the API credentials are blank. Collection-from-centre handover is deliberately NOT behind this flag: a parcel can be consigned to an Arete centre and handed over on manual dispatch alone.',
                 'owner' => 'developer',
                 'requires' => [],
             ],

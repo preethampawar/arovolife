@@ -33,6 +33,12 @@ final class CommerceFeatureFlagSeeder extends Seeder
             ['key' => 'commerce.shipping.india_mainland_only',    'value' => 'true'],    // Default: YES (Part 16 decision 4)
             ['key' => 'commerce.shipping.fee_rupees',             'value' => '60'],      // Flat fee below the free threshold (₹)
             ['key' => 'commerce.shipping.free_threshold_rupees',  'value' => '4000'],    // Free shipping at/above this cart value (₹)
+            ['key' => 'commerce.collection_fee_rupees',           'value' => '0'],       // Collect-from-centre: free at launch (R-94)
+
+            // Courier routing — no Shiprocket account yet, manual only
+            ['key' => 'fulfilment.default_route',                 'value' => 'manual'],
+            ['key' => 'fulfilment.shiprocket.enabled',            'value' => 'false'],
+            ['key' => 'fulfilment.shiprocket.pickup_location',    'value' => ''],
 
             // Compensation (OFF in Phase 2 — dark-launch insurance)
             ['key' => 'compensation.accrual.enabled',             'value' => 'false'],

@@ -21,6 +21,7 @@ use App\Modules\Shared\Features\MessagingFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
+use App\Modules\Shared\Features\ShiprocketFulfilmentFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -605,6 +606,50 @@ final class AdminSettingsController extends Controller
                 'min' => 0,
                 'max' => 10000000,
                 'default' => '4000',
+            ],
+            'commerce.collection_fee_rupees' => [
+                'group' => 'commerce',
+                'label' => 'Collection fee (₹)',
+                'description' => 'Charged instead of the delivery fee when a buyer collects their order from an Arete Development Centre. Zero means collection is free, which is the launch position. The delivery fee and the free-shipping threshold never apply to a collection order — a buyer who collects is not paying for a delivery.',
+                'display_unit' => 'rupees',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 100000,
+                'default' => '0',
+            ],
+
+            // ── Fulfilment & courier ───────────────────────────────────────
+            // Developer-owned integration levers. Every one is hidden while
+            // ShiprocketFulfilmentFeature is off, so an admin browsing the
+            // settings console sees no trace of a courier we have no account
+            // with yet.
+            'fulfilment.default_route' => [
+                'group' => 'fulfilment',
+                'feature' => ShiprocketFulfilmentFeature::class,
+                'label' => 'Default dispatch route',
+                'description' => 'Which route the dispatch queue pre-selects. The operator always chooses per order — this only decides what is highlighted first, never what happens automatically.',
+                'type' => 'enum',
+                'options' => [
+                    ['value' => 'manual', 'label' => 'Manual courier', 'note' => 'Operator types the carrier name and AWB.'],
+                    ['value' => 'shiprocket', 'label' => 'Shiprocket', 'note' => 'Requires credentials in the environment; falls back to manual when unconfigured.'],
+                ],
+                'default' => 'manual',
+            ],
+            'fulfilment.shiprocket.enabled' => [
+                'group' => 'fulfilment',
+                'feature' => ShiprocketFulfilmentFeature::class,
+                'label' => 'Shiprocket enabled',
+                'description' => 'Master switch for pushing shipments to Shiprocket. Off means the dispatch queue offers manual only. This switch cannot make a call on its own: the gateway independently refuses while the API credentials are blank.',
+                'type' => 'bool',
+                'default' => 'false',
+            ],
+            'fulfilment.shiprocket.pickup_location' => [
+                'group' => 'fulfilment',
+                'feature' => ShiprocketFulfilmentFeature::class,
+                'label' => 'Shiprocket pickup location',
+                'description' => 'The pickup-location nickname registered in the Shiprocket dashboard that consignments are collected from. Must match exactly, or Shiprocket rejects the order.',
+                'type' => 'string',
+                'default' => '',
             ],
 
             // ── Commerce — attribution ─────────────────────────────────────
@@ -1401,6 +1446,7 @@ final class AdminSettingsController extends Controller
         'grievance' => 'admin',
         // Operations owns the master switch; the §21 windows are developer-owned.
         'termination' => 'admin',
+        'fulfilment' => 'developer',
         'placement' => 'developer',
         'attribution' => 'developer',
         'cooling_off' => 'developer',
@@ -1495,6 +1541,10 @@ final class AdminSettingsController extends Controller
             'commerce' => [
                 'label' => 'Commerce',
                 'description' => 'Storefront, checkout, shipping and order-flow controls.',
+            ],
+            'fulfilment' => [
+                'label' => 'Fulfilment & courier',
+                'description' => 'How a packed order physically reaches the buyer. Developer-owned: these are integration levers, not business levers — the money levers (delivery fee, free-shipping threshold, collection fee) live under Commerce. Hidden entirely while the Shiprocket integration is switched off.',
             ],
             'termination' => [
                 'label' => 'Termination (dormancy)',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Commerce\Models;
 
 use App\Modules\Compensation\Models\AreteCenter;
+use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Returns\Models\ReturnRequest;
 use App\Modules\Shared\Support\IndianNumber as Number;
@@ -31,9 +32,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $discount_paise
  * @property int $total_paise
  * @property int $shipping_paise
+ * @property int $collection_fee_paise
  * @property int $customer_id
  * @property int|null $attributed_distributor_id
  * @property int|null $arete_center_id
+ * @property string $delivery_type
  * @property int $redeem_points_paise
  * @property string|null $buyer_gstin
  * @property string|null $buyer_legal_name
@@ -57,6 +60,13 @@ final class Order extends Model
 
     public const STATUS_SHIPPED = 'shipped';
 
+    /**
+     * Collection orders only: the parcel is at the centre and the buyer has
+     * been told it is ready. `delivered` still means the buyer has it, so the
+     * 30-day per-order cooling-off clock starts at collection, not at arrival.
+     */
+    public const STATUS_AWAITING_COLLECTION = 'awaiting_collection';
+
     public const STATUS_DELIVERED = 'delivered';
 
     public const STATUS_CONFIRMED = 'confirmed';
@@ -73,11 +83,15 @@ final class Order extends Model
 
     public const PAYMENT_ONLINE = 'online';
 
+    public const DELIVERY_SHIP = 'ship';
+
+    public const DELIVERY_COLLECT = 'collect';
+
     protected $fillable = [
-        'order_no', 'customer_id', 'attributed_distributor_id', 'arete_center_id', 'attribution_source',
+        'order_no', 'customer_id', 'attributed_distributor_id', 'arete_center_id', 'delivery_type', 'attribution_source',
         'redeem_points_paise', 'buyer_gstin', 'buyer_legal_name',
         'payment_method', 'status', 'self_consumption',
-        'subtotal_paise', 'gst_paise', 'discount_paise', 'shipping_paise', 'total_paise',
+        'subtotal_paise', 'gst_paise', 'discount_paise', 'shipping_paise', 'collection_fee_paise', 'total_paise',
         'ship_name', 'ship_phone_e164', 'ship_line1', 'ship_line2',
         'ship_city', 'ship_state', 'ship_pincode', 'ship_carrier', 'ship_tracking_no',
         'placed_at', 'paid_at', 'shipped_at', 'delivered_at', 'cancelled_at', 'refund_approved_at', 'refunded_at',
@@ -93,6 +107,7 @@ final class Order extends Model
             'gst_paise' => 'int',
             'discount_paise' => 'int',
             'shipping_paise' => 'int',
+            'collection_fee_paise' => 'int',
             'total_paise' => 'int',
             'placed_at' => 'datetime',
             'paid_at' => 'datetime',
@@ -213,5 +228,23 @@ final class Order extends Model
         }
 
         return ['state' => 'pending', 'label' => 'Awaiting payment'];
+    }
+
+    /**
+     * Did the buyer choose to collect from an Arete Development Centre?
+     *
+     * Reads `delivery_type`, never `arete_center_id !== null`. The centre FK is
+     * `nullOnDelete`, so deleting a centre would otherwise turn a collection
+     * order back into a shipping one — carrying an address the buyer never gave.
+     */
+    public function isCollection(): bool
+    {
+        return $this->delivery_type === self::DELIVERY_COLLECT;
+    }
+
+    /** @return HasOne<Shipment, $this> */
+    public function shipment(): HasOne
+    {
+        return $this->hasOne(Shipment::class);
     }
 }

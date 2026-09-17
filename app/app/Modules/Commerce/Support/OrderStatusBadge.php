@@ -28,6 +28,7 @@ final class OrderStatusBadge
         Order::STATUS_PAID => ['Paid', 'bg-sky-50 text-sky-700 border-sky-200'],
         Order::STATUS_READY_TO_SHIP => ['Ready to ship', 'bg-blue-50 text-blue-700 border-blue-200'],
         Order::STATUS_SHIPPED => ['Shipped', 'bg-indigo-50 text-indigo-700 border-indigo-200'],
+        Order::STATUS_AWAITING_COLLECTION => ['Ready to collect', 'bg-purple-50 text-purple-700 border-purple-200'],
         Order::STATUS_DELIVERED => ['Delivered', 'bg-amber-50 text-amber-700 border-amber-200'],
         Order::STATUS_CONFIRMED => ['Confirmed', 'bg-green-50 text-green-700 border-green-200'],
         Order::STATUS_CANCELLED => ['Cancelled', 'bg-gray-100 text-gray-600 border-gray-200'],
@@ -43,12 +44,17 @@ final class OrderStatusBadge
      * order. A subset of the full status set (draft / intermediate / refund
      * sub-states aren't useful as top-level filters).
      *
+     * `awaiting_collection` IS included despite being mid-workflow: it is the
+     * one state where a parcel sits with a third party and somebody has to
+     * chase it, so operations needs to list them.
+     *
      * @var list<string>
      */
     public const FILTERABLE = [
         Order::STATUS_PLACED,
         Order::STATUS_PAID,
         Order::STATUS_SHIPPED,
+        Order::STATUS_AWAITING_COLLECTION,
         Order::STATUS_DELIVERED,
         Order::STATUS_CONFIRMED,
         Order::STATUS_CANCELLED,
