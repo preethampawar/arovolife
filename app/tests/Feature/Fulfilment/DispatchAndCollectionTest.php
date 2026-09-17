@@ -18,6 +18,7 @@ use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Notifications\OrderReadyForCollectionNotification;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Compensation\Models\AreteCenter;
@@ -35,6 +36,7 @@ use Database\Seeders\LedgerAccountSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -362,4 +364,40 @@ it('pays a centre only for parcels it actually handed over', function () {
     // H5: paying on arete_center_id alone would have counted both — 3% for a
     // parcel the centre never released.
     expect($counted)->toBe(1);
+});
+
+it('emails the buyer their collection code when the parcel arrives', function () {
+    Notification::fake();
+    $this->seed(RolesAndPermissionsSeeder::class);
+
+    $centre = dispatchCentre();
+    $order = paidOrderFor($centre);
+    app(DispatchService::class)->dispatch($order, null, 'Delhivery', 'AWB123', null);
+
+    $admin = User::create([
+        'full_name' => 'Ops', 'email' => 'ops-'.uniqid().'@test.com',
+        'phone_e164' => '+91'.random_int(7000000000, 9999999999), 'password_hash' => bcrypt('x'),
+        'status' => 'active', 'email_verified_at' => now(),
+    ]);
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin)
+        ->post(route('admin.commerce.orders.awaiting-collection', $order))
+        ->assertRedirect();
+
+    Notification::assertSentTimes(OrderReadyForCollectionNotification::class, 1);
+
+    expect($order->fresh()->status)->toBe(Order::STATUS_AWAITING_COLLECTION)
+        // Issued and stored only as an HMAC.
+        ->and(Shipment::where('order_id', $order->id)->sole()->handover_code_hash)->not->toBeNull();
+});
+
+it('does not put the collection code in the in-app notification record', function () {
+    // The code is a credential with a job to do and then no reason to persist;
+    // an in-app record is readable for as long as the account exists.
+    $notification = new OrderReadyForCollectionNotification(
+        'AO-1', 'Buyer', 'Centre', '5 Market Street', null, '123456',
+    );
+
+    expect($notification->via(new stdClass))->toBe(['mail']);
 });

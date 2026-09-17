@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Commerce\Http\Controllers\Admin;
 
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Notifications\OrderReadyForCollectionNotification;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Commerce\Support\OrderBuyerNotifier;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Fulfilment\Services\CollectionHandoverService;
@@ -28,6 +30,7 @@ final class AdminOrderController extends Controller
         private readonly OrderStateMachine $stateMachine,
         private readonly OrderFulfilmentService $fulfilment,
         private readonly InventorySettings $inventorySettings,
+        private readonly OrderBuyerNotifier $buyerNotifier,
     ) {}
 
     public function index(Request $request): View
@@ -170,17 +173,39 @@ final class AdminOrderController extends Controller
             return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['collection' => $e->getMessage()]);
         }
 
-        // The buyer's collection code. Issued here and shown once, because the
-        // notification that will carry it to them lands with the centre-operator
-        // surface; until then an operator reads it out. It is stored only as an
-        // HMAC and cannot be read back from this page again.
+        // The buyer's collection code, issued once and emailed to them. It is
+        // stored only as an HMAC, so it cannot be read back from this page or
+        // from the database afterwards.
         $shipment = Shipment::where('order_id', $order->id)->first();
-        $code = $shipment !== null ? app(CollectionHandoverService::class)->issueCode($shipment) : null;
 
+        if ($shipment === null) {
+            return redirect()->route('admin.commerce.orders.show', $order)
+                ->with('status', 'Recorded as ready to collect.');
+        }
+
+        $code = app(CollectionHandoverService::class)->issueCode($shipment);
+        $centre = $order->areteCenter;
+
+        if ($centre !== null) {
+            $buyerName = $order->ship_name;
+            if ($buyerName === null || $buyerName === '') {
+                $buyerName = $order->customer !== null ? $order->customer->display_name : 'there';
+            }
+
+            $this->buyerNotifier->send($order, new OrderReadyForCollectionNotification(
+                orderNo: $order->order_no,
+                buyerName: (string) $buyerName,
+                centreName: $centre->name,
+                centreAddress: $centre->displayAddress(),
+                centrePhone: $centre->contact_number,
+                collectionCode: $code,
+            ));
+        }
+
+        // Still shown to the operator once: email is not instant and a buyer
+        // standing at the counter should not be turned away over it.
         return redirect()->route('admin.commerce.orders.show', $order)
-            ->with('status', $code === null
-                ? 'Recorded as ready to collect.'
-                : "Recorded as ready to collect. The buyer's collection code is {$code} — give it to them; it will not be shown again.");
+            ->with('status', "Recorded as ready to collect. The buyer has been emailed collection code {$code} — it will not be shown again.");
     }
 
     public function markDelivered(Order $order): RedirectResponse
