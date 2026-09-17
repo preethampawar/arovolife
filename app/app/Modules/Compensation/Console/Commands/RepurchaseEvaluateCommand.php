@@ -123,33 +123,52 @@ final class RepurchaseEvaluateCommand extends Command
         ): void {
             $distributors = $this->withPossibleCycle($chunk->pluck('id'));
 
-            foreach ($distributors as $distributorId) {
-                // One distributor's data problem must not cost the other N their
-                // evaluation: the cut-off reads the verdict this writes, and a run
-                // abandoned half way would leave every distributor after the
-                // throwing one judged on yesterday's state. Collect and carry on;
-                // the failure count is what the run's verdict rests on.
-                try {
-                    $cycle = $this->cycles->evaluate((int) $distributorId, $asOf);
-                    $evaluated++;
+            // Warm the chunk, evaluate it, forget it. Without this each
+            // distributor costs six small reads of their own — the shape that
+            // made this command 90% of the nightly chain and 6,004,508 queries
+            // at ten lakh (R-90). The caches are accelerators only: every one
+            // falls through to the query it replaced, so a distributor the warm
+            // missed is still evaluated, just at the old price.
+            try {
+                // Inside the try, so a throw in the warm itself still reaches
+                // the `finally` and cannot hand the next chunk this one's rows.
+                $this->cycles->warmBatch(
+                    array_values(array_map(intval(...), $distributors->all())),
+                    $asOf,
+                );
 
-                    if ($cycle === null) {
-                        $noCycle++;
-                    } elseif ($cycle->status === RepurchaseCycle::STATUS_SUSPENDED) {
-                        $withheld++;
+                foreach ($distributors as $distributorId) {
+                    // One distributor's data problem must not cost the other N their
+                    // evaluation: the cut-off reads the verdict this writes, and a run
+                    // abandoned half way would leave every distributor after the
+                    // throwing one judged on yesterday's state. Collect and carry on;
+                    // the failure count is what the run's verdict rests on.
+                    try {
+                        $cycle = $this->cycles->evaluate((int) $distributorId, $asOf);
+                        $evaluated++;
+
+                        if ($cycle === null) {
+                            $noCycle++;
+                        } elseif ($cycle->status === RepurchaseCycle::STATUS_SUSPENDED) {
+                            $withheld++;
+                        }
+                    } catch (\Throwable $e) {
+                        $failedIds[] = (int) $distributorId;
+                        $failureClasses[$e::class] = true;
+
+                        Log::error('repurchase.evaluate.exception', [
+                            'distributor_id' => $distributorId,
+                            'error' => $e->getMessage(),
+                            'exception' => get_class($e),
+                            'file' => $e->getFile(),
+                            'line' => $e->getLine(),
+                        ]);
                     }
-                } catch (\Throwable $e) {
-                    $failedIds[] = (int) $distributorId;
-                    $failureClasses[$e::class] = true;
-
-                    Log::error('repurchase.evaluate.exception', [
-                        'distributor_id' => $distributorId,
-                        'error' => $e->getMessage(),
-                        'exception' => get_class($e),
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine(),
-                    ]);
                 }
+            } finally {
+                // In a `finally` so a chunk that throws its way out cannot leave
+                // the next chunk reading this one's warmed rows.
+                $this->cycles->forgetBatch();
             }
         }, 'id');
 

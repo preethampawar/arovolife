@@ -973,3 +973,224 @@ it('re-running an already-forfeited day keeps its own before/after snapshot, not
     expect(GsbCarryforward::where('distributor_id', $dist->id)->first()->power_side_bv_paise)
         ->toBe($moved->power_side_bv_paise);
 });
+
+/*
+|--------------------------------------------------------------------------
+| warmBatch() — the same verdicts, at a fraction of the queries
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * A spread of distributors covering every branch evaluate() has: one who has
+ * never reached the BV anchor, one mid-window, one who will resolve on time,
+ * and one who failed a window and has since put it right.
+ *
+ * @return list<int>
+ */
+function warmBatchPopulation(): array
+{
+    $ids = [];
+
+    // (1) Below the 600-BV anchor: no cycle, no obligation.
+    $below = Distributor::factory()->create();
+    seedSelfPurchase($below->id, 100_000, '2026-07-01');
+    $ids[] = $below->id;
+
+    // (2) Anchored on 1 July, window still open on the as-of date.
+    $open = Distributor::factory()->create();
+    seedSelfPurchase($open->id, 600_000, '2026-07-01');
+    seedSelfPurchase($open->id, 200_000, '2026-07-20');
+    $ids[] = $open->id;
+
+    // (3) Anchored on 1 June, met both conditions inside the window.
+    $ontime = Distributor::factory()->create();
+    seedSelfPurchase($ontime->id, 600_000, '2026-06-01');
+    seedSelfPurchase($ontime->id, 900_000, '2026-06-20');
+    $ids[] = $ontime->id;
+
+    // (4) Anchored on 1 June, missed the window, fulfilled it late — the one
+    //     that walks days and reads BOTH day-maps.
+    $late = Distributor::factory()->create();
+    seedSelfPurchase($late->id, 600_000, '2026-06-01');
+    seedRepurchaseWalletCredit($late->id, 50_000, '2026-06-15 10:00:00');
+    seedSelfPurchase($late->id, 900_000, '2026-07-10');
+    seedRepurchaseWalletSpend($late->id, 50_000, '2026-07-12 10:00:00');
+    $ids[] = $late->id;
+
+    // (5) Ranked, so the obligation comes from the rank table rather than the
+    //     non-ranked default — the rank cache's own path.
+    $ranked = Distributor::factory()->create();
+    RankQualification::create([
+        'distributor_id' => $ranked->id, 'rank_number' => 1, 'month_start' => '2026-06-01',
+        'occurrence_in_month' => 1, 'is_carry_forward' => false,
+        'status' => RankQualification::STATUS_QUALIFIED,
+    ]);
+    seedSelfPurchase($ranked->id, 600_000, '2026-06-05');
+    $ids[] = $ranked->id;
+
+    return $ids;
+}
+
+/** @return array<int, array<string, mixed>> the state every cycle ended in */
+function cycleVerdicts(): array
+{
+    return RepurchaseCycle::query()
+        ->orderBy('distributor_id')
+        ->orderBy('cycle_start_date')
+        ->orderBy('id')
+        ->get()
+        ->map(fn (RepurchaseCycle $c): array => [
+            'distributor_id' => $c->distributor_id,
+            'cycle_start_date' => $c->cycle_start_date->toDateString(),
+            'due_date' => $c->due_date->toDateString(),
+            'required_bv_paise' => $c->required_bv_paise,
+            'completed_bv_paise' => $c->completed_bv_paise,
+            'status' => $c->status,
+            'failure_reason' => $c->failure_reason,
+            'fulfilled_on' => $c->fulfilled_on?->toDateString(),
+            'wallet_balance_paise' => $c->wallet_balance_paise,
+            'wallet_zeroed' => $c->wallet_zeroed,
+        ])
+        ->all();
+}
+
+it('reaches exactly the same verdicts warmed as it does cold', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $asOf = Carbon::parse('2026-07-25');
+
+    $ids = warmBatchPopulation();
+
+    // Cold.
+    foreach ($ids as $id) {
+        svc()->evaluate($id, $asOf);
+    }
+    $cold = cycleVerdicts();
+
+    // Same population, same as-of date, warmed. A fresh service instance, so
+    // nothing survives from the cold pass but the rows themselves.
+    DB::table('repurchase_cycles')->delete();
+    app()->forgetInstance(RepurchaseCycleService::class);
+
+    $warm = svc();
+    $warm->warmBatch($ids, $asOf);
+    foreach ($ids as $id) {
+        $warm->evaluate($id, $asOf);
+    }
+    $warm->forgetBatch();
+
+    expect(cycleVerdicts())->toBe($cold)
+        ->and($cold)->not->toBeEmpty();
+});
+
+it('asks the database far less often once warmed', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $asOf = Carbon::parse('2026-07-25');
+    $ids = warmBatchPopulation();
+
+    $count = function (callable $run): int {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $run();
+        $queries = count(DB::getRawQueryLog());
+        DB::disableQueryLog();
+
+        return $queries;
+    };
+
+    $cold = $count(function () use ($ids, $asOf): void {
+        $service = app()->makeWith(RepurchaseCycleService::class, []);
+        foreach ($ids as $id) {
+            $service->evaluate($id, $asOf);
+        }
+    });
+
+    DB::table('repurchase_cycles')->delete();
+
+    $warm = $count(function () use ($ids, $asOf): void {
+        $service = app()->makeWith(RepurchaseCycleService::class, []);
+        $service->warmBatch($ids, $asOf);
+        foreach ($ids as $id) {
+            $service->evaluate($id, $asOf);
+        }
+        $service->forgetBatch();
+    });
+
+    expect($warm)->toBeLessThan($cold);
+});
+
+it('does not let one chunk’s warmed window judge the next chunk’s distributors', function (): void {
+    // warmBatch() forgets first. Without that, chunk 1's `dayMapIds` would
+    // survive while chunk 2 overwrote the window bounds — and if chunk 2 starts
+    // EARLIER, a chunk-1 distributor passes the coverage check against a map
+    // holding none of their rows. They would be judged on under-counted BV and
+    // suspended for income they had in fact earned.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $asOf = Carbon::parse('2026-07-25');
+
+    $late = Distributor::factory()->create();
+    seedSelfPurchase($late->id, 600_000, '2026-07-01');
+    seedSelfPurchase($late->id, 900_000, '2026-07-05');
+
+    $early = Distributor::factory()->create();
+    seedSelfPurchase($early->id, 600_000, '2026-05-01');
+
+    $service = svc();
+    $service->warmBatch([$late->id], $asOf);   // window opens 2026-07-01
+    $service->warmBatch([$early->id], $asOf);  // window opens 2026-05-01
+
+    // Judged cold, since the second warm dropped the first.
+    $warmed = $service->evaluate($late->id, $asOf);
+
+    $service->forgetBatch();
+    DB::table('repurchase_cycles')->where('distributor_id', $late->id)->delete();
+    app()->forgetInstance(RepurchaseCycleService::class);
+    $cold = svc()->evaluate($late->id, $asOf);
+
+    expect($warmed->completed_bv_paise)->toBe($cold->completed_bv_paise)
+        ->and($warmed->completed_bv_paise)->toBe(1_500_000);
+});
+
+it('still evaluates a distributor the warm never saw', function (): void {
+    // The property the whole design rests on: every cache falls through to the
+    // query it replaced, so a caller that warms the wrong set still gets the
+    // right answer — at the old price.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $asOf = Carbon::parse('2026-07-25');
+
+    $ids = warmBatchPopulation();
+    $stranger = array_pop($ids);
+
+    $service = svc();
+    $service->warmBatch($ids, $asOf);
+
+    $cycle = $service->evaluate($stranger, $asOf);
+
+    expect($cycle)->not->toBeNull()
+        ->and($cycle->distributor_id)->toBe($stranger);
+});
+
+it('does not serve a second evaluation from the first one’s warmed cycle', function (): void {
+    // The cycle cache is CONSUMED on read, and this is what that buys. A second
+    // evaluation handed the same pre-run snapshot would roll it forward again
+    // and open a duplicate window — the first run's rows would be invisible to
+    // it. Re-reading means the second evaluation sees what the first one wrote.
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    $distributor = Distributor::factory()->create();
+    seedSelfPurchase($distributor->id, 600_000, '2026-06-01');
+    seedSelfPurchase($distributor->id, 900_000, '2026-06-20');
+
+    $service = svc();
+    $service->warmBatch([$distributor->id], Carbon::parse('2026-06-15'));
+
+    $service->evaluate($distributor->id, Carbon::parse('2026-06-15'));
+    $service->evaluate($distributor->id, Carbon::parse('2026-08-25'));
+
+    $starts = RepurchaseCycle::where('distributor_id', $distributor->id)
+        ->orderBy('cycle_start_date')
+        ->pluck('cycle_start_date')
+        ->map(fn ($d): string => $d->toDateString())
+        ->all();
+
+    expect($starts)->toBe(array_values(array_unique($starts)));
+});
