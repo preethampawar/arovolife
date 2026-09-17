@@ -35,6 +35,23 @@ final readonly class EngineCadence
 
     private function __construct(
         public string $type,
+        /**
+         * The clock time this engine fires at — and, for an engine the nightly
+         * chain fires, its POSITION IN THE NIGHT rather than a promise about
+         * the clock.
+         *
+         * The chain starts at 00:05 and runs its steps in sequence, so a step
+         * declaring 00:10 does not fire at 00:10; it fires when the step before
+         * it has exited 0, which is the whole reason the clock offsets were
+         * replaced. The declared times are kept because their ORDER is the
+         * chain's order, and two readers depend on exactly that: the recompute
+         * replay sorts a day's engines by this value, and any change to it
+         * would reorder a replayed day's engines and move figures.
+         *
+         * Nothing renders it as a time for such an engine —
+         * {@see EngineDefinition::scheduleText()} defers to the orchestrator —
+         * and {@see EngineHealthService} judges it by the orchestrator's window.
+         */
         public ?string $time = null,
         /** ISO-8601 day of week, 1 = Monday .. 7 = Sunday. */
         public ?int $dayOfWeek = null,
@@ -111,8 +128,15 @@ final readonly class EngineCadence
         return $date->copy()->setTime($hour, $minute);
     }
 
-    /** Human sentence for the admin console — generated, never hand-written. */
-    public function describe(): string
+    /**
+     * Human sentence for the admin console — generated, never hand-written.
+     *
+     * `$chainStartsAt` is passed for an engine the nightly chain fires: the day
+     * rule is still this engine's own, but the clock belongs to the chain, and
+     * the sentence says when the night starts rather than a minute this engine
+     * has not used since the chain replaced the offsets.
+     */
+    public function describe(?string $chainStartsAt = null): string
     {
         if ($this->type === self::NONE) {
             return 'Not scheduled — manual only';
@@ -120,18 +144,22 @@ final readonly class EngineCadence
 
         $suffix = $this->note !== null ? " ({$this->note})" : '';
 
+        $clock = $chainStartsAt === null
+            ? "{$this->time} IST"
+            : "in the nightly chain from {$chainStartsAt} IST";
+
         return match ($this->type) {
-            self::DAILY => "Daily, {$this->time} IST{$suffix}",
+            self::DAILY => "Daily, {$clock}{$suffix}",
             self::WEEKLY => sprintf(
-                '%ss, %s IST%s',
+                '%ss, %s%s',
                 Carbon::now()->startOfWeek()->addDays(($this->dayOfWeek ?? 1) - 1)->format('l'),
-                $this->time,
+                $clock,
                 $suffix,
             ),
             self::MONTHLY => sprintf(
-                '%s of the month, %s IST%s',
+                '%s of the month, %s%s',
                 self::ordinal($this->dayOfMonth ?? 1),
-                $this->time,
+                $clock,
                 $suffix,
             ),
             default => 'Not scheduled — manual only',

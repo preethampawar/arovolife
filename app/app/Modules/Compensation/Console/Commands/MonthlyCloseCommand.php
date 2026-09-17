@@ -17,7 +17,6 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Sleep;
 use Laravel\Pennant\Feature;
 use Throwable;
 
@@ -36,6 +35,11 @@ use Throwable;
  *
  * Sequencing them inside one command makes the ordering real: a step runs only
  * after the previous one has exited 0.
+ *
+ * Since the nightly chain, this close is itself a step: `compensation:nightly-run`
+ * invokes it on the first night of a month, once that month's last daily cut-off
+ * has exited 0 in the same process. Nothing in routes/console.php fires it
+ * directly any more.
  *
  * RESUME, NEVER RESTART. Every one of these engines freezes economics or moves
  * money, and all of them are idempotent re-runners — but "idempotent" is not
@@ -66,19 +70,39 @@ final class MonthlyCloseCommand extends Command
      * everything that reads them, and Fortune enrolment before the Fortune
      * payout that freezes the matrix.
      *
+     * The first five are the CRITICAL PATH, and they have to stay serial. They
+     * all credit through `WalletService::creditWithRepurchaseDeduction()`, and
+     * the repurchase cap they share is summed non-atomically by
+     * `repurchaseDeductionForMonthPaise()` — two of them crediting the same
+     * distributor at once would each read the cap before the other's write and
+     * deduct twice from a balance that can only pay once.
+     *
+     * ADC and Purchase Offers are last because they are NOT on that path. ADC
+     * credits centre owners with no repurchase deduction (client decision,
+     * 05 Sep 2026) and Purchase Offers moves no cash at all — it grants a
+     * half-price entitlement and redeem points. Neither reads what the five
+     * before it wrote, and Purchase Offers is the most expensive step of the
+     * month, so with them at the end the money is credited before the close
+     * spends its time on the work nobody is waiting for. It is also the only
+     * shape in which either could later run beside the chain rather than inside
+     * it.
+     *
+     * A separate list from {@see MonthlyEngineCompletionGate::ENGINE_KEYS} on
+     * purpose: what the close RUNS and what a month OWES are different
+     * questions, and the payout gate on the 8th still requires all seven.
+     * MonthlyCloseCommandTest pins the two together.
+     *
      * @var list<string>
      */
-    private const STEPS = MonthlyEngineCompletionGate::ENGINE_KEYS;
-
-    /**
-     * How long to wait for the closed month's last daily cut-off before giving
-     * up. The close is scheduled at 00:20 and the cut-off starts at 00:10; ten
-     * minutes of patience covers a heavy month-end without letting a genuinely
-     * stuck cut-off hold the close open all night.
-     */
-    private const CUTOFF_WAIT_ATTEMPTS = 20;
-
-    private const CUTOFF_WAIT_SECONDS = 30;
+    private const STEPS = [
+        'rank.check',
+        'rank.bonus',
+        'gbb.monthly',
+        'fortune.enroll',
+        'fortune.payout',
+        'adc.bonus',
+        'offers.monthly',
+    ];
 
     public function __construct(private readonly EngineStatusService $status)
     {
@@ -182,16 +206,29 @@ final class MonthlyCloseCommand extends Command
     }
 
     /**
-     * Two checks, both once for the whole close rather than once per engine.
+     * Three checks, each once for the whole close rather than once per engine.
      *
      * 1. Stale worker — a process running pre-deploy code credits the wrong
      *    money with no error anywhere (see WorkerFreshness).
-     * 2. The closed month's last daily cut-off. Every monthly engine reads the
-     *    month's cut-off results; starting before the last day has settled
-     *    prices the month against a short month. The cut-off for the 31st runs
-     *    at 00:10 on the 1st and this close at 00:20, so it usually costs
-     *    nothing — but "usually" is what the old 15-minute offsets assumed too,
-     *    which is why this waits and then ABORTS rather than assuming.
+     * 2. A daily cut-off in flight. The cut-off commits per distributor, so a
+     *    close that starts beside one prices the month while its last day is
+     *    still being written.
+     * 3. The month's cut-offs, all of them. Every monthly engine reads the
+     *    month's cut-off results and then FREEZES what it computed, so a month
+     *    closed three days short is a month permanently priced short — a re-run
+     *    reuses the frozen pool rather than repairing it.
+     *
+     * Checks 2 and 3 used to be a single ten-minute POLL: as a separate process
+     * fired on a clock offset, this close had no way to observe that the
+     * cut-off had finished, so it waited and then aborted.
+     * `compensation:nightly-run` made the waiting unnecessary — the cut-off is
+     * the step immediately before this close in the same chain — but not the
+     * asking. This command is still runnable by hand, and the chain's own
+     * "month not closed" message recommends exactly that, so the assertions
+     * stay; only the `Sleep` is gone. Two queries, and always satisfied when
+     * the chain is the caller.
+     *
+     * `--force` overrides all three.
      */
     private function preflight(Carbon $month): ?string
     {
@@ -201,38 +238,39 @@ final class MonthlyCloseCommand extends Command
             return $stale;
         }
 
-        // The cut-off cannot compute anything while GSB is off, so there is
-        // nothing to wait for and waiting would only delay the close.
+        // The cut-off cannot compute anything while GSB is off, so the month
+        // owes none and demanding them would deadlock every close.
         if (! Feature::for(null)->active(GenosSalesBonusFeature::class)) {
             return null;
         }
 
-        $lastDay = $month->copy()->endOfMonth()->startOfDay();
-
-        for ($attempt = 1; $attempt <= self::CUTOFF_WAIT_ATTEMPTS; $attempt++) {
-            if (
-                ! $this->status->hasRunInFlight('gsb.daily-cutoff')
-                && $this->status->isPeriodComputed('gsb.daily-cutoff', $lastDay)
-            ) {
-                return null;
-            }
-
-            if ($attempt === 1) {
-                $this->line("Waiting for the {$lastDay->format('d M Y')} daily cut-off to finish…");
-            }
-
-            Sleep::for(self::CUTOFF_WAIT_SECONDS)->seconds();
+        if ($this->status->hasRunInFlight('gsb.daily-cutoff')) {
+            return sprintf(
+                'A GSB daily cut-off is running right now. It commits per distributor, so closing the month beside '
+                ."it would price %s against a day still being written.\nWait for it to finish — the Engine Runs "
+                .'page shows when it does — and run this close again.',
+                $month->format('F Y'),
+            );
         }
 
-        return sprintf(
-            'The daily cut-off for %s has not finished after %d minutes. Every monthly engine reads the '
-            ."month's cut-off results, so closing now would price %s against an incomplete month.\n"
-            .'Run: php artisan gsb:daily-cutoff --date=%s, then re-run this close.',
-            $lastDay->format('d M Y'),
-            (int) round(self::CUTOFF_WAIT_ATTEMPTS * self::CUTOFF_WAIT_SECONDS / 60),
-            $month->format('F Y'),
-            $lastDay->toDateString(),
-        );
+        $lastDay = $month->copy()->endOfMonth()->startOfDay();
+        $covered = $this->status->completedCutoffDatesBetween($month->copy()->startOfMonth(), $lastDay);
+        $missing = $lastDay->day - count(array_unique($covered));
+
+        if ($missing > 0) {
+            return sprintf(
+                '%d of the %d days in %s have no completed cut-off. Every monthly engine prices the month from '
+                ."those results and freezes what it computes, so closing now would price %s short for good.\n"
+                .'Run php artisan gsb:daily-cutoff --date=<day> for each missing day — the Engine Runs page lists '
+                .'them — and then run this close again.',
+                $missing,
+                $lastDay->day,
+                $month->format('F Y'),
+                $month->format('F Y'),
+            );
+        }
+
+        return null;
     }
 
     /**
@@ -245,10 +283,11 @@ final class MonthlyCloseCommand extends Command
         $this->error($reason);
 
         // A preflight refusal is a decision, not a breakage: the close declined
-        // to price the month against an incomplete last day. Recorded as failed
-        // it reads on the Engine Runs page and in the health digest as a broken
-        // engine to re-run, when what is owed is the missing cut-off. A step
-        // that actually broke stays a failure — with its message.
+        // to credit money from a process that may be running pre-deploy code.
+        // Recorded as failed it reads on the Engine Runs page and in the health
+        // digest as a broken engine to re-run, when what is owed is a worker
+        // restart. A step that actually broke stays a failure — with its
+        // message.
         $context = app(EngineRunContext::class);
 
         if ($stage === 'preflight') {

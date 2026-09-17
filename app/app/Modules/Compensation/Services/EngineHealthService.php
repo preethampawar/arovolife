@@ -10,6 +10,7 @@ use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
+use App\Modules\Compensation\Support\NightlyRunAlert;
 use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Support\Carbon;
@@ -28,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @phpstan-import-type MissingItem from EngineHealthReport
  * @phpstan-import-type StuckItem from EngineHealthReport
  * @phpstan-import-type PrematureFreezeItem from EngineHealthReport
+ * @phpstan-import-type ChainAlertItem from EngineHealthReport
  */
 final class EngineHealthService
 {
@@ -37,6 +39,16 @@ final class EngineHealthService
 
     /** Far enough back to cover a monthly engine's previous fire date. */
     private const int FIRE_LOOKBACK_DAYS = 31;
+
+    /**
+     * How long the chain's own alerts stay in the digest.
+     *
+     * Shorter than the failure window because the chain re-records an unhealed
+     * condition every night it still holds, so a week is enough to keep it in
+     * front of a reader without repeating a night that was made good the
+     * following morning for thirty days.
+     */
+    private const int CHAIN_ALERT_WINDOW_DAYS = 7;
 
     public function __construct(private readonly EngineStatusService $status) {}
 
@@ -49,6 +61,7 @@ final class EngineHealthService
             missing: $this->missing($now, $failures),
             stuck: $this->stuck(),
             prematureFreezes: $this->prematureFreezes($now),
+            chainAlerts: $this->chainAlerts($now),
         );
     }
 
@@ -170,6 +183,87 @@ final class EngineHealthService
     }
 
     /**
+     * What the nightly chain could not do — and nothing else can see.
+     *
+     * Read from `audit_log` because there is nothing else to read: a night the
+     * scheduler skipped starts no command, so it writes no `engine_runs` row; a
+     * backfill gap and a deferred month close both end in a chain that exits 0.
+     * The failure badge, the missing-period check and the stuck check are all
+     * silent on every one of them (see {@see NightlyRunAlert}).
+     *
+     * @return list<ChainAlertItem>
+     */
+    private function chainAlerts(Carbon $now): array
+    {
+        $rows = AuditLog::query()
+            ->whereIn('action', NightlyRunAlert::ACTIONS)
+            ->where('created_at', '>=', $now->copy()->subDays(self::CHAIN_ALERT_WINDOW_DAYS))
+            ->orderBy('id')
+            ->get();
+
+        $items = [];
+
+        foreach ($rows as $row) {
+            $details = $row->details ?? [];
+            $date = is_string($details['date'] ?? null) ? $details['date'] : $row->created_at->toDateString();
+
+            $items[] = [
+                'kind' => $row->action,
+                'headline' => $this->chainAlertHeadline($row->action, $details),
+                'date' => Carbon::parse($date)->format('d M Y'),
+                'recorded_at' => $row->created_at->format('d M Y H:i'),
+                'steps' => $this->chainAlertSteps($row->action),
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param  array<string, mixed>  $details
+     */
+    private function chainAlertHeadline(string $action, array $details): string
+    {
+        return match ($action) {
+            NightlyRunAlert::ACTION_SKIPPED_NIGHT => 'The chain never started — the previous night was still running',
+            NightlyRunAlert::ACTION_BACKFILL_GAP => 'More nights are missing than the chain may heal on its own',
+            NightlyRunAlert::ACTION_MONTH_DEFERRED => sprintf(
+                '%s was not closed — %s of its days have no completed cut-off',
+                is_string($details['month'] ?? null)
+                    ? Carbon::parse($details['month'].'-01')->format('F Y')
+                    : 'A month',
+                is_int($details['missing_days'] ?? null) ? (string) $details['missing_days'] : 'some',
+            ),
+            default => 'The nightly chain reported something it could not do',
+        };
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function chainAlertSteps(string $action): array
+    {
+        return match ($action) {
+            NightlyRunAlert::ACTION_SKIPPED_NIGHT => [
+                'Nothing to click, and nothing is owed twice: the next chain cuts off the days this night would have, and rebuilds a Tuesday payout batch it missed — still dated that Tuesday, so the week paid is unchanged.',
+                'What this says is that the chain is taking longer than a day to finish, which the backfill hides rather than fixes.',
+                'Check the Engine Runs page for how long the previous night took, and send that duration to the developer if it keeps happening.',
+            ],
+            NightlyRunAlert::ACTION_BACKFILL_GAP => [
+                'This one does not heal itself. Last night ran; the days before it did not, and nobody has been credited for them.',
+                'Ask the developer to cut off each missing day in order (php artisan gsb:daily-cutoff --date=<day>), oldest first, before the month it belongs to is closed.',
+                'Do not close that month until every one of its days is done — a month closed short stays short.',
+            ],
+            NightlyRunAlert::ACTION_MONTH_DEFERRED => [
+                'Nobody receives Growth Booster, Rank Bonus, Fortune or ADC for this month until it is closed, and the chain will not close it while days are missing.',
+                'Ask the developer to cut off the missing days (php artisan gsb:daily-cutoff --date=<day>), then run the close for that month.',
+                'The payout on the 8th refuses a month whose crediting is incomplete, so this cannot reach a bank half-done.',
+            ],
+            default => ['Ask the developer to read the audit log entry for this date.'],
+        };
+    }
+
+    /**
      * Pools the self-heal found frozen too early and had to KEEP, because money
      * had already moved at the wrong price.
      *
@@ -264,12 +358,20 @@ final class EngineHealthService
     {
         $date = $now->copy()->startOfDay();
 
+        // An orchestrated engine has no clock of its own: it runs when the
+        // chain reaches it, so the instant it was DUE is the instant the chain
+        // started. Judging it by the minute it used to fire at would report a
+        // heavy month-end chain as a missing engine while it is still running.
+        $chainStartsAt = $definition->chainStartsAt();
+
         for ($day = 0; $day <= self::FIRE_LOOKBACK_DAYS; $day++, $date = $date->copy()->subDay()) {
             if (! $definition->cadence->runsOn($date)) {
                 continue;
             }
 
-            $firedAt = $definition->cadence->atOn($date);
+            $firedAt = $chainStartsAt === null
+                ? $definition->cadence->atOn($date)
+                : self::atTimeOn($date, $chainStartsAt);
 
             if ($firedAt->lte($now)) {
                 return $firedAt;
@@ -277,6 +379,14 @@ final class EngineHealthService
         }
 
         return null;
+    }
+
+    /** `$time` is 'HH:MM' in the app timezone, as every cadence declares it. */
+    private static function atTimeOn(Carbon $date, string $time): Carbon
+    {
+        [$hour, $minute] = array_map('intval', explode(':', $time));
+
+        return $date->copy()->setTime($hour, $minute);
     }
 
     /** The period a scheduled fire on that date produces. */

@@ -19,7 +19,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithConsoleEvents;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Sleep;
 use Laravel\Pennant\Feature;
 
 // The recorder — and therefore the resume logic, which reads the rows it writes
@@ -94,26 +93,29 @@ function activateCompensationFeatures(): void
 }
 
 /**
- * The preflight waits for the closed month's last daily cut-off. A succeeded run
- * for that day is exactly the proof it looks for.
+ * Every day of the month cut off to completion — a succeeded run that started
+ * after the day it processed had ended, which is what the preflight demands
+ * before a month may be priced and frozen.
  */
-function seedClosedCutoff(Carbon $month): void
+function seedWholeMonthOfCutoffs(Carbon $month): void
 {
-    EngineRun::create([
-        'engine_key' => 'gsb.daily-cutoff',
-        'period_start' => $month->copy()->endOfMonth()->startOfDay(),
-        'status' => EngineRun::STATUS_SUCCEEDED,
-        'trigger' => EngineRun::TRIGGER_CONSOLE,
-        'started_at' => $month->copy()->addMonthNoOverflow()->startOfMonth()->setTime(0, 10),
-        'finished_at' => $month->copy()->addMonthNoOverflow()->startOfMonth()->setTime(0, 15),
-    ]);
+    for ($day = $month->copy()->startOfMonth(); $day->month === $month->month; $day->addDay()) {
+        EngineRun::create([
+            'engine_key' => 'gsb.daily-cutoff',
+            'period_start' => $day->copy(),
+            'status' => EngineRun::STATUS_SUCCEEDED,
+            'trigger' => EngineRun::TRIGGER_CONSOLE,
+            'started_at' => $day->copy()->addDay()->setTime(0, 6),
+            'finished_at' => $day->copy()->addDay()->setTime(0, 9),
+        ]);
+    }
 }
 
 beforeEach(function (): void {
     disableTestForeignKeys();
     activateCompensationFeatures();
     stubCreditingEngines();
-    seedClosedCutoff(Carbon::parse('2026-08-01'));
+    seedWholeMonthOfCutoffs(Carbon::parse('2026-08-01'));
 });
 
 it('runs the eight crediting engines in the declared order', function (): void {
@@ -125,8 +127,8 @@ it('runs the eight crediting engines in the declared order', function (): void {
         'rank.bonus',
         'gbb.monthly',
         'fortune.enroll',
-        'adc.bonus',
         'fortune.payout',
+        'adc.bonus',
         'offers.monthly',
     ]);
 });
@@ -261,8 +263,8 @@ it('resumes at the failed step and leaves the rows the earlier steps wrote untou
     // Steps 1–3 were not invoked a second time…
     expect(StubEngineCommand::$calls)->toBe([
         'fortune.enroll',
-        'adc.bonus',
         'fortune.payout',
+        'adc.bonus',
         'offers.monthly',
     ]);
 
@@ -297,25 +299,10 @@ it('--restart forces the full sequence even when every step already succeeded', 
         'rank.bonus',
         'gbb.monthly',
         'fortune.enroll',
-        'adc.bonus',
         'fortune.payout',
+        'adc.bonus',
         'offers.monthly',
     ]);
-});
-
-it('aborts with a log-and-audit trail when the closed month has no daily cut-off', function (): void {
-    Sleep::fake();
-    EngineRun::where('engine_key', 'gsb.daily-cutoff')->delete();
-
-    $exitCode = Artisan::call('compensation:monthly-close', ['--month' => '2026-08']);
-
-    expect($exitCode)->toBe(Command::FAILURE);
-    expect(StubEngineCommand::$calls)->toBe([]);
-
-    $audit = AuditLog::where('action', 'compensation.monthly_close.aborted')->sole();
-    expect($audit->details['month'])->toBe('2026-08');
-    expect($audit->details['stage'])->toBe('preflight');
-    expect($audit->details['reason'])->toContain('gsb:daily-cutoff --date=2026-08-31');
 });
 
 it('writes an audit entry naming the step that failed', function (): void {
@@ -335,22 +322,6 @@ it('rejects a malformed month without invoking anything', function (): void {
     expect(StubEngineCommand::$calls)->toBe([]);
 });
 
-it('records a preflight refusal as skipped with the reason, not as a bare failure', function (): void {
-    // F39: the preflight abort recorded `failed` with `error NULL`, so the
-    // Engine Runs page and the health digest showed a broken close with no
-    // cause — when what is actually owed is the month's last daily cut-off.
-    Sleep::fake();
-    EngineRun::where('engine_key', 'gsb.daily-cutoff')->delete();
-
-    Artisan::call('compensation:monthly-close', ['--month' => '2026-08']);
-
-    $run = EngineRun::where('engine_key', 'compensation.monthly-close')->sole();
-
-    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
-    expect($run->error)->toContain('gsb:daily-cutoff --date=2026-08-31');
-    expect($run->summary['reason'])->toContain('gsb:daily-cutoff --date=2026-08-31');
-});
-
 it('records a broken step as a failure carrying the step message', function (): void {
     // The other half of the same rule: a step that actually broke stays a
     // failure — a refusal is a decision, a broken step is not.
@@ -362,4 +333,80 @@ it('records a broken step as a failure carrying the step message', function (): 
 
     expect($run->status)->toBe(EngineRun::STATUS_FAILED);
     expect($run->error)->toContain('Rank Bonus');
+});
+
+it('refuses to close a month with a day that was never cut off', function (): void {
+    // Every monthly engine prices the month from its cut-off results and then
+    // freezes what it computed. The chain guarantees the days are in because
+    // the cut-off is the step before this one — but this command is still
+    // runnable by hand, and that is exactly what the chain's own "month not
+    // closed" message recommends.
+    EngineRun::where('engine_key', 'gsb.daily-cutoff')
+        ->whereDate('period_start', '2026-08-17')
+        ->delete();
+
+    $exitCode = Artisan::call('compensation:monthly-close', ['--month' => '2026-08']);
+
+    expect($exitCode)->toBe(Command::FAILURE);
+    expect(StubEngineCommand::$calls)->toBe([]);
+
+    $audit = AuditLog::where('action', 'compensation.monthly_close.aborted')->sole();
+    expect($audit->details['stage'])->toBe('preflight');
+    expect($audit->details['reason'])->toContain('1 of the 31 days in August 2026');
+
+    // A refusal is a decision, not a breakage: recorded as failed it would be
+    // reported for thirty days as an engine to re-run (F39).
+    expect(EngineRun::where('engine_key', 'compensation.monthly-close')->sole()->status)
+        ->toBe(EngineRun::STATUS_SKIPPED);
+});
+
+it('does not count a cut-off run inside its own day as a day that was cut off', function (): void {
+    // An admin retry at noon cannot have seen the evening's sales.
+    EngineRun::where('engine_key', 'gsb.daily-cutoff')
+        ->whereDate('period_start', '2026-08-17')
+        ->update(['started_at' => Carbon::parse('2026-08-17 12:00:00')]);
+
+    expect(Artisan::call('compensation:monthly-close', ['--month' => '2026-08']))->toBe(Command::FAILURE);
+    expect(StubEngineCommand::$calls)->toBe([]);
+});
+
+it('refuses to close a month while a daily cut-off is still running', function (): void {
+    // The cut-off commits per distributor, so a close that starts beside one
+    // prices the month while its last day is still being written.
+    EngineRun::create([
+        'engine_key' => 'gsb.daily-cutoff',
+        'period_start' => Carbon::parse('2026-08-31'),
+        'status' => EngineRun::STATUS_RUNNING,
+        'trigger' => EngineRun::TRIGGER_MANUAL,
+        // In flight means recently started, not merely unfinished: a run left
+        // RUNNING for hours is reported as stuck, which has its own remedy.
+        'started_at' => Carbon::now()->subMinutes(2),
+    ]);
+
+    $exitCode = Artisan::call('compensation:monthly-close', ['--month' => '2026-08']);
+
+    expect($exitCode)->toBe(Command::FAILURE);
+    expect(StubEngineCommand::$calls)->toBe([]);
+    expect(AuditLog::where('action', 'compensation.monthly_close.aborted')->sole()->details['reason'])
+        ->toContain('running right now');
+});
+
+it('closes a short month anyway under --force', function (): void {
+    EngineRun::where('engine_key', 'gsb.daily-cutoff')
+        ->whereDate('period_start', '2026-08-17')
+        ->delete();
+
+    $exitCode = Artisan::call('compensation:monthly-close', ['--month' => '2026-08', '--force' => true]);
+
+    expect($exitCode)->toBe(0);
+    expect(StubEngineCommand::$calls)->toHaveCount(7);
+});
+
+it('asks for no cut-offs at all while GSB is off', function (): void {
+    // The cut-off cannot compute anything while the flag is off, so the month
+    // owes none — demanding them would deadlock every close.
+    Feature::for(null)->deactivate(GenosSalesBonusFeature::class);
+    EngineRun::where('engine_key', 'gsb.daily-cutoff')->delete();
+
+    expect(Artisan::call('compensation:monthly-close', ['--month' => '2026-08']))->toBe(0);
 });

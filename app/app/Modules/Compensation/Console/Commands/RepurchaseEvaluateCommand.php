@@ -43,6 +43,20 @@ final class RepurchaseEvaluateCommand extends Command
     /** Cap on the ADNs named in the summary; the log has them all. */
     private const MAX_REPORTED_FAILURES = 50;
 
+    /**
+     * Ids per `whereIn`. A placeholder each, and MySQL refuses a prepared
+     * statement past 65,535 of them; 500 is what GsbIdleCutoffBatch has used
+     * for the same shape since it was written.
+     */
+    private const ID_CHUNK = 500;
+
+    /**
+     * Distributors loaded at a time. Larger than {@see ID_CHUNK} because this
+     * one bounds memory rather than SQL placeholders: the chunk is narrowed to
+     * the distributors who could have a cycle before any of them is evaluated.
+     */
+    private const ROSTER_CHUNK = 2000;
+
     protected $signature = 'repurchase:evaluate
                             {--date= : Override the as-of date (YYYY-MM-DD, default: today)}
                             {--distributor= : Evaluate a single distributor ID only}';
@@ -85,7 +99,6 @@ final class RepurchaseEvaluateCommand extends Command
 
         $this->info("Repurchase evaluation — as of {$asOf->toDateString()}");
 
-        $distributors = $this->withPossibleCycle($query->pluck('id'));
         $startedAt = Carbon::now();
         $evaluated = 0;
         $withheld = 0;
@@ -96,34 +109,49 @@ final class RepurchaseEvaluateCommand extends Command
         /** @var array<string, true> $failureClasses */
         $failureClasses = [];
 
-        foreach ($distributors as $distributorId) {
-            // One distributor's data problem must not cost the other N their
-            // evaluation: the cut-off reads the verdict this writes, and a run
-            // abandoned half way would leave every distributor after the
-            // throwing one judged on yesterday's state. Collect and carry on;
-            // the failure count is what the run's verdict rests on.
-            try {
-                $cycle = $this->cycles->evaluate((int) $distributorId, $asOf);
-                $evaluated++;
+        // CHUNKED, not one `pluck('id')` over the whole roster: at ten lakh that
+        // is a million-element collection held for the length of the run before
+        // a single cycle is evaluated (R-90). Each chunk narrows to the
+        // distributors who could have a cycle and evaluates those.
+        $query->chunkById(self::ROSTER_CHUNK, function (Collection $chunk) use (
+            $asOf,
+            &$evaluated,
+            &$withheld,
+            &$noCycle,
+            &$failedIds,
+            &$failureClasses,
+        ): void {
+            $distributors = $this->withPossibleCycle($chunk->pluck('id'));
 
-                if ($cycle === null) {
-                    $noCycle++;
-                } elseif ($cycle->status === RepurchaseCycle::STATUS_SUSPENDED) {
-                    $withheld++;
+            foreach ($distributors as $distributorId) {
+                // One distributor's data problem must not cost the other N their
+                // evaluation: the cut-off reads the verdict this writes, and a run
+                // abandoned half way would leave every distributor after the
+                // throwing one judged on yesterday's state. Collect and carry on;
+                // the failure count is what the run's verdict rests on.
+                try {
+                    $cycle = $this->cycles->evaluate((int) $distributorId, $asOf);
+                    $evaluated++;
+
+                    if ($cycle === null) {
+                        $noCycle++;
+                    } elseif ($cycle->status === RepurchaseCycle::STATUS_SUSPENDED) {
+                        $withheld++;
+                    }
+                } catch (\Throwable $e) {
+                    $failedIds[] = (int) $distributorId;
+                    $failureClasses[$e::class] = true;
+
+                    Log::error('repurchase.evaluate.exception', [
+                        'distributor_id' => $distributorId,
+                        'error' => $e->getMessage(),
+                        'exception' => get_class($e),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                    ]);
                 }
-            } catch (\Throwable $e) {
-                $failedIds[] = (int) $distributorId;
-                $failureClasses[$e::class] = true;
-
-                Log::error('repurchase.evaluate.exception', [
-                    'distributor_id' => $distributorId,
-                    'error' => $e->getMessage(),
-                    'exception' => get_class($e),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ]);
             }
-        }
+        }, 'id');
 
         $failed = count($failedIds);
         $verdicts = $this->verdictsTakenSince($startedAt);
@@ -278,20 +306,22 @@ final class RepurchaseEvaluateCommand extends Command
             return $distributorIds;
         }
 
-        $ids = $distributorIds->all();
+        // Chunked, because `whereIn` becomes a placeholder per id and MySQL
+        // refuses a prepared statement past 65,535 of them: at ten lakh
+        // distributors this threw "too many placeholders" and the whole nightly
+        // evaluation died — measured, not predicted, on the scale harness
+        // between 10k and 100k (R-90). The chunk size is GsbIdleCutoffBatch's,
+        // which has carried the same shape since it was written.
+        $keep = [];
 
-        $withBv = DB::table('bv_ledger_entries')
-            ->whereIn('distributor_id', $ids)
-            ->distinct()
-            ->pluck('distributor_id');
+        foreach (array_chunk($distributorIds->all(), self::ID_CHUNK) as $chunk) {
+            foreach (['bv_ledger_entries', 'repurchase_cycles'] as $table) {
+                foreach (DB::table($table)->whereIn('distributor_id', $chunk)->distinct()->pluck('distributor_id') as $id) {
+                    $keep[(int) $id] = true;
+                }
+            }
+        }
 
-        $withCycle = DB::table('repurchase_cycles')
-            ->whereIn('distributor_id', $ids)
-            ->distinct()
-            ->pluck('distributor_id');
-
-        $keep = $withBv->merge($withCycle)->map(fn ($id): int => (int) $id)->flip();
-
-        return $distributorIds->filter(fn ($id): bool => $keep->has((int) $id))->values();
+        return $distributorIds->filter(fn ($id): bool => isset($keep[(int) $id]))->values();
     }
 }

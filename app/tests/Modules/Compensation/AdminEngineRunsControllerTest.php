@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
+use App\Modules\Compensation\Jobs\RetryNightlyChainJob;
 use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -978,4 +979,243 @@ it('names the chosen period in the trigger confirmation, not just "the chosen pe
         ->assertOk()
         ->assertSee('data-engine-trigger', false)
         ->assertSee("form.dataset.confirmTitle = 'Confirm: Run ' + form.dataset.engineLabel + ' for ' + value;", false);
+});
+
+/*
+|--------------------------------------------------------------------------
+| The nightly-chain retry banner
+|--------------------------------------------------------------------------
+|
+| The banner exists only while the chain's last finished attempt is a failure.
+| Everything below is about that word "last": a night that failed and was then
+| healed by a later night must leave no banner, because the backfill has already
+| done what the button would do.
+*/
+
+function chainRun(string $night, string $status, ?string $error = null): EngineRun
+{
+    return EngineRun::create([
+        'engine_key' => 'compensation.nightly-run',
+        'period_start' => $night,
+        'status' => $status,
+        'trigger' => 'schedule',
+        'actor_id' => null,
+        'chain_id' => null,
+        'summary' => null,
+        'error' => $error,
+        'started_at' => Carbon::parse($night.' 00:05:00'),
+        'finished_at' => Carbon::parse($night.' 00:20:00'),
+        'duration_ms' => 900000,
+    ]);
+}
+
+it('shows no retry banner while the nightly chain is healthy', function (): void {
+    chainRun('2025-12-31', EngineRun::STATUS_SUCCEEDED);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertDontSee('The nightly chain failed on')
+        ->assertDontSee('Retry this night');
+});
+
+it('shows the retry banner when the chain last finished in failure', function (): void {
+    chainRun('2025-12-31', EngineRun::STATUS_FAILED, 'Rank Bonus exited 1 for Dec 2025.');
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('The nightly chain failed on 31 Dec 2025')
+        ->assertSee('Rank Bonus exited 1 for Dec 2025.')
+        ->assertSee('Retry this night');
+});
+
+it('drops the banner once a later night has succeeded, because the backfill healed the gap', function (): void {
+    chainRun('2025-12-30', EngineRun::STATUS_FAILED, 'boom');
+    chainRun('2025-12-31', EngineRun::STATUS_SUCCEEDED);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertDontSee('The nightly chain failed on');
+});
+
+it('does not offer a retry for a chain that was skipped rather than failed', function (): void {
+    // A preflight refusal is a decision — a stale worker, a standing
+    // projection. Retrying would only refuse again; the chain alerts say what
+    // to actually do.
+    chainRun('2025-12-31', EngineRun::STATUS_SKIPPED, 'A recompute projection is standing.');
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertDontSee('The nightly chain failed on');
+});
+
+it('ignores a chain still running when deciding whether to offer a retry', function (): void {
+    chainRun('2025-12-30', EngineRun::STATUS_SUCCEEDED);
+    chainRun('2025-12-31', EngineRun::STATUS_RUNNING);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertDontSee('The nightly chain failed on');
+});
+
+it('queues a retry of the failed night and audits who asked for it', function (): void {
+    Queue::fake();
+    $run = chainRun('2025-12-31', EngineRun::STATUS_FAILED, 'Rank Bonus exited 1.');
+    $user = engineRunsUser('admin');
+
+    $this->actingAs($user)
+        ->post(route('admin.compensation.engine-runs.retry-chain'), [
+            'night' => '2025-12-31',
+            'reason' => 'Fixed the bank details the payout step threw on.',
+        ])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'))
+        ->assertSessionHas('status');
+
+    Queue::assertPushed(
+        RetryNightlyChainJob::class,
+        fn (RetryNightlyChainJob $job): bool => $job->night === '2025-12-31' && $job->actorId === $user->id,
+    );
+
+    $audit = AuditLog::where('action', 'compensation.nightly_chain.retried')->sole();
+    expect($audit->details['night'])->toBe('2025-12-31')
+        ->and($audit->details['failed_run_id'])->toBe($run->id)
+        ->and($audit->actor_id)->toBe($user->id);
+});
+
+it('refuses a retry when the chain is not currently failed', function (): void {
+    Queue::fake();
+    chainRun('2025-12-31', EngineRun::STATUS_SUCCEEDED);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.retry-chain'), [
+            'night' => '2025-12-31',
+            'reason' => 'Trying to re-run a night that is already fine.',
+        ])
+        ->assertSessionHasErrors('night');
+
+    Queue::assertNotPushed(RetryNightlyChainJob::class);
+});
+
+it('refuses a retry posted from a stale page showing a different night', function (): void {
+    // The banner may have sat open in a tab while a later night failed instead.
+    // Re-running the night the tab remembers would recompute settled days.
+    Queue::fake();
+    chainRun('2025-12-31', EngineRun::STATUS_FAILED, 'boom');
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.retry-chain'), [
+            'night' => '2025-12-20',
+            'reason' => 'Retrying the night this stale tab was showing.',
+        ])
+        ->assertSessionHasErrors('night');
+
+    Queue::assertNotPushed(RetryNightlyChainJob::class);
+});
+
+it('requires a reason long enough to be worth reading in the audit log', function (): void {
+    Queue::fake();
+    chainRun('2025-12-31', EngineRun::STATUS_FAILED, 'boom');
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.retry-chain'), [
+            'night' => '2025-12-31',
+            'reason' => 'fixed',
+        ])
+        ->assertSessionHasErrors('reason');
+
+    Queue::assertNotPushed(RetryNightlyChainJob::class);
+});
+
+it('keeps the retry behind the same finance permission as a manual trigger', function (): void {
+    Queue::fake();
+    chainRun('2025-12-31', EngineRun::STATUS_FAILED, 'boom');
+
+    $this->actingAs(engineRunsUser('admin-compliance'))
+        ->post(route('admin.compensation.engine-runs.retry-chain'), [
+            'night' => '2025-12-31',
+            'reason' => 'Compliance should not be able to move money.',
+        ])
+        ->assertForbidden();
+
+    Queue::assertNotPushed(RetryNightlyChainJob::class);
+});
+
+it('still offers the retry on an environment where per-engine triggers are refused', function (): void {
+    // The reason triggers are refused there is that they fire ONE engine at the
+    // wrong instant. The chain fires the whole night, for the night it belongs
+    // to, through the command the scheduler itself uses.
+    config(['arovolife.recompute.enabled' => true]);
+    chainRun('2025-12-31', EngineRun::STATUS_FAILED, 'boom');
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('Engines are not run one at a time on this environment.')
+        ->assertSee('Retry this night');
+});
+
+it('records how much of the sweep was in scope, and joins the audit row to the runs it causes', function (): void {
+    // Two separate findings in one assertion because they are one record: the
+    // audit row has to say WHAT was authorised (a crediting run plus, at most,
+    // a missed weekly batch) and has to be joinable to the `engine_runs` rows
+    // the retry goes on to write.
+    Queue::fake();
+    chainRun('2025-12-31', EngineRun::STATUS_FAILED, 'boom');
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.retry-chain'), [
+            'night' => '2025-12-31',
+            'reason' => 'Fixed the cause and re-running the night.',
+        ])->assertRedirect();
+
+    $audit = AuditLog::where('action', 'compensation.nightly_chain.retried')->sole();
+
+    expect($audit->details['payouts_in_scope'])->toBe('weekly_only')
+        ->and($audit->details['chain_id'])->toBeString()
+        ->and($audit->details['chain_id'])->not->toBe('');
+
+    Queue::assertPushed(
+        RetryNightlyChainJob::class,
+        fn (RetryNightlyChainJob $job): bool => $job->chainId === $audit->details['chain_id'],
+    );
+});
+
+it('tells the operator a retry is already running instead of offering the button again', function (): void {
+    // failedChainRun() ignores `running` rows on purpose, so the banner stays up
+    // for the whole retry. Without this the page looks unchanged and the
+    // operator queues a second full night.
+    chainRun('2025-12-31', EngineRun::STATUS_FAILED, 'boom');
+    EngineRun::create([
+        'engine_key' => 'compensation.nightly-run',
+        'period_start' => '2025-12-31',
+        'status' => EngineRun::STATUS_RUNNING,
+        'trigger' => 'manual',
+        'actor_id' => null,
+        'chain_id' => null,
+        'summary' => null,
+        'error' => null,
+        'started_at' => Carbon::now()->subMinutes(2),
+        'finished_at' => null,
+        'duration_ms' => null,
+    ]);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('A retry is running now.')
+        ->assertDontSee('Retry this night');
+});
+
+it('caps the failure text it renders, so a query exception cannot dump its bindings onto the page', function (): void {
+    chainRun('2025-12-31', EngineRun::STATUS_FAILED, str_repeat('E', 4000));
+
+    $response = $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk();
+
+    expect(substr_count($response->getContent() ?: '', 'E'))->toBeLessThan(2000);
 });

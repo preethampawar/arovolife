@@ -155,4 +155,27 @@ return [
             explode(',', (string) env('COMP_RECOMPUTE_ALLOWED_DATABASES', '')),
         ), static fn (string $name): bool => $name !== '')),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Scale harness (TESTING ONLY)
+    |--------------------------------------------------------------------------
+    |
+    | `compensation:scale-seed` writes a synthetic population of up to ten lakh
+    | distributors, and `compensation:scale-benchmark` times the engines against
+    | it. Both are measurement tools and neither may ever touch a database
+    | holding real data.
+    |
+    | The gate is the DATABASE NAME, not APP_ENV: a label says nothing about
+    | what is attached to it. The seeder runs only when the connected database
+    | equals `database` below, and it refuses `arovolife` and `arovolife_test`
+    | outright whatever this is set to — the dev database is a day's work and
+    | the test database is shared with every suite run.
+    |
+    | Default empty: the harness is unavailable until an operator names a
+    | database for it.
+    */
+    'scale' => [
+        'database' => trim((string) env('COMP_SCALE_DATABASE', '')),
+    ],
 ];

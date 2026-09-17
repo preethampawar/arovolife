@@ -15,7 +15,7 @@ docker compose -f docker/docker-compose.yml exec app php artisan <command>
 
 Evaluates each active distributor's Genos BV for the day, determines which GSB slab (if any) they hit, and records the result in `gsb_cutoff_results`. Before the slab check, it injects the distributor's own day's personal order BV into their weaker Genos leg (`gsb_personal_bv_topups`).
 
-**Scheduled:** Daily at **00:10 IST** — always processes the *previous* calendar day (the 10-minute buffer lets queued BV propagation jobs settle before the cut is made).
+**Scheduled:** step 2 of the nightly chain (`compensation:nightly-run`, 00:05 IST) — always processes the *previous* calendar day (the few minutes of buffer let queued BV propagation jobs settle before the cut is made). A night the chain missed is cut off by the next night that runs, oldest first.
 
 **Options:**
 
@@ -38,7 +38,7 @@ php artisan gsb:daily-cutoff --date=2026-07-04 --distributor=59
 > bare no-`--date` form, which defaults to today). The run freezes the day's
 > GSB and MSB pool economics permanently at that instant — on staging
 > (24 Aug 2026) a 23:27 manual run froze the day at ₹0 company BV / cap score
-> value before the evening's orders landed, and the scheduled 00:10 run then
+> value before the evening's orders landed, and the next scheduled run then
 > paid the day's real achievers out of the empty pool. The admin Engine Runs
 > page refuses in-flight dates for exactly this reason; the CLI cannot
 > (the recompute replay legitimately runs under a back-dated clock). A
@@ -54,7 +54,7 @@ php artisan gsb:daily-cutoff --date=2026-07-04 --distributor=59
 
 Aggregates all `CREDITED` GSB cut-off results since the last payout into a weekly payout batch, deducts admin charge (3 %, capped ₹25,000 per batch across four groups) and TDS (5 %), and credits each distributor's wallet.
 
-**Scheduled:** Every **Tuesday at 03:00 IST**.
+**Scheduled:** Tuesdays, inside the nightly chain (`compensation:nightly-run`, 00:05 IST). A Tuesday whose batch was never built is retried on the next night, still dated that Tuesday, so the earning week it pays is unchanged.
 
 **Options:**
 
@@ -114,7 +114,7 @@ does not correct historical line items.
 
 Runs all Group B/C/D monthly bonus engines in sequence: Growth Booster Bonus (GBB), Rank Bonus, Fortune Bonus, and ADC Bonus — then credits results to wallets. Each engine is idempotent; re-running for the same month skips already-processed rows.
 
-**Scheduled:** not directly. `compensation:monthly-payout-close` invokes it on the **8th at 04:00 IST**, and only once every crediting engine for the closed month has succeeded.
+**Scheduled:** not directly. `compensation:monthly-payout-close` invokes it on the **8th**, inside the nightly chain, and only once every crediting engine for the closed month has succeeded. If the 8th is missed the chain retries on later nights while no batch exists.
 
 **Options:**
 
@@ -146,7 +146,7 @@ wrong month. Always pass `--month=` explicitly when running these by hand.
 
 Evaluates each distributor's repurchase cycle for the current month and updates their income-eligibility flag (`income_eligible` on the distributor). Distributors who have not met their monthly repurchase BV threshold have GSB payouts held until the requirement is met.
 
-**Scheduled:** Daily at **00:05 IST** — runs before the GSB cut-off (00:10 runs for yesterday, so this updates today's eligibility for use in tonight's cut-off).
+**Scheduled:** step 1 of the nightly chain (`compensation:nightly-run`, 00:05 IST) — it runs immediately before the GSB cut-off, which processes yesterday, so a run dated today has seen the whole of the day being cut off.
 
 **Options:**
 
@@ -178,7 +178,7 @@ It reports three things, each with the numbered steps that close it:
 2. **Scheduled runs that did not happen** — for every scheduled, non-orchestrator engine, the period its most recent fire instant should have produced, with no run recorded for it in any status but `failed`.
 3. **Stuck runs** — `status = running` for more than 3 hours: the compensation worker died mid-run.
 
-**Scheduled:** Daily at **08:00 IST** — after every overnight engine (the monthly payout close at 04:00 on the 8th is the last).
+**Scheduled:** Daily at **08:00 IST** — hours after the nightly chain starts at 00:05, so an ordinary night has long finished.
 
 **Options:**
 
@@ -402,7 +402,7 @@ drift out of date when a new bonus table is added.
 On a test environment this command **is** how compensation is computed. It wipes
 every row derived from BV and replays every engine **at the instant the
 scheduler would have fired it, for the period the scheduler would have handed
-it** — the repurchase evaluation at 00:05, the GSB cut-off at 00:10 *for the
+it** — the repurchase evaluation dated that day, the GSB cut-off *for the
 previous day*, the monthly close on the 1st, the monthly payout batch on the 8th.
 
 That clock is the whole point, not a detail of the implementation. Three of the
@@ -452,7 +452,7 @@ This is the only choice the admin page offers, and the only one most runs need.
 | `--horizon` | Stops at | What it means | Marks the environment projected |
 |---|---|---|---|
 | `now` (default) | this instant | Exactly what the scheduler would have produced by now. Closed months credited on their 1st and paid on their 8th; daily cut-offs through yesterday. **Nothing is simulated.** | No |
-| `today` | tomorrow 00:10 IST | Also today's repurchase evaluation and GSB cut-off, which really fire at 00:05 and 00:10 tomorrow. No month is closed. | Yes |
+| `today` | tomorrow's chain | Also today's repurchase evaluation and GSB cut-off, which really run in tomorrow's chain. No month is closed. | Yes |
 | `projection` | the 8th of next month, 04:00 IST | The rest of this month day by day, its monthly close on the 1st, and its payout batch on the 8th — on the orders that exist right now. | Yes |
 
 ```bash
@@ -479,8 +479,8 @@ environment declares it:
 - **A payout batch cannot be approved, and no bank NEFT file can be built**,
   while a projection stands. Reading a batch is fine; signing off amounts
   computed on a clock that has not arrived is not.
-- **The scheduled compensation engines pause** — `repurchase:evaluate`,
-  `gsb:daily-cutoff`, `gsb:weekly-payout`, both monthly closes, the health digest
+- **The scheduled compensation engines pause** — the whole nightly chain
+  (`compensation:nightly-run`, and therefore every engine it fires), the health digest
   (every paused period would read as overdue) and `payout:auto-retry-failed`,
   which is the only one of them that reaches a bank. The check fails CLOSED: if
   the state cannot be read the engines stay paused, because a skipped nightly run
@@ -488,7 +488,7 @@ environment declares it:
   otherwise run tonight against a carry-forward store the projection has already
   advanced past, and `GsbCutoffService` aborts on exactly that. This also
   replaces the old operational rule about never recomputing between 00:00 and
-  00:10 IST (F125): a replay in flight pauses them too.
+  the position the chain reaches them (F125): a replay in flight pauses them too.
 - **A nightly reset at 23:30 IST** runs
   `compensation:recompute-all --horizon=now --if-projected --force`, which puts
   the environment back to production-faithful before the 00:05 engines are due —
@@ -601,25 +601,67 @@ line each piece sits on.
 
 | Command | Schedule (IST) | Notes |
 |---|---|---|
-| `repurchase:evaluate` | Daily 00:05 | Must run before the GSB cut-off |
-| `gsb:daily-cutoff` | Daily 00:10 (processes yesterday) | Core GSB engine |
+| `compensation:nightly-run` | Daily 00:05 | **The only compensation entry.** Runs every engine the night is due, in dependency order, in one process |
 | `cooling-off:remind` | Daily 09:00 | Statutory D-7/D-1 |
-| `compensation:monthly-close` | 1st of month 00:20 | **The only monthly crediting entry.** Runs the seven engines below, in order, in one process; resumes at the first step that has not succeeded |
-| `gsb:weekly-payout` | Tuesday 03:00 | Aggregates credited cut-offs |
-| `compensation:monthly-payout-close` | 8th of month 04:00 | Runs `payout:monthly-run`, but only if every crediting engine for the month succeeded |
-| `compensation:engine-health-digest` | Daily 08:00 | Emails failed / missed / stuck runs; silent when healthy |
-| `compensation:recompute-all --horizon=now --if-projected` | Daily 23:30 | **Dev and staging only** — puts an environment holding simulated figures back to production-faithful before the 00:05 engines. A no-op elsewhere, and the whole entry is filtered out in production |
+| `compensation:engine-health-digest` | Daily 08:00 | Emails failed / missed / stuck runs and what the chain could not do; silent when healthy |
+| `compensation:recompute-all --horizon=now --if-projected` | Daily 23:30 | **Dev and staging only** — puts an environment holding simulated figures back to production-faithful before the 00:05 chain. A no-op elsewhere, and the whole entry is filtered out in production |
 
-The five compensation entries above (`repurchase:evaluate`, `gsb:daily-cutoff`,
-`gsb:weekly-payout` and both closes) carry a filter that pauses them on a dev or
-staging environment while a projection is standing or a recompute is running.
-In production the filter always passes.
+The chain carries a filter that pauses it on a dev or staging environment while
+a projection is standing or a recompute is running; the command re-checks the
+same gate itself, so a hand-typed run is paused too. In production both always
+pass.
+
+### What the chain runs on a given night
+
+| # | Step | Period | When |
+|---|---|---|---|
+| 1 | `repurchase:evaluate` | `--date` = tonight | Every night |
+| 2 | `gsb:daily-cutoff` | `--date` = yesterday | Every night, preceded by any night that was missed |
+| 3 | `compensation:monthly-close` | `--month` = the month that just ended | The moment that month's last day has been cut off |
+| 4 | `gsb:weekly-payout` | `--date` = the Tuesday | Tuesdays, and the next night if a Tuesday's batch was never built |
+| 5 | `compensation:monthly-payout-close` | `--month` = the month before last | The 8th, and later nights while no batch exists |
+
+**Why one entry instead of five.** The five were sequenced only by clock offsets
+— 00:05, 00:10, 00:20, Tuesday 03:00, the 8th at 04:00 — and
+`withoutOverlapping()` is per-command: it does not serialise across commands. An
+evaluation that overran five minutes, failed, or never started still let the
+cut-off proceed on yesterday's repurchase verdicts, and a day forfeited by
+mistake is never corrected. Inside one process a step runs only after the step
+before it exited 0.
+
+**Resume, never restart.** A re-run skips every step already recorded
+*succeeded* for its period. `--restart` forces the whole night. Two steps are
+deliberately not skippable — the repurchase evaluation and the weekly batch are
+dated tonight, and a succeeded run never counts while its period is still in
+flight; both are safe to repeat.
+
+**Missed nights heal.** The chain works forward from the newest day it can prove
+was cut off *to completion* (a succeeded run that started after that day ended —
+result rows alone are not proof, because the cut-off commits per distributor and
+a crash leaves a partial day). Up to 31 nights are backfilled in order; a longer
+gap is recorded in `audit_log` and reported in the health digest rather than
+replayed unattended.
+
+**A month is never closed short.** If any day of the month has no completed
+cut-off, the close is skipped, recorded and reported — every monthly engine
+freezes what it prices, so a month closed short stays short.
+
+**Catching up by hand.** `compensation:nightly-run --date=<past night>` replays
+that night's cut-offs but builds no payout batch; add `--with-payouts` to
+include steps 4 and 5, or `--weekly-payouts-only` for the weekly batch alone
+(what the admin retry button passes). **Both create real payout batches, and
+from a shell both create them with no maker** — there is no `Auth::id()` and no
+attributed `EngineRunContext` outside the queue worker, so `created_by` lands
+NULL and the platform cannot stop whoever ran the command from also approving
+the batch. Keep that separation by hand, or use the retry button, which records
+a maker and enforces it. `--without-payouts` is the opposite switch and wins
+over both.
 
 The seven steps `compensation:monthly-close` runs, in order. **None of these has
-its own scheduler entry any more** — clock offsets do not serialise commands
-(`withoutOverlapping()` is per-command), so the ordering now lives in one
-process. Each still records its own `engine_runs` row and each is still
-individually runnable and individually triggerable from Engine Runs.
+its own scheduler entry** — clock offsets do not serialise commands, so the
+ordering lives in one process. Each still records its own `engine_runs` row and
+each is still individually runnable and individually triggerable from Engine
+Runs.
 
 | Step | Command | Period |
 |---|---|---|
@@ -627,9 +669,14 @@ individually runnable and individually triggerable from Engine Runs.
 | 2 | `rank:monthly-run` | closed month |
 | 3 | `gbb:monthly-run` | closed month |
 | 4 | `fortune:enroll-eligible` | closed month |
-| 5 | `adc:monthly-run` | closed month |
-| 6 | `fortune:monthly-run` | closed month |
+| 5 | `fortune:monthly-run` | closed month |
+| 6 | `adc:monthly-run` | closed month |
 | 7 | `offers:monthly-run` | closed month |
+
+Steps 6 and 7 are last because neither is on the crediting critical path: ADC
+credits centre owners with no repurchase deduction, and purchase offers move no
+cash at all. The five before them share the repurchase cap, which is summed
+non-atomically, so they have to stay serial.
 
 **A month still in flight is refused.** `rank:monthly-run`, `gbb:monthly-run`,
 `fortune:enroll-eligible`, `fortune:monthly-run`, `adc:monthly-run`, `offers:monthly-run` and both
