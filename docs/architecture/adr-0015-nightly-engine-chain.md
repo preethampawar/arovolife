@@ -119,6 +119,24 @@ deliberately one process, and the win available is ordering, not concurrency.
   be recorded as the batch's maker, which is what keeps maker-checker intact on
   a path that now reaches a payout batch. The monthly close is excluded because
   it needs no help: every night from the 8th rebuilds it while none exists.
+- With the GSB feature flag OFF the weekly backfill is suppressed entirely
+  (amended 2026-09-17). The sweep records `skipped` and builds nothing, so no
+  batch ever exists, so the frontier search can never find one and the
+  null-frontier branch would name the same Tuesday as "never built" on every
+  non-Tuesday night for as long as the flag stayed off. A warning that fires
+  every night is a warning nobody reads. The Tuesday itself is still stepped, so
+  the `skipped` row that records the engine was off on a night it was due
+  survives; only the backfill and its warning go.
+- A batch stranded in `processing` is the one state the chain cannot heal, and
+  it is now recoverable rather than merely documented (2026-09-17). A killed
+  sweep never writes `failed`, and `processing` is closed to re-entry, so the
+  row is permanent: the chain proves a Tuesday from the existence of a batch and
+  moves on, and the retry button reports success over it.
+  `payout:reopen-stuck-batch` writes the status the crash could not, under the
+  sweep lock and behind an idle bar of twice the lock's TTL. Deliberately CLI
+  and not a button — deciding a payout batch is owed again needs someone who has
+  read the worker logs, not someone who saw a red banner. The Action Center
+  surfaces the batch so that someone knows to look.
 
 ## Alternatives rejected
 

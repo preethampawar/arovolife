@@ -221,6 +221,44 @@ php artisan gsb:weekly-payout --date=2026-09-15   # the batch date (a Tuesday)
 php artisan compensation:monthly-payout-close --month=2026-08
 ```
 
+**Reopen a payout batch stranded in `processing`.** A sweep killed outright —
+OOM, the queue job's hour-long timeout, SIGKILL — never reaches the catch block
+that writes `failed`, so the row keeps saying `processing`, and `processing` is
+closed to re-entry. Nothing re-enters it on its own: the nightly chain proves a
+Tuesday from the existence of a batch, not from its status, so it moves on; the
+retry button reports success over it. This is the command that unsticks it, and
+`failed` is then recoverable by the ordinary re-run above.
+
+```bash
+php artisan payout:reopen-stuck-batch --type=weekly --date=2026-09-15 --actor=<user id>
+php artisan payout:reopen-stuck-batch --type=monthly --date=2026-08-01 --actor=<user id>
+```
+
+It refuses on two independent grounds. First, if a payout sweep holds the lock —
+taken, never waited for. Second, if anything has been written for the batch in
+the last two hours. **That second check reads the batch's line items as well as
+the batch row, and takes whichever is later.** The batch row is written exactly twice per sweep, `processing` at
+the start and its totals at the end, so `updated_at` says when the sweep
+*started*: a `gsb:weekly-payout` you typed by hand has no queue timeout, the lock
+self-expires after an hour, and at ten lakh the sweep can run for longer than
+both. The per-distributor line item is what proves it is still alive.
+
+`--actor=<user id>` is **required** and must name someone holding `finance.record`, and it is not bookkeeping. Whoever decides a
+batch is owed again is its maker, and this is the only place that can be
+recorded: the re-run afterwards is a separate process with no session and no
+attributed run context, so it stamps `created_by` NULL and the batch comes back
+approvable by whoever reopened it. The command records the actor as the batch's
+maker when it has none, and never overwrites one it already has — the first hand
+on a batch stays the one barred from approving it.
+
+It moves no money and recomputes nothing: one status column and one audit row,
+written in a single transaction so a batch can never be reopened without the
+record of it.
+
+A batch in this state is surfaced in the Action Center under Money as *Payout
+batches stuck mid-sweep* after two hours, so it does not depend on someone
+thinking to look.
+
 **Mark a dead run failed.** There is no command for this: a `running` row is only ever closed by the process that opened it, and `RunEngineChainJob::abortStaleWorker()` closes one only when a new chain run finds it stale. If a row must be closed by hand so the engine can be re-triggered, do exactly one row and nothing broader:
 
 ```sql
@@ -618,7 +656,7 @@ pass.
 | 1 | `repurchase:evaluate` | `--date` = tonight | Every night |
 | 2 | `gsb:daily-cutoff` | `--date` = yesterday | Every night, preceded by any night that was missed |
 | 3 | `compensation:monthly-close` | `--month` = the month that just ended | The moment that month's last day has been cut off |
-| 4 | `gsb:weekly-payout` | `--date` = the Tuesday | Tuesdays, and the next night if a Tuesday's batch was never built |
+| 4 | `gsb:weekly-payout` | `--date` = the Tuesday | Tuesdays, and the next night if a Tuesday's batch was never built — unless the GSB feature flag is off, when only the Tuesday itself is stepped (and recorded `skipped`), because with the sweep switched off no Tuesday is owed |
 | 5 | `compensation:monthly-payout-close` | `--month` = the month before last | The 8th, and later nights while no batch exists |
 
 **Why one entry instead of five.** The five were sequenced only by clock offsets
