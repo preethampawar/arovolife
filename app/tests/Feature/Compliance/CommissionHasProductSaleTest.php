@@ -65,10 +65,12 @@ final class CommissionHasProductSaleTest extends TestCase
      * an entitlement, so hard rule 2 has nothing to say about them.
      *
      * `manual_credit` is the exception that has to be named: it is an admin
-     * adjustment, it is NOT sale-derived, and it exists for corrections. It is
-     * listed here rather than in CREDIT_TRACE so that nobody reads this file
-     * and concludes it has a product-sale story. Its control is the audit log
-     * and dual authorisation, not this test.
+     * adjustment and it is NOT sale-derived. It is listed here rather than in
+     * CREDIT_TRACE so that nobody reads this file and concludes it has a
+     * product-sale story. No application code writes it any more — the admin
+     * control was deleted on 2026-09-17 (risk R-74: counted in the displayed
+     * balance, swept by no payout batch) — but the type stays writable for the
+     * rows already on disk, and the exemption stays stated rather than assumed.
      *
      * @var array<int, string>
      */
@@ -243,6 +245,72 @@ final class CommissionHasProductSaleTest extends TestCase
         );
 
         $this->assertSame('manual_credit', $entry->type);
+    }
+
+    /**
+     * HR2-03b(ii): nothing in the application writes `manual_credit`.
+     *
+     * The admin control that did was deleted on 2026-09-17 (R-74): the type is
+     * counted by WalletService::balancePaise() but belongs to no payout group,
+     * so every rupee it wrote showed to the distributor as owed and could never
+     * be paid. Deleting the caller is the whole mitigation — the type stays
+     * writable — so the register's "any proposal to write this type again
+     * reopens R-74" needs something that can actually refuse it. This is that.
+     *
+     * Reopening the question is allowed; doing it silently is not. A new writer
+     * has to settle the payout sweep set and the Action Center
+     * `payouts.bank_details_missing` whitelist first, then amend this list.
+     *
+     * Scope, deliberately narrow on two axes — widen only with a reason, not
+     * reflexively. It matches the single-quoted literal because Pint's
+     * `single_quote` rule makes that the only spelling the codebase keeps, and
+     * it walks `app/Modules` only because every caller of `WalletService` lives
+     * there; `app/Console`, `app/Http`, `app/Models` and `app/Providers` do not
+     * touch it. A writer appearing outside `app/Modules` would be a layering
+     * break worth failing on separately.
+     */
+    public function test_hr2_03b_ii_no_application_code_writes_manual_credit(): void
+    {
+        $allowed = [
+            // The type's own declarations, not writers of it.
+            'Compensation/Services/WalletService.php',
+            'Compensation/Models/WalletLedgerEntry.php',
+        ];
+
+        $offenders = [];
+
+        $files = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator(app_path('Modules'), \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($files as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $path = str_replace(app_path('Modules').DIRECTORY_SEPARATOR, '', $file->getPathname());
+
+            // Migrations carry the ledger enum as SQL text; they declare the
+            // type rather than write a row with it.
+            if (str_contains($path, 'Database/Migrations')) {
+                continue;
+            }
+
+            if (in_array($path, $allowed, true)) {
+                continue;
+            }
+
+            if (str_contains((string) file_get_contents($file->getPathname()), "'manual_credit'")) {
+                $offenders[] = $path;
+            }
+        }
+
+        $this->assertSame([], $offenders, implode("\n", [
+            'A new writer of the `manual_credit` ledger type appeared: '.implode(', ', $offenders),
+            'That type is displayed in the wallet balance and swept by no payout batch,',
+            'so it shows a distributor money that cannot be withdrawn. See R-74 in',
+            'docs/compliance/risk-register.md before adding one.',
+        ]));
     }
 
     /** HR2-03c: no orphaned engine credit exists in the data either. */

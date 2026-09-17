@@ -98,29 +98,36 @@ final class GsbCutoffResult extends Model
     ];
 
     /**
-     * True when the run that produced this row advanced the rolling
-     * gsb_carryforwards store (no_match, frozen, repurchase held/suspended,
-     * credited — and reversed, which was credited when it ran; the admin
-     * reversal only debits the wallet, never rewinds CF). below_600bv returns
-     * before touching the store and the failed path rolls its CF mutation
-     * back, so those never advanced it. Neither did repurchase_forfeited: the
-     * client's 2026-09-07 spec leaves both stores exactly where the due date
-     * left them, which is the whole point of the forfeit.
+     * Statuses whose run advanced the rolling gsb_carryforwards store: no_match,
+     * frozen, repurchase held/suspended, credited — and reversed, which was
+     * credited when it ran; the admin reversal only debits the wallet, never
+     * rewinds CF. below_600bv returns before touching the store and the failed
+     * path rolls its CF mutation back, so those never advanced it. Neither did
+     * repurchase_forfeited: the client's 2026-09-07 spec leaves both stores
+     * exactly where the due date left them, which is the whole point of the
+     * forfeit.
      *
-     * PARITY PARTNER: WindowedStateWiper::readCarryforwardRewind() repeats this
-     * list as a query-builder whereIn (it works on rows, not models). Change
-     * one and you must change the other — GsbCutoffServiceTest pins them equal.
+     * Read by three places that each need the same answer in a different shape
+     * — {@see advancedCarryForward()} on a loaded row, GsbCutoffService's
+     * out-of-order guard and WindowedStateWiper::readCarryforwardRewind() as a
+     * query-builder whereIn. It is one constant precisely because three copies
+     * of a list is two too many to keep honest by hand.
+     *
+     * @var list<string>
      */
+    public const CARRY_FORWARD_ADVANCING_STATUSES = [
+        self::STATUS_NO_MATCH,
+        self::STATUS_FROZEN,
+        self::STATUS_REPURCHASE_HELD,
+        self::STATUS_REPURCHASE_SUSPENDED,
+        self::STATUS_CREDITED,
+        self::STATUS_REVERSED,
+    ];
+
+    /** True when the run that produced this row advanced the carry-forward store. */
     public function advancedCarryForward(): bool
     {
-        return in_array($this->status, [
-            self::STATUS_NO_MATCH,
-            self::STATUS_FROZEN,
-            self::STATUS_REPURCHASE_HELD,
-            self::STATUS_REPURCHASE_SUSPENDED,
-            self::STATUS_CREDITED,
-            self::STATUS_REVERSED,
-        ], true);
+        return in_array($this->status, self::CARRY_FORWARD_ADVANCING_STATUSES, true);
     }
 
     /** @return BelongsTo<Distributor, $this> */

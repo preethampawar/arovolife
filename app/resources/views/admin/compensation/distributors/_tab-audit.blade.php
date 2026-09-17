@@ -1,6 +1,6 @@
 @developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-    Admin actions on this distributor's compensation records (manual credits, reversals, freezes). From the system audit log.
+    Admin actions on this distributor's compensation records (cut-off retries, reversals, freezes). From the system audit log. Rows dated before 17 September 2026 may carry <code>carryforward.recalculated</code>, <code>payout.force_triggered</code> or <code>gsb.manual_credit</code>: the first two recorded a request that performed nothing and the controls were removed, and manual credits are no longer written at all.
 </div>
 @enddeveloper
 <x-ui.card flush>

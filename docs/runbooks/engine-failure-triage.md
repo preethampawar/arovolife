@@ -98,6 +98,7 @@ php artisan compensation:engine-health-digest --always
 | Distributors unpaid with money in the wallet | A payout hold, not a failure | [§11](#11-distributors-are-held-not-failed) |
 | `repurchase:evaluate` partially failed | One distributor's data; the cut-off now refuses | [§12](#12-repurchase-evaluation-failed-for-some-distributors) |
 | A pool frozen at ₹0 | An engine ran for a period still in flight | [§13](#13-a-pool-froze-at-zero) |
+| "a later cut-off already advanced the carry-forward store" | A past date is being replayed after a newer one ran | [§14](#14-a-cut-off-refuses-because-a-later-one-already-ran) |
 
 ---
 
@@ -459,6 +460,99 @@ php artisan compensation:recompute-all --horizon=now
 ```
 
 On production, stop and escalate — do not hand-edit a frozen pool.
+
+---
+
+## 14. A cut-off refuses because a later one already ran
+
+```
+Cannot re-run the 2026-09-14 cut-off for distributor 412: a later cut-off
+already advanced the carry-forward store, and replaying one date in isolation
+cannot rewind it.
+```
+
+This is a refusal, not a crash, and the guard is right. Carry-forward is a
+**rolling** store: each night's cut-off rewinds to the before-state its own
+result row recorded, recomputes, and writes the result forward. Once a newer
+date has advanced the store, that row's before-state no longer describes it —
+rewinding to it would erase the newer day's BV silently, and nobody would be
+credited for it.
+
+**The commonest way to meet this refusal is the Retry button**, and from
+2026-09-17 it fires more often than it used to. Manual Controls → Retry Daily
+Cut-off is now refused for any night the chain has already run past — including
+a night whose row says *failed*, and including the retry's own deletion of that
+row. Before that date the guard only inspected the row it was replacing, so a
+failed night retried a day late was recomputed against a store that had already
+absorbed the following night: no error, wrong figures, nobody told. If the night
+you are retrying is the most recent one and nothing has run since, the button
+behaves exactly as it always did.
+
+**So the deadline is the next nightly chain run — 00:05 IST.** Not "usually":
+`GsbIdleCutoffBatch` writes a `no_match` row for every idle distributor each
+night and `no_match` advances the store, so one chain run closes the window for
+essentially the whole roster. A failed night found the next morning is already
+past retry. Treat a failed cut-off as same-day work, and see **R-91** in the
+risk register for what is still owed here — there is no rehearsed production
+rebuild behind the escalation below, and writing one is a pre-launch gate.
+
+The admin sees the refusal message verbatim on the Manual Controls page (a
+`compensation.cutoff.manual_retry_refused` audit row is written with it, and
+the failed cut-off row survives the refused retry untouched). Before
+2026-09-17 the same refusal rendered as a blank *"Something went wrong"* page
+and recorded nothing — if you are reading a report from an older incident, the
+absence of an audit row does not mean nobody tried.
+
+**There is no admin control for rebuilding a carry-forward.** Manual Controls
+once carried a "Recalculate CF" button that only wrote an audit row; it was
+deleted on 2026-09-17 rather than left to look like a fix. Nothing on the admin
+side rebuilds a carry-forward.
+
+First, find how far back the damage goes — the earliest date whose figures are
+wrong, not the date you happened to re-run:
+
+```bash
+php artisan tinker --execute '
+  App\Modules\Compensation\Models\GsbCutoffResult::where("distributor_id", 412)
+    ->orderBy("cutoff_date")
+    ->get(["cutoff_date","status","power_cf_before_paise","power_cf_after_paise","net_gsb_paise"])
+    ->each(fn($r) => print("{$r->cutoff_date->toDateString()}\t{$r->status}\t{$r->power_cf_before_paise}\t{$r->power_cf_after_paise}\t{$r->net_gsb_paise}\n"));'
+```
+
+**Dev / staging** — replay every engine from that date forward, in order, at the
+scheduler's own clock (ADR-0014). This is population-wide, not per-distributor;
+there is no per-distributor rebuild:
+
+```bash
+# Everything from the first wrong day forward, earlier history kept
+php artisan compensation:recompute-all --horizon=now --from=2026-09-14 --windowed
+
+# Whole history, when the store is wrong further back than you can pin down
+php artisan compensation:recompute-all --horizon=now
+```
+
+Then confirm the store and the results agree, and that no run is left failed:
+
+```bash
+php artisan tinker --execute '
+  $cf = App\Modules\Compensation\Models\GsbCarryforward::where("distributor_id",412)->first();
+  $last = App\Modules\Compensation\Models\GsbCutoffResult::where("distributor_id",412)
+    ->orderByDesc("cutoff_date")->first();
+  echo "store: {$cf->power_side} {$cf->power_side_bv_paise}", PHP_EOL;
+  echo "last result forward: {$last->power_side_after} {$last->power_cf_after_paise} on {$last->cutoff_date->toDateString()}", PHP_EOL;'
+
+php artisan tinker --execute '
+  echo App\Modules\Compensation\Models\EngineRun::where("status","failed")->count();'
+```
+
+**Production** — `compensation:recompute-all` refuses in production
+unconditionally (`RecomputeGuard`), by design: it wipes and rebuilds every
+BV-derived row. There is no self-service path. Escalate with §"Escalate with
+this" below, including the full refusal message and the result-row listing
+above. Treat the affected distributor's GSB figures as provisional until it is
+resolved; do not re-run the date by hand and do not reverse-and-recredit to
+paper over it, because neither touches the carry-forward store the next night
+will read.
 
 ---
 

@@ -8,8 +8,8 @@
 <div class="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
     <strong>These controls affect real money and wallet balances.</strong>
     Every action is permanently audit-logged with your admin ID, a timestamp, the before/after state, and the reason you provide.
-    There is no undo — use Reverse if a credit needs to be walked back.
-    When in doubt, use <strong>Retry</strong> (which is safe and idempotent) before using <strong>Manual Credit</strong>.
+    There is no undo. Reach for <strong>Retry</strong> first — it is safe and idempotent.
+    <strong>Reverse</strong> is a one-way door: it walks a credit back, and nothing on this page puts it back again.
 </div>
 
 {{-- Success flash --}}
@@ -17,10 +17,7 @@
 <div class="grid grid-cols-3 gap-3 mb-6">
     @foreach([
         ['key' => 'retry',        'label' => 'Retry Daily Cut-off',       'desc' => 'Re-run 23:59 GSB calculation for one distributor + date. Idempotent if already credited.', 'danger' => false],
-        ['key' => 'recalc-cf',   'label' => 'Recalculate Carry-forward', 'desc' => 'Recompute slab-1 weaker CF and power-side CF from full GSB history.', 'danger' => false],
-        ['key' => 'credit',      'label' => 'Manual GSB Credit',         'desc' => 'Credit a custom amount to wallet. Requires amount + reason. Use only when Retry fails.', 'danger' => false],
         ['key' => 'reverse',     'label' => 'Reverse GSB Credit',        'desc' => 'Write a debit reversing a specific GSB credit. Affects next payout.', 'danger' => true],
-        ['key' => 'force-payout','label' => 'Force Weekly Payout',       'desc' => 'Trigger payout for one distributor immediately. Only if automated batch failed.', 'danger' => false],
         ['key' => 'freeze',      'label' => 'Freeze / Unfreeze GSB',     'desc' => 'Block GSB credits without terminating account. GSB calculated but held.', 'danger' => true],
     ] as $card)
     <a href="{{ route('admin.compensation.manual-controls.index', array_filter(['adn' => $adn, 'action' => $card['key'], 'date' => $date ?? null])) }}"
@@ -36,7 +33,7 @@
 
 {{-- Active form section --}}
 @php
-    $allowedActions = ['retry', 'recalc-cf', 'credit', 'reverse', 'force-payout', 'freeze'];
+    $allowedActions = ['retry', 'reverse', 'freeze'];
     $safeAction = in_array($action, $allowedActions, true) ? $action : null;
 @endphp
 @if($safeAction)
@@ -61,6 +58,9 @@
         @foreach($recentActions as $log)
         @php
             $badgeColor = match(true) {
+                // Before the retry arm: 'manual_retry_refused' contains 'retry'
+                // and a refusal is not a success.
+                str_contains($log->action, 'refused') => 'bg-amber-100 text-amber-700',
                 str_contains($log->action, 'reversed') => 'bg-red-100 text-red-700',
                 str_contains($log->action, 'frozen') || str_contains($log->action, 'unfrozen') => 'bg-blue-100 text-blue-700',
                 str_contains($log->action, 'retry') || str_contains($log->action, 'recalc') => 'bg-green-100 text-green-700',

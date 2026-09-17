@@ -6,7 +6,7 @@
 
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    Carry-forward state persists between daily cut-offs. The power side (stronger group) carries forward up to 4,50,000 BV — excess is flushed at each cut-off. The slab-1 weaker side accumulates indefinitely until the 15,000 BV match. If a BV reversal happens after a cut-off, use <a href="{{ route('admin.compensation.manual-controls.index') }}" class="underline">Recalculate Carry-forward</a> to correct the state.
+    Carry-forward state persists between daily cut-offs. The power side (stronger group) carries forward up to 4,50,000 BV — excess is flushed at each cut-off. The slab-1 weaker side accumulates indefinitely until the 15,000 BV match. If a BV reversal happens after a cut-off, the state here does not correct itself and no admin control rebuilds it — tell the platform team, with the distributor's ADN and the first date that looks wrong.
 </div>
 @enddeveloper
 

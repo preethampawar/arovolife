@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Compensation\Exceptions\CutoffReplayedOutOfOrder;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
@@ -178,21 +179,6 @@ final class GsbCutoffService
         // before-state recorded on the existing row — the recompute below then
         // lands on identical numbers, keeping "Retry is safe" true.
         if ($existing !== null && $existing->advancedCarryForward()) {
-            // Out-of-order guard: if a later date was already processed, the
-            // store also contains THAT day's BV — rewinding to this row's
-            // before-state would silently erase it. Reprocessing history must
-            // go through the recalculate flow, oldest date first.
-            $laterRunExists = GsbCutoffResult::where('distributor_id', $distributorId)
-                ->whereDate('cutoff_date', '>', $date->toDateString())
-                ->exists();
-            if ($laterRunExists) {
-                throw new \RuntimeException(
-                    "Cannot re-run the {$date->toDateString()} cut-off for distributor {$distributorId}: "
-                    .'a later cut-off already advanced the carry-forward store. '
-                    .'Use Recalculate CF and reprocess dates oldest-first.'
-                );
-            }
-
             $cfPower = $existing->power_cf_before_paise;
             $cfSlab1 = $existing->slab1_weaker_cf_before_paise;
             // Legacy rows predate power_side_before; fall back to the store's
@@ -250,20 +236,42 @@ final class GsbCutoffService
             );
         }
 
+        // Out-of-order guard. Everything below this line ends in an advance of
+        // the rolling store, and the store can only be advanced from the date
+        // that currently sits at its head. So the question is asked of the
+        // STORE, not of this date's row: has anything after this date already
+        // moved it on? If so, recomputing here would fold this day's BV in on
+        // top of a later day's, and rewinding to this row's before-state would
+        // erase that later day — both silently. Reprocessing history means
+        // recomputing every date from here forward, in order; see
+        // CutoffReplayedOutOfOrder for what that costs per environment.
+        //
+        // It cannot be asked earlier, because the paths that return above this
+        // point — below_600bv, and a forfeited day that is still forfeited —
+        // write no store at all and are safe at any time. And it cannot be
+        // asked of $existing, which is how a retried night slipped through
+        // before: a failed row never advanced the store, and the admin retry
+        // deletes that row before re-running, so there was nothing left to look
+        // at on the one path that most needed guarding.
+        $laterRunAdvancedStore = GsbCutoffResult::where('distributor_id', $distributorId)
+            ->whereDate('cutoff_date', '>', $date->toDateString())
+            ->whereIn('status', GsbCutoffResult::CARRY_FORWARD_ADVANCING_STATUSES)
+            ->exists();
+
         // The day was forfeited when it ran and counts now — the cycle was
         // re-resolved behind it. A forfeited row left the store alone, so the
         // rewind block above never fired for it: the store holds whatever the
         // LATEST processed date left there. Recomputing this day as eligible
-        // against that baseline would measure it twice.
-        if ($existing?->status === GsbCutoffResult::STATUS_REPURCHASE_FORFEITED
+        // against that baseline would measure it twice. Held to the stricter
+        // bar of ANY later row, advancing or not, because this date's own
+        // outcome is changing underneath the sequence.
+        $laterRunExists = $existing?->status === GsbCutoffResult::STATUS_REPURCHASE_FORFEITED
             && GsbCutoffResult::where('distributor_id', $distributorId)
                 ->whereDate('cutoff_date', '>', $date->toDateString())
-                ->exists()) {
-            throw new \RuntimeException(
-                "Cannot re-run the {$date->toDateString()} cut-off for distributor {$distributorId}: "
-                .'a later cut-off already advanced the carry-forward store. '
-                .'Use Recalculate CF and reprocess dates oldest-first.'
-            );
+                ->exists();
+
+        if ($laterRunAdvancedStore || $laterRunExists) {
+            throw CutoffReplayedOutOfOrder::forDate($date, $distributorId);
         }
 
         // Snapshot the pre-run side now that the locals hold the true

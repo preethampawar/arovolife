@@ -505,6 +505,55 @@ it('refuses to re-run an old date after a later cut-off already advanced the sto
     $svc->runForDistributor($dist->id, Carbon::yesterday());
 })->throws(RuntimeException::class, 'later cut-off');
 
+it('refuses a retried night once a later cut-off has advanced the store', function () {
+    // The reachable production path, and the one the old guard could not see.
+    // A single distributor's night fails; the chain runs the next night for
+    // everyone regardless, advancing the store past the failed one. The admin
+    // retry then DELETES the failed row before re-running — and a failed row
+    // never advanced the store, while a deleted row says nothing at all. So the
+    // rewind branch, where the out-of-order check used to live, was never
+    // entered, and the retry recomputed the old night against a store that had
+    // already absorbed the newer one.
+    $dist = makeDistributorWithBv(300_000);
+    foreach ([today()->subDay(), today()] as $day) {
+        GroupBvDaily::create([
+            'distributor_id' => $dist->id,
+            'date' => $day->toDateString(),
+            'left_bv_paise' => 1_000_000,
+            'right_bv_paise' => 800_000,
+        ]);
+    }
+
+    GsbCutoffResult::create([
+        'distributor_id' => $dist->id,
+        'cutoff_date' => today()->subDay()->toDateString(),
+        'left_bv_paise' => 1_000_000,
+        'right_bv_paise' => 800_000,
+        'weaker_bv_paise' => 800_000,
+        'gross_gsb_paise' => 0,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'repurchase_deduction_paise' => 0,
+        'net_gsb_paise' => 0,
+        'power_cf_before_paise' => 0,
+        'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_before_paise' => 0,
+        'slab1_weaker_cf_after_paise' => 0,
+        'status' => GsbCutoffResult::STATUS_FAILED,
+        'failure_reason' => 'wallet credit threw',
+    ]);
+
+    $svc = app(GsbCutoffService::class);
+    $svc->runForDistributor($dist->id, Carbon::today());
+
+    // Exactly what AdminManualControlsController::retryCutoff() does first.
+    GsbCutoffResult::where('distributor_id', $dist->id)
+        ->whereDate('cutoff_date', today()->subDay()->toDateString())
+        ->delete();
+
+    $svc->runForDistributor($dist->id, Carbon::yesterday());
+})->throws(RuntimeException::class, 'later cut-off');
+
 // ---------------------------------------------------------------------------
 // Conditional personal-BV top-up + tie-break + score snapshot (KP 2026-07-21)
 // ---------------------------------------------------------------------------
@@ -661,9 +710,11 @@ it('treats an admin-reversed cut-off as terminal — re-run is a no-op with no n
 /**
  * The GsbCutoffResult::STATUS_* constants named inside one method's source.
  *
- * WindowedStateWiper duplicates advancedCarryForward()'s list as a raw SQL
- * whereIn (it works on the query builder, not on models), so the only thing
- * that can keep the two honest is a test that reads both.
+ * The advancing-status list used to be written out twice — once in
+ * advancedCarryForward(), once as a raw whereIn in WindowedStateWiper — and
+ * this read both to pin them equal. Both now read
+ * GsbCutoffResult::CARRY_FORWARD_ADVANCING_STATUSES, so what is left to check
+ * is that neither has quietly grown its own copy again.
  *
  * @return list<string>
  */
@@ -708,9 +759,28 @@ it('keeps repurchase_forfeited out of the carry-forward and pool-funded lists', 
     }
 });
 
-it('keeps the wiper rewind list identical to the model carry-forward list', function (): void {
-    $wiperList = statusConstantsNamedIn(WindowedStateWiper::class, 'readCarryforwardRewind');
+it('keeps one source of truth for the carry-forward-advancing statuses', function (): void {
+    // Three readers now: the model predicate, the wiper's rewind query and the
+    // cut-off service's out-of-order guard. A fourth copy is the failure this
+    // pins — a list spelled out again in a method body rather than read from
+    // the constant is how the wiper and the model drifted apart before.
+    expect(GsbCutoffResult::CARRY_FORWARD_ADVANCING_STATUSES)->toBe([
+        GsbCutoffResult::STATUS_NO_MATCH,
+        GsbCutoffResult::STATUS_FROZEN,
+        GsbCutoffResult::STATUS_REPURCHASE_HELD,
+        GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
+        GsbCutoffResult::STATUS_CREDITED,
+        GsbCutoffResult::STATUS_REVERSED,
+    ]);
 
-    expect($wiperList)->toBe(statusConstantsNamedIn(GsbCutoffResult::class, 'advancedCarryForward'));
-    expect($wiperList)->not->toContain('STATUS_REPURCHASE_FORFEITED');
+    foreach ([
+        GsbCutoffResult::STATUS_REPURCHASE_FORFEITED,
+        GsbCutoffResult::STATUS_FAILED,
+        GsbCutoffResult::STATUS_BELOW_600BV,
+    ] as $neverAdvances) {
+        expect(GsbCutoffResult::CARRY_FORWARD_ADVANCING_STATUSES)->not->toContain($neverAdvances);
+    }
+
+    expect(statusConstantsNamedIn(WindowedStateWiper::class, 'readCarryforwardRewind'))->toBe([]);
+    expect(statusConstantsNamedIn(GsbCutoffResult::class, 'advancedCarryForward'))->toBe([]);
 });

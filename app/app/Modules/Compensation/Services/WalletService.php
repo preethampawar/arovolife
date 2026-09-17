@@ -167,9 +167,13 @@ class WalletService
      * and "we know it came from BV" is not an answer to a regulator holding a
      * ledger export.
      *
-     * `manual_credit` is deliberately exempt: it is an admin correction, it has
-     * no result row by definition, and its control is the audit log rather than
-     * this guard.
+     * `manual_credit` is deliberately exempt: it has no result row by
+     * definition. Nothing in the application writes it any more — the admin
+     * control that did was deleted on 2026-09-17 because the type is counted by
+     * balancePaise() and swept by no payout batch, so every rupee it wrote was
+     * shown to the distributor as owed and could never be paid (risk R-74). The
+     * type survives for the rows already on disk. Anything that proposes to
+     * write it again has to settle the sweep question first.
      *
      * `$bonusMonth` is the first day of the IST month the income was EARNED for,
      * and every credit of a {@see CompensationPlanSettingsService::MONTHLY_CAP_TYPES}

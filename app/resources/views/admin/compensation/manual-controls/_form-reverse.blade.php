@@ -5,7 +5,7 @@
 <form method="POST" action="{{ route('admin.compensation.manual-controls.reverse') }}"
       data-confirm="This will write a debit entry reversing the GSB credit for this distributor."
       data-confirm-title="Confirm: Reverse GSB Credit"
-      data-confirm-impact="The full net GSB amount for the specified date will be debited from the wallet. This cannot be undone without a Manual Credit.">
+      data-confirm-impact="The full net GSB amount for the specified date will be debited from the wallet. Nothing in the admin panel can put it back — a reversal made in error is a platform-team job.">
     @csrf
     <div class="grid grid-cols-2 gap-4 mb-4">
         <div>

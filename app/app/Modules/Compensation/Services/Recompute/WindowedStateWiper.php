@@ -359,18 +359,7 @@ final class WindowedStateWiper
             // reference dataset, none of which a full replay creates).
             // `repurchase_forfeited` is absent for the same reason: the client's
             // 2026-09-07 forfeit deliberately leaves both stores untouched.
-            //
-            // PARITY PARTNER: this list must stay identical to
-            // GsbCutoffResult::advancedCarryForward(). GsbCutoffServiceTest
-            // reads both method bodies and pins them equal.
-            ->whereIn('status', [
-                GsbCutoffResult::STATUS_NO_MATCH,
-                GsbCutoffResult::STATUS_FROZEN,
-                GsbCutoffResult::STATUS_REPURCHASE_HELD,
-                GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
-                GsbCutoffResult::STATUS_CREDITED,
-                GsbCutoffResult::STATUS_REVERSED,
-            ])
+            ->whereIn('status', GsbCutoffResult::CARRY_FORWARD_ADVANCING_STATUSES)
             ->orderBy('distributor_id')
             ->orderBy('cutoff_date')
             ->orderBy('id')

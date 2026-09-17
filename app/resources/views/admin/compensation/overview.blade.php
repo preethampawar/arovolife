@@ -8,7 +8,7 @@
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
     @if($gsbOn)
-        The Compensation Overview shows the real-time status of today's daily GSB cut-off, any failed or stuck jobs, the total pending payout queue, and this week's GSB distributed. The earning week runs Wednesday to Tuesday and is paid the Tuesday one week after it closes: next Tuesday ({{ $nextWeeklyPayout->format('d M Y') }}) pays earnings through {{ $nextWeeklyEarningsThrough->format('d M Y') }}. Items in the attention feed need action before that batch — use Retry or Recalculate to resolve them.
+        The Compensation Overview shows the real-time status of today's daily GSB cut-off, any failed or stuck jobs, the total pending payout queue, and this week's GSB distributed. The earning week runs Wednesday to Tuesday and is paid the Tuesday one week after it closes: next Tuesday ({{ $nextWeeklyPayout->format('d M Y') }}) pays earnings through {{ $nextWeeklyEarningsThrough->format('d M Y') }}. Items in the attention feed need action before that batch — use Retry to resolve them, and retry the same night rather than the next day: once the nightly chain has run past a failed cut-off it can no longer be replayed.
     @else
         The Compensation Overview shows the total amount queued for the next payout run.
     @endif
