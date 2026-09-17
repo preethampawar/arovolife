@@ -877,3 +877,55 @@ it('builds no batch for a retry with nobody to record as its maker', function ()
 
     expect(StubChainStepCommand::$calls)->not->toContain('gsb.weekly-payout');
 });
+
+/*
+|--------------------------------------------------------------------------
+| With the weekly sweep's flag off, nothing is owed and nothing is claimed
+|--------------------------------------------------------------------------
+*/
+
+it('does not claim a missed Tuesday every night while the weekly sweep is switched off', function (): void {
+    Feature::for(null)->deactivate(GenosSalesBonusFeature::class);
+
+    // Thursday. No weekly batch exists anywhere — and with the flag off none
+    // ever will, because the sweep records `skipped` and builds nothing. The
+    // null-frontier branch would otherwise name last Tuesday as "never built"
+    // on this night and every night after it, for as long as the flag stayed off.
+    Carbon::setTestNow('2026-09-17 00:05:00');
+    seedMonthlyBatch('2026-09-01');
+
+    $exitCode = Artisan::call('compensation:nightly-run');
+
+    // Not stepped at all — and since the "never built" warning fires only when
+    // the chain has a Tuesday to rebuild, no step means no warning either.
+    expect($exitCode)->toBe(0)
+        ->and(StubChainStepCommand::$calls)->not->toContain('gsb.weekly-payout');
+});
+
+it('still steps the weekly sweep on its own Tuesday with the flag off, so the skip is recorded', function (): void {
+    Feature::for(null)->deactivate(GenosSalesBonusFeature::class);
+
+    // Tuesday. The step is the only record that the engine was off on a night
+    // it was due — RecordEngineRun writes it as `skipped`, and dropping the
+    // step would drop that row with it.
+    Carbon::setTestNow('2026-09-22 00:05:00');
+    seedMonthlyBatch('2026-09-01');
+
+    Artisan::call('compensation:nightly-run');
+
+    expect(StubChainStepCommand::$periods['gsb.weekly-payout'])->toBe('2026-09-22');
+
+    expect(EngineRun::where('engine_key', 'gsb.weekly-payout')->sole()->status)
+        ->toBe(EngineRun::STATUS_SKIPPED);
+});
+
+it('backfills again as soon as the flag is switched back on', function (): void {
+    // The suppression is scoped to the flag, not baked in: with GSB live and no
+    // batch behind it, the first-Tuesday rebuild is exactly what should happen.
+    Carbon::setTestNow('2026-09-17 00:05:00');
+    seedMonthlyBatch('2026-09-01');
+
+    Artisan::call('compensation:nightly-run');
+
+    expect(StubChainStepCommand::$periods['gsb.weekly-payout'])->toBe('2026-09-15');
+});

@@ -12,7 +12,9 @@ use App\Modules\ActionCenter\Providers\Compliance\MessagingReportedPendingProvid
 use App\Modules\ActionCenter\Providers\Money\PaymentsUnreconciledProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutBatchAwaitingApprovalProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutBatchPartiallyFailedProvider;
+use App\Modules\ActionCenter\Providers\Money\PayoutBatchStuckProcessingProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutsBankDetailsMissingProvider;
+use App\Modules\ActionCenter\Providers\Money\PayoutsBankUndecryptableProvider;
 use App\Modules\ActionCenter\Providers\Money\RefundsFailedProvider;
 use App\Modules\ActionCenter\Providers\Money\RefundsManualOwedProvider;
 use App\Modules\ActionCenter\Providers\Money\RefundsPastPromiseProvider;
@@ -77,7 +79,9 @@ final class ActionCenterServiceProvider extends ServiceProvider
         RefundsPastPromiseProvider::class,
         PayoutBatchAwaitingApprovalProvider::class,
         PayoutBatchPartiallyFailedProvider::class,
+        PayoutBatchStuckProcessingProvider::class,
         PayoutsBankDetailsMissingProvider::class,
+        PayoutsBankUndecryptableProvider::class,
         PaymentsUnreconciledProvider::class,
         KycPendingReviewProvider::class,
         DistributorRequestsOpenProvider::class,

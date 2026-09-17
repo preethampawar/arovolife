@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Laravel\Pennant\Feature;
 use Throwable;
 
 /**
@@ -488,6 +489,19 @@ final class NightlyRunCommand extends Command
             ? $night->copy()
             : $night->copy()->previous(Carbon::TUESDAY);
 
+        // WITH THE ENGINE'S FLAG OFF, NOTHING IS OWED — and saying otherwise
+        // every night is how a real warning stops being read. The sweep records
+        // `skipped` and builds no batch, so no batch ever exists, so the
+        // frontier search below can never find one and the null-frontier branch
+        // would name `$latest` on every non-Tuesday night for as long as the
+        // flag stayed off. Tonight's own Tuesday is still stepped, because that
+        // `skipped` row in `engine_runs` is the only record that the engine was
+        // off on a night it was due; what is dropped is the backfill and its
+        // warning, which describe a debt that does not exist.
+        if ($this->weeklyPayoutFlagIsOff()) {
+            return $night->dayOfWeekIso === Carbon::TUESDAY ? [$night->copy()] : [];
+        }
+
         $frontier = null;
 
         // Newest first: the first Tuesday that HAS a batch is the frontier.
@@ -538,6 +552,19 @@ final class NightlyRunCommand extends Command
         }
 
         return $days;
+    }
+
+    /**
+     * Is the weekly sweep's own feature flag off tonight?
+     *
+     * Read from the registry rather than named here, so the flag this asks
+     * about and the flag the engine is actually gated on cannot drift apart.
+     */
+    private function weeklyPayoutFlagIsOff(): bool
+    {
+        $flag = EngineRegistry::get('gsb.weekly-payout')->featureFlagClass;
+
+        return $flag !== null && ! Feature::for(null)->active($flag);
     }
 
     /**

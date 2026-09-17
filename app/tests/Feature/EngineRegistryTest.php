@@ -46,6 +46,12 @@ it('has exactly one registry entry per compensation console command', function (
         // data.
         'ScaleSeedCommand',
         'ScaleBenchmarkCommand',
+        // Recovery for a batch a killed sweep left in `processing`. It writes
+        // one status and an audit row so the ordinary re-run can proceed; it
+        // takes no period, computes nothing and pays nobody, and it must never
+        // appear on the Engine Runs page — deciding a payout batch is owed
+        // again belongs to someone who has read the worker logs.
+        'PayoutReopenStuckBatchCommand',
     ];
 
     $commandClasses = collect($commandFiles ?: [])

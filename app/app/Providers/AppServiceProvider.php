@@ -24,6 +24,7 @@ use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
+use App\Modules\Compensation\Console\Commands\PayoutReopenStuckBatchCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
@@ -180,6 +181,7 @@ class AppServiceProvider extends ServiceProvider
                 ScaleSeedCommand::class,
                 ScaleBenchmarkCommand::class,
                 MonthlyPayoutCloseCommand::class,
+                PayoutReopenStuckBatchCommand::class,
                 EngineHealthDigestCommand::class,
                 AutoRetryFailedPayoutsCommand::class,
                 RepurchaseEvaluateCommand::class,

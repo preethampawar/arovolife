@@ -764,9 +764,10 @@ final class PayoutService
      * In every case the wallet is neither debited nor swept, so the first batch
      * after the block clears pays the balance out.
      *
-     * The Action Center's `PayoutsBankDetailsMissingProvider` mirrors the
-     * web_only → kyc_pending → no_bank_account portion of this ladder in SQL,
-     * against unswept ledger credits rather than line items — change both.
+     * The Action Center mirrors this whole ladder in SQL, against unswept ledger
+     * credits rather than line items — change it alongside this method.
+     * `PayoutsBankDetailsMissingProvider` covers web_only → kyc_pending →
+     * no_bank_account; `PayoutsBankUndecryptableProvider` covers the last rung.
      */
     private function holdStatusFor(int $distributorId): ?string
     {
@@ -1427,6 +1428,195 @@ final class PayoutService
     {
         return Cache::lock(self::SWEEP_LOCK_KEY, self::SWEEP_LOCK_TTL_SECONDS)
             ->block(self::SWEEP_LOCK_WAIT_SECONDS, $sweep);
+    }
+
+    /**
+     * How long a `processing` batch must have shown no sign of life before it
+     * may be declared abandoned. Public because
+     * `PayoutBatchStuckProcessingProvider` reports on exactly this bar —
+     * a tile that fires before the service would act teaches people to ignore
+     * it, so the two read one number.
+     */
+    public const STUCK_BATCH_MIN_IDLE_SECONDS = self::SWEEP_LOCK_TTL_SECONDS * 2;
+
+    /**
+     * The last moment anything is known to have been written for this batch.
+     *
+     * NOT `payout_batches.updated_at` on its own, which was the first version
+     * of this and was wrong. The batch row is written exactly twice per sweep —
+     * `processing` at the start and again by `finalizeBatchTotals()` at the end
+     * — so its `updated_at` says when the sweep STARTED, not when it last did
+     * anything. A sweep that has been running for three hours (a hand-typed
+     * `gsb:weekly-payout` at ten lakh has no queue timeout to stop it, and the
+     * lock self-expires at an hour) would have looked idle for two of them.
+     *
+     * The per-distributor line item is the heartbeat instead, and it is a dense
+     * one: every candidate the sweep reaches gets a row, held and below-minimum
+     * distributors included. **If that write is ever batched or deferred, this
+     * liveness check must be replaced first** — a sweep that stops leaving
+     * per-distributor tracks becomes a sweep this cannot see.
+     *
+     * Null only for a batch with no `updated_at` AND no line items, which
+     * Eloquent cannot produce — timestamps are stamped on create — so it takes
+     * a raw insert. {@see reopenStuckBatch()} treats null as infinitely idle and
+     * reopens; `PayoutBatchStuckProcessingProvider` compares NULL and shows
+     * nothing. Recorded so the divergence is not rediscovered as a bug: the
+     * command fails OPEN on a row nothing legitimate writes.
+     *
+     * Public because the reopen command prints it to the operator before asking
+     * them to confirm — showing `updated_at` there would put on screen the very
+     * number this method exists to stop anyone trusting.
+     */
+    public function batchLastSignOfLife(PayoutBatch $batch): ?Carbon
+    {
+        // `created_at` only as a fallback for a row with no `updated_at` at all
+        // — it is the batch's FIRST write, and folding it into the maximum
+        // would make every batch look alive at the moment it was created.
+        $batchWrite = $batch->updated_at ?? $batch->created_at;
+
+        $lastLine = PayoutLineItem::where('payout_batch_id', $batch->id)->max('created_at');
+        $lineWrite = $lastLine === null ? null : Carbon::parse($lastLine);
+
+        if ($batchWrite === null) {
+            return $lineWrite;
+        }
+
+        if ($lineWrite === null) {
+            return $batchWrite;
+        }
+
+        return $lineWrite->greaterThan($batchWrite) ? $lineWrite : $batchWrite;
+    }
+
+    /**
+     * Reopen a batch that a hard kill left stranded in `processing`.
+     *
+     * `processing` is in {@see CLOSED_BATCH_STATUSES} so that nothing appends
+     * line items to a batch a sweep is in the middle of writing. That is right
+     * while a sweep is alive, and a trap once one has been killed outright —
+     * OOM, the job's hour-long timeout, SIGKILL — because the command's own
+     * catch block never runs and the row keeps a status that says "in progress"
+     * for ever. Nothing can then re-enter it: not the nightly chain (which sees
+     * a batch exists for that date and moves on), not a retry, not
+     * `gsb:weekly-payout` itself. The batch is a permanent half-truth on the
+     * payout report.
+     *
+     * NO MONEY MOVES HERE, and nothing is recomputed. This writes one status,
+     * `processing` → `failed`, which is the state the same crash would have
+     * left had it thrown instead of died — and from which the ordinary re-run
+     * already works, skipping every distributor who already has a line item.
+     * Distributors are never at risk either way: held and unswept income is not
+     * debited, so the following Tuesday's batch collects whatever this one
+     * missed.
+     *
+     * Two independent guards, because being wrong here means two writers on one
+     * batch:
+     *   1. The sweep lock must be FREE — taken here, not waited for, so a live
+     *      sweep refuses this outright instead of queueing behind it.
+     *   2. No line item may have been written for longer than
+     *      {@see STUCK_BATCH_MIN_IDLE_SECONDS}
+     *      ({@see batchLastSignOfLife()}). This is the guard that covers the
+     *      gap the lock cannot: a sweep outliving its own hour-long TTL keeps
+     *      running without a lock, and only its own writes prove it is there.
+     *
+     * A maker is recorded here rather than left to the re-run. The re-run is a
+     * separate process with no session and no attributed run context, so
+     * `batchCreatorId()` returns NULL there and a reopened scheduler batch would
+     * come back approvable by whoever reopened it — the exact hole R-81 closed.
+     * Whoever decides a batch is owed again IS its maker, so `created_by` is
+     * stamped here when it is empty, and never overwritten when it is not: the
+     * first hand on a batch stays the one barred from approving it.
+     *
+     * @return string|null the reason it was refused, or null when reopened
+     */
+    public function reopenStuckBatch(PayoutBatch $batch, ?int $actorId): ?string
+    {
+        if ($batch->status !== PayoutBatch::STATUS_PROCESSING) {
+            return sprintf(
+                'Batch %d is %s, not processing. Only a batch stranded mid-sweep can be reopened.',
+                $batch->id,
+                $batch->status,
+            );
+        }
+
+        $idleSince = $this->batchLastSignOfLife($batch);
+        $idleSeconds = $idleSince === null ? PHP_INT_MAX : (int) $idleSince->diffInSeconds(now());
+
+        if ($idleSeconds < self::STUCK_BATCH_MIN_IDLE_SECONDS) {
+            return sprintf(
+                'Batch %d was still being written %d minute(s) ago. A sweep is very likely still running it; wait '
+                .'until nothing has been written for %d minutes before reopening.',
+                $batch->id,
+                intdiv($idleSeconds, 60),
+                intdiv(self::STUCK_BATCH_MIN_IDLE_SECONDS, 60),
+            );
+        }
+
+        $lock = Cache::lock(self::SWEEP_LOCK_KEY, self::SWEEP_LOCK_TTL_SECONDS);
+
+        if (! $lock->get()) {
+            return 'A payout sweep is running right now. Wait for it to finish and look at the batch again.';
+        }
+
+        try {
+            // Re-read under the lock: the sweep that held it may have been this
+            // batch's, and may have finished it in the moment before we looked.
+            $batch->refresh();
+
+            if ($batch->status !== PayoutBatch::STATUS_PROCESSING) {
+                return sprintf('Batch %d finished on its own — it is now %s.', $batch->id, $batch->status);
+            }
+
+            $before = AuditDigests::of($batch);
+            $makerStamped = $batch->created_by === null && $actorId !== null;
+
+            // One transaction, because a status the audit log does not record is
+            // an unlogged change on the money path. Either both land or neither
+            // does, and a retry is safe — the status guard above is re-read
+            // under the lock.
+            DB::transaction(function () use ($batch, $actorId, $makerStamped, $before, $idleSeconds): void {
+                // `payout_batches` carries no reason column, so the WHY lives in
+                // the audit row, where it is signed and dated.
+                $update = ['status' => PayoutBatch::STATUS_FAILED];
+
+                if ($makerStamped) {
+                    $update['created_by'] = $actorId;
+                }
+
+                $batch->update($update);
+
+                AuditLog::create([
+                    'actor_id' => $actorId,
+                    'action' => 'payout.batch.reopened',
+                    'subject_type' => 'payout_batch',
+                    'subject_id' => $batch->id,
+                    'before_hash' => $before,
+                    'after_hash' => AuditDigests::of($batch),
+                    'details' => [
+                        'batch_id' => $batch->id,
+                        'batch_type' => $batch->batch_type,
+                        'batch_date' => $batch->batch_date?->toDateString(),
+                        'from_status' => PayoutBatch::STATUS_PROCESSING,
+                        'to_status' => PayoutBatch::STATUS_FAILED,
+                        'idle_seconds' => $idleSeconds,
+                        'line_items' => PayoutLineItem::where('payout_batch_id', $batch->id)->count(),
+                        'maker_stamped' => $makerStamped,
+                    ],
+                    'ip' => app()->runningInConsole() ? null : request()->ip(),
+                ]);
+            });
+
+            Log::warning('payout.batch.reopened', [
+                'payout_batch_id' => $batch->id,
+                'actor_id' => $actorId,
+                'idle_seconds' => $idleSeconds,
+                'maker_stamped' => $makerStamped,
+            ]);
+
+            return null;
+        } finally {
+            $lock->release();
+        }
     }
 
     /**

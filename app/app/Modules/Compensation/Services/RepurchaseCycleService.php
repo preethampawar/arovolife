@@ -50,15 +50,404 @@ final class RepurchaseCycleService
     /** Safety bound on the catch-up roll loop (months). */
     private const MAX_ROLL = 120;
 
+    /**
+     * Ids per `whereIn` while warming. A placeholder each, and MySQL refuses a
+     * prepared statement past 65,535 of them — the same bound that took the
+     * cut-off down between 10k and 100k on the scale harness (R-90).
+     */
+    private const WARM_CHUNK = 500;
+
+    /** @var array<int, RepurchaseCycle|null> Newest cycle per distributor, CONSUMED on read. */
+    private array $cycleCache = [];
+
+    /** @var array<int, Carbon|null> Repurchase anchor per distributor. */
+    private array $anchorCache = [];
+
+    /** @var array<int, int> Highest qualified rank per distributor. */
+    private array $rankCache = [];
+
+    /** @var array<int, array<string, int>> distributor => Y-m-d => self-purchase BV paise. */
+    private array $selfPurchaseByDay = [];
+
+    /** @var array<int, array<string, int>> distributor => Y-m-d => repurchase-wallet delta paise. */
+    private array $walletDeltaByDay = [];
+
+    /** @var array<int, true> Distributors the two day-maps above were warmed for. */
+    private array $dayMapIds = [];
+
+    /** Inclusive day bounds the two day-maps above cover; null while nothing is warmed. */
+    private ?Carbon $dayMapFrom = null;
+
+    private ?Carbon $dayMapTo = null;
+
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
         private readonly BvLedgerService $bvLedger,
         private readonly WalletService $wallet,
     ) {}
 
+    /**
+     * Pre-load, in a handful of queries, everything {@see evaluate()} would
+     * otherwise ask the database for one distributor at a time.
+     *
+     * The twin of {@see GsbCutoffService::warmBatch()}, and for the same
+     * measured reason: `repurchase:evaluate` was 90% of the nightly chain at ten
+     * lakh distributors — 2,824s and 6,004,508 queries — and almost all of that
+     * is six small per-distributor reads repeated a million times.
+     *
+     * EVERY CACHE HERE IS A STRICT ACCELERATOR. Each read below falls through to
+     * the live query when the answer was not warmed or falls outside the warmed
+     * window, so a caller that forgets to warm, warms the wrong window, or
+     * evaluates a distributor twice gets the same numbers at the old cost — the
+     * one property that makes it safe to put a cache in front of a money path.
+     * Nothing warmed here is WRITTEN through: {@see openCycle()} and
+     * {@see refresh()} go to the database exactly as before.
+     *
+     * @param  list<int>  $distributorIds  the chunk about to be evaluated
+     * @param  Carbon  $asOf  the date they will be evaluated as of
+     */
+    public function warmBatch(array $distributorIds, Carbon $asOf): void
+    {
+        // Drop anything a previous warm left behind, ALWAYS — including on the
+        // empty-chunk return below. Two warms without a forget between them
+        // would keep the first chunk's `dayMapIds` while the second overwrote
+        // `dayMapFrom`/`dayMapTo`; a first-chunk distributor would then pass
+        // dayMapCovers() for a window their map has no rows for, silently
+        // under-count their repurchase BV, and be suspended for income they
+        // had in fact earned.
+        $this->forgetBatch();
+
+        if ($distributorIds === []) {
+            return;
+        }
+
+        $asOf = $asOf->copy()->startOfDay();
+
+        $this->warmCycles($distributorIds);
+        $this->warmRanks($distributorIds);
+
+        // Only distributors with no cycle at all reach repurchaseAnchor() from
+        // evaluate(), and that is the expensive one — a full ledger scan per
+        // distributor, which is why the command already drops everyone with no
+        // BV rows before calling us.
+        $anchorless = array_values(array_filter(
+            $distributorIds,
+            fn (int $id): bool => ($this->cycleCache[$id] ?? null) === null,
+        ));
+
+        $this->warmAnchors($anchorless);
+
+        $this->warmDayMaps($distributorIds, $asOf);
+    }
+
+    /**
+     * Release everything {@see warmBatch()} loaded.
+     *
+     * A chunked caller calls this at the end of each chunk, so peak memory is
+     * the chunk and not the roster (R-90). Dropping the caches can never change
+     * a verdict — it only puts the per-distributor queries back.
+     */
+    public function forgetBatch(): void
+    {
+        $this->cycleCache = [];
+        $this->anchorCache = [];
+        $this->rankCache = [];
+        $this->selfPurchaseByDay = [];
+        $this->walletDeltaByDay = [];
+        $this->dayMapIds = [];
+        $this->dayMapFrom = null;
+        $this->dayMapTo = null;
+    }
+
+    /**
+     * The newest cycle per distributor, in one query per chunk.
+     *
+     * Read ONCE and then dropped ({@see takeWarmedCycle()}): evaluate() rolls
+     * cycles forward and openCycle() writes new rows, so a second read of the
+     * same distributor in the same warm window must see the database, not the
+     * row as it stood before the run touched it.
+     *
+     * @param  list<int>  $distributorIds
+     */
+    private function warmCycles(array $distributorIds): void
+    {
+        foreach (array_chunk($distributorIds, self::WARM_CHUNK) as $chunk) {
+            // Newest first, then keep the first seen per distributor — the same
+            // `orderByDesc('cycle_start_date')->first()` evaluate() does, with
+            // `id` breaking the tie two cycles opened on one day would leave
+            // undefined.
+            $cycles = RepurchaseCycle::query()
+                ->whereIn('distributor_id', $chunk)
+                ->orderByDesc('cycle_start_date')
+                ->orderByDesc('id')
+                ->get();
+
+            foreach ($cycles as $cycle) {
+                $id = (int) $cycle->distributor_id;
+
+                if (! array_key_exists($id, $this->cycleCache)) {
+                    $this->cycleCache[$id] = $cycle;
+                }
+            }
+        }
+
+        foreach ($distributorIds as $id) {
+            $this->cycleCache[$id] ??= null;
+        }
+    }
+
+    /**
+     * Highest qualified rank per distributor, in one query per chunk.
+     *
+     * Ranks do not move while an evaluation run is in flight — the rank check
+     * is a separate engine earlier in the chain — so unlike the cycles this one
+     * is not consumed on read.
+     *
+     * @param  list<int>  $distributorIds
+     */
+    private function warmRanks(array $distributorIds): void
+    {
+        foreach (array_chunk($distributorIds, self::WARM_CHUNK) as $chunk) {
+            $rows = RankQualification::query()
+                ->whereIn('distributor_id', $chunk)
+                ->where('status', RankQualification::STATUS_QUALIFIED)
+                ->selectRaw('distributor_id, MAX(rank_number) as rank_number')
+                ->groupBy('distributor_id')
+                ->pluck('rank_number', 'distributor_id');
+
+            foreach ($rows as $id => $rank) {
+                $this->rankCache[(int) $id] = (int) $rank;
+            }
+        }
+
+        foreach ($distributorIds as $id) {
+            $this->rankCache[$id] ??= 0;
+        }
+    }
+
+    /**
+     * The 600-BV crossing date per distributor, in one query per chunk.
+     *
+     * {@see BvLedgerService::firstReachedBvPaiseAt()} cannot answer this in SQL
+     * — the crossing is a running total that reversals can push later — so it
+     * reads every entry for one distributor and walks them. This does the same
+     * walk over the whole chunk's entries, ordered the same way, so the date it
+     * reaches is the date that method reaches.
+     *
+     * @param  list<int>  $distributorIds
+     */
+    private function warmAnchors(array $distributorIds): void
+    {
+        if ($distributorIds === []) {
+            return;
+        }
+
+        $threshold = $this->plan->gsbMinBvPaise();
+
+        foreach ($distributorIds as $id) {
+            $this->anchorCache[$id] = null;
+        }
+
+        if ($threshold <= 0) {
+            return;
+        }
+
+        foreach (array_chunk($distributorIds, self::WARM_CHUNK) as $chunk) {
+            $running = [];
+
+            DB::table('bv_ledger_entries')
+                ->whereIn('distributor_id', $chunk)
+                ->orderBy('distributor_id')
+                ->orderBy('effective_at')
+                ->orderBy('id')
+                ->select(['distributor_id', 'bv_paise', 'effective_at'])
+                ->each(function (object $row) use (&$running, $threshold): void {
+                    $id = (int) $row->distributor_id;
+
+                    if (($this->anchorCache[$id] ?? null) !== null) {
+                        return;
+                    }
+
+                    $running[$id] = ($running[$id] ?? 0) + (int) $row->bv_paise;
+
+                    if ($running[$id] >= $threshold) {
+                        $this->anchorCache[$id] = Carbon::parse($row->effective_at);
+                    }
+                });
+        }
+    }
+
+    /**
+     * Per-distributor, per-day self-purchase BV and repurchase-wallet movement
+     * for the window the chunk's cycles can ask about.
+     *
+     * Grouped by day rather than fetched raw, so the row count is bounded by
+     * the days a distributor actually transacted on and not by the length of
+     * the window. The window itself starts at the OLDEST cycle start (or anchor,
+     * for a distributor whose first cycle this run will open) in the chunk,
+     * because that is the earliest `from` any of the three window sums below
+     * can be handed.
+     *
+     * @param  list<int>  $distributorIds
+     */
+    private function warmDayMaps(array $distributorIds, Carbon $asOf): void
+    {
+        $from = null;
+
+        foreach ($distributorIds as $id) {
+            $warmed = $this->cycleCache[$id] ?? null;
+            $start = $warmed === null
+                ? ($this->anchorCache[$id] ?? null)
+                : $warmed->cycle_start_date;
+
+            if ($start === null) {
+                continue;
+            }
+
+            $start = $start->copy()->startOfDay();
+
+            if ($from === null || $start->lessThan($from)) {
+                $from = $start;
+            }
+        }
+
+        if ($from === null || $from->greaterThan($asOf)) {
+            return;
+        }
+
+        $this->dayMapFrom = $from;
+        $this->dayMapTo = $asOf->copy()->startOfDay();
+
+        foreach ($distributorIds as $id) {
+            $this->dayMapIds[$id] = true;
+        }
+
+        $windowStart = $from->copy()->startOfDay();
+        $windowEnd = $asOf->copy()->endOfDay();
+
+        foreach (array_chunk($distributorIds, self::WARM_CHUNK) as $chunk) {
+            $bvRows = DB::table('bv_ledger_entries')
+                ->whereIn('distributor_id', $chunk)
+                ->whereIn('type', ['accrual', 'reversal'])
+                ->whereBetween('effective_at', [$windowStart, $windowEnd])
+                ->whereExists(function ($q): void {
+                    $q->selectRaw('1')
+                        ->from('orders')
+                        ->whereColumn('orders.id', 'bv_ledger_entries.order_id')
+                        ->where('orders.self_consumption', true);
+                })
+                ->selectRaw('distributor_id, DATE(effective_at) AS day, SUM(bv_paise) AS total')
+                ->groupBy('distributor_id', 'day')
+                ->get();
+
+            foreach ($bvRows as $row) {
+                $this->selfPurchaseByDay[(int) $row->distributor_id][(string) $row->day] = (int) $row->total;
+            }
+
+            $walletRows = DB::table('wallet_ledger_entries')
+                ->whereIn('distributor_id', $chunk)
+                ->whereIn('type', WalletService::REPURCHASE_TYPES)
+                ->whereBetween('created_at', [$windowStart, $windowEnd])
+                ->selectRaw("distributor_id, DATE(created_at) AS day, COALESCE(SUM(CASE WHEN type = 'repurchase_deduction' THEN amount_paise ELSE -ABS(amount_paise) END), 0) AS total")
+                ->groupBy('distributor_id', 'day')
+                ->get();
+
+            foreach ($walletRows as $row) {
+                $this->walletDeltaByDay[(int) $row->distributor_id][(string) $row->day] = (int) $row->total;
+            }
+        }
+    }
+
+    /**
+     * The warmed cycle for this distributor, removed from the cache as it is
+     * handed over; null when nothing was warmed for them.
+     */
+    private function takeWarmedCycle(int $distributorId): ?RepurchaseCycle
+    {
+        if (! array_key_exists($distributorId, $this->cycleCache)) {
+            return null;
+        }
+
+        $cycle = $this->cycleCache[$distributorId];
+        unset($this->cycleCache[$distributorId]);
+
+        return $cycle;
+    }
+
+    /**
+     * Does a warmed day-map cover this window? Both ends are compared at day
+     * grain, which is exact because every caller below passes day-aligned
+     * bounds (`startOfDay()` / `endOfDay()`) and the maps are summed per
+     * `DATE(...)`.
+     */
+    private function dayMapCovers(int $distributorId, Carbon $from, Carbon $to): bool
+    {
+        return $this->dayMapFrom !== null
+            && $this->dayMapTo !== null
+            && isset($this->dayMapIds[$distributorId])
+            && $from->copy()->startOfDay()->greaterThanOrEqualTo($this->dayMapFrom)
+            && $to->copy()->startOfDay()->lessThanOrEqualTo($this->dayMapTo);
+    }
+
+    /**
+     * The slice of a warmed day-map inside an inclusive day range.
+     *
+     * @param  array<string, int>  $byDay
+     * @return array<string, int>
+     */
+    private static function daysInRange(array $byDay, Carbon $from, Carbon $to): array
+    {
+        $fromDay = $from->toDateString();
+        $toDay = $to->toDateString();
+
+        return array_filter(
+            $byDay,
+            static fn (string $day): bool => $day >= $fromDay && $day <= $toDay,
+            ARRAY_FILTER_USE_KEY,
+        );
+    }
+
+    /**
+     * Sum a warmed day-map over an inclusive day range.
+     *
+     * @param  array<string, int>  $byDay
+     */
+    private static function sumDays(array $byDay, Carbon $from, Carbon $to): int
+    {
+        $total = 0;
+
+        // Walk the MAP, not the calendar: a suspended cycle can be months past
+        // its due date and the days it transacted on are a handful of those.
+        foreach ($byDay as $day => $paise) {
+            if ($day >= $from->toDateString() && $day <= $to->toDateString()) {
+                $total += $paise;
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * Net self-purchase BV in a window — {@see BvLedgerService::selfPurchaseBvPaise()}
+     * served from the warmed day-map when it covers the window, and by that
+     * method itself when it does not.
+     */
+    private function selfPurchaseBvPaiseFor(int $distributorId, Carbon $from, Carbon $to): int
+    {
+        if ($this->dayMapCovers($distributorId, $from, $to)) {
+            return self::sumDays($this->selfPurchaseByDay[$distributorId] ?? [], $from, $to);
+        }
+
+        return $this->bvLedger->selfPurchaseBvPaise($distributorId, $from, $to);
+    }
+
     /** Highest rank the distributor has qualified for (sticky); 0 = non-ranked. */
     public function currentRank(int $distributorId): int
     {
+        if (array_key_exists($distributorId, $this->rankCache)) {
+            return $this->rankCache[$distributorId];
+        }
+
         return (int) RankQualification::query()
             ->where('distributor_id', $distributorId)
             ->where('status', RankQualification::STATUS_QUALIFIED)
@@ -82,6 +471,10 @@ final class RepurchaseCycleService
      */
     public function repurchaseAnchor(int $distributorId): ?Carbon
     {
+        if (array_key_exists($distributorId, $this->anchorCache)) {
+            return $this->anchorCache[$distributorId]?->copy();
+        }
+
         return $this->bvLedger->firstReachedBvPaiseAt($distributorId, $this->plan->gsbMinBvPaise());
     }
 
@@ -140,10 +533,15 @@ final class RepurchaseCycleService
         // the distributor passed the 600-BV anchor, so skip the expensive
         // firstReachedBvPaiseAt() scan (N+1 on bv_ledger_entries) on every run
         // after the first cycle is opened.
-        $cycle = RepurchaseCycle::query()
-            ->where('distributor_id', $distributorId)
-            ->orderByDesc('cycle_start_date')
-            ->first();
+        // `id` breaks the tie two cycles opened on one day would otherwise
+        // leave undefined — the same tie-break warmCycles() applies, so the
+        // warmed and the cold read cannot pick different rows.
+        $cycle = $this->takeWarmedCycle($distributorId)
+            ?? RepurchaseCycle::query()
+                ->where('distributor_id', $distributorId)
+                ->orderByDesc('cycle_start_date')
+                ->orderByDesc('id')
+                ->first();
 
         if ($cycle === null) {
             $anchor = $this->repurchaseAnchor($distributorId);
@@ -237,7 +635,7 @@ final class RepurchaseCycleService
         if ($asOf->lessThanOrEqualTo($cycle->due_date->copy()->startOfDay())) {
             // Window still open. A cycle cannot be judged early: condition (B)
             // asks about the wallet on the LAST day, which has not happened.
-            $cycle->completed_bv_paise = $this->bvLedger->selfPurchaseBvPaise(
+            $cycle->completed_bv_paise = $this->selfPurchaseBvPaiseFor(
                 $cycle->distributor_id,
                 $start,
                 $asOf->copy()->endOfDay(),
@@ -315,7 +713,7 @@ final class RepurchaseCycleService
      */
     private function resolveAtWindowEnd(RepurchaseCycle $cycle, Carbon $start, Carbon $dueEnd): void
     {
-        $bv = $this->bvLedger->selfPurchaseBvPaise($cycle->distributor_id, $start, $dueEnd);
+        $bv = $this->selfPurchaseBvPaiseFor($cycle->distributor_id, $start, $dueEnd);
         $walletPaise = $this->walletBalanceAt($cycle->distributor_id, $dueEnd);
 
         $bvMet = $bv >= $cycle->required_bv_paise;
@@ -366,7 +764,7 @@ final class RepurchaseCycleService
         // includes the days it is about to add again. The wallet base IS safe to
         // read — wallet_balance_paise is frozen once, at the window end, and
         // never written here.
-        $bv = $this->bvLedger->selfPurchaseBvPaise(
+        $bv = $this->selfPurchaseBvPaiseFor(
             $cycle->distributor_id,
             $start,
             $cycle->due_date->copy()->endOfDay(),
@@ -432,6 +830,10 @@ final class RepurchaseCycleService
      */
     private function selfPurchaseBvByDay(int $distributorId, Carbon $from, Carbon $to): array
     {
+        if ($this->dayMapCovers($distributorId, $from, $to)) {
+            return self::daysInRange($this->selfPurchaseByDay[$distributorId] ?? [], $from, $to);
+        }
+
         return DB::table('bv_ledger_entries')
             ->where('distributor_id', $distributorId)
             ->whereIn('type', ['accrual', 'reversal'])
@@ -458,6 +860,10 @@ final class RepurchaseCycleService
      */
     private function repurchaseWalletDeltaByDay(int $distributorId, Carbon $from, Carbon $to): array
     {
+        if ($this->dayMapCovers($distributorId, $from, $to)) {
+            return self::daysInRange($this->walletDeltaByDay[$distributorId] ?? [], $from, $to);
+        }
+
         return DB::table('wallet_ledger_entries')
             ->where('distributor_id', $distributorId)
             ->whereIn('type', WalletService::REPURCHASE_TYPES)
