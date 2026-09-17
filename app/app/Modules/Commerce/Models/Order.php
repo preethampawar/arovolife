@@ -26,7 +26,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $refunded_at
  * @property Carbon|null $refund_approved_at
- * @property string $ship_name
+ * @property string|null $ship_name
+ * @property string|null $ship_phone_e164
+ * @property string|null $ship_line1
+ * @property string|null $ship_line2
+ * @property string|null $ship_city
+ * @property string|null $ship_state
+ * @property string|null $ship_pincode
  * @property int $subtotal_paise
  * @property int $gst_paise
  * @property int $discount_paise

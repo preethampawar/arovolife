@@ -955,12 +955,6 @@ parameters:
 			path: app/Modules/Content/Http/Requests/ContentPageRequest.php
 
 		-
-			message: '#^Method App\\Modules\\Fulfilment\\Models\\Shipment\:\:order\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Fulfilment/Models/Shipment.php
-
-		-
 			message: '#^Access to an undefined property object\:\:\$adn\.$#'
 			identifier: property.notFound
 			count: 1

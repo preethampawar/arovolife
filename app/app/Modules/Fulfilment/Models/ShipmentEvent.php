@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Fulfilment\Models;
 
 use App\Modules\Commerce\Models\Order;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -20,6 +21,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * nullable `processed_*` columns are set once by the queued webhook handler and
  * are the single exception — they record when an event was applied, or why it
  * could not be.
+ *
+ * @property int|null $shipment_id
+ * @property int|null $order_id
+ * @property string $gateway
+ * @property string $direction
+ * @property string $event_type
+ * @property string|null $gateway_event_id
+ * @property string|null $gateway_shipment_id
+ * @property bool $signature_verified
+ * @property int|null $http_status
+ * @property int|null $duration_ms
+ * @property array<string, mixed>|null $payload
+ * @property string|null $error
+ * @property Carbon|null $processed_at
+ * @property string|null $processing_error
+ * @property Carbon $created_at
  */
 final class ShipmentEvent extends Model
 {
