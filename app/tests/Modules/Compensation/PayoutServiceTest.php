@@ -1703,3 +1703,214 @@ it('leaves an ADC credit with no earned month to the batch for the month it was 
         ->toBe(500_000)
         ->and($adc->fresh()->swept_by_payout_batch_id)->toBe($august->id);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Reopening a batch a killed sweep stranded in `processing`
+|--------------------------------------------------------------------------
+*/
+
+/** A weekly batch stuck in `processing`, last written `$minutes` ago. */
+function strandedBatch(int $minutes): PayoutBatch
+{
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => Carbon::today()->toDateString(),
+        'status' => PayoutBatch::STATUS_PROCESSING,
+        'total_gross_paise' => 0,
+        'total_deductions_paise' => 0,
+        'total_net_paise' => 0,
+        'distributor_count' => 0,
+    ]);
+
+    $batch->forceFill(['updated_at' => now()->subMinutes($minutes)])->saveQuietly();
+
+    return $batch->fresh();
+}
+
+it('reopens a long-stranded processing batch as failed, and says who did it', function (): void {
+    $batch = strandedBatch(minutes: 300);
+    $admin = User::factory()->create();
+
+    $refusal = app(PayoutService::class)->reopenStuckBatch($batch, $admin->id);
+
+    expect($refusal)->toBeNull()
+        ->and($batch->fresh()->status)->toBe(PayoutBatch::STATUS_FAILED);
+
+    $audit = AuditLog::where('action', 'payout.batch.reopened')->sole();
+    expect($audit->actor_id)->toBe($admin->id)
+        ->and($audit->details['from_status'])->toBe(PayoutBatch::STATUS_PROCESSING)
+        ->and($audit->details['to_status'])->toBe(PayoutBatch::STATUS_FAILED);
+});
+
+it('refuses a batch written recently enough that a sweep could still be running it', function (): void {
+    $batch = strandedBatch(minutes: 30);
+
+    $refusal = app(PayoutService::class)->reopenStuckBatch($batch, null);
+
+    expect($refusal)->toContain('still being written')
+        ->and($batch->fresh()->status)->toBe(PayoutBatch::STATUS_PROCESSING);
+});
+
+it('refuses a long-started sweep that is still writing line items', function (): void {
+    // THE CASE `payout_batches.updated_at` CANNOT SEE. The batch row is written
+    // twice per sweep — `processing` at the start, totals at the end — so a
+    // sweep hand-started five hours ago (a CLI run has no queue timeout, and the
+    // lock self-expires after one) has a five-hour-old batch row and is very
+    // much alive. Only its own per-distributor writes say so.
+    $batch = strandedBatch(minutes: 300);
+
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => Distributor::factory()->create()->id,
+        'gross_paise' => 50_000,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'wallet_balance_paise' => 0,
+        'repurchase_deduction_paise' => 0,
+        'net_transferred_paise' => 0,
+        'status' => PayoutLineItem::STATUS_PENDING,
+        'retry_count' => 0,
+    ]);
+
+    $refusal = app(PayoutService::class)->reopenStuckBatch($batch, User::factory()->create()->id);
+
+    expect($refusal)->toContain('still being written')
+        ->and($batch->fresh()->status)->toBe(PayoutBatch::STATUS_PROCESSING);
+});
+
+it('reopens once even the line items have gone quiet', function (): void {
+    $batch = strandedBatch(minutes: 300);
+
+    $line = PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => Distributor::factory()->create()->id,
+        'gross_paise' => 50_000,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'wallet_balance_paise' => 0,
+        'repurchase_deduction_paise' => 0,
+        'net_transferred_paise' => 0,
+        'status' => PayoutLineItem::STATUS_PENDING,
+        'retry_count' => 0,
+    ]);
+    $line->forceFill(['created_at' => now()->subMinutes(290)])->saveQuietly();
+
+    expect(app(PayoutService::class)->reopenStuckBatch($batch, User::factory()->create()->id))->toBeNull()
+        ->and($batch->fresh()->status)->toBe(PayoutBatch::STATUS_FAILED);
+});
+
+it('records the reopening admin as the maker of a batch that had none', function (): void {
+    // The re-run is a separate process with no session and no attributed run
+    // context, so it stamps NULL — a scheduler batch reopened and re-run by hand
+    // would come back approvable by the person who reopened it. The maker has to
+    // be recorded here or nowhere (R-81 / QA F94).
+    $batch = strandedBatch(minutes: 300);
+    expect($batch->created_by)->toBeNull();
+
+    $admin = User::factory()->create();
+    app(PayoutService::class)->reopenStuckBatch($batch, $admin->id);
+
+    expect($batch->fresh()->created_by)->toBe($admin->id)
+        ->and(AuditLog::where('action', 'payout.batch.reopened')->sole()->details['maker_stamped'])->toBeTrue();
+});
+
+it('never overwrites a maker the batch already has', function (): void {
+    $firstHand = User::factory()->create();
+    $batch = strandedBatch(minutes: 300);
+    // Raw, because saving the model refreshes `updated_at` and resets the idle
+    // clock the reopen is measured against.
+    DB::table('payout_batches')->where('id', $batch->id)->update(['created_by' => $firstHand->id]);
+    $batch->refresh();
+
+    $refusal = app(PayoutService::class)->reopenStuckBatch($batch, User::factory()->create()->id);
+
+    expect($refusal)->toBeNull()
+        ->and($batch->fresh()->created_by)->toBe($firstHand->id)
+        ->and(AuditLog::where('action', 'payout.batch.reopened')->sole()->details['maker_stamped'])->toBeFalse();
+});
+
+it('leaves no status change behind when the audit row cannot be written', function (): void {
+    // A status the audit log did not record is an unlogged change on the money
+    // path. Both writes are in one transaction, so the batch keeps `processing`
+    // and the operator sees the failure rather than a silently reopened batch.
+    $batch = strandedBatch(minutes: 300);
+
+    AuditLog::creating(function (): void {
+        throw new RuntimeException('audit log unavailable');
+    });
+
+    try {
+        expect(fn () => app(PayoutService::class)->reopenStuckBatch($batch, User::factory()->create()->id))
+            ->toThrow(RuntimeException::class);
+    } finally {
+        AuditLog::flushEventListeners();
+    }
+
+    expect($batch->fresh()->status)->toBe(PayoutBatch::STATUS_PROCESSING);
+});
+
+it('refuses while a payout sweep holds the lock', function (): void {
+    $batch = strandedBatch(minutes: 300);
+
+    $lock = Cache::lock('compensation:payout-sweep', 60);
+    expect($lock->get())->toBeTrue();
+
+    try {
+        $refusal = app(PayoutService::class)->reopenStuckBatch($batch, null);
+    } finally {
+        $lock->release();
+    }
+
+    expect($refusal)->toContain('sweep is running')
+        ->and($batch->fresh()->status)->toBe(PayoutBatch::STATUS_PROCESSING);
+});
+
+it('reports the last line item as the sign of life, not the batch row', function (): void {
+    // What the reopen command prints to the operator before asking them to
+    // confirm. Showing `updated_at` there would put the number this guard exists
+    // to distrust in front of the person making the decision.
+    $batch = strandedBatch(minutes: 300);
+
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => Distributor::factory()->create()->id,
+        'gross_paise' => 50_000,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'wallet_balance_paise' => 0,
+        'repurchase_deduction_paise' => 0,
+        'net_transferred_paise' => 0,
+        'status' => PayoutLineItem::STATUS_PENDING,
+        'retry_count' => 0,
+    ]);
+
+    $signOfLife = app(PayoutService::class)->batchLastSignOfLife($batch);
+
+    expect($signOfLife)->not->toBeNull()
+        ->and($signOfLife->greaterThan($batch->updated_at))->toBeTrue();
+});
+
+it('refuses any status but processing', function (): void {
+    $batch = strandedBatch(minutes: 300);
+    $batch->update(['status' => PayoutBatch::STATUS_APPROVED]);
+
+    expect(app(PayoutService::class)->reopenStuckBatch($batch, null))
+        ->toContain('not processing');
+
+    expect($batch->fresh()->status)->toBe(PayoutBatch::STATUS_APPROVED);
+});
+
+it('lets the ordinary sweep back into a batch it has reopened', function (): void {
+    $batch = strandedBatch(minutes: 300);
+
+    app(PayoutService::class)->reopenStuckBatch($batch, User::factory()->create()->id);
+
+    // The whole point: `failed` is re-enterable where `processing` is not, so
+    // the documented re-run picks the batch back up instead of returning it
+    // untouched.
+    $rerun = app(PayoutService::class)->runWeeklyBatch(Carbon::today());
+
+    expect($rerun->id)->toBe($batch->id)
+        ->and($rerun->status)->not->toBe(PayoutBatch::STATUS_FAILED);
+});
