@@ -6,6 +6,8 @@ namespace App\Modules\Fulfilment\Services;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Compensation\Models\AreteCenterDeclaration;
+use App\Modules\Compensation\Support\AreteCenterDeclarations;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Fulfilment\Data\Consignee;
 use App\Modules\Fulfilment\Data\DispatchInstruction;
@@ -122,6 +124,27 @@ final class DispatchService
             throw new RuntimeException(
                 "Order {$order->order_no} was placed for collection but its centre no longer exists. "
                 .'Contact the buyer to agree a delivery address or a different centre before dispatching.'
+            );
+        }
+
+        // R-21/R-95: a centre may not receive a consignment until its owner has
+        // accepted the declarations at the version currently in force.
+        //
+        // This is not paperwork. The declaration is the company's evidence that
+        // a centre is not an e-commerce fulfilment point (DSA §5.2, hard rule
+        // 7), and routing parcels to an operator who has undertaken not to
+        // receive them would be the company inducing breach of its own
+        // undertaking — worse for the Rule 4 defence than having no declaration
+        // at all. Admin-created centres have no declaration in any version,
+        // because `AdminAreteCenterController::store()` creates them with no
+        // application; they fail here until their assigned distributor accepts.
+        if (! AreteCenterDeclaration::currentVersionAcceptedBy($centre->id)) {
+            $outstanding = implode(', ', AreteCenterDeclaration::outstandingFor($centre->id));
+
+            throw new RuntimeException(
+                "Centre \"{$centre->name}\" has not accepted the current centre declarations ("
+                .AreteCenterDeclarations::VERSION.'), so a parcel cannot be consigned to it. '
+                ."Outstanding: {$outstanding}."
             );
         }
 

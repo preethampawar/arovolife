@@ -21,7 +21,10 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Compensation\Models\AreteCenter;
+use App\Modules\Compensation\Models\AreteCenterDeclaration;
+use App\Modules\Compensation\Support\AreteCenterDeclarations;
 use App\Modules\Fulfilment\Models\Shipment;
+use App\Modules\Fulfilment\Services\CollectionHandoverService;
 use App\Modules\Fulfilment\Services\DispatchService;
 use App\Modules\Identity\Models\User;
 use App\Modules\Inventory\Models\StockBatch;
@@ -51,15 +54,37 @@ function dispatchVariant(): ProductVariant
     ]);
 }
 
-function dispatchCentre(): AreteCenter
+function undeclaredCentre(): AreteCenter
 {
     $n = random_int(100000, 999999);
 
+    // Exactly how AdminAreteCenterController::store() makes one: straight to
+    // active, no application, and therefore no declaration in any version.
     return AreteCenter::create([
         'name' => "Centre {$n}", 'type' => AreteCenter::TYPE_COMPANY, 'status' => AreteCenter::STATUS_ACTIVE,
         'address_line_1' => '5 Market Street', 'city' => 'Warangal', 'state' => 'TELANGANA',
         'pincode' => '506002', 'contact_number' => '+918888888888', 'is_company_default' => true,
     ]);
+}
+
+function withDeclarations(AreteCenter $centre): AreteCenter
+{
+    foreach (array_keys(AreteCenterDeclarations::all()) as $key) {
+        AreteCenterDeclaration::create([
+            'center_id' => $centre->id,
+            'declaration_key' => $key,
+            'version' => AreteCenterDeclarations::VERSION,
+            'accepted_at' => now(),
+            'ip' => '127.0.0.1',
+        ]);
+    }
+
+    return $centre;
+}
+
+function dispatchCentre(): AreteCenter
+{
+    return withDeclarations(undeclaredCentre());
 }
 
 function stockFor(ProductVariant $variant, int $qty = 5): void
@@ -211,4 +236,130 @@ it('tells the buyer where to collect, not where it is being shipped', function (
         ->toContain($centre->name)
         // The heading that made R-47 visible to buyers.
         ->not->toContain('Shipping to');
+});
+
+it('refuses to consign to a centre that has accepted no declaration', function () {
+    // R-95: this is how AdminAreteCenterController::store() leaves a centre.
+    // Routing a parcel to an operator who has undertaken not to receive one
+    // is the company inducing breach of its own undertaking.
+    $order = paidOrderFor(undeclaredCentre());
+
+    app(DispatchService::class)->dispatch($order, null, 'Delhivery', 'AWB1', null);
+})->throws(RuntimeException::class, 'has not accepted the current centre declarations');
+
+it('names what a centre still owes', function () {
+    $centre = undeclaredCentre();
+
+    expect(AreteCenterDeclaration::currentVersionAcceptedBy($centre->id))->toBeFalse()
+        ->and(AreteCenterDeclaration::outstandingFor($centre->id))
+        ->toBe(array_keys(AreteCenterDeclarations::all()));
+
+    withDeclarations($centre);
+
+    expect(AreteCenterDeclaration::currentVersionAcceptedBy($centre->id))->toBeTrue()
+        ->and(AreteCenterDeclaration::outstandingFor($centre->id))->toBe([]);
+});
+
+it('treats a partial acceptance as no acceptance', function () {
+    $centre = undeclaredCentre();
+
+    // Four of five is not the bargain.
+    foreach (array_slice(array_keys(AreteCenterDeclarations::all()), 0, 4) as $key) {
+        AreteCenterDeclaration::create([
+            'center_id' => $centre->id, 'declaration_key' => $key,
+            'version' => AreteCenterDeclarations::VERSION, 'accepted_at' => now(),
+        ]);
+    }
+
+    expect(AreteCenterDeclaration::currentVersionAcceptedBy($centre->id))->toBeFalse();
+});
+
+/** @return array{0: Order, 1: string} */
+function parcelAwaitingCollection(): array
+{
+    $order = paidOrderFor(dispatchCentre());
+    app(DispatchService::class)->dispatch($order, null, 'Delhivery', 'AWB123', null);
+    app(OrderStateMachine::class)->markAwaitingCollection($order->fresh(), null);
+
+    $shipment = Shipment::where('order_id', $order->id)->sole();
+    $code = app(CollectionHandoverService::class)->issueCode($shipment);
+
+    return [$order->fresh(), $code];
+}
+
+it('records a handover against the code the buyer presents', function () {
+    [$order, $code] = parcelAwaitingCollection();
+
+    $shipment = app(CollectionHandoverService::class)->recordCollection($order, $code, null);
+
+    expect($shipment->collected_at)->not->toBeNull()
+        // The receipt R-47 asks for, and what the ADC bonus now reads.
+        ->and($shipment->pod_hash_sha256)->not->toBeNull()
+        // Spent: a code that still verified would release a second parcel on
+        // the same authority.
+        ->and($shipment->handover_code_hash)->toBeNull()
+        ->and($order->fresh()->status)->toBe(Order::STATUS_DELIVERED);
+});
+
+it('never stores the collection code in the clear', function () {
+    [, $code] = parcelAwaitingCollection();
+
+    $row = (array) DB::table('shipments')->latest('id')->first();
+
+    foreach ($row as $value) {
+        expect((string) $value)->not->toContain($code);
+    }
+});
+
+it('refuses a wrong code and counts the attempt', function () {
+    [$order, $code] = parcelAwaitingCollection();
+    $wrong = $code === '000000' ? '111111' : '000000';
+
+    expect(fn () => app(CollectionHandoverService::class)->recordCollection($order, $wrong, null))
+        ->toThrow(RuntimeException::class, 'not correct');
+
+    expect(Shipment::where('order_id', $order->id)->sole()->handover_attempts)->toBe(1)
+        ->and($order->fresh()->status)->toBe(Order::STATUS_AWAITING_COLLECTION);
+});
+
+it('locks a parcel after five wrong codes', function () {
+    [$order, $code] = parcelAwaitingCollection();
+    $wrong = $code === '000000' ? '111111' : '000000';
+
+    for ($i = 0; $i < CollectionHandoverService::MAX_ATTEMPTS; $i++) {
+        try {
+            app(CollectionHandoverService::class)->recordCollection($order, $wrong, null);
+        } catch (RuntimeException) {
+            // counted
+        }
+    }
+
+    // Even the right code no longer works: staff have to release it.
+    expect(fn () => app(CollectionHandoverService::class)->recordCollection($order, $code, null))
+        ->toThrow(RuntimeException::class, 'locked');
+});
+
+it('pays a centre only for parcels it actually handed over', function () {
+    $centre = dispatchCentre();
+
+    $collected = paidOrderFor($centre);
+    app(DispatchService::class)->dispatch($collected, null, 'Delhivery', 'A1', null);
+    app(OrderStateMachine::class)->markAwaitingCollection($collected->fresh(), null);
+    $shipment = Shipment::where('order_id', $collected->id)->sole();
+    $code = app(CollectionHandoverService::class)->issueCode($shipment);
+    app(CollectionHandoverService::class)->recordCollection($collected->fresh(), $code, null);
+
+    // A second order names the same centre but was never handed over.
+    $uncollected = paidOrderFor($centre);
+    app(DispatchService::class)->dispatch($uncollected, null, 'Delhivery', 'A2', null);
+
+    $counted = DB::table('orders')
+        ->join('shipments', 'shipments.order_id', '=', 'orders.id')
+        ->where('orders.arete_center_id', $centre->id)
+        ->whereNotNull('shipments.collected_at')
+        ->count();
+
+    // H5: paying on arete_center_id alone would have counted both — 3% for a
+    // parcel the centre never released.
+    expect($counted)->toBe(1);
 });

@@ -27,6 +27,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property Carbon|null $collected_at
  * @property int|null $collected_by_user_id
  * @property string|null $pod_hash_sha256
+ * @property string|null $handover_code_hash
+ * @property int $handover_attempts
  */
 final class Shipment extends Model
 {
@@ -56,6 +58,7 @@ final class Shipment extends Model
         'arete_center_id', 'consigned_at', 'at_centre_at',
         'collected_at', 'collected_by_user_id',
         'status', 'dispatched_at', 'delivered_at', 'pod_hash_sha256',
+        'handover_code_hash', 'handover_attempts',
     ];
 
     protected function casts(): array
@@ -68,6 +71,7 @@ final class Shipment extends Model
             'collected_at' => 'datetime',
             'arete_center_id' => 'int',
             'collected_by_user_id' => 'int',
+            'handover_attempts' => 'int',
         ];
     }
 

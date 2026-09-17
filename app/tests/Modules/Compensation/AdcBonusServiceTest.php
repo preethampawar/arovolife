@@ -9,6 +9,7 @@ use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Models\AreteCenterMember;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\AreteDevelopmentCenterBonusService;
+use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -58,7 +59,23 @@ function seedAdcOrder(int $buyerId, ?int $centerId, string $date = '2026-06-15')
         'ship_name' => 'Buyer', 'ship_phone_e164' => '+919800000000',
         'ship_line1' => '1 St', 'ship_city' => 'Pune', 'ship_state' => 'MH', 'ship_pincode' => '411001',
         'placed_at' => $date.' 12:00:00', 'idempotency_key' => 'idem-'.uniqid(),
+        'delivery_type' => $centerId === null ? Order::DELIVERY_SHIP : Order::DELIVERY_COLLECT,
     ]);
+
+    // Since H5 the ADC bonus pays on parcels a centre actually handed over,
+    // not on every order that named one. These tests have always said
+    // "collected at the centre" in their own names; the implementation simply
+    // never checked, so the fixture now records the handover they describe.
+    if ($centerId !== null) {
+        Shipment::create([
+            'order_id' => $order->id,
+            'warehouse_code' => 'DEFAULT',
+            'carrier_code' => 'MANUAL',
+            'arete_center_id' => $centerId,
+            'status' => Shipment::STATUS_DELIVERED,
+            'collected_at' => $date.' 14:00:00',
+        ]);
+    }
 
     return $order->id;
 }
@@ -468,4 +485,22 @@ it('never lets the per-center override raise the standard cap', function (): voi
 
     $bonus = AdcBonusResult::where('center_id', $center->id)->first();
     expect($bonus->gross_paise)->toBe(10_000_000); // still the ₹1,00,000 plan cap
+});
+
+it('does not pay for an order that named the centre but was never handed over', function (): void {
+    $owner = Distributor::factory()->create();
+    $center = makeActiveCenter($owner->id);
+    $buyer = Distributor::factory()->create();
+
+    // The order chose this centre and accrued BV, but no parcel was ever
+    // consigned, acknowledged or released there.
+    $orderId = seedCenterOrderBv($buyer->id, $center->id, 1_000_000);
+    Shipment::where('order_id', $orderId)->update(['collected_at' => null]);
+
+    app(AreteDevelopmentCenterBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    // H5 / R-24: the bonus is defended as consideration for distinct
+    // fulfilment work on identified sales. Paying here would be paying for
+    // work the system itself records as not done.
+    expect(AdcBonusResult::where('center_id', $center->id)->exists())->toBeFalse();
 });

@@ -80,16 +80,31 @@ final class AreteDevelopmentCenterBonusService
                 // in the month. `bv_paise` is signed (+ accrual, − reversal from
                 // BvLedgerService::reverse()), so the SUM nets out cancelled and
                 // refunded orders automatically — no extra cancellation handling needed.
+                // Only orders the centre actually handed over count (R-24, H5).
+                //
+                // The bonus is defended under DSR 2021 Rule 5(1)(c) as
+                // consideration for distinct fulfilment work on identified
+                // sales. Paying on `orders.arete_center_id` alone paid a centre
+                // for parcels it was never sent, never acknowledged and never
+                // released — consideration for work the system itself records
+                // as not done. A recorded handover is the evidence, so the
+                // money has to read it.
                 $totalBv = (int) DB::table('bv_ledger_entries')
                     ->join('orders', 'orders.id', '=', 'bv_ledger_entries.order_id')
+                    ->join('shipments', 'shipments.order_id', '=', 'orders.id')
                     ->where('orders.arete_center_id', $center->id)
+                    ->where('shipments.arete_center_id', $center->id)
+                    ->whereNotNull('shipments.collected_at')
                     ->whereBetween('bv_ledger_entries.effective_at', [$monthStart.' 00:00:00', $monthEnd.' 23:59:59'])
                     ->sum('bv_ledger_entries.bv_paise');
 
                 $orderCount = (int) DB::table('orders')
-                    ->where('arete_center_id', $center->id)
-                    ->whereBetween('placed_at', [$monthStart.' 00:00:00', $monthEnd.' 23:59:59'])
-                    ->whereNotIn('status', ['cancelled', 'draft'])
+                    ->join('shipments', 'shipments.order_id', '=', 'orders.id')
+                    ->where('orders.arete_center_id', $center->id)
+                    ->where('shipments.arete_center_id', $center->id)
+                    ->whereNotNull('shipments.collected_at')
+                    ->whereBetween('orders.placed_at', [$monthStart.' 00:00:00', $monthEnd.' 23:59:59'])
+                    ->whereNotIn('orders.status', ['cancelled', 'draft'])
                     ->count();
 
                 // A refund-heavy month can net to zero or below — nothing to

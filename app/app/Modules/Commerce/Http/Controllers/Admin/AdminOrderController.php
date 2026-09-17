@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Fulfilment\Models\Shipment;
+use App\Modules\Fulfilment\Services\CollectionHandoverService;
 use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\InventorySettings;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
@@ -169,8 +170,17 @@ final class AdminOrderController extends Controller
             return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['collection' => $e->getMessage()]);
         }
 
+        // The buyer's collection code. Issued here and shown once, because the
+        // notification that will carry it to them lands with the centre-operator
+        // surface; until then an operator reads it out. It is stored only as an
+        // HMAC and cannot be read back from this page again.
+        $shipment = Shipment::where('order_id', $order->id)->first();
+        $code = $shipment !== null ? app(CollectionHandoverService::class)->issueCode($shipment) : null;
+
         return redirect()->route('admin.commerce.orders.show', $order)
-            ->with('status', 'Recorded as ready to collect. The buyer can be told it has arrived.');
+            ->with('status', $code === null
+                ? 'Recorded as ready to collect.'
+                : "Recorded as ready to collect. The buyer's collection code is {$code} — give it to them; it will not be shown again.");
     }
 
     public function markDelivered(Order $order): RedirectResponse
