@@ -265,7 +265,6 @@
                 </div>
             </div>
             @endauth
-        </div>
         </div>{{-- /shipSection --}}
 
         {{-- Billing address --}}
