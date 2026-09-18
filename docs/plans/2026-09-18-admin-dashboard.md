@@ -1066,3 +1066,35 @@ everyone — it moves to the desk cleared to open the ticket. The sensitive rows
 inherit the clock rather than restating it, so the pairs cannot drift; that is
 why the two parents are no longer `final`. `resources/help/dashboard.md`,
 `docs/runbooks/action-center.md` and the risk register are updated.
+
+## Shipped and deployed to staging — 2026-09-18
+
+Four commits on `main` (`2bb680ea` dashboard, `f5623674` GRN, `a8353556`
+INV-04, `963acdbd` R-100), pushed, then deployed to `arovolife-staging`
+(app 6390605) by Cloudways `git_pull` — which does the pull and nothing else.
+The rest, over SSH as `master_mvgumpkwtu`:
+
+- `route:clear`, `config:clear`, `view:clear`, `event:clear`. Two new routes
+  ship in this change and `bootstrap/cache/routes-*.php` was baked earlier, so
+  without the first of these both endpoints 404.
+  **Not `cache:clear` or `optimize:clear`:** `RedisStore::flush()` is
+  `flushdb()`, and this Redis is shared unauthenticated with eight other apps
+  on the box, two of them production.
+- `migrate --force` — one pending migration, the additive
+  `idx_orders_status_placed_at`. 13 orders on staging; 66 ms.
+- `npm run build` under nvm's Node v24.20.0 (`/usr/bin/node` is 20.5.1, below
+  Vite's floor). `public/build` is gitignored, so a pull never updates it and
+  the new arbitrary values — `min-h-[2.125rem]`, `leading-[1.0625rem]`,
+  `text-[28px]` — would otherwise have no rules at all. All confirmed present
+  in `app-D3K1wMF4.css`, which serves 200.
+- `queue:restart`.
+
+Verified on staging, not just locally: all six cached panels build, write and
+**read back** through the real Redis store with a flat payload and a live
+`Carbon` for `generated_at` — the failure mode that only a serialising store
+can show. `attention()` builds for an admin, and the registry hands that viewer
+all four grievance rows.
+
+`ActionCenterFeature` and `InventoryFeature` both resolve **false** on staging,
+so the dashboard there shows five panels, not seven, and the R-100 rows have no
+live surface yet. That is the zero-UI-trace rule working, not a deploy gap.
