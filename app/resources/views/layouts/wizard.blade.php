@@ -33,21 +33,28 @@
         $current = $currentStep ?? 1;
     @endphp
 
-    {{-- Compact horizontal stepper for narrow screens (lg-) --}}
+    {{-- Compact horizontal stepper for narrow screens (lg-).
+
+         Twelve labels cannot fit at phone width. Each one set a min-content
+         width the flex row could not shrink below, so the row demanded ~694px
+         and took the whole page with it: every registration screen scrolled
+         sideways on a phone. The bars carry the progress on their own, and the
+         label that matters is the step you are on — named once, in the same
+         "Step 02 / 12" form the lg+ sidebar below already uses. --}}
     @if(isset($currentStep))
     <div class="lg:hidden bg-white border-b border-gray-200">
         <div class="max-w-3xl mx-auto px-6 py-4">
             <div class="flex items-center gap-1">
                 @foreach($steps as $n => $meta)
-                    <div class="flex-1 text-center">
-                        <div class="h-1 rounded-full mb-1
-                            {{ $n < $current ? 'bg-brand-700' : ($n === $current ? 'bg-brand-400' : 'bg-gray-100') }}"></div>
-                        <span class="text-[11px] {{ $n === $current ? 'text-brand-700 font-semibold' : 'text-gray-600' }}">
-                            {{ $meta['label'] }}
-                        </span>
-                    </div>
+                    <div class="h-1 flex-1 min-w-0 rounded-full
+                        {{ $n < $current ? 'bg-brand-700' : ($n === $current ? 'bg-brand-400' : 'bg-gray-100') }}"></div>
                 @endforeach
             </div>
+            <p class="mt-2 text-[11px] text-gray-600">
+                <span class="font-semibold text-brand-700">Step {{ str_pad((string) $current, 2, '0', STR_PAD_LEFT) }}</span>
+                <span class="text-gray-400">/ 12</span>
+                @if(isset($steps[$current])) &middot; {{ $steps[$current]['label'] }} @endif
+            </p>
         </div>
     </div>
     @endif
