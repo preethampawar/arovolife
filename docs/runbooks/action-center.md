@@ -62,12 +62,27 @@ Each action has a stable `key` used in routes and snooze rows. Severity is deriv
 | | `adc.applications_pending` | Arete Development Centre application awaiting review | `adc.application.review` | INFO | — | Admin ADC applications screen | No |
 | | `distributors.cooling_off_expiring` | Distributor cooling-off period within 7 days | `kyc.review` | INFO | 7 days | Distributor detail | No |
 | | `distributors.frozen_stale` | Distributor frozen with no decision for 14 days | `kyc.review` | WARNING | 14 days | Distributor detail | No |
-| **Compliance** | `grievance.sla_due_or_breached` | Complaint past ack/response/resolution clock | `grievance.handle` | **CRITICAL** | statutory | Admin grievance detail | **Yes** (statutory) |
-| | `grievance.third_party_overdue` | Third-party update >15 days | `grievance.handle` | WARNING | 15 days | Admin grievance detail | No |
+| **Compliance** | `grievance.sla_due_or_breached` | Complaint past ack/response/resolution clock, **excluding** ethics/conduct/privacy | `grievance.handle` | **CRITICAL** | statutory | Admin grievance detail | **Yes** (statutory) |
+| | `grievance.sensitive_sla_due_or_breached` | The same clock over **only** ethics/conduct/privacy (R-100) | `compliance.discipline` | **CRITICAL** | statutory | Admin grievance detail | **Yes** (statutory) |
+| | `grievance.third_party_overdue` | Third-party update >15 days, **excluding** ethics/conduct/privacy | `grievance.handle` | WARNING | 15 days | Admin grievance detail | No |
+| | `grievance.sensitive_third_party_overdue` | The same 15-day clock over **only** ethics/conduct/privacy (R-100) | `compliance.discipline` | WARNING | 15 days | Admin grievance detail | No |
 | | `messaging.reported_pending` | Message reported and unmoderated | `messaging.moderate` | WARNING | — | Admin messaging screen | No |
 | | `content.required_page_unpublished` | Consent-linked page not published | `content.publish` | **CRITICAL** | — | Admin content editor | **Yes** (statutory) |
 | | `platform.engine_runs_failed` | Compensation engine run failed or missing | (developer/admin) | **CRITICAL** | — | Admin compensation console | No |
 | | `platform.failed_jobs` | Failed jobs in the queue | (developer/admin) | WARNING | — | (count only) | No |
+
+> **Why the grievance rows come in pairs (R-100).** A count is a disclosure:
+> "Ethics & fraud — 3" tells an operations officer that ethics complaints exist
+> and roughly when, which is precisely what `AdminGrievanceController::
+> applyVisibility()` and `AdminGrievanceReportController::hiddenCategoriesFor()`
+> already refuse to tell them. Filtering those tickets out and stopping there
+> was the worse option — a breached **statutory** clock on an ethics grievance
+> would then appear on no screen at all — so each grievance row was split into
+> a `grievance.handle` half and a `compliance.discipline` half over the
+> complementary categories. The halves are disjoint and exhaustive: every
+> ticket past a clock is counted exactly once, on exactly one row. The
+> `Sensitive` classes extend their siblings rather than restating the clock, so
+> the definition of "past an SLA" cannot drift between the two.
 
 ---
 

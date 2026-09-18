@@ -6,6 +6,8 @@ namespace App\Modules\ActionCenter;
 
 use App\Modules\ActionCenter\Contracts\ActionProvider;
 use App\Modules\ActionCenter\Providers\Compliance\ContentRequiredPageUnpublishedProvider;
+use App\Modules\ActionCenter\Providers\Compliance\GrievanceSensitiveSlaDueOrBreachedProvider;
+use App\Modules\ActionCenter\Providers\Compliance\GrievanceSensitiveThirdPartyOverdueProvider;
 use App\Modules\ActionCenter\Providers\Compliance\GrievanceSlaDueOrBreachedProvider;
 use App\Modules\ActionCenter\Providers\Compliance\GrievanceThirdPartyOverdueProvider;
 use App\Modules\ActionCenter\Providers\Compliance\MessagingReportedPendingProvider;
@@ -94,7 +96,9 @@ final class ActionCenterServiceProvider extends ServiceProvider
         CoolingOffExpiringProvider::class,
         FrozenStaleProvider::class,
         GrievanceSlaDueOrBreachedProvider::class,
+        GrievanceSensitiveSlaDueOrBreachedProvider::class,
         GrievanceThirdPartyOverdueProvider::class,
+        GrievanceSensitiveThirdPartyOverdueProvider::class,
         MessagingReportedPendingProvider::class,
         ContentRequiredPageUnpublishedProvider::class,
         EngineRunsFailedProvider::class,

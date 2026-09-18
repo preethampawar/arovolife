@@ -8,6 +8,7 @@ use App\Modules\ActionCenter\Providers\AbstractProvider;
 use App\Modules\ActionCenter\Support\ActionGroup;
 use App\Modules\ActionCenter\Support\ActionItem;
 use App\Modules\ActionCenter\Support\Severity;
+use App\Modules\Grievance\Enums\TicketCategory;
 use App\Modules\Grievance\Models\Ticket;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -21,8 +22,15 @@ use Illuminate\Support\Collection;
  * item already recorded as breached is still due a human, so it stays
  * visible here. Statutory: the DSR clocks are not a manager's to silence
  * (plan §5).
+ *
+ * Ethics and privacy grievances are excluded (R-100). They are not dropped:
+ * `GrievanceSensitiveSlaDueOrBreachedProvider` extends this class and inverts
+ * the category scope, so the same statutory clocks reach compliance on a row
+ * of their own. Not `final` for exactly that reason — the SLA condition below
+ * is the definition of "past a clock" and the two rows must never drift apart,
+ * so the sensitive row inherits it rather than restating it.
  */
-final class GrievanceSlaDueOrBreachedProvider extends AbstractProvider
+class GrievanceSlaDueOrBreachedProvider extends AbstractProvider
 {
     public function key(): string
     {
@@ -129,8 +137,23 @@ final class GrievanceSlaDueOrBreachedProvider extends AbstractProvider
         return $candidates[0];
     }
 
+    /**
+     * Which grievance categories this row reports on.
+     *
+     * Everything except ethics and privacy. A count is a disclosure: "Ethics &
+     * fraud — 3" tells an operations officer that ethics complaints exist and
+     * roughly when, which is the same thing `AdminGrievanceController::
+     * applyVisibility()` and the monthly report already refuse to tell them.
+     *
+     * @param  Builder<Ticket>  $query
+     */
+    protected function categoryScope(Builder $query): void
+    {
+        $query->whereNotIn('tickets.category', TicketCategory::sensitiveValues());
+    }
+
     /** @return Builder<Ticket> */
-    private function baseQuery(): Builder
+    protected function baseQuery(): Builder
     {
         $now = now();
 
@@ -151,6 +174,8 @@ final class GrievanceSlaDueOrBreachedProvider extends AbstractProvider
                         ->where('tickets.sla_resolution_at', '<=', $now);
                 });
             });
+
+        $this->categoryScope($query);
 
         $this->excludeSnoozed($query->getQuery(), 'tickets.id');
 

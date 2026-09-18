@@ -7,6 +7,7 @@ declare(strict_types=1);
  * items, and zero renders no badge at all, not a grey zero (plan §10.5).
  */
 
+use App\Modules\ActionCenter\Services\ActionCenterService;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,23 +34,44 @@ it('shows the badge with the viewer\'s own critical count', function (): void {
     $response->assertSee('admin-nav-badge', false);
 });
 
-it('renders no badge for a viewer with nothing outstanding', function (): void {
+it('counts for a viewer only the criticals their own permissions reach', function (): void {
+    // Something outstanding that admin-finance must NOT be counted: a paid,
+    // uninvoiced order is `orders.invoice_missing`, gated on
+    // `commerce.order.manage`, which finance does not hold.
+    Helpers::paidOrder(now()->subDays(2));
+
     $finance = User::factory()->create(['status' => 'active']);
     $finance->assignRole('admin-finance');
 
-    // admin-finance holds `finance.record`/`finance.approve` but nothing here
-    // creates a money-side critical item, so the badge must not render.
     $response = $this->actingAs($finance)->get(route('admin.dashboard'));
-
     $response->assertOk();
 
-    $html = $response->getContent();
-    $navStart = strpos((string) $html, 'admin/action-center');
+    // This test used to be called "renders no badge for a viewer with nothing
+    // outstanding" and asserted that the 400 characters following the first
+    // `admin/action-center` link contained no `admin-nav-badge`. Both halves
+    // were wrong and the test passed anyway:
+    //
+    //   * that anchor resolved inside the dashboard BODY, not the sidebar —
+    //     the sidebar's Action Center item has been developer-only since
+    //     2026-09-12 — and nav badges only ever render in the sidebar, which
+    //     precedes the body. The assertion could not fail however wrong the
+    //     count was.
+    //   * "nothing outstanding" was never true. On an empty database
+    //     `EngineHealthService` reports every scheduled period as missing, so
+    //     admin-finance carries a double-figure `platform.engine_runs_failed`
+    //     count through `finance.record`.
+    //
+    // Moving the dashboard to lazily-fetched panels removed the body link and
+    // surfaced this. What the docblock above actually cares about — the count
+    // is scoped to the viewer's own permissions — is asserted directly.
+    $keys = app(ActionCenterService::class)->summary($finance)
+        ->flatten(1)
+        ->pluck('key')
+        ->all();
 
-    expect($navStart)->not->toBeFalse();
-
-    $navSnippet = substr((string) $html, (int) $navStart, 400);
-    expect($navSnippet)->not->toContain('admin-nav-badge');
+    expect($keys)->not->toContain('orders.invoice_missing')
+        ->and($keys)->not->toContain('grievance.sla_due_or_breached')
+        ->and($keys)->not->toContain('kyc.pending_review');
 });
 
 it('never counts another viewer\'s criticals in the badge', function (): void {
@@ -64,8 +86,20 @@ it('never counts another viewer\'s criticals in the badge', function (): void {
     $opsBadge = $this->actingAs($operations)->get(route('admin.dashboard'));
     $opsBadge->assertOk()->assertSee('admin-nav-badge', false);
 
-    $complianceHtml = (string) $this->actingAs($compliance)->get(route('admin.dashboard'))->getContent();
-    $navStart = strpos($complianceHtml, 'admin/action-center');
-    expect($navStart)->not->toBeFalse();
-    expect(substr($complianceHtml, (int) $navStart, 400))->not->toContain('admin-nav-badge');
+    $this->actingAs($compliance)->get(route('admin.dashboard'))->assertOk();
+
+    // The point of the test, asserted on the thing that decides it. The paid
+    // uninvoiced order is `orders.invoice_missing`, which is gated on
+    // `commerce.order.manage` — operations holds it, compliance does not, so
+    // it must appear in one viewer's summary and not the other's. The previous
+    // spelling compared rendered HTML around an anchor that no longer exists
+    // (see the note in the test above).
+    $keyFor = fn (User $user): array => app(ActionCenterService::class)
+        ->summary($user)
+        ->flatten(1)
+        ->pluck('key')
+        ->all();
+
+    expect($keyFor($operations))->toContain('orders.invoice_missing');
+    expect($keyFor($compliance))->not->toContain('orders.invoice_missing');
 });

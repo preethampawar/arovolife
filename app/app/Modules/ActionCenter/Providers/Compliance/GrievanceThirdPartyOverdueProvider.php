@@ -8,6 +8,7 @@ use App\Modules\ActionCenter\Providers\AbstractProvider;
 use App\Modules\ActionCenter\Support\ActionGroup;
 use App\Modules\ActionCenter\Support\ActionItem;
 use App\Modules\ActionCenter\Support\Severity;
+use App\Modules\Grievance\Enums\TicketCategory;
 use App\Modules\Grievance\Models\Ticket;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -19,8 +20,13 @@ use Illuminate\Support\Collection;
  * `last_status_update_at`, or `created_at` if never updated) before it nudges
  * the owning officer; this surfaces the same tickets on the screen rather
  * than only by mail.
+ *
+ * Ethics and privacy grievances are excluded (R-100) and picked up instead by
+ * `GrievanceSensitiveThirdPartyOverdueProvider`, which extends this class and
+ * inverts the category scope. Not `final` for that reason: the 15-day
+ * condition below is the definition, and the two rows must not drift.
  */
-final class GrievanceThirdPartyOverdueProvider extends AbstractProvider
+class GrievanceThirdPartyOverdueProvider extends AbstractProvider
 {
     private const OVERDUE_DAYS = 15;
 
@@ -100,13 +106,27 @@ final class GrievanceThirdPartyOverdueProvider extends AbstractProvider
             ->values();
     }
 
+    /**
+     * Which grievance categories this row reports on: everything except ethics
+     * and privacy, for the same reason the grievance queue hides them — the
+     * count on its own is already a disclosure.
+     *
+     * @param  Builder<Ticket>  $query
+     */
+    protected function categoryScope(Builder $query): void
+    {
+        $query->whereNotIn('tickets.category', TicketCategory::sensitiveValues());
+    }
+
     /** @return Builder<Ticket> */
-    private function baseQuery(): Builder
+    protected function baseQuery(): Builder
     {
         $query = Ticket::query()
             ->unsettled()
             ->where('tickets.third_party_dependent', true)
             ->whereRaw('COALESCE(tickets.last_status_update_at, tickets.created_at) <= ?', [$this->slaCutoff()]);
+
+        $this->categoryScope($query);
 
         $this->excludeSnoozed($query->getQuery(), 'tickets.id');
 

@@ -153,10 +153,34 @@
                 // Unsettled grievances for the sidebar badge. Same 60s cache —
                 // a statutory SLA queue that nobody can see the size of is a
                 // queue that gets missed.
+                //
+                // Category-filtered on the same rule as the queue itself
+                // (`AdminGrievanceController::applyVisibility()`) and the
+                // monthly report (R-100). It has to be: the queue's own
+                // "Open (N)" tab already hides ethics and privacy tickets, so
+                // an unfiltered badge let an operations officer read the
+                // sensitive count straight off the difference between the two
+                // numbers. Filtering one surface and not the other discloses
+                // exactly what filtering was for.
+                //
+                // Hence two cache keys rather than one. The old single global
+                // key would have served whichever number was computed first to
+                // every viewer — a compliance officer's total to operations,
+                // or the reverse — which is worse than not caching at all.
+                // Not keyed per user: the count only has two possible values,
+                // and a key per admin would multiply the entries for nothing.
+                $seesSensitiveGrievances = auth()->user()?->can('compliance.discipline') ?? false;
+
                 $openGrievanceCount = \Illuminate\Support\Facades\Cache::remember(
-                    'admin.grievances.unsettled_count',
+                    'admin.grievances.unsettled_count.'.($seesSensitiveGrievances ? 'all' : 'general'),
                     60,
-                    fn () => \App\Modules\Grievance\Models\Ticket::query()->unsettled()->count(),
+                    fn () => \App\Modules\Grievance\Models\Ticket::query()
+                        ->unsettled()
+                        ->when(
+                            ! $seesSensitiveGrievances,
+                            fn ($q) => $q->whereNotIn('category', \App\Modules\Grievance\Enums\TicketCategory::sensitiveValues()),
+                        )
+                        ->count(),
                 );
 
                 // Open message reports for the sidebar badge. Gated on the

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\ActionCenter\Models\ActionCenterSnooze;
+use App\Modules\ActionCenter\Providers\Compliance\GrievanceSensitiveThirdPartyOverdueProvider;
 use App\Modules\ActionCenter\Providers\Compliance\GrievanceThirdPartyOverdueProvider;
 use App\Modules\Grievance\Enums\EscalationLevel;
 use App\Modules\Grievance\Enums\TicketCategory;
@@ -79,4 +80,32 @@ it('excludes a snoozed ticket', function (): void {
     ]);
 
     expect($this->provider->count())->toBe(0);
+});
+
+/**
+ * R-100, the third-party sibling. Same split, same reason: a privacy complaint
+ * waiting 20 days on a third party is still a complaint nobody outside
+ * compliance may be told exists.
+ */
+it('moves a privacy grievance to the compliance-only row', function (): void {
+    $ticket = thirdPartyTicket([
+        'category' => TicketCategory::Privacy,
+        'last_status_update_at' => now()->subDays(20),
+    ]);
+
+    $sensitive = app(GrievanceSensitiveThirdPartyOverdueProvider::class);
+
+    expect($this->provider->count())->toBe(0)
+        ->and($sensitive->count())->toBe(1)
+        ->and($sensitive->items()->first()->subjectId)->toBe($ticket->id);
+});
+
+it('keeps the same 15-day clock on both rows', function (): void {
+    $sensitive = app(GrievanceSensitiveThirdPartyOverdueProvider::class);
+
+    thirdPartyTicket(['category' => TicketCategory::Poaching, 'last_status_update_at' => now()->subDays(15)->addHour()]);
+
+    // Inside the window on the general row, so it must be inside it here too.
+    expect($sensitive->count())->toBe(0)
+        ->and($sensitive->slaHours())->toBe($this->provider->slaHours());
 });

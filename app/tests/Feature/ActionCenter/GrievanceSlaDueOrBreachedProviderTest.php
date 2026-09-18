@@ -9,6 +9,7 @@ declare(strict_types=1);
  */
 
 use App\Modules\ActionCenter\Models\ActionCenterSnooze;
+use App\Modules\ActionCenter\Providers\Compliance\GrievanceSensitiveSlaDueOrBreachedProvider;
 use App\Modules\ActionCenter\Providers\Compliance\GrievanceSlaDueOrBreachedProvider;
 use App\Modules\Grievance\Enums\EscalationLevel;
 use App\Modules\Grievance\Enums\TicketCategory;
@@ -102,4 +103,50 @@ it('excludes a snoozed ticket on principle, though the UI offers no snooze contr
     ]);
 
     expect($this->provider->count())->toBe(0);
+});
+
+/**
+ * R-100 — the count is a disclosure.
+ *
+ * "Ethics & fraud — 3" tells an operations officer that ethics complaints
+ * exist and roughly when, which is exactly what the grievance queue and the
+ * monthly report already refuse to tell them. The clock is not filtered away:
+ * it moves to a compliance-only row so a breached statutory deadline still
+ * appears on somebody's screen.
+ */
+it('drops an ethics grievance from the general row and counts it on the compliance row', function (): void {
+    $ticket = grievanceTicket([
+        'category' => TicketCategory::Ethics,
+        'sla_acknowledgement_at' => now()->subHour(),
+        'acknowledged_at' => null,
+    ]);
+
+    $sensitive = app(GrievanceSensitiveSlaDueOrBreachedProvider::class);
+
+    expect($this->provider->count())->toBe(0)
+        ->and($sensitive->count())->toBe(1)
+        ->and($sensitive->items()->first()->subjectId)->toBe($ticket->id);
+});
+
+it('splits every sensitive category out, and only those', function (): void {
+    // One breached ticket per sensitive category, plus one ordinary ticket.
+    foreach (TicketCategory::sensitiveValues() as $category) {
+        grievanceTicket([
+            'category' => $category,
+            'sla_acknowledgement_at' => now()->subHour(),
+            'acknowledged_at' => null,
+        ]);
+    }
+
+    grievanceTicket(['sla_acknowledgement_at' => now()->subHour(), 'acknowledged_at' => null]);
+
+    $sensitive = app(GrievanceSensitiveSlaDueOrBreachedProvider::class);
+
+    // Disjoint and exhaustive: every breached ticket is on exactly one row.
+    expect($this->provider->count())->toBe(1)
+        ->and($sensitive->count())->toBe(count(TicketCategory::sensitiveValues()));
+});
+
+it('keeps the compliance row statutory, so it cannot be snoozed away either', function (): void {
+    expect(app(GrievanceSensitiveSlaDueOrBreachedProvider::class)->statutory())->toBeTrue();
 });

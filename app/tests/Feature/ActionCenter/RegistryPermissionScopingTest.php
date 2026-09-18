@@ -122,3 +122,35 @@ it('hides a provider whose feature flag is off without querying it', function ()
 
     expect($registry->for($operations)->map(fn (ActionProvider $p): string => $p->key())->all())->toBe(['orders.paid_not_packed']);
 });
+
+/**
+ * R-100 — the grievance rows are split by category, and the split is enforced
+ * by the registry's ordinary permission filter rather than by anything inside
+ * the providers. Operations holds `grievance.handle` and clears the general
+ * queue; only compliance holds `compliance.discipline`, which is the same
+ * permission the grievance queue, the ticket page and the monthly report
+ * already gate `TicketCategory::sensitiveValues()` on.
+ */
+it('gives the ethics and privacy grievance rows to compliance alone', function (): void {
+    $registry = app(ActionCenterRegistry::class);
+
+    $operations = User::factory()->create(['status' => 'active']);
+    $operations->assignRole('admin-operations');
+
+    $compliance = User::factory()->create(['status' => 'active']);
+    $compliance->assignRole('admin-compliance');
+
+    $keysFor = fn (User $user): array => $registry->for($user)
+        ->map(fn (ActionProvider $p): string => $p->key())
+        ->all();
+
+    expect($keysFor($operations))
+        ->toContain('grievance.sla_due_or_breached')
+        ->not->toContain('grievance.sensitive_sla_due_or_breached')
+        ->not->toContain('grievance.sensitive_third_party_overdue');
+
+    expect($keysFor($compliance))
+        ->toContain('grievance.sla_due_or_breached')
+        ->toContain('grievance.sensitive_sla_due_or_breached')
+        ->toContain('grievance.sensitive_third_party_overdue');
+});
