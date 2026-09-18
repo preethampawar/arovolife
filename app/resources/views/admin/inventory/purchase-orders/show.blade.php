@@ -58,7 +58,7 @@
                     <td class="px-4 py-3 text-gray-900">{{ $item->variant->variant_sku }} — {{ $item->variant->product->name }}</td>
                     <td class="px-4 py-3 text-right font-mono">{{ $item->qty_ordered }}</td>
                     <td class="px-4 py-3 text-right font-mono">{{ $item->qty_received }}</td>
-                    <td class="px-4 py-3 text-right font-mono">₹{{ number_format($item->unit_cost_paise / 100, 2) }}</td>
+                    <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::rupees((int) $item->unit_cost_paise) }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -82,7 +82,7 @@
                 <tr>
                     <td class="px-4 py-3 font-mono font-semibold text-gray-900">{{ $invoice->grn_no }}</td>
                     <td class="px-4 py-3 text-gray-700">{{ ucfirst($invoice->status) }}</td>
-                    <td class="px-4 py-3 text-right font-mono">₹{{ number_format($invoice->total_paise / 100, 2) }}</td>
+                    <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::rupees((int) $invoice->total_paise) }}</td>
                     <td class="px-4 py-3 text-right"><a href="{{ route('admin.inventory.grns.show', $invoice) }}" class="text-brand-700 hover:text-brand-800 font-medium">View</a></td>
                 </tr>
             @endforeach

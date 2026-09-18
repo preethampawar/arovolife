@@ -81,7 +81,7 @@
                                         <td class="pr-3 py-1 font-mono">{{ $batch->batch_no }}</td>
                                         <td class="pr-3 py-1">{{ $batch->expiry_date?->format('d M Y') ?? '—' }}</td>
                                         <td class="pr-3 py-1 text-right font-mono">{{ $batch->qty_on_hand }}</td>
-                                        <td class="pr-3 py-1 text-right font-mono">₹{{ number_format($batch->unit_cost_paise / 100, 2) }}</td>
+                                        <td class="pr-3 py-1 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::rupees((int) $batch->unit_cost_paise) }}</td>
                                     </tr>
                                     @endforeach
                                 </tbody>

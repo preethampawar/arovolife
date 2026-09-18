@@ -30,7 +30,7 @@
                     <td class="px-4 py-3 font-mono font-semibold text-gray-900">{{ $invoice->grn_no }}</td>
                     <td class="px-4 py-3 text-gray-700">{{ $invoice->supplier?->name ?? '—' }}</td>
                     <td class="px-4 py-3 text-gray-700 font-mono text-xs">{{ $invoice->supplier_invoice_no }}</td>
-                    <td class="px-4 py-3 text-right font-mono">₹{{ number_format($invoice->total_paise / 100, 2) }}</td>
+                    <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::rupees((int) $invoice->total_paise) }}</td>
                     <td class="px-4 py-3">
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border {{ $invoice->status === 'posted' ? 'bg-green-50 text-green-700 border-green-200' : ($invoice->status === 'cancelled' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-gray-100 text-gray-600 border-gray-200') }}">{{ ucfirst($invoice->status) }}</span>
                     </td>

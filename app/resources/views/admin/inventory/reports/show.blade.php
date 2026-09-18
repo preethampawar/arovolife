@@ -42,9 +42,19 @@
             @forelse($rows as $row)
             <tr class="hover:bg-gray-50">
                 @foreach($columns as $column)
-                @php $value = $row[$column['key']] ?? ''; @endphp
+                @php
+                    $value = $row[$column['key']] ?? '';
+                    // Grouped here and only here. ReportExport reads the same
+                    // rows and must stay ungrouped for spreadsheets, so the
+                    // lakh grouping belongs to the screen, not to the row.
+                    $display = match (true) {
+                        $value instanceof \Illuminate\Support\Carbon => $value->format('d M Y, h:i A'),
+                        is_int($value) || is_float($value) => \App\Modules\Shared\Support\IndianNumber::format($value),
+                        default => $value,
+                    };
+                @endphp
                 <td class="px-4 py-3 {{ ($column['align'] ?? '') === 'right' ? 'text-right font-mono' : 'text-gray-700' }}">
-                    {{ $value instanceof \Illuminate\Support\Carbon ? $value->format('d M Y, h:i A') : $value }}
+                    {{ $display }}
                 </td>
                 @endforeach
             </tr>

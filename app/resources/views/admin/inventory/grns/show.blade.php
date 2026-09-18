@@ -63,24 +63,24 @@
                     <td class="px-4 py-3 font-mono">{{ $item->batch_no }}</td>
                     <td class="px-4 py-3 text-gray-600 text-xs">{{ $item->expiry_date?->format('d M Y') ?? '—' }}</td>
                     <td class="px-4 py-3 text-right font-mono">{{ $item->qty }}</td>
-                    <td class="px-4 py-3 text-right font-mono">₹{{ number_format($item->unit_cost_paise / 100, 2) }}</td>
+                    <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::rupees((int) $item->unit_cost_paise) }}</td>
                     <td class="px-4 py-3 text-right font-mono">{{ number_format($item->gst_rate_bp / 100, 2) }}</td>
-                    <td class="px-4 py-3 text-right font-mono">₹{{ number_format($item->line_total_paise / 100, 2) }}</td>
+                    <td class="px-4 py-3 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::rupees((int) $item->line_total_paise) }}</td>
                 </tr>
             @endforeach
         </tbody>
         <tfoot>
             <tr>
                 <td colspan="6" class="px-4 py-2 text-right text-gray-600">Taxable</td>
-                <td class="px-4 py-2 text-right font-mono">₹{{ number_format($invoice->subtotal_paise / 100, 2) }}</td>
+                <td class="px-4 py-2 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::rupees((int) $invoice->subtotal_paise) }}</td>
             </tr>
             <tr>
                 <td colspan="6" class="px-4 py-2 text-right text-gray-600">GST</td>
-                <td class="px-4 py-2 text-right font-mono">₹{{ number_format($invoice->gst_paise / 100, 2) }}</td>
+                <td class="px-4 py-2 text-right font-mono">{{ \App\Modules\Shared\Support\IndianNumber::rupees((int) $invoice->gst_paise) }}</td>
             </tr>
             <tr>
                 <td colspan="6" class="px-4 py-3 text-right font-semibold text-gray-900">Total</td>
-                <td class="px-4 py-3 text-right font-semibold font-mono text-gray-900">₹{{ number_format($invoice->total_paise / 100, 2) }}</td>
+                <td class="px-4 py-3 text-right font-semibold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::rupees((int) $invoice->total_paise) }}</td>
             </tr>
         </tfoot>
     </table>

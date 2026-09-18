@@ -96,3 +96,36 @@ it('refuses a distributor who lacks inventory.view', function (): void {
 
     $this->actingAs($distributor)->get(route('admin.inventory.reports.index'))->assertForbidden();
 });
+
+/**
+ * The rows feed both the screen and the export, so the lakh grouping has to
+ * live in the Blade, not in the row: IndianNumber's contract says CSVs stay
+ * ungrouped for spreadsheets. 1,500 units at ₹600 is ₹9,00,000.00 in Indian
+ * grouping and ₹900,000.00 in western — a value that tells the two apart.
+ */
+it('groups report numbers lakh-style on screen and leaves the CSV ungrouped', function (): void {
+    $variant = rrtVariant();
+    $batch = StockBatch::create([
+        'product_variant_id' => $variant->id, 'warehouse_code' => Warehouse::DEFAULT_CODE, 'batch_no' => 'RRT-GROUP',
+        'expiry_date' => now()->addDays(90)->toDateString(), 'unit_cost_paise' => 60000, 'qty_on_hand' => 0, 'received_at' => now(),
+    ]);
+    app(StockLedger::class)->post([
+        'type' => StockMovement::TYPE_PURCHASE_IN, 'variant_id' => $variant->id,
+        'warehouse_code' => Warehouse::DEFAULT_CODE, 'batch_id' => $batch->id, 'qty' => 1500,
+        'unit_cost_paise' => 60000, 'reference_type' => 'purchase_invoice_item', 'reference_id' => 1,
+    ]);
+
+    $admin = User::factory()->create(['status' => 'active']);
+    $admin->assignRole('admin-operations');
+
+    $this->actingAs($admin)->get(route('admin.inventory.reports.stock-on-hand'))
+        ->assertOk()
+        ->assertSee('1,500')
+        ->assertSee('₹9,00,000.00')
+        ->assertDontSee('₹900,000.00');
+
+    $csv = $this->actingAs($admin)->get(route('admin.inventory.reports.stock-on-hand', ['export' => 'csv']));
+    $csv->assertOk();
+
+    expect($csv->streamedContent())->toContain(',1500,');
+});

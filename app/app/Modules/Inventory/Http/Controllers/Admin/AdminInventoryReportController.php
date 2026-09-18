@@ -15,6 +15,7 @@ use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\InventoryAlertService;
 use App\Modules\Inventory\Services\StockValuationService;
 use App\Modules\Returns\Models\ReturnRequest;
+use App\Modules\Shared\Support\IndianNumber;
 use App\Modules\Shared\Support\ReportExport;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -369,7 +370,7 @@ final class AdminInventoryReportController extends Controller
             return [
                 'order_no' => $order->order_no,
                 'stage' => $stage,
-                'age_days' => $since->diffInDays($now),
+                'age_days' => (int) $since->diffInDays($now),
                 'paid_at' => $order->paid_at,
                 'packed_at' => $order->packed_at,
                 'shipped_at' => $order->shipped_at,
@@ -385,7 +386,7 @@ final class AdminInventoryReportController extends Controller
             ->map(fn (ReturnRequest $rr): array => [
                 'order_no' => $rr->rma_no,
                 'stage' => 'returns_pending_receipt',
-                'age_days' => $rr->created_at->diffInDays($now),
+                'age_days' => (int) $rr->created_at->diffInDays($now),
                 'paid_at' => null,
                 'packed_at' => null,
                 'shipped_at' => null,
@@ -546,7 +547,7 @@ final class AdminInventoryReportController extends Controller
 
     private function money(int $paise): string
     {
-        return '₹'.number_format($paise / 100, 2);
+        return IndianNumber::rupees($paise);
     }
 
     /**
