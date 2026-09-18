@@ -25,7 +25,7 @@ final readonly class EngineHealthReport
      * @param  list<MissingItem>  $missing  Scheduled periods for which no run of any kind was recorded.
      * @param  list<StuckItem>  $stuck  Runs still `running` long after they started.
      * @param  list<PrematureFreezeItem>  $prematureFreezes  Pools frozen too early that the self-heal had to keep.
-     * @param  list<ChainAlertItem>  $chainAlerts  What the nightly chain could not do: a night it never started, a gap too wide to heal, a month it would not close.
+     * @param  list<ChainAlertItem>  $chainAlerts  What the three scheduled runs could not do: a night one never started, a gap too wide to heal, a month or a batch deferred.
      */
     public function __construct(
         public array $failures,

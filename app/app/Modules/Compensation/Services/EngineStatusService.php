@@ -31,7 +31,11 @@ use Illuminate\Support\Facades\DB;
  */
 final class EngineStatusService
 {
-    /** The orchestrator an operator may retry: the night, not a single engine. */
+    /**
+     * The daily run — one of the three scheduled orchestrators
+     * ({@see EngineRegistry::rootOrchestratorKeys()}), and the only one whose
+     * steps are dated the night it belongs to.
+     */
     public const CHAIN_KEY = 'compensation.nightly-run';
 
     /**
@@ -47,20 +51,20 @@ final class EngineStatusService
     }
 
     /**
-     * The nightly chain's last finished attempt, when that attempt FAILED.
+     * The nightly run's last finished attempt, when that attempt FAILED.
      *
      * Deliberately "the latest attempt", not "the oldest unhealed failure". A
-     * night that fails is not a night that is lost: the next chain backfills the
-     * cut-offs it missed and rebuilds a missed Tuesday batch still dated that
-     * Tuesday, so once any later night has exited 0 the gap is closed and a
-     * banner pointing at the old failure would be telling an operator to fix
-     * something that has already fixed itself.
+     * night that fails is not a night that is lost: the next nightly run
+     * backfills the cut-offs it missed, so once any later night has exited 0
+     * the gap is closed and a banner pointing at the old failure would be
+     * telling an operator about something that has already healed itself.
      *
-     * RUNNING rows are excluded — a chain in flight is not a failure — and so
-     * are SKIPPED ones: a preflight refusal is a decision (a stale worker, a
-     * standing projection), and retrying it would only refuse again. Those
-     * surface through {@see EngineHealthService} chain alerts, which say what to
-     * actually do.
+     * RUNNING rows are excluded — a run in flight is not a failure — and so are
+     * SKIPPED ones: a preflight refusal or a deferral is a decision (a stale
+     * worker, a standing projection, a month waiting on tonight's runs), and
+     * nothing would be repaired by reporting it as a breakage. Those surface
+     * through {@see EngineHealthService} run alerts, which say what is actually
+     * being waited for.
      */
     public function failedChainRun(): ?EngineRun
     {
@@ -87,35 +91,69 @@ final class EngineStatusService
     }
 
     /**
-     * The steps of a failed night, in chain order, with what each one did.
+     * The steps of a failed nightly run, in the order it invoked them, with
+     * what each one did.
      *
-     * Read from the step engines' own `engine_runs` rows for that period rather
-     * than from the chain's summary: the chain aborts at the first non-zero exit
-     * and never reaches the steps after it, so the only honest account of which
-     * engines ran is the rows they wrote themselves.
+     * Read from the step engines' own `engine_runs` rows rather than from the
+     * run's summary: the run aborts at the first non-zero exit and never
+     * reaches the steps after it, so the only honest account of which engines
+     * ran is the rows they wrote themselves.
+     *
+     * Scoped two ways, and both are needed. By ENGINE, to the nightly run's own
+     * steps — the weekly and monthly runs write rows on the same night, and
+     * listing those under "what each step did" would credit the nightly run
+     * with work it never touched. And by the failed run's own WINDOW rather
+     * than by period: a cut-off is dated night − 1, and every backfilled day is
+     * dated earlier still, so a period filter could never show the one step
+     * whose failure the banner exists to explain. The window also excludes a
+     * hand-typed re-run of the same engine an hour later, which is a different
+     * attempt and belongs to no run row here.
+     *
+     * Each label carries its step's own period, so a night that backfilled four
+     * days reads as four dated lines rather than four identical ones.
      *
      * @return list<array{label: string, status: string, error: string|null}>
      */
-    public function chainStepOutcomes(Carbon $night): array
+    public function chainStepOutcomes(EngineRun $run): array
     {
+        $stepKeys = [];
+
+        foreach (EngineRegistry::all() as $key => $definition) {
+            if ($definition->orchestratedBy === self::CHAIN_KEY) {
+                $stepKeys[] = $key;
+            }
+        }
+
+        if ($stepKeys === [] || $run->started_at === null) {
+            return [];
+        }
+
         $rows = EngineRun::query()
-            ->where('engine_key', '!=', self::CHAIN_KEY)
-            ->whereDate('period_start', $night->toDateString())
+            ->whereIn('engine_key', $stepKeys)
+            ->where('started_at', '>=', $run->started_at)
+            ->where('started_at', '<=', $run->finished_at ?? Carbon::now())
             ->orderBy('id')
-            ->get()
-            ->keyBy('engine_key');
+            ->get();
 
         $steps = [];
 
-        foreach ($rows as $key => $run) {
-            if (! EngineRegistry::has((string) $key)) {
+        foreach ($rows as $step) {
+            $key = (string) $step->engine_key;
+
+            if (! EngineRegistry::has($key)) {
                 continue;
             }
 
+            $definition = EngineRegistry::get($key);
+
             $steps[] = [
-                'label' => EngineRegistry::get((string) $key)->label,
-                'status' => (string) $run->status,
-                'error' => is_string($run->error) ? $run->error : null,
+                'label' => sprintf(
+                    '%s — %s',
+                    $definition->label,
+                    $definition->displayPeriod($step->period_start),
+                ),
+                'status' => (string) $step->status,
+                'error' => is_string($step->error) ? $step->error : null,
             ];
         }
 
@@ -359,18 +397,38 @@ final class EngineStatusService
     }
 
     /**
+     * A failure is unresolved until a LATER SUCCESS of the same engine covers
+     * it — for a leaf engine, a later success for the same period.
+     *
+     * D5: for a root orchestrator the period equality is dropped, because the
+     * period of one of those runs is a NIGHT, and a night is never re-run. The
+     * nightly run backfills the cut-offs a failed night missed; the weekly and
+     * monthly runs re-attempt what they owe every night. So the first night any
+     * of them exits 0 is the night the earlier failure stopped being anything
+     * to act on — while the per-period rule would keep 8 September's failed run
+     * in the digest for thirty days, with no run of that date ever coming to
+     * resolve it (staging, since 8 Sep 2026).
+     *
+     * A leaf is the opposite case and keeps the period: a cut-off that failed
+     * for the 12th is still owed however many later days succeed.
+     *
      * @return Builder<EngineRun>
      */
     private function unresolvedFailureQuery(Carbon $since): Builder
     {
+        $rootKeys = EngineRegistry::rootOrchestratorKeys();
+
         return EngineRun::query()
             ->where('status', EngineRun::STATUS_FAILED)
             ->where('started_at', '>=', $since)
-            ->whereNotExists(function ($query) use ($since): void {
+            ->whereNotExists(function ($query) use ($since, $rootKeys): void {
                 $query->select(DB::raw(1))
                     ->from('engine_runs as later')
                     ->whereColumn('later.engine_key', 'engine_runs.engine_key')
-                    ->whereColumn('later.period_start', 'engine_runs.period_start')
+                    ->where(function ($scope) use ($rootKeys): void {
+                        $scope->whereColumn('later.period_start', 'engine_runs.period_start')
+                            ->orWhereIn('engine_runs.engine_key', $rootKeys);
+                    })
                     ->whereColumn('later.started_at', '>=', 'engine_runs.started_at')
                     ->where('later.status', EngineRun::STATUS_SUCCEEDED)
                     ->where('later.started_at', '>=', $since);

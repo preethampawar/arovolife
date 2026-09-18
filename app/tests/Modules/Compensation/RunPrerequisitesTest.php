@@ -55,9 +55,12 @@ it('refuses when the latest nightly attempt failed, naming the error\'s first li
         "GSB Daily Cut-off exited 1 for 15 Sep 2026.\nThe remaining steps did not run.",
     );
 
-    expect(app(RunPrerequisites::class)->nightlyRunRefusal(Carbon::parse('2026-09-16')))
-        ->toContain('its last attempt is failed: GSB Daily Cut-off exited 1 for 15 Sep 2026.')
-        ->not->toContain('The remaining steps did not run.');
+    // Two statements, not one chain: `->not` exists on Pest\Expectation but not
+    // on the mixin a matcher returns.
+    $refusal = (string) app(RunPrerequisites::class)->nightlyRunRefusal(Carbon::parse('2026-09-16'));
+
+    expect($refusal)->toContain('its last attempt is failed: GSB Daily Cut-off exited 1 for 15 Sep 2026.');
+    expect($refusal)->not->toContain('The remaining steps did not run.');
 });
 
 it('refuses when the nightly run has never run at all', function (): void {
@@ -71,10 +74,12 @@ it('diagnoses tonight\'s attempt only, never another night\'s row', function ():
     // attempt is succeeded" goes looking for a failure that is not there.
     seedRunRow('compensation.nightly-run', '2026-09-15', EngineRun::STATUS_SUCCEEDED, '2026-09-15 00:05:00');
 
-    expect(app(RunPrerequisites::class)->nightlyRunRefusal(Carbon::parse('2026-09-16')))
+    $refusal = (string) app(RunPrerequisites::class)->nightlyRunRefusal(Carbon::parse('2026-09-16'));
+
+    expect($refusal)
         ->toContain("tonight's nightly run (16 Sep 2026) has not succeeded")
-        ->toContain('it has not run at all tonight')
-        ->not->toContain('its last attempt');
+        ->toContain('it has not run at all tonight');
+    expect($refusal)->not->toContain('its last attempt');
 });
 
 it('asks nothing of the weekly run on a night no Tuesday is owed', function (): void {

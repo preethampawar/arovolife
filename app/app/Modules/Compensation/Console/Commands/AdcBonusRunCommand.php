@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Services\AreteDevelopmentCenterBonusService;
+use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Compensation\Support\FrozenPayoutGuard;
 use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Support\IndianNumber as Number;
@@ -39,6 +41,21 @@ final class AdcBonusRunCommand extends Command
 
         if (! $this->option(OpenMonthGuard::OPTION) && ($refusal = OpenMonthGuard::refusal($month)) !== null) {
             $this->error($refusal);
+
+            return self::FAILURE;
+        }
+
+        // Not overridable by --force or --in-flight, and checked before any
+        // freeze or credit: once finance has approved the month's payout batch,
+        // money has left on these figures, and once the batch has been BUILT
+        // and is waiting for approval nothing may be credited into the month
+        // either — the sweep is over, so the credit would never be picked up
+        // and finance would approve a batch that no longer matches the ledger
+        // (D9, A10). FrozenPayoutGuard is the one place that decides both.
+        if (($frozen = FrozenPayoutGuard::creditingRefusal($month)) !== null) {
+            $this->error($frozen);
+
+            app(EngineRunContext::class)->noteSkipped($frozen);
 
             return self::FAILURE;
         }

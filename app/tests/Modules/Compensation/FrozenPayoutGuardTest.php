@@ -112,7 +112,11 @@ it('closes a swept-but-unapproved month to new credits without freezing it', fun
 it('gives an approved month the frozen refusal, not the awaiting-approval one', function (): void {
     seedFrozenGuardBatch(PayoutBatch::STATUS_APPROVED, '2026-09-08 11:30:00');
 
-    expect(FrozenPayoutGuard::creditingRefusal(Carbon::parse('2026-08-01')))
-        ->toContain('August 2026 is frozen')
-        ->not->toContain('awaits approval');
+    // Two statements, not one chain: `->not` exists on Pest\Expectation but not
+    // on the mixin a matcher returns, so `->toContain(…)->not` is a static
+    // error whatever the value's type is.
+    $refusal = (string) FrozenPayoutGuard::creditingRefusal(Carbon::parse('2026-08-01'));
+
+    expect($refusal)->toContain('August 2026 is frozen');
+    expect($refusal)->not->toContain('awaits approval');
 });

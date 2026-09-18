@@ -14,6 +14,7 @@ use App\Modules\Compensation\Support\NightlyRunAlert;
 use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 /**
  * Builds the daily engine-health report: what failed, what never ran, and what
@@ -183,13 +184,14 @@ final class EngineHealthService
     }
 
     /**
-     * What the nightly chain could not do — and nothing else can see.
+     * What the three scheduled runs could not do — and nothing else can see.
      *
      * Read from `audit_log` because there is nothing else to read: a night the
-     * scheduler skipped starts no command, so it writes no `engine_runs` row; a
-     * backfill gap and a deferred month close both end in a chain that exits 0.
-     * The failure badge, the missing-period check and the stuck check are all
-     * silent on every one of them (see {@see NightlyRunAlert}).
+     * scheduler skipped starts no command, so it writes no `engine_runs` row;
+     * a backfill gap and every deferral end in a run that exits 0 and records
+     * itself `skipped`. The failure badge, the missing-period check and the
+     * stuck check are all silent on every one of them (see
+     * {@see NightlyRunAlert}).
      *
      * @return list<ChainAlertItem>
      */
@@ -212,7 +214,7 @@ final class EngineHealthService
                 'headline' => $this->chainAlertHeadline($row->action, $details),
                 'date' => Carbon::parse($date)->format('d M Y'),
                 'recorded_at' => $row->created_at->format('d M Y H:i'),
-                'steps' => $this->chainAlertSteps($row->action),
+                'steps' => $this->chainAlertSteps($row->action, $details),
             ];
         }
 
@@ -220,47 +222,155 @@ final class EngineHealthService
     }
 
     /**
+     * The one line that has to say which run, which month and WHY.
+     *
+     * Every deferred close used to read as a coverage gap, because coverage was
+     * the only cause there was. There are three now — the days are not all cut
+     * off, a cut-off is still running, or tonight's runs are not green — and
+     * they call for three different actions, so a month deferred on a red
+     * nightly run must not be reported to the ops mailbox as missing days that
+     * somebody then goes looking for.
+     *
      * @param  array<string, mixed>  $details
      */
     private function chainAlertHeadline(string $action, array $details): string
     {
+        $month = is_string($details['month'] ?? null)
+            ? Carbon::parse($details['month'].'-01')->format('F Y')
+            : 'A month';
+
         return match ($action) {
-            NightlyRunAlert::ACTION_SKIPPED_NIGHT => 'The chain never started — the previous night was still running',
-            NightlyRunAlert::ACTION_BACKFILL_GAP => 'More nights are missing than the chain may heal on its own',
-            NightlyRunAlert::ACTION_MONTH_DEFERRED => sprintf(
-                '%s was not closed — %s of its days have no completed cut-off',
-                is_string($details['month'] ?? null)
-                    ? Carbon::parse($details['month'].'-01')->format('F Y')
-                    : 'A month',
-                is_int($details['missing_days'] ?? null) ? (string) $details['missing_days'] : 'some',
+            NightlyRunAlert::ACTION_SKIPPED_NIGHT => sprintf(
+                '%s never started — the previous one was still running',
+                $this->runLabel($details),
             ),
-            default => 'The nightly chain reported something it could not do',
+            NightlyRunAlert::ACTION_BACKFILL_GAP => 'More nights are missing than the nightly run may heal on its own',
+            NightlyRunAlert::ACTION_MONTH_DEFERRED => match ($details['cause'] ?? 'coverage') {
+                'cutoff_in_flight' => $month.' was not closed — the cut-off was still running; it closes the next night',
+                'prerequisite' => $month." was not closed — tonight's nightly run (or the Tuesday batch) had not succeeded; it closes the next night both are green",
+                // `missing_days` is null for every cause but this one.
+                default => sprintf(
+                    '%s was not closed — %s of its days have no completed cut-off',
+                    $month,
+                    is_int($details['missing_days'] ?? null) ? (string) $details['missing_days'] : 'some',
+                ),
+            },
+            NightlyRunAlert::ACTION_PAYOUT_DEFERRED => $month.' has not been paid — its crediting is incomplete',
+            NightlyRunAlert::ACTION_WEEKLY_DEFERRED => sprintf(
+                "The %s weekly payout was not built — tonight's nightly run had not succeeded",
+                $this->weeklyDeferredTuesdays($details),
+            ),
+            default => 'A scheduled run reported something it could not do',
         };
     }
 
     /**
+     * What to do about it — and for every deferral the answer is "nothing", so
+     * the steps say what is being waited for instead.
+     *
+     * No step here names a control: there is none. A failed or deferred run is
+     * repaired by the platform team from the server, and every remedy that
+     * names a command names the ordinary one, never a rebuild.
+     *
+     * @param  array<string, mixed>  $details
      * @return list<string>
      */
-    private function chainAlertSteps(string $action): array
+    private function chainAlertSteps(string $action, array $details): array
     {
         return match ($action) {
             NightlyRunAlert::ACTION_SKIPPED_NIGHT => [
-                'Nothing to click, and nothing is owed twice: the next chain cuts off the days this night would have, and rebuilds a Tuesday payout batch it missed — still dated that Tuesday, so the week paid is unchanged.',
-                'What this says is that the chain is taking longer than a day to finish, which the backfill hides rather than fixes.',
-                'Check the Engine Runs page for how long the previous night took, and send that duration to the developer if it keeps happening.',
+                $this->skippedRunFirstStep($details),
+                'What this says is that the run is taking longer than a day to finish, which the self-heal hides rather than fixes.',
+                'Check the Engine Runs page for how long the previous one took, and send that duration to the platform team if it keeps happening.',
             ],
             NightlyRunAlert::ACTION_BACKFILL_GAP => [
                 'This one does not heal itself. Last night ran; the days before it did not, and nobody has been credited for them.',
-                'Ask the developer to cut off each missing day in order (php artisan gsb:daily-cutoff --date=<day>), oldest first, before the month it belongs to is closed.',
+                'Ask the platform team to cut off each missing day in order (php artisan gsb:daily-cutoff --date=<day>), oldest first, before the month it belongs to is closed.',
                 'Do not close that month until every one of its days is done — a month closed short stays short.',
             ],
-            NightlyRunAlert::ACTION_MONTH_DEFERRED => [
-                'Nobody receives Growth Booster, Rank Bonus, Fortune or ADC for this month until it is closed, and the chain will not close it while days are missing.',
-                'Ask the developer to cut off the missing days (php artisan gsb:daily-cutoff --date=<day>), then run the close for that month.',
-                'The payout on the 8th refuses a month whose crediting is incomplete, so this cannot reach a bank half-done.',
+            NightlyRunAlert::ACTION_MONTH_DEFERRED => match ($details['cause'] ?? 'coverage') {
+                'cutoff_in_flight' => [
+                    'Nothing to click, and nothing is wrong: the cut-off was still running when the monthly run reached the month, and it commits per distributor.',
+                    'The monthly run closes the month on the next night; nothing to type.',
+                    "If tomorrow's email still lists it, send the cut-off's duration to the platform team — it is taking longer than the gap between the two runs.",
+                ],
+                'prerequisite' => [
+                    'Nobody receives Growth Booster, Rank Bonus, Fortune or ADC for this month until it is closed.',
+                    'Nothing to click: the monthly run closes it on the first night the nightly run — and the Tuesday batch, when one is owed — has succeeded.',
+                    'What needs fixing is the run named elsewhere in this email, not the month.',
+                ],
+                default => [
+                    'Nobody receives Growth Booster, Rank Bonus, Fortune or ADC for this month until it is closed, and the monthly run will not close it while days are missing.',
+                    'Ask the platform team to cut off the missing days (php artisan gsb:daily-cutoff --date=<day>); then the monthly run closes the month the next night; nothing to type.',
+                    'The payout on the 8th refuses a month whose crediting is incomplete, so this cannot reach a bank half-done.',
+                ],
+            },
+            NightlyRunAlert::ACTION_PAYOUT_DEFERRED => [
+                'Distributors are not paid for this month until the engine the audit entry names has succeeded.',
+                'Clear the other items in this email for that month first — the payout refuses a month whose crediting is incomplete.',
+                'The monthly run re-attempts the payout every night from the 8th once every crediting engine has succeeded; nothing to type unless the month has to be forced.',
             ],
-            default => ['Ask the developer to read the audit log entry for this date.'],
+            NightlyRunAlert::ACTION_WEEKLY_DEFERRED => [
+                'Nothing to click: the weekly run builds it on the first night the nightly run is green.',
+                'The batch is still dated that Tuesday when it is built, so the earning week it pays is unchanged and nobody waits a week.',
+                "If tomorrow's email still lists it, send the nightly run's error to the platform team.",
+            ],
+            default => ['Ask the platform team to read the audit log entry for this date.'],
         };
+    }
+
+    /**
+     * "The Nightly Run" / "The Weekly Run" / "The Monthly Run" — the run the
+     * skipped-night alert belongs to, read from the key the alert recorded
+     * rather than assumed, because three runs fire on their own clocks and an
+     * overlap on one says nothing about the others.
+     *
+     * @param  array<string, mixed>  $details
+     */
+    private function runLabel(array $details): string
+    {
+        $key = $details['orchestrator'] ?? null;
+
+        if (! is_string($key) || ! EngineRegistry::has($key)) {
+            return 'A scheduled run';
+        }
+
+        return 'The '.Str::before(EngineRegistry::get($key)->label, ' (');
+    }
+
+    /**
+     * The first step of a skipped-run alert: what the next night picks up, and
+     * it differs per run.
+     *
+     * @param  array<string, mixed>  $details
+     */
+    private function skippedRunFirstStep(array $details): string
+    {
+        return match ($details['orchestrator'] ?? null) {
+            'compensation.weekly-run' => 'Nothing to click: the next night builds any Tuesday this one would have, still dated that Tuesday, so the week paid is unchanged.',
+            'compensation.monthly-run' => 'Nothing to click: the next night re-evaluates what the month owes — a close, a payout, or neither.',
+            default => 'Nothing to click, and nothing is owed twice: the next nightly run cuts off the days this night would have; the weekly and monthly runs are separate and were not affected.',
+        };
+    }
+
+    /**
+     * The Tuesday (or Tuesdays) a weekly deferral names, as a date the reader
+     * can match against the Weekly Payouts page.
+     *
+     * @param  array<string, mixed>  $details
+     */
+    private function weeklyDeferredTuesdays(array $details): string
+    {
+        $tuesdays = $details['tuesdays'] ?? null;
+
+        if (! is_array($tuesdays) || $tuesdays === []) {
+            return 'week\'s';
+        }
+
+        return implode(', ', array_map(
+            static fn (mixed $day): string => Carbon::parse((string) $day)->format('d M Y'),
+            $tuesdays,
+        ));
     }
 
     /**
@@ -513,13 +623,13 @@ final class EngineHealthService
      */
     private function weeklyPayoutSteps(Carbon $period): array
     {
-        $nextTuesday = $period->copy()->addWeek()->toDateString();
+        $tuesday = $period->toDateString();
 
         return [
             'Nothing to click. The weekly batch is created only by the scheduler, so the same person never both creates and approves a batch.',
-            "Every unpaid weekly income is still in the distributors' wallets; next Tuesday's batch sweeps it automatically, one week late.",
-            "Only if the next Tuesday also produces no batch (this email will say so): ask the developer to run php artisan gsb:weekly-payout --date={$nextTuesday} on the server.",
-            'Then approve the batch on Compensation → Weekly Payouts.',
+            'The weekly run builds a Tuesday it missed on its next night, still dated that Tuesday; distributors do not wait a week.',
+            "Only if tomorrow's email still lists it: ask the platform team to run php artisan compensation:weekly-run --date={$tuesday} on the server.",
+            'A batch built from a shell has no maker — a second person must approve it on Compensation → Weekly Payouts.',
         ];
     }
 
@@ -536,8 +646,8 @@ final class EngineHealthService
 
         return [
             "First clear every other item in this email for {$engine->displayPeriod($crediting)} — the month being paid. The payout refuses to run while any crediting engine for it is failed or missing.",
-            'Then ask the developer to run php artisan compensation:monthly-payout-close --month='.$crediting->format('Y-m').' on the server.',
-            'It re-checks that every crediting engine succeeded, then creates the batch.',
+            'The monthly run re-attempts the payout every night from the 8th once every crediting engine has succeeded; nothing to type unless the month has to be forced.',
+            'Only then, and only if it still has not been built: ask the platform team to run php artisan compensation:monthly-run --date=<tonight> on the server.',
             'Approve the batch on Compensation → Monthly Payouts. A batch is never created twice for the same month.',
         ];
     }
@@ -559,8 +669,8 @@ final class EngineHealthService
             'The close stopped at one step; that step is listed separately in this email with its own instructions — re-run it first.',
             "Then run the steps after it, in this order: {$order}.",
             "Each one is for {$engine->displayPeriod($period)}; skip any whose card already reads succeeded for that month.",
-            'When every step reads succeeded, the payout on the 8th proceeds on its own.',
-            'If the 8th has already passed, ask the developer to run php artisan compensation:monthly-payout-close --month='.$this->creditingMonth($engine, $period).' on the server.',
+            'When every step reads succeeded, the monthly run closes the month and pays it from the 8th on its own.',
+            'If the 8th has already passed, the monthly run builds the payout on its next night — nothing to type.',
         ];
     }
 
@@ -588,11 +698,6 @@ final class EngineHealthService
     }
 
     /** The month whose credits the batch pays: the batch month minus one. */
-    private function creditingMonth(EngineDefinition $engine, Carbon $period): string
-    {
-        return $this->creditingMonthDate($engine, $period)->format('Y-m');
-    }
-
     private function creditingMonthDate(EngineDefinition $engine, Carbon $period): Carbon
     {
         return $engine->key === 'payout.monthly'

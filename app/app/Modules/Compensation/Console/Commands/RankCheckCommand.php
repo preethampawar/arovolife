@@ -7,6 +7,8 @@ namespace App\Modules\Compensation\Console\Commands;
 use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Services\IncomeEligibilityService;
 use App\Modules\Compensation\Services\RankQualificationService;
+use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Compensation\Support\FrozenPayoutGuard;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -48,6 +50,24 @@ final class RankCheckCommand extends Command
             : Carbon::today()->startOfMonth()->subMonthNoOverflow();
 
         $occurrence = (int) ($this->option('occurrence') ?? 1);
+
+        // Not overridable by --force, and checked before anything is recorded:
+        // once finance has approved the month's payout batch, money has left on
+        // these figures, and once the batch has been BUILT and is waiting for
+        // approval nothing may be credited into the month either — the sweep is
+        // over, so a credit written now would never be picked up and finance
+        // would approve a batch that no longer matches the ledger (D9, A10).
+        // This command credits nothing itself, but everything the close runs
+        // after it does, and re-writing the qualifications the paid figures
+        // were computed from is the same mistake one step earlier.
+        // FrozenPayoutGuard is the one place that decides both questions.
+        if (($frozen = FrozenPayoutGuard::creditingRefusal($month)) !== null) {
+            $this->error($frozen);
+
+            app(EngineRunContext::class)->noteSkipped($frozen);
+
+            return self::FAILURE;
+        }
 
         // Rank qualification sums Genos BV over the days the distributor was NOT
         // failed, and which days those are is written by exactly one process,

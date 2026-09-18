@@ -19,10 +19,10 @@ use Laravel\Pennant\Feature;
  * pointless `skipped` row, and a monthly close that waits for a weekly run the
  * scheduler never started waits for ever.
  *
- * The body is the nightly chain's own `weeklyPayoutDays()`, moved rather than
- * rewritten — same frontier search, same flag-off rule, same null-frontier
- * branch — with the console output left behind, because a planner that prints
- * cannot be asked a question from the scheduler process.
+ * The body came from the old single nightly chain, moved rather than rewritten
+ * — same frontier search, same flag-off rule, same null-frontier branch — with
+ * the console output left behind, because a planner that prints cannot be asked
+ * a question from the scheduler process.
  */
 final class WeeklyRunPlanner
 {

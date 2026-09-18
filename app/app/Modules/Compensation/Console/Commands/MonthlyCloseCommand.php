@@ -38,10 +38,12 @@ use Throwable;
  * Sequencing them inside one command makes the ordering real: a step runs only
  * after the previous one has exited 0.
  *
- * Since the nightly chain, this close is itself a step: `compensation:nightly-run`
- * invokes it on the first night of a month, once that month's last daily cut-off
- * has exited 0 in the same process. Nothing in routes/console.php fires it
- * directly any more.
+ * This close is itself a step: `compensation:monthly-run` invokes it on the
+ * first night the month it closes has every one of its days cut off and the
+ * ordering prerequisites are green. Nothing in routes/console.php fires it
+ * directly. `compensation:rebuild-month` runs it with `--restart` after wiping
+ * the month, which is the only path that deliberately recomputes a step this
+ * command would otherwise resume past.
  *
  * RESUME, NEVER RESTART. Every one of these engines freezes economics or moves
  * money, and all of them are idempotent re-runners — but "idempotent" is not

@@ -4,33 +4,49 @@
 
 @section('content')
 
-{{-- The retry banner. Rendered ONLY when the chain's last finished attempt
-     failed and no later night has succeeded since — on a healthy platform this
-     block does not exist, which is what stops it becoming wallpaper nobody
-     reads. EngineStatusService::failedChainRun() decides; see its docblock for
-     why a healed night stops showing. --}}
-@if($failedChain !== null)
+{{-- The three run-failure banners. Rendered ONLY for a run whose last finished
+     attempt failed and which no later success has healed — on a healthy
+     platform this block does not exist, which is what stops it becoming
+     wallpaper nobody reads. EngineStatusService::failedRootRun() decides; see
+     its docblock for why a healed run stops showing.
+
+     INFORMATION, NOT A CONTROL. There is no button here for anybody: a failed
+     run is repaired by the platform team, and every one of the three re-attempts
+     what it owes on its own next night. --}}
+@foreach($failedRuns as $failedRun)
 <div class="mb-5 rounded-lg border-2 border-rose-400 bg-rose-50 p-4 text-sm text-rose-900">
     <div class="flex items-start gap-3">
         <x-lucide-circle-alert class="w-5 h-5 mt-0.5 shrink-0 text-rose-600" />
         <div class="flex-1">
             <strong class="block text-base mb-1">
-                The nightly chain failed on {{ $failedChain['night'] }}.
+                The {{ $failedRun['label'] }} failed on {{ $failedRun['night'] }}.
             </strong>
+            {{-- What a failure cost depends on what the run does. The nightly
+                 and monthly runs credit wallets; the weekly run only sweeps
+                 credits that already exist, so nobody is a rupee short — the
+                 payment is late, which is a different thing to tell an
+                 operator. --}}
+            @if($failedRun['key'] === 'compensation.weekly-run')
             <p class="mb-3">
-                It stopped at {{ $failedChain['failedAt'] }}. The steps that had already finished kept what they
+                It stopped at {{ $failedRun['failedAt'] }}. Nobody is owed anything they have not earned: every unpaid
+                weekly income is still in the distributors' wallets. What did not happen is the batch that pays it.
+            </p>
+            @else
+            <p class="mb-3">
+                It stopped at {{ $failedRun['failedAt'] }}. The steps that had already finished kept what they
                 credited; the steps after the failure never ran, so nobody has been credited for them yet.
             </p>
-
-            @if($failedChain['error'] !== null)
-            <div class="mb-3 rounded border border-rose-200 bg-white p-3 font-mono text-xs whitespace-pre-line">{{ $failedChain['error'] }}</div>
             @endif
 
-            @if($failedChain['steps'] !== [])
+            @if($failedRun['error'] !== null)
+            <div class="mb-3 rounded border border-rose-200 bg-white p-3 font-mono text-xs whitespace-pre-line">{{ $failedRun['error'] }}</div>
+            @endif
+
+            @if($failedRun['steps'] !== [])
             <div class="mb-3">
                 <p class="font-medium mb-1">What each step did that night:</p>
                 <ul class="space-y-0.5">
-                    @foreach($failedChain['steps'] as $step)
+                    @foreach($failedRun['steps'] as $step)
                     <li class="flex items-center gap-2">
                         @if($step['status'] === 'succeeded')
                             <x-lucide-check class="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -47,53 +63,24 @@
             </div>
             @endif
 
-            <p class="mb-3">
-                <strong>Nothing is lost by waiting.</strong> Tonight's chain backfills the cut-offs this night missed,
-                and rebuilds a Tuesday payout batch it skipped &mdash; still dated that Tuesday, so the week paid is
-                unchanged. Retry here once the cause is fixed if you would rather not wait a day.
-            </p>
-            <p class="mb-3">
-                A retry credits wallets and, if this night owed a weekly payout batch that was never started,
-                <strong>rebuilds it in your name</strong> &mdash; so someone else has to approve it. A batch that
-                started and was killed part-way is <em>not</em> rebuilt by this button and needs the platform team.
-                The monthly payout close is left alone: the scheduler rebuilds that on any night from the 8th,
-                unaided.
+            <p class="mb-0">
+                <strong>Nothing is lost by waiting:</strong> the next nightly run backfills the cut-offs this night
+                missed; the weekly and monthly runs re-attempt what they owe every night. The platform team has the
+                failure.
             </p>
 
-            @if($failedChain['inFlight'])
-            {{-- A retry does not clear this banner while it runs, so say so
-                 rather than leave an enabled button under an unchanged page. --}}
+            @if($failedRun['inFlight'])
+            {{-- The banner does not clear while a new attempt is in flight, so
+                 say so rather than leave the page reading as though nothing
+                 were happening. --}}
             <p class="mt-3 border-t border-rose-200 pt-3 font-medium">
-                A retry is running now. This banner clears once it finishes &mdash; refresh to check.
+                A new attempt is running now. This banner clears once it finishes &mdash; refresh to check.
             </p>
-            @else
-            @can('finance.record')
-            <form method="POST" action="{{ route('admin.compensation.engine-runs.retry-chain') }}"
-                  class="mt-3 border-t border-rose-200 pt-3"
-                  data-confirm="Re-run the {{ $failedChain['night'] }} chain from the step that failed?"
-                  data-confirm-title="Retry the {{ $failedChain['night'] }} chain?"
-                  data-confirm-impact="The chain resumes where it stopped, and every engine skips a distributor already credited for the period, so nobody is paid twice. A weekly payout batch this night owed, and never started, is rebuilt and recorded as created by you, so a second person must approve it. It runs in the background and can take several minutes.">
-                @csrf
-                <input type="hidden" name="night" value="{{ $failedChain['nightValue'] }}">
-                <label for="retry-chain-reason" class="block text-xs font-medium text-rose-900 mb-1">
-                    What was fixed? (recorded in the audit log with your admin ID)
-                </label>
-                <div class="flex flex-wrap items-start gap-2">
-                    <input type="text" id="retry-chain-reason" name="reason" required minlength="10" maxlength="500"
-                           placeholder="e.g. Corrected the bank details the payout step threw on"
-                           class="flex-1 min-w-64 rounded border border-rose-300 px-3 py-2 text-sm">
-                    <button type="submit"
-                            class="rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700">
-                        Retry this night
-                    </button>
-                </div>
-            </form>
-            @endcan
             @endif
         </div>
     </div>
 </div>
-@endif
+@endforeach
 
 {{-- Warning banner --}}
 <div class="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">

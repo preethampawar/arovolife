@@ -95,7 +95,7 @@ final class EngineHealthDigestNotification extends Notification implements Shoul
         }
 
         if ($this->report->chainAlerts !== []) {
-            $mail->line('**What the nightly chain could not do**');
+            $mail->line('**What the scheduled runs could not do**');
 
             foreach ($this->report->chainAlerts as $item) {
                 $position++;

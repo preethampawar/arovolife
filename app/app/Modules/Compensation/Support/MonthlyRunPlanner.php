@@ -94,8 +94,16 @@ final class MonthlyRunPlanner
      * crediting engines' own prior-month gates (R-76) read a closed month, and
      * skipping the close would strand them. Only the PAYOUT waves such a month
      * through (D1).
+     *
+     * $ignorePrerequisites is the monthly run's `--force`, and it is scoped to
+     * check 3 alone: the ordering rule is the client's, and an operator typing
+     * the command by hand at noon is entitled to overrule it. Nothing else here
+     * is overridable — a month whose days are not all cut off stays deferred,
+     * because every monthly engine freezes what it computes and a month closed
+     * short stays short. Answered here rather than in the command so the
+     * command never has to re-derive which month would have been stepped.
      */
-    public function closePhase(Carbon $night): MonthlyRunPhase
+    public function closePhase(Carbon $night, bool $ignorePrerequisites = false): MonthlyRunPhase
     {
         $month = $night->copy()->startOfMonth()->subMonthNoOverflow();
 
@@ -107,8 +115,10 @@ final class MonthlyRunPlanner
             return new MonthlyRunPhase;
         }
 
-        $refusal = $this->prerequisites->nightlyRunRefusal($night)
-            ?? $this->prerequisites->weeklyRunRefusal($night);
+        $refusal = $ignorePrerequisites
+            ? null
+            : $this->prerequisites->nightlyRunRefusal($night)
+                ?? $this->prerequisites->weeklyRunRefusal($night);
 
         if ($refusal !== null) {
             return new MonthlyRunPhase([], [new MonthlyRunDeferral('close', $month, sprintf(

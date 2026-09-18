@@ -77,12 +77,50 @@ it('has exactly one registry entry per compensation console command', function (
     expect($registered)->toBe($commandClasses);
 });
 
-it('registers fourteen engines with unique keys and signatures', function (): void {
+it('registers sixteen engines with unique keys and signatures', function (): void {
     $all = EngineRegistry::all();
 
-    expect($all)->toHaveCount(14);
+    expect($all)->toHaveCount(16);
     expect(array_keys($all))->toBe(EngineRegistry::keys());
-    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(14);
+    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(16);
+});
+
+it('registers every scheduled root orchestrator with the scheduler, and nothing else', function (): void {
+    // The three runs are what the scheduler actually starts (ADR-0016), and the
+    // registry is what every other reader derives them from — the skipped-run
+    // listener, the health service's D5 failure rule and the Engine Runs page's
+    // banners. A run added to routes/console.php but not to the registry would
+    // fire every night and be reported by nothing; a run added to the registry
+    // but not to the scheduler would be waited for by the ordering guard and
+    // never come.
+    /** @var Schedule $schedule */
+    $schedule = app(Schedule::class);
+
+    $scheduledRoots = [];
+    foreach ($schedule->events() as $event) {
+        foreach (EngineRegistry::all() as $key => $definition) {
+            if (! $definition->isOrchestrator || $definition->orchestratedBy !== null) {
+                continue;
+            }
+
+            $pattern = "/\\bartisan'?\\s+".preg_quote($definition->commandSignature, '/').'(\\s|$)/';
+
+            if (preg_match($pattern, (string) $event->command) === 1) {
+                $scheduledRoots[] = $key;
+            }
+        }
+    }
+
+    sort($scheduledRoots);
+    $declared = EngineRegistry::rootOrchestratorKeys();
+    sort($declared);
+
+    expect($declared)->toBe([
+        'compensation.monthly-run',
+        'compensation.nightly-run',
+        'compensation.weekly-run',
+    ]);
+    expect($scheduledRoots)->toBe($declared);
 });
 
 it('points every orchestrated engine at a registered orchestrator', function (): void {
