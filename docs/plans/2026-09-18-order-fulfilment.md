@@ -613,23 +613,91 @@ Final suite: **3024 passed, 1 skipped, 0 failed.**
    are instead asserted by rendering tests, which are repeatable and run in CI —
    a better control than a one-off screenshot. All 452 views compile and lint.
 
+### Defect found during browser verification, 2026-09-18 — the gate was bypassable
+
+`DispatchService` had **no caller anywhere in the application**. Outside its
+own service-provider registration it was referenced only by tests. The admin
+order screen's **Mark as Shipped** goes straight to
+`OrderStateMachine::markShipped()`, so every real dispatch skipped the courier
+gateway, the consignee construction, the `consigned_at` / `arete_center_id` /
+gateway columns on the shipment — and the R-21/R-95 declaration gate.
+
+The tests passed because they call `DispatchService` directly. This is the same
+defect class R-47 is about: a mechanism that exists, is tested, and that nothing
+in the product actually routes through.
+
+**Fixed** by moving the declaration check onto the transition both paths share,
+`OrderStateMachine::markShipped()`, which now refuses a collection order whose
+centre has not accepted the version in force (and one whose centre has been
+deleted). `DispatchService` keeps its own copy — it fires earlier and names the
+centre before any packing happens — so the check is in both places deliberately.
+
+Verified in the browser against a real paid collection order on dev: Mark as
+Shipped was refused, the order stayed `Paid`, and the message named all six
+outstanding declarations.
+
+**Not fixed, and left as a decision:** wiring the admin button through
+`DispatchService` proper, so a dispatch also books the courier leg and records
+the gateway columns. That is a wider behaviour change than today's ask —
+`ManualCourier` requires a carrier name, which the admin form currently allows
+to be blank, so every home delivery would start demanding one. Worth doing, but
+it needs its own slice.
+
+### Compliance review of declaration v3, 2026-09-18 — FAIL, then remediated
+
+The review returned FAIL on three High findings. No Critical: no hard rule was
+broken by the change. But two of the three defeated the exact control the change
+was built to create, and both went *around* the two-entry-point split in
+`AreteCenterDeclarationService` rather than through it.
+
+- **Impersonation could forge an acceptance.** `AdminImpersonationController`
+  does a full session swap with no read-only mode, so a super-staff admin could
+  wear a centre owner's session and accept. The row would read `signed_by =
+  owner` with the distributor's own user id on it. **Fixed:** acceptance is
+  refused while `impersonator_id` is in session. The general capability is
+  unchanged and is now tracked as R-98 — every other state-changing route is
+  still reachable while impersonating.
+- **Reassignment carried the old signature forward.** Declarations key on
+  `center_id`, so a centre transferred from A to B kept A's acceptance — and
+  staff could accept for a company centre and have an admin then assign a
+  distributor, which is admin-on-behalf acceptance in two steps. **Fixed:** a
+  new `superseded_at` column, stamped on every acceptance when
+  `assigned_distributor_id` changes; the gate reads only live rows. Superseded,
+  never deleted — "A signed this on this date" stays true, it simply is not B's
+  signature. Reassignment now also needs `compliance.discipline`, checked on the
+  change rather than the route so operations staff can still fix a pincode.
+- **Collection was live with no published DPDP notice** for the disclosure it
+  causes. Client chose a manual switch, default OFF (R-97), over an auto-gate.
+
+**What this says about the first round of verification.** I closed R-21 and R-95
+after exercising the accept route in the browser and finding no admin path to
+sign for a distributor centre. That tested the door and not the wall: the edit
+route was the wall. The register now records the correction rather than quietly
+patching over it.
+
+Findings F4–F6 and F11–F13 are batched as **R-96, a v4 text revision**, and
+deliberately not shipped as edits to v3 — v3 is already signed, and editing
+signed text is the precise failure mode `SUPERSEDED` exists to prevent.
+
 ### Still open, and why each is not something I could close
 
 | Item | Blocked on |
 |---|---|
-| **H1 — declaration v3 wording** | Client. Rewording a contract existing centres have signed is not an engineering decision. `VERSION` stays `v2`; draft below. |
-| **H4 — DPDP notice** | Client, then a destructive `content:publish` per environment. |
-| Centre-operator self-service surface | Not started. Today an operator tells staff, who record the handover. Weaker than R-47 asks for, but the code authenticating it still comes from the buyer. |
+| ~~**H1 — declaration v3 wording**~~ | **Done 2026-09-18.** Client approved; `VERSION` is `v3`, `buyer_data_duty` added, citation corrected to DSA §5.1/§5.2, superseded v2 text retained so existing acceptance rows stay meaningful. R-21 closed. |
+| **H4 — DPDP notice** | **Text written 2026-09-18** — `privacy.md` purpose §4 4a and a §7 recipients row. Still needs `content:publish privacy` per environment (destructive, not run) **and** the §13 30-day notice period to run before the disclosure has cover. |
+| Centre-operator self-service surface | Not started. Today an operator tells staff, who record the handover. Weaker than R-47 asks for, but the code authenticating it still comes from the buyer. (An owner *can* now self-serve their declarations — that is R-95's surface, not the handover surface.) |
 | Ready-for-collection / despatch notifications | Not started. The collection code is currently read out by staff from a one-time flash message. |
 | Slices 4 and 6 (Shiprocket client, webhook, buyer tracking) | Not started. No account exists, so nothing here is on the critical path. |
 | R-91 §14 rehearsal | Destructive on staging; needs the five-part warning and an explicit go-ahead. |
 
-### Drafted declaration v3 — for client approval, NOT yet in code
+### Declaration v3 — APPROVED BY THE CLIENT AND SHIPPED 2026-09-18
 
-Replaces `training_use_only` in `AreteCenterDeclarations` and adds a sixth key.
-Bumping `VERSION` to `v3` will immediately block every existing centre from
-receiving a consignment until each re-accepts — that is intended, and it is why
-this is a decision rather than a patch.
+The client approved this wording on 2026-09-18, so `VERSION` is now `v3` in
+`AreteCenterDeclarations`. The text below is what shipped. As predicted, every
+existing centre is blocked from receiving a consignment until it re-accepts —
+on dev all three centres went to *Declarations pending* the moment the constant
+changed. That is the gate working, not a regression, and R-95's new
+re-acceptance surface is what clears it.
 
 > **training_use_only (v3)** — "I will use the centre only for training, product
 > demonstration, distributor support, and the supervised collection of orders
