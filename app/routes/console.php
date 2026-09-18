@@ -9,6 +9,7 @@ use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeState;
 use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
 use App\Modules\Inventory\Console\Commands\InventoryAlertsCommand;
+use App\Modules\Inventory\Console\Commands\VerifyStockLedgerCommand;
 use App\Modules\Kyc\Console\Commands\PurgeExpiredDocumentsCommand;
 use App\Modules\Payments\Console\Commands\ExpireUnpaidOrdersCommand;
 use App\Modules\Payments\Console\Commands\PaymentsReconcileCommand;
@@ -189,6 +190,17 @@ Schedule::command(PaymentsRedactEventsCommand::class)
 // nothing is sent, whatever the schedule says.
 Schedule::command(InventoryAlertsCommand::class)
     ->dailyAt('08:30')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Weekly Monday 03:00 IST: prove the stock projections still agree with the
+// movement ledger, and that no reservation outlives the order holding it.
+// resources/help/inventory-management.md has told operators this runs weekly
+// since the module shipped; it never did — the command was registered but
+// never scheduled. Read-only: it reports and exits non-zero, it never writes.
+Schedule::command(VerifyStockLedgerCommand::class)
+    ->weeklyOn(1, '03:00')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();

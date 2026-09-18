@@ -6,6 +6,7 @@ namespace App\Modules\Inventory;
 
 use App\Modules\Inventory\Console\Commands\BackfillOpeningStockCommand;
 use App\Modules\Inventory\Console\Commands\InventoryAlertsCommand;
+use App\Modules\Inventory\Console\Commands\ReconcileReservationsCommand;
 use App\Modules\Inventory\Console\Commands\VerifyStockLedgerCommand;
 use App\Modules\Inventory\Services\InventoryAlertService;
 use App\Modules\Inventory\Services\InventoryNumbering;
@@ -40,6 +41,7 @@ final class InventoryServiceProvider extends ServiceProvider
                 BackfillOpeningStockCommand::class,
                 VerifyStockLedgerCommand::class,
                 InventoryAlertsCommand::class,
+                ReconcileReservationsCommand::class,
             ]);
         }
     }

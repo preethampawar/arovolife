@@ -6,6 +6,7 @@ namespace App\Modules\Inventory\Console\Commands;
 
 use App\Modules\Catalog\Models\InventoryLevel;
 use App\Modules\Inventory\Models\StockBatch;
+use App\Modules\Inventory\Services\ReservationAudit;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -19,6 +20,12 @@ use Illuminate\Support\Facades\DB;
  * Anything that writes a projection outside the ledger, or a movement that
  * failed to roll one forward, shows up here.
  *
+ * Invariant 2 covers `inventory_levels.reserved`, which invariant 1 cannot
+ * see: nothing replays it from the ledger, because it is not a projection of
+ * one. Checkout raises it at placement and pack or cancel lowers it, so its
+ * truth is the open unpacked orders — and a reservation raised but never
+ * released hides real stock from every availability check, silently.
+ *
  * Exits non-zero on any drift so a scheduler or CI step fails loudly.
  */
 final class VerifyStockLedgerCommand extends Command
@@ -28,15 +35,16 @@ final class VerifyStockLedgerCommand extends Command
 
     protected $description = 'Recompute stock projections from the movement ledger and report any drift.';
 
-    public function handle(): int
+    public function handle(ReservationAudit $reservations): int
     {
         $limit = max(1, (int) $this->option('limit'));
 
         $levelDrift = $this->levelDrift();
         $batchDrift = $this->batchDrift();
+        $reservationDrift = $reservations->drift();
 
-        if ($levelDrift === [] && $batchDrift === []) {
-            $this->components->info('Stock projections agree with the movement ledger.');
+        if ($levelDrift === [] && $batchDrift === [] && $reservationDrift === []) {
+            $this->components->info('Stock projections agree with the movement ledger, and every reservation is accounted for.');
 
             return self::SUCCESS;
         }
@@ -55,6 +63,15 @@ final class VerifyStockLedgerCommand extends Command
                 ['Batch', 'Variant', 'Warehouse', 'qty_on_hand', 'Σ movements', 'Drift'],
                 array_slice($batchDrift, 0, $limit),
             );
+        }
+
+        if ($reservationDrift !== []) {
+            $this->components->error(count($reservationDrift).' variant(s) hold a reservation no open order accounts for:');
+            $this->table(
+                ['Variant', 'reserved', 'Open orders', 'Drift'],
+                array_map(static fn (array $row): array => array_values($row), array_slice($reservationDrift, 0, $limit)),
+            );
+            $this->components->warn('Run inventory:reconcile-reservations to see the correction, and again with --apply to write it.');
         }
 
         return self::FAILURE;

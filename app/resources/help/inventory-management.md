@@ -91,9 +91,31 @@ what the Stock screen shows. It runs automatically every **Monday at
 03:00 IST**, and can be run manually any time — after a bulk import, after an
 adjustment you're unsure about, or if a number on screen looks wrong.
 
+It checks two things:
+
+1. **On-hand against the ledger** — `inventory_levels.on_hand` and each
+   batch's `qty_on_hand` against the sum of their movements.
+2. **Reserved against the open orders** — `inventory_levels.reserved` against
+   the tracked lines of every placed-or-paid order that has not been packed.
+
 - **Exit code 0** — everything matches. Nothing to do.
 - **Exit code 1** — the command lists exactly which (variant, warehouse,
   batch) keys disagree, and by how much.
+
+### Reserved that no order accounts for
+
+Reserved is not part of the ledger: checkout raises it when the order is
+placed, and packing or cancelling lowers it again. If an order leaves the
+building without ever being packed, nothing lowers it, and those units stay
+invisible to every availability check for good — the Stock screen shows them
+as unavailable and no screen explains why.
+
+`inventory:reconcile-reservations` is the repair. On its own it only
+**reports** what it would change. Add `--apply` to write it, which sets each
+variant's reserved count to what the open orders say and records every
+correction in `audit_log`. Unlike on-hand drift, this one is safe to correct
+this way: the open orders are the definition of the right answer, not an
+estimate of it.
 
 > **Drift means a movement was written outside the ledger, or a projected
 > number was edited directly in the database.** Both should be impossible in

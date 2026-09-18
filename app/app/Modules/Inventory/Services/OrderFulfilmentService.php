@@ -40,6 +40,15 @@ final class OrderFulfilmentService
 
     public const CARRIER_MANUAL = 'MANUAL';
 
+    /** Why a return restocked what it did — recorded on the `return.restocked` audit row. */
+    public const RESTOCK_PICKED = 'picked';
+
+    public const RESTOCK_UNRECORDED_PACK = 'unrecorded_pack';
+
+    public const RESTOCK_ALREADY_RESTOCKED = 'already_restocked';
+
+    public const RESTOCK_NEVER_SHIPPED = 'never_shipped';
+
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly StockLedger $ledger,
@@ -211,6 +220,7 @@ final class OrderFulfilmentService
             Log::warning('Inventory: order shipped without packing — default warehouse cannot fulfil', [
                 'order_id' => $order->id, 'warehouse_code' => $code,
             ]);
+            $this->releaseOrderReservations($order);
 
             return;
         }
@@ -221,6 +231,7 @@ final class OrderFulfilmentService
             Log::warning('Inventory: order shipped without packing — stock not recorded', [
                 'order_id' => $order->id, 'warehouse_code' => $code, 'error' => $e->getMessage(),
             ]);
+            $this->releaseOrderReservations($order);
         }
     }
 
@@ -353,7 +364,30 @@ final class OrderFulfilmentService
                 }
             }
 
-            foreach ($lines as [$item, $variant, $qty]) {
+            $audit = [];
+
+            foreach ($lines as [$item, $variant, $requested]) {
+                ['qty' => $qty, 'basis' => $basis] = $this->restockAllowance($item, $order, $requested);
+
+                $audit[] = [
+                    'order_item_id' => $item->id,
+                    'variant_sku' => $variant->variant_sku,
+                    'requested' => $requested,
+                    'restocked' => $qty,
+                    'basis' => $basis,
+                ];
+
+                if ($qty <= 0) {
+                    Log::warning('Inventory: saleable return has nothing to restock', [
+                        'return_request_id' => $locked->id,
+                        'order_item_id' => $item->id,
+                        'rma_no' => $locked->rma_no,
+                        'basis' => $basis,
+                    ]);
+
+                    continue;
+                }
+
                 $batch = $this->returnBatch($item, $variant, $code, $locked);
 
                 $this->ledger->post([
@@ -365,8 +399,22 @@ final class OrderFulfilmentService
                     'unit_cost_paise' => $batch->unit_cost_paise,
                     'reference_type' => self::REFERENCE_RETURN_REQUEST,
                     'reference_id' => $locked->id,
-                    'reason' => 'Saleable return '.$locked->rma_no,
+                    'reason' => $basis === self::RESTOCK_UNRECORDED_PACK
+                        ? 'Saleable return '.$locked->rma_no.' — no pack was recorded for this line'
+                        : 'Saleable return '.$locked->rma_no,
                     'actor_user_id' => $actorUserId,
+                ]);
+            }
+
+            if ($audit !== []) {
+                AuditLog::create([
+                    'actor_id' => $actorUserId,
+                    'action' => 'return.restocked',
+                    'subject_type' => 'return_request',
+                    'subject_id' => $locked->id,
+                    'before_hash' => AuditLog::digest((string) array_sum(array_column($audit, 'requested'))),
+                    'after_hash' => AuditLog::digest((string) array_sum(array_column($audit, 'restocked'))),
+                    'details' => ['rma_no' => $locked->rma_no, 'order_no' => $order->order_no, 'lines' => $audit],
                 ]);
             }
         });
@@ -447,6 +495,83 @@ final class OrderFulfilmentService
         if ($release > 0) {
             $level->decrement('reserved', $release);
         }
+    }
+
+    /**
+     * The order is shipping without a pack, so nothing downstream will consume
+     * what checkout reserved. Release it here or it strands: `reserved` never
+     * comes down again and those units stay invisible to every availability
+     * check, for the life of the row.
+     */
+    private function releaseOrderReservations(Order $order): void
+    {
+        $order->loadMissing('items.variant');
+
+        foreach ($order->items as $item) {
+            /** @var OrderItem $item */
+            $variant = $item->variant;
+            if ($variant !== null && $variant->inventory_policy === 'track') {
+                $this->releaseReservation($variant, $item->qty);
+            }
+        }
+    }
+
+    /**
+     * How many units of this line may go back on the shelf, and on what basis.
+     *
+     * The ledger is not the discriminator, because a missing `sale_out` does
+     * not mean the goods stayed here. `CogsResolver` names three routine ways
+     * an order ships with no movement behind it — the `packForShipment` bail
+     * out above, `no_track` variants, and orders older than the ledger — and
+     * with InventoryFeature off everywhere, the first of those is a designed
+     * path, not an anomaly. The order's own `shipped_at` is the honest test:
+     * it is stamped by `markShipped` whether or not the pack succeeded.
+     *
+     * So: what the ledger picked bounds the return when it picked anything;
+     * a shipped order it has no record of picking is reconciled to the
+     * inspector, who is holding the goods; and a line on an order that never
+     * shipped restocks nothing, because nothing ever left.
+     *
+     * @return array{qty: int, basis: string}
+     */
+    private function restockAllowance(OrderItem $item, Order $order, int $requested): array
+    {
+        $out = -(int) StockMovement::query()
+            ->where('reference_type', self::REFERENCE_ORDER_ITEM)
+            ->where('reference_id', $item->id)
+            ->whereIn('type', [StockMovement::TYPE_SALE_OUT, StockMovement::TYPE_SALE_REVERSAL])
+            ->sum('qty');
+
+        // Scoped to the variant rather than the line: `return_in` references
+        // the return request, not the order item, so a per-line figure is not
+        // recoverable from the movement alone. Equivalent today because
+        // CartService merges a cart down to one line per variant.
+        $siblings = ReturnRequest::query()
+            ->where('order_id', $item->order_id)
+            ->where(static fn ($q) => $q->where('order_item_id', $item->id)->orWhereNull('order_item_id'))
+            ->pluck('id')
+            ->all();
+
+        $back = $siblings === [] ? 0 : (int) StockMovement::query()
+            ->where('reference_type', self::REFERENCE_RETURN_REQUEST)
+            ->whereIn('reference_id', $siblings)
+            ->where('type', StockMovement::TYPE_RETURN_IN)
+            ->where('product_variant_id', $item->product_variant_id)
+            ->sum('qty');
+
+        if ($out > 0) {
+            return ['qty' => min($requested, max(0, $out - $back)), 'basis' => self::RESTOCK_PICKED];
+        }
+
+        if ($back > 0) {
+            return ['qty' => 0, 'basis' => self::RESTOCK_ALREADY_RESTOCKED];
+        }
+
+        if ($order->getAttribute('shipped_at') !== null) {
+            return ['qty' => $requested, 'basis' => self::RESTOCK_UNRECORDED_PACK];
+        }
+
+        return ['qty' => 0, 'basis' => self::RESTOCK_NEVER_SHIPPED];
     }
 
     private function returnBatch(OrderItem $item, ProductVariant $variant, string $code, ReturnRequest $returnRequest): StockBatch
