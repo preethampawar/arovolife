@@ -26,6 +26,11 @@ final class FulfilmentSettings
 
     public const KEY_SHIPROCKET_PICKUP_LOCATION = 'fulfilment.shiprocket.pickup_location';
 
+    public const KEY_MAX_DWELL_DAYS = 'fulfilment.max_dwell_days';
+
+    /** DSA §5.4 return window. */
+    public const DEFAULT_MAX_DWELL_DAYS = 15;
+
     /** @var array<string, string|null>|null */
     private ?array $cache = null;
 
@@ -46,6 +51,21 @@ final class FulfilmentSettings
         return $this->raw(self::KEY_SHIPROCKET_ENABLED) === 'true';
     }
 
+    /**
+     * How long an uncollected parcel may wait at a centre before the centre
+     * returns it. This is the period the v3 `training_use_only` declaration
+     * binds a centre owner to, so it is published to them on their own page —
+     * a number they have never been shown is not one they have undertaken.
+     */
+    public function maxDwellDays(): int
+    {
+        $raw = $this->raw(self::KEY_MAX_DWELL_DAYS);
+
+        return $raw !== null && ctype_digit($raw) && (int) $raw > 0
+            ? (int) $raw
+            : self::DEFAULT_MAX_DWELL_DAYS;
+    }
+
     public function shiprocketPickupLocation(): string
     {
         return trim((string) ($this->raw(self::KEY_SHIPROCKET_PICKUP_LOCATION) ?? ''));
@@ -61,6 +81,7 @@ final class FulfilmentSettings
                         self::KEY_DEFAULT_ROUTE,
                         self::KEY_SHIPROCKET_ENABLED,
                         self::KEY_SHIPROCKET_PICKUP_LOCATION,
+                        self::KEY_MAX_DWELL_DAYS,
                     ])
                     ->pluck('value', 'key')
                     ->all();

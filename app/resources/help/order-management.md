@@ -140,6 +140,15 @@ stored only as a keyed hash — nobody, including us, can read it back out of th
 database, so if the buyer loses it the parcel must be re-issued a new one rather
 than looked up.
 
+### How long a parcel may wait at a centre
+
+*Settings → Fulfilment → Maximum days a parcel may wait at a centre* (default
+15, matching the DSA §5.4 return window). The centre owner sees this number on
+their own centre page, because their declaration binds them to "the period
+arovolife publishes to me in writing" — so changing it changes what they have
+undertaken. Nothing returns a parcel automatically yet; the obligation is on
+the operator, and the number is what they are held to.
+
 ### Why the cooling-off clock starts late
 
 The statutory 30-day window opens when the buyer **collects**, not when the
@@ -161,5 +170,25 @@ declarations. A centre created directly in the admin console has accepted
 nothing, because no application was ever filled in for it. This is a compliance
 gate, not a glitch: the declaration is the company's evidence that a centre is
 not a retail outlet, and sending parcels to an operator who has undertaken not
-to receive them is worse than having no declaration at all. Route the order
-another way and ask the centre owner to complete their declarations.
+to receive them is worse than having no declaration at all.
+
+Route the order another way, then get the declarations accepted:
+
+- **A centre assigned to a distributor** — only that distributor can accept.
+  Ask them to open **My Arete Development Centre**, where the outstanding
+  declarations appear at the top of the page with an Accept button. Staff
+  cannot do this for them: the declaration is their signature, and one an
+  admin could produce for them would not be evidence of anything.
+- **A company-run centre** (no assigned distributor) — open the centre in
+  **Admin → Arete Centres → Edit**. The declarations appear below the centre
+  form and you accept them in your own name on arovolife's behalf. Needs the
+  compliance-discipline permission, so admin-finance cannot do it.
+
+The registry list shows a **Declarations pending** badge against any centre
+that is currently blocked, so you do not have to attempt a dispatch to find
+out. Note that a blocked centre is still selectable by a buyer at checkout —
+the block is on consigning the parcel, not on choosing the centre.
+
+The wording is versioned. When it changes, every centre owes a fresh
+acceptance and is blocked until it gives one — that is intended, not a
+regression.

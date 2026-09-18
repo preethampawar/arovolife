@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Models;
 
 use App\Modules\Compensation\Support\AreteCenterDeclarations;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $declaration_key
  * @property string $version
  * @property Carbon $accepted_at
+ * @property Carbon|null $superseded_at
+ * @property string|null $superseded_reason
  * @property string|null $ip
  * @property int|null $accepted_by_user_id
  */
@@ -26,6 +29,7 @@ final class AreteCenterDeclaration extends Model
 
     protected $fillable = [
         'center_id', 'declaration_key', 'version', 'accepted_at', 'ip', 'accepted_by_user_id',
+        'superseded_at', 'superseded_reason',
     ];
 
     protected function casts(): array
@@ -33,6 +37,7 @@ final class AreteCenterDeclaration extends Model
         return [
             'center_id' => 'int',
             'accepted_at' => 'datetime',
+            'superseded_at' => 'datetime',
             'accepted_by_user_id' => 'int',
         ];
     }
@@ -57,11 +62,7 @@ final class AreteCenterDeclaration extends Model
     {
         $required = array_keys(AreteCenterDeclarations::all());
 
-        $accepted = self::query()
-            ->where('center_id', $centerId)
-            ->where('version', AreteCenterDeclarations::VERSION)
-            ->pluck('declaration_key')
-            ->all();
+        $accepted = self::liveFor($centerId)->pluck('declaration_key')->all();
 
         return array_diff($required, $accepted) === [];
     }
@@ -73,12 +74,37 @@ final class AreteCenterDeclaration extends Model
      */
     public static function outstandingFor(int $centerId): array
     {
-        $accepted = self::query()
-            ->where('center_id', $centerId)
-            ->where('version', AreteCenterDeclarations::VERSION)
-            ->pluck('declaration_key')
-            ->all();
+        $accepted = self::liveFor($centerId)->pluck('declaration_key')->all();
 
         return array_values(array_diff(array_keys(AreteCenterDeclarations::all()), $accepted));
+    }
+
+    /**
+     * Acceptances that still stand for this centre at the version in force.
+     *
+     * Superseded rows are excluded but never deleted: "distributor A signed
+     * this on this date" stays true after the centre moves to B, and the gate
+     * must not read it as B's signature.
+     *
+     * @return Builder<self>
+     */
+    private static function liveFor(int $centerId)
+    {
+        return self::query()
+            ->where('center_id', $centerId)
+            ->where('version', AreteCenterDeclarations::VERSION)
+            ->whereNull('superseded_at');
+    }
+
+    /**
+     * Retire every acceptance a centre holds, because the premises changed
+     * hands and the incoming operator has undertaken nothing.
+     */
+    public static function supersedeAllFor(int $centerId, string $reason): int
+    {
+        return self::query()
+            ->where('center_id', $centerId)
+            ->whereNull('superseded_at')
+            ->update(['superseded_at' => now(), 'superseded_reason' => $reason]);
     }
 }

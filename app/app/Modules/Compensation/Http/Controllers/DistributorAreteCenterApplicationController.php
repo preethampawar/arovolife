@@ -7,10 +7,13 @@ namespace App\Modules\Compensation\Http\Controllers;
 use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Models\AreteCenterApplication;
 use App\Modules\Compensation\Models\AreteCenterApplicationDocument;
+use App\Modules\Compensation\Models\AreteCenterDeclaration;
 use App\Modules\Compensation\Services\AreteCenterApplicationService;
+use App\Modules\Compensation\Services\AreteCenterDeclarationService;
 use App\Modules\Compensation\Services\AreteCenterRegistrySettings;
 use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Compensation\Support\AreteCenterDeclarations;
+use App\Modules\Fulfilment\Support\FulfilmentSettings;
 use App\Modules\Identity\Http\Rules\ValidUploadedDocumentBytes;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Crypto\PiiCrypter;
@@ -38,7 +41,7 @@ final class DistributorAreteCenterApplicationController extends Controller
         private readonly RankStatusService $rankStatus,
     ) {}
 
-    public function status(Request $request): View
+    public function status(Request $request, FulfilmentSettings $fulfilment): View
     {
         $distributor = $this->distributor($request);
 
@@ -53,7 +56,75 @@ final class DistributorAreteCenterApplicationController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('my.arete-centre.status', compact('application', 'ownedCenters'));
+        // A centre cannot receive a parcel until its owner has accepted the
+        // declarations at the version in force, so the owner has to be able to
+        // see what is outstanding and accept it. Before v3 this never came up:
+        // declarations were captured once on the application form and the
+        // version had never moved.
+        $outstandingDeclarations = $ownedCenters
+            ->mapWithKeys(fn (AreteCenter $centre): array => [
+                $centre->id => AreteCenterDeclaration::outstandingFor($centre->id),
+            ])
+            ->filter(fn (array $keys): bool => $keys !== [])
+            ->all();
+
+        return view('my.arete-centre.status', [
+            'application' => $application,
+            'ownedCenters' => $ownedCenters,
+            'outstandingDeclarations' => $outstandingDeclarations,
+            'declarationTexts' => AreteCenterDeclarations::all(),
+            'declarationVersion' => AreteCenterDeclarations::VERSION,
+            // The declaration binds the owner to "the period arovolife
+            // publishes to me in writing". This is where it is published.
+            'maxDwellDays' => $fulfilment->maxDwellDays(),
+        ]);
+    }
+
+    /**
+     * Accept the outstanding declarations for a centre this distributor owns.
+     *
+     * The ownership check is in the service as well as here: this is the
+     * signature the dispatch gate reads, and a signature that the wrong person
+     * can produce is not evidence of anything.
+     */
+    public function acceptDeclarations(
+        Request $request,
+        AreteCenter $centre,
+        AreteCenterDeclarationService $declarations,
+    ): RedirectResponse {
+        $distributor = $this->distributor($request);
+
+        abort_unless($centre->assigned_distributor_id === $distributor->id, 403);
+
+        // A signature given by someone wearing the signatory's session is not
+        // a signature. Impersonation is a full session swap with no read-only
+        // mode, so without this a super-staff admin could produce a row that
+        // reads `signed_by = owner` with the distributor's own user id on it —
+        // indistinguishable from the real thing, and exactly the fabrication
+        // the two entry points in AreteCenterDeclarationService exist to stop.
+        if ($request->session()->has('impersonator_id')) {
+            abort(403, 'Declarations cannot be accepted while impersonating. The centre owner must accept them themselves.');
+        }
+
+        $validated = $request->validate([
+            'declarations' => ['required', 'array'],
+            'declarations.*' => ['string', Rule::in(AreteCenterDeclarations::keys())],
+        ]);
+
+        try {
+            $declarations->acceptByOwner(
+                $centre,
+                $distributor,
+                array_values(array_unique($validated['declarations'])),
+                $request->user()?->id,
+                $request->ip(),
+            );
+        } catch (InvalidArgumentException $e) {
+            return back()->withErrors(['declarations' => $e->getMessage()]);
+        }
+
+        return redirect()->route('my.adc.status')
+            ->with('success', 'Thank you. Your centre declarations are up to date.');
     }
 
     public function create(Request $request): View|RedirectResponse

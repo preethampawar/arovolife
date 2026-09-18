@@ -27,6 +27,11 @@ beforeEach(function (): void {
     $this->seed(LedgerAccountSeeder::class);
     DB::table('settings')->updateOrInsert(['key' => 'commerce.checkout.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
     DB::table('settings')->updateOrInsert(['key' => 'commerce.guest_checkout.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
+    // Collection ships OFF (R-97 — no centre may be offered before the DPDP
+    // notice covering the disclosure has been published and its 30 days run).
+    // This file is about how the picker behaves once it IS offered, so it
+    // turns the switch on explicitly rather than relying on a default.
+    DB::table('settings')->updateOrInsert(['key' => AreteCenter::COLLECTION_ENABLED_SETTING], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
 });
 
 function cccCentre(string $name, bool $default = false, string $status = AreteCenter::STATUS_ACTIVE): AreteCenter

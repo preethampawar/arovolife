@@ -33,6 +33,12 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->seed(LedgerAccountSeeder::class);
+    // Collection ships OFF (R-97). The checkout-rendering test below asserts
+    // what a buyer sees when the option IS offered, so turn it on explicitly.
+    DB::table('settings')->updateOrInsert(
+        ['key' => AreteCenter::COLLECTION_ENABLED_SETTING],
+        ['value' => 'true', 'version' => 1, 'updated_at' => now()],
+    );
 });
 
 function feeSetting(string $key, string $value): void

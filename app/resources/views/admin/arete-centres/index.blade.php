@@ -144,6 +144,15 @@
                               @if($center->deactivation_reason) title="{{ $center->deactivation_reason }}" @endif>
                             {{ ucfirst($center->status) }}
                         </span>
+                        {{-- A centre with declarations outstanding cannot receive a
+                             parcel, but a buyer can still choose it at checkout, so
+                             the block has to be visible to staff here. --}}
+                        @if(in_array($center->id, $declarationsPending, true))
+                        <span class="mt-1 inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800"
+                              title="This centre has not accepted the declarations at version {{ $declarationVersion }}, so no order can be consigned to it.">
+                            Declarations pending
+                        </span>
+                        @endif
                     </td>
                     <td class="px-3 py-2 text-gray-600">
                         {{ $center->contact_person ?? '—' }}

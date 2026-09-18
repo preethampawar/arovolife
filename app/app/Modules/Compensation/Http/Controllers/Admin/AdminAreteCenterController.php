@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\AreteCenter;
+use App\Modules\Compensation\Models\AreteCenterDeclaration;
 use App\Modules\Compensation\Models\AreteCenterMember;
 use App\Modules\Compensation\Notifications\AreteCenterDeactivatedNotification;
+use App\Modules\Compensation\Services\AreteCenterDeclarationService;
+use App\Modules\Compensation\Support\AreteCenterDeclarations;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
@@ -19,6 +22,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use InvalidArgumentException;
 
 /**
  * Arete Development Centre registry (spec §B).
@@ -80,17 +84,43 @@ final class AdminAreteCenterController extends Controller
             ->selectRaw('orders.arete_center_id, SUM(bv_ledger_entries.bv_paise) as bv_paise')
             ->pluck('bv_paise', 'arete_center_id');
 
+        // Which centres on this page cannot currently receive a parcel. A
+        // centre blocked here is invisible to the buyer — they can still pick
+        // it at checkout — so staff need to see it in the registry.
+        $requiredKeys = AreteCenterDeclarations::keys();
+        $acceptedCounts = DB::table('arete_center_declarations')
+            ->whereIn('center_id', $centerIds)
+            ->where('version', AreteCenterDeclarations::VERSION)
+            ->whereIn('declaration_key', $requiredKeys)
+            ->groupBy('center_id')
+            ->selectRaw('center_id, COUNT(DISTINCT declaration_key) as accepted')
+            ->pluck('accepted', 'center_id');
+
+        $declarationsPending = $centerIds
+            ->filter(fn (int $id): bool => (int) ($acceptedCounts[$id] ?? 0) < count($requiredKeys))
+            ->values()
+            ->all();
+
         return view('admin.arete-centres.index', [
             'centers' => $centers,
             'filters' => $filters,
             'states' => IndianStates::all(),
             'currentMonthBv' => $currentMonthBv,
+            'declarationsPending' => $declarationsPending,
+            'declarationVersion' => AreteCenterDeclarations::VERSION,
         ]);
     }
 
     public function create(): View
     {
-        return view('admin.arete-centres.form', ['center' => null]);
+        // A centre that does not exist yet has nothing to accept; the view
+        // still expects the keys because it is shared with edit().
+        return view('admin.arete-centres.form', [
+            'center' => null,
+            'outstandingDeclarations' => [],
+            'declarationTexts' => AreteCenterDeclarations::all(),
+            'declarationVersion' => AreteCenterDeclarations::VERSION,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -126,7 +156,12 @@ final class AdminAreteCenterController extends Controller
 
     public function edit(AreteCenter $center): View
     {
-        return view('admin.arete-centres.form', ['center' => $center]);
+        return view('admin.arete-centres.form', [
+            'center' => $center,
+            'outstandingDeclarations' => AreteCenterDeclaration::outstandingFor($center->id),
+            'declarationTexts' => AreteCenterDeclarations::all(),
+            'declarationVersion' => AreteCenterDeclarations::VERSION,
+        ]);
     }
 
     public function update(Request $request, AreteCenter $center): RedirectResponse
@@ -140,12 +175,61 @@ final class AdminAreteCenterController extends Controller
 
         $before = $this->auditAttributes($center);
 
+        $previousOwnerId = $center->assigned_distributor_id;
+        $incomingOwnerId = $distributor?->id;
+        $ownerChanged = $previousOwnerId !== $incomingOwnerId;
+
+        // Reassigning a centre moves an earning position and retires the
+        // declarations the dispatch gate reads, so it carries the same gate as
+        // deactivation rather than riding along with a routine address edit.
+        // Deliberately checked on the change, not on the route: operations
+        // staff must still be able to fix a pincode.
+        if ($ownerChanged && ! $request->user()?->can('compliance.discipline')) {
+            return back()->withInput()->withErrors([
+                'assigned_adn' => 'Reassigning a centre to a different distributor needs the compliance-discipline permission.',
+            ]);
+        }
+
         // Status is not part of the create form either, so an edit leaves the
         // center's current status untouched.
         $center->update([
             ...$this->centerAttributes($data, $distributor),
             'development_phase' => $data['development_phase'] ?? $center->development_phase,
         ]);
+
+        // The premises changed hands, so whatever the previous operator
+        // undertook stops being evidence about the new one. Superseded, not
+        // deleted — "A signed this on this date" stays true, it just is not
+        // B's signature. Without this, staff could accept for a company centre
+        // and an admin then assign a distributor to it, which is
+        // admin-on-behalf acceptance in two steps.
+        if ($ownerChanged) {
+            $retired = AreteCenterDeclaration::supersedeAllFor($center->id, 'centre_reassigned');
+
+            // The state this row is evidence about is the centre's live
+            // acceptances, not its address: before, $retired of them stood in
+            // the previous owner's name; after, none stand at all and the
+            // incoming owner owes a fresh set before a parcel may be consigned.
+            $declarationsBefore = ['owner_distributor_id' => $previousOwnerId, 'live_acceptances' => $retired];
+            $declarationsAfter = ['owner_distributor_id' => $incomingOwnerId, 'live_acceptances' => 0];
+
+            AuditLog::create([
+                'actor_id' => Auth::id(),
+                'action' => 'arete_center.declarations_superseded',
+                'subject_type' => 'arete_center',
+                'subject_id' => $center->id,
+                'before_hash' => AuditDigests::of($declarationsBefore),
+                'after_hash' => AuditDigests::of($declarationsAfter),
+                'details' => [
+                    'centre_name' => $center->name,
+                    'reason' => 'centre_reassigned',
+                    'before' => $declarationsBefore,
+                    'after' => $declarationsAfter,
+                    'rows_superseded' => $retired,
+                ],
+                'ip' => $request->ip(),
+            ]);
+        }
 
         AuditLog::create([
             'actor_id' => Auth::id(),
@@ -351,6 +435,39 @@ final class AdminAreteCenterController extends Controller
         ]);
 
         return back()->with('success', 'Centre "'.$center->name.'" is now the company default.');
+    }
+
+    /**
+     * Accept the centre declarations for a COMPANY-run centre, on arovolife's
+     * behalf and in the accepting staff member's name.
+     *
+     * A centre assigned to a distributor is refused here, in the service as
+     * well as the controller. The declaration is that distributor's signature
+     * and the dispatch gate treats it as evidence; an admin able to produce it
+     * for them would be manufacturing the evidence rather than collecting it.
+     */
+    public function acceptDeclarations(
+        Request $request,
+        AreteCenter $center,
+        AreteCenterDeclarationService $declarations,
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'declarations' => ['required', 'array'],
+            'declarations.*' => ['string', Rule::in(AreteCenterDeclarations::keys())],
+        ]);
+
+        try {
+            $declarations->acceptForCompanyCentre(
+                $center,
+                (int) Auth::id(),
+                array_values(array_unique($validated['declarations'])),
+                $request->ip(),
+            );
+        } catch (InvalidArgumentException $e) {
+            return back()->withErrors(['declarations' => $e->getMessage()]);
+        }
+
+        return back()->with('success', 'Declarations recorded for "'.$center->name.'" at version '.AreteCenterDeclarations::VERSION.'.');
     }
 
     public function addMember(Request $request, int $centerId): RedirectResponse

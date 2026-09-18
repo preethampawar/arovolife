@@ -607,6 +607,20 @@ final class AdminSettingsController extends Controller
                 'max' => 10000000,
                 'default' => '4000',
             ],
+            // R-97 — OFF until the DPDP notice covering the disclosure has been
+            // published and its 30-day period has run. Developer-owned for the
+            // same reason `genealogy.downline_stats_visible` is: the switch
+            // releases personal data, and the person flipping it has to be the
+            // person who knows whether the notice period has actually elapsed.
+            'commerce.collection_at_centre_enabled' => [
+                'group' => 'commerce',
+                'owner' => 'developer',
+                'label' => 'Offer collection at an Arete Development Centre',
+                'description' => 'When ON, a buyer may choose to collect their order from an Arete Development Centre instead of having it delivered. When OFF the option does not appear at checkout and a submitted centre is rejected. Orders already placed for collection are unaffected either way — they still dispatch and hand over normally, so turning this off never strands a parcel.',
+                'impact' => 'Turning this ON discloses the buyer\'s name and mobile number to the distributor who runs the centre they choose. Do not enable until the amended Privacy Policy §4 4a and §7 have been published (`content:publish privacy`, per environment) and the 30-day DPDP §5 / Privacy Policy §13 notice has elapsed. Risk register R-97.',
+                'type' => 'bool',
+                'default' => 'false',
+            ],
             'commerce.collection_fee_rupees' => [
                 'group' => 'commerce',
                 'label' => 'Collection fee (₹)',
@@ -650,6 +664,22 @@ final class AdminSettingsController extends Controller
                 'description' => 'The pickup-location nickname registered in the Shiprocket dashboard that consignments are collected from. Must match exactly, or Shiprocket rejects the order.',
                 'type' => 'string',
                 'default' => '',
+            ],
+            // Admin-owned, and deliberately NOT behind the Shiprocket flag:
+            // collection is live now, and this is the period the centre
+            // declaration (v3, `training_use_only`) undertakes not to exceed.
+            // The declaration says "the period arovolife publishes to me in
+            // writing", so this number is what gets published — it is shown on
+            // the centre owner's own page.
+            'fulfilment.max_dwell_days' => [
+                'group' => 'fulfilment',
+                'owner' => 'admin',
+                'label' => 'Maximum days a parcel may wait at a centre',
+                'description' => 'How long an uncollected parcel may sit at an Arete Development Centre before the centre returns it. Shown to centre owners as the period their declaration binds them to, so changing it changes what they have undertaken. Default 15 days, matching the Direct Seller Agreement §5.4 return window.',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 90,
+                'default' => '15',
             ],
 
             // ── Commerce — attribution ─────────────────────────────────────
@@ -1544,7 +1574,7 @@ final class AdminSettingsController extends Controller
             ],
             'fulfilment' => [
                 'label' => 'Fulfilment & courier',
-                'description' => 'How a packed order physically reaches the buyer. Developer-owned: these are integration levers, not business levers — the money levers (delivery fee, free-shipping threshold, collection fee) live under Commerce. Hidden entirely while the Shiprocket integration is switched off.',
+                'description' => 'How a packed order physically reaches the buyer. The courier-integration levers are developer-owned and hidden entirely while the Shiprocket integration is switched off; the dwell limit is admin-owned and always visible, because it is the period a centre\'s own declaration binds it to. The money levers (delivery fee, free-shipping threshold, collection fee) live under Commerce.',
             ],
             'termination' => [
                 'label' => 'Termination (dormancy)',

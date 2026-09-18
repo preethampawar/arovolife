@@ -17,6 +17,12 @@
 @section('content')
 @include('admin.arete-centres._tabs')
 
+{{-- The admin layout renders session('error') but not session('success'), so
+     without this a successful action on this page gives no feedback at all. --}}
+@if(session('success'))
+<div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
+@endif
+
 
 <x-ui.card padding="p-6" class="max-w-2xl">
     <div class="mb-4 text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
@@ -185,5 +191,51 @@
         </div>
     </form>
 </x-ui.card>
+
+{{-- Declarations for a COMPANY-run centre. A centre assigned to a distributor
+     is deliberately absent here: that signature is theirs to give, and the
+     dispatch gate reads it as evidence. Outside the form above — nesting one
+     form inside another is invalid and the inner one silently never submits. --}}
+@if($isEdit && $center->assigned_distributor_id === null && $outstandingDeclarations !== [])
+<x-ui.card class="mt-6">
+    <div class="flex items-start gap-3 mb-4">
+        <x-lucide-file-signature class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+        <div>
+            <p class="font-semibold text-gray-900">This centre cannot receive orders for collection yet.</p>
+            <p class="text-sm text-gray-600 mt-1">
+                It has not accepted the centre declarations at version {{ $declarationVersion }}. This is a
+                company-run centre, so you may accept them on arovolife's behalf; your name, the date, the time
+                and your IP address are recorded against the acceptance.
+            </p>
+        </div>
+    </div>
+
+    @error('declarations')
+    <p class="mb-3 text-sm text-red-700">{{ $message }}</p>
+    @enderror
+
+    <form method="POST" action="{{ route('admin.arete-centres.declarations', $center) }}" class="space-y-3"
+          data-confirm="Accept these declarations for {{ $center->name }} on arovolife's behalf?"
+          data-confirm-title="Accept centre declarations"
+          data-confirm-impact="Recorded in your name against version {{ $declarationVersion }}. Once accepted, orders may be consigned to this centre for buyers to collect.">
+        @csrf
+        @foreach($declarationTexts as $key => $text)
+        <label class="flex gap-3 items-start text-sm text-gray-700">
+            <input type="checkbox" name="declarations[]" value="{{ $key }}" required class="mt-1 accent-brand-500">
+            <span>{{ $text }}</span>
+        </label>
+        @endforeach
+        <button type="submit"
+            class="inline-flex items-center rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-5 py-2.5 text-sm transition-colors">
+            Accept declarations
+        </button>
+    </form>
+</x-ui.card>
+@endif
+
+{{-- Unconditional: the centre form above declares data-confirm attributes but
+     the page never included this component, so that confirmation has never
+     actually been shown. --}}
+<x-confirm-modal />
 
 @endsection

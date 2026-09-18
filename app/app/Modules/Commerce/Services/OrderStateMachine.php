@@ -8,7 +8,9 @@ use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Commerce\Models\OrderItem;
+use App\Modules\Compensation\Models\AreteCenterDeclaration;
 use App\Modules\Compensation\Services\WalletService;
+use App\Modules\Compensation\Support\AreteCenterDeclarations;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
@@ -91,11 +93,50 @@ final class OrderStateMachine
         event(new OrderStatusChanged($order->id, Order::STATUS_PLACED, Order::STATUS_PAID));
     }
 
+    /**
+     * A collection order may not leave the warehouse unless the centre it is
+     * consigned to has accepted the declarations at the version in force.
+     *
+     * This lives on the transition, not only in `DispatchService`, because the
+     * transition is the choke point both routes share. `DispatchService` has
+     * its own copy of the check and gives a better-targeted message earlier;
+     * the admin order screen's Mark-as-Shipped calls this service directly and
+     * never touches `DispatchService` at all, so without this the compliance
+     * gate could be walked straight past from the UI (R-21, R-95).
+     */
+    private function assertCentreMayReceive(Order $order): void
+    {
+        if (! $order->isCollection()) {
+            return;
+        }
+
+        $centre = $order->areteCenter;
+
+        if ($centre === null) {
+            throw new RuntimeException(
+                "Order {$order->order_no} was placed for collection but its centre no longer exists. "
+                .'Agree a delivery address or a different centre with the buyer before shipping.'
+            );
+        }
+
+        if (! AreteCenterDeclaration::currentVersionAcceptedBy($centre->id)) {
+            $outstanding = implode(', ', AreteCenterDeclaration::outstandingFor($centre->id));
+
+            throw new RuntimeException(
+                "Centre \"{$centre->name}\" has not accepted the current centre declarations ("
+                .AreteCenterDeclarations::VERSION.'), so a parcel cannot be consigned to it. '
+                ."Outstanding: {$outstanding}."
+            );
+        }
+    }
+
     public function markShipped(Order $order, ?int $actorUserId = null, ?string $carrier = null, ?string $trackingNo = null): void
     {
         if (! in_array($order->status, [Order::STATUS_PAID, Order::STATUS_READY_TO_SHIP], true)) {
             throw new RuntimeException("Cannot ship from status {$order->status}");
         }
+
+        $this->assertCentreMayReceive($order);
 
         $oldStatus = $order->status;
 

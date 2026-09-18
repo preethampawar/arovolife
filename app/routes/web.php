@@ -579,6 +579,13 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             ->name('status')->whereNumber('center')->whereIn('action', ['activate', 'deactivate'])
             ->middleware('can:compliance.discipline');
         Route::post('/{center}/default', [AdminAreteCenterController::class, 'setDefault'])->name('default')->whereNumber('center');
+        // Company-run centres have no distributor to sign their declarations,
+        // so a named member of staff accepts on arovolife's behalf. Assigned
+        // centres are refused — only their own distributor can sign. Carries
+        // the compliance gate, which keeps admin-finance out of it.
+        Route::post('/{center}/declarations', [AdminAreteCenterController::class, 'acceptDeclarations'])
+            ->name('declarations')->whereNumber('center')
+            ->middleware('can:compliance.discipline');
     });
 
     // The registry and the queue used to live under Compensation → ADC Bonus;
@@ -1298,4 +1305,9 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::post('/my/arete-centre/apply', [DistributorAreteCenterApplicationController::class, 'store'])->name('my.adc.apply.submit');
     Route::get('/my/arete-centre/edit', [DistributorAreteCenterApplicationController::class, 'edit'])->name('my.adc.edit');
     Route::put('/my/arete-centre/edit', [DistributorAreteCenterApplicationController::class, 'update'])->name('my.adc.update');
+    // Re-accepting the centre declarations when the wording changes. Without
+    // this a version bump blocks every centre from receiving a parcel with no
+    // way for its owner to clear the block (R-95).
+    Route::post('/my/arete-centre/{centre}/declarations', [DistributorAreteCenterApplicationController::class, 'acceptDeclarations'])
+        ->whereNumber('centre')->name('my.adc.declarations.accept');
 });

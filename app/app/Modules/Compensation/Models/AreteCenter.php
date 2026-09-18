@@ -10,7 +10,10 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @property int $id
@@ -194,8 +197,45 @@ final class AreteCenter extends Model
      *
      * @return Collection<int, AreteCenter>
      */
+    /**
+     * Whether a buyer may be offered collection at a centre at all.
+     *
+     * OFF until the amended Privacy Policy §4 4a / §7 has been published and
+     * the §13 30-day notice has elapsed (R-97). Choosing collection discloses
+     * the buyer's name and mobile number to the distributor who runs the
+     * centre, so the option must not exist before the notice covering that
+     * disclosure does. Same shape as `genealogy.downline_stats_visible`, which
+     * gates its own disclosure on its own notice period.
+     *
+     * Fails closed: an unreadable settings table means no disclosure, not a
+     * silent one.
+     */
+    public const string COLLECTION_ENABLED_SETTING = 'commerce.collection_at_centre_enabled';
+
+    public static function collectionEnabled(): bool
+    {
+        try {
+            return DB::table('settings')
+                ->where('key', self::COLLECTION_ENABLED_SETTING)
+                ->value('value') === 'true';
+        } catch (QueryException $e) {
+            Log::warning('AreteCenter::collectionEnabled query failed — treating collection as OFF', ['exception' => $e]);
+
+            return false;
+        }
+    }
+
     public static function collectionChoicesFor(?int $distributorId): Collection
     {
+        // Gating here closes both surfaces at once: the checkout picker reads
+        // this, and so does the Rule::in that validates the submitted centre.
+        // Deliberately NOT applied to dispatch — an order already placed for
+        // collection must still be fulfillable after the switch goes off, or
+        // turning it off would strand parcels mid-journey.
+        if (! self::collectionEnabled()) {
+            return new Collection;
+        }
+
         $preferredId = $distributorId === null
             ? null
             : AreteCenterMember::where('distributor_id', $distributorId)
