@@ -141,6 +141,17 @@
                     @endif
                 @endauth
             </p>
+            {{-- DPDP §5 notice at the point of choice. A paragraph in the privacy
+                 policy is not a notice given where the decision is actually made,
+                 and this disclosure only happens because the buyer chose it here
+                 (R-97, Privacy Policy §4 4a). --}}
+            <p class="text-xs text-gray-600 mb-4">
+                If you collect, we share your name, mobile number and order number with the distributor who runs
+                the centre, so they can receive your parcel and hand it to you. They are not shown your payment
+                details, your purchase history or any other order, and may not use these details for anything
+                else. Choose home delivery instead if you would rather we did not.
+            </p>
+
             @error('arete_center_id')
             <p class="mb-3 text-sm text-red-600">{{ $message }}</p>
             @enderror

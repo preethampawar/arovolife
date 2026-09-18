@@ -1,4 +1,4 @@
-<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-08-30. -->
+<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-09-18. -->
 
 This Privacy Policy describes how Arovolife Private Limited collects, uses, stores, shares and protects personal data, and the rights you have as a Data Principal. It is published under the Digital Personal Data Protection Act 2023 ("DPDP Act"), the Information Technology Act 2000 (including the SPDI Rules 2011 to the extent they remain in force), the Consumer Protection (Direct Selling) Rules 2021, and the Income Tax Act 1961.
 
@@ -72,6 +72,7 @@ We process your personal data for:
 2. **KYC and re-KYC** — meeting statutory KYC obligations and verifying material changes.
 3. **Compensation accounting** — calculating BV, ranks, commissions, pool shares, payouts, TDS and GST.
 4. **Order fulfilment** — receiving, packing, dispatching and tracking customer orders; managing returns, refunds and buybacks.
+4a. **Collection at an Arete Development Centre** — where you choose to collect your order from an Arete Development Centre rather than have it delivered, sharing your name, mobile number and order number with the Distributor who runs that centre, so that they can receive your parcel, identify you and hand it over to you. The centre is shown only what the handover needs. It is never shown your payment details, your purchase history, or any order other than the one it is holding for you. A centre may use this information only to complete that handover — it may not copy, keep, publish, share or use it to market to you — and it undertakes this in writing before any parcel may be sent to it. If you would rather your details were not shared with a centre, choose home delivery at checkout; nothing about your account depends on collecting. This purpose takes effect only after the 30-day notice in §13 has run.
 5. **Customer and Distributor support** — responding to your queries, processing grievances, providing training and education content.
 5a. **Genealogy visibility** — showing your name, ADN, KYC status, activation date, current and highest achieved rank, and accumulated personal BV to your sponsor and to the Distributors above you in your Genos (placement) line, inside their authenticated genealogy view only, so that they can mentor you and coordinate product training. These figures are **not** used to set targets for you, are not shown to Distributors outside your line, and must not be shared by them outside the platform (Code of Ethics §2.11). Your purchase history, order contents, bank details, PAN and Aadhaar are never shown to other Distributors. This purpose takes effect only after the 30-day notice in §13 has run.
 5b. **Moderation of reported messages** — where you report a message you have received, reading that message and up to three messages either side of it in the same conversation, so that we can judge it in context; recording the report, our decision and the reason for it. Only the Operations and Compliance staff who handle grievances can do this, every time one of them opens a report it is written to the audit log, and the message itself is never edited or deleted by us. We do **not** read, scan or index private messages that nobody has reported, and no such scanning is planned. Both people in the conversation are told, on the compose screen, that a message can be reported and read this way.
@@ -147,6 +148,7 @@ We share personal data only with the categories of recipients listed below, only
 | Cloud infrastructure provider (India region) | Hosting, storage, backup | All data, encrypted; provider has no access to plaintext. |
 | Statutory authorities (Income Tax, GST, MCA, consumer authorities, courts) | Compliance with law | As required by the specific order or filing. |
 | Your sponsor and the Distributors above you in your Genos line (Distributors, not third parties) | Mentoring and coordinating product training within your line (§4 5a) | Name; ADN; KYC status; activation date; current and highest rank; accumulated personal BV. Never purchase history, bank details, PAN or Aadhaar. |
+| The Distributor who runs the Arete Development Centre you chose for collection (a Distributor, not a third party) | Receiving your parcel, identifying you and handing it over (§4 4a) | Name; mobile; order number. Never payment details, purchase history, or any other order. |
 | Professional advisors (auditors, tax, legal) | Internal audit, statutory audit, legal advice | The minimum necessary, under confidentiality agreement. |
 | Acquirer / successor entity in a merger or restructuring | Continuity of services | As legally required, with notice to Data Principals. |
 
@@ -230,4 +232,4 @@ This Policy is effective from the `Published` date displayed at the top of this 
 
 ---
 
-*Privacy Policy version: v2026-05-21. The current published version is always available at `/p/privacy`. Questions: `dpo@arovolife.com`.*
+*Privacy Policy version: v2026-09-18. The current published version is always available at `/p/privacy`. Questions: `dpo@arovolife.com`.*
