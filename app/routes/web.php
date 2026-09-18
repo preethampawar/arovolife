@@ -6,6 +6,7 @@ use App\Modules\ActionCenter\Http\Controllers\Admin\AdminActionCenterController;
 use App\Modules\Admin\Http\Controllers\AdminAuditLogController;
 use App\Modules\Admin\Http\Controllers\AdminContactController;
 use App\Modules\Admin\Http\Controllers\AdminDashboardController;
+use App\Modules\Admin\Http\Controllers\AdminDashboardPanelController;
 use App\Modules\Admin\Http\Controllers\AdminDistributorController;
 use App\Modules\Admin\Http\Controllers\AdminDistributorCreateController;
 use App\Modules\Admin\Http\Controllers\AdminDistributorEditController;
@@ -18,6 +19,7 @@ use App\Modules\Admin\Http\Controllers\AdminLineChangeController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminStaffUserController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
+use App\Modules\Admin\Support\DashboardPanels;
 use App\Modules\Analytics\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminBannerController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminCategoryController;
@@ -267,6 +269,15 @@ Route::middleware([])->group(function (): void {
 // Gate::before bypass cannot open, so `admin` is genuinely excluded there.
 Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|admin-compliance'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    // The dashboard shell runs no query; every number on it arrives through
+    // here, one request per panel. `whereIn` turns an unknown key into a
+    // route-level 404 before the controller runs; the controller then applies
+    // the panel's feature flag (404, so a flag-off module is not confirmed to
+    // exist) and its permission (403).
+    Route::get('/dashboard/panel/{panel}', [AdminDashboardPanelController::class, 'show'])
+        ->whereIn('panel', array_keys(DashboardPanels::PANELS))
+        ->name('dashboard.panel');
 
     // Action Center (plan §7). `action.center.view` opens the two read
     // screens; the snooze/unsnooze writes gate on the provider's own

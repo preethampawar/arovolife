@@ -435,27 +435,44 @@ test.describe('Inventory: Reports', () => {
 // Low-stock / expiry alert surfaces
 // ---------------------------------------------------------------------------
 
+// The dashboard's inventory panel is lazily fetched, so both tests here scroll
+// it into view and wait for it to finish rather than reading the first paint.
+// `data-panel-url` is the stable handle: it survives any restyling of the
+// panel's insides, which the previous version of these tests did not — they
+// matched the literal text "Inventory —", a string the dashboard has not
+// rendered for some time, so both silently `test.skip`-ed instead of failing.
+async function openInventoryPanel(page) {
+    await page.goto('/admin');
+    const panel = page.locator('[data-panel-url*="/panel/inventory"]');
+
+    // A flag-off module leaves no trace in the shell — no placeholder, no
+    // title, and the endpoint 404s rather than 403s. So an absent panel here
+    // means InventoryFeature is off in this environment, which is the rule
+    // working, not a regression. The inventory screens themselves are not
+    // gated by it and the rest of this file still runs.
+    if ((await panel.count()) === 0) {
+        test.skip(true, 'InventoryFeature is off here, so the dashboard emits no inventory panel to assert on.');
+    }
+
+    await panel.scrollIntoViewIfNeeded();
+    await expect(panel).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
+
+    return panel;
+}
+
 test.describe('Inventory: Alert surfaces', () => {
-    test('admin dashboard shows the inventory summary card when it has data', async ({ adminPage: page }) => {
-        await page.goto('/admin');
-        const card = page.locator('a').filter({ hasText: 'Inventory —' });
-        const count = await card.count();
-        if (count === 0) {
-            test.skip(true, 'No inventory dashboard card rendered — $inventoryCard is null (see AdminDashboardController), nothing to assert.');
-        }
-        await expect(card.first()).toContainText('low stock');
-        await expect(card.first()).toContainText('expiring');
-        await expect(card.first()).toContainText('expired');
-        await expect(card.first()).toHaveAttribute('href', /inventory\/reports/);
+    test('admin dashboard shows the inventory panel with its alert figures', async ({ adminPage: page }) => {
+        const panel = await openInventoryPanel(page);
+
+        await expect(panel).toContainText('Low stock');
+        await expect(panel).toContainText('Expiring');
+        await expect(panel).toContainText('Expired');
     });
 
-    test('low-stock report is reachable from the dashboard card', async ({ adminPage: page }) => {
-        await page.goto('/admin');
-        const card = page.locator('a').filter({ hasText: 'Inventory —' }).first();
-        if ((await card.count()) === 0) {
-            test.skip(true, 'No inventory dashboard card — nothing to click through.');
-        }
-        await card.click();
-        await page.waitForURL('**/admin/inventory/reports');
+    test('low-stock report is reachable from the dashboard panel', async ({ adminPage: page }) => {
+        const panel = await openInventoryPanel(page);
+
+        await panel.locator('a[href*="/inventory/reports/low-stock"]').first().click();
+        await page.waitForURL('**/admin/inventory/reports/low-stock');
     });
 });

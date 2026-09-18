@@ -5,6 +5,7 @@
     'icon' => null,                // lucide name, without the `lucide-` prefix
     'tone' => 'neutral',           // neutral|brand|green|amber|sky|red|slate|violet
     'href' => null,                // when set the whole tile is the link
+    'labelLines' => 1,             // 2 = let a long label wrap instead of truncating
 ])
 
 @php
@@ -25,12 +26,23 @@
 @endphp
 
 @if($href)<a href="{{ $href }}" {{ $attributes->class([$shell]) }}>@else<div {{ $attributes->class([$shell]) }}>@endif
-    <div class="flex items-center gap-2">
+    <div @class(['flex gap-2', 'items-center' => $labelLines < 2, 'items-start' => $labelLines >= 2])>
         @if($icon)<span class="shrink-0 {{ $toneFg }}">{{ svg('lucide-'.$icon, 'w-[18px] h-[18px]') }}</span>@endif
         {{-- Sentence case, not uppercase + wide tracking: that pairing with a
              3xl bold number is the dated combination. Sentence case reads
-             faster and lets longer labels stay on one line. --}}
-        <p class="min-w-0 truncate text-[13px] font-medium text-gray-600">{{ $label }}</p>
+             faster and lets longer labels stay on one line.
+
+             `label-lines="2"` opts a grid into wrapped labels. Truncation is
+             still the default, because it is right for a wide tile — but in a
+             three-up grid inside a half-width card there is no width to
+             truncate against, and "Active warehous…" is not a label. A caller
+             that opts in must opt in for every tile in the row: the reserved
+             two lines are what keeps the numbers beneath them on one line. --}}
+        <p @class([
+            'min-w-0 text-[13px] font-medium text-gray-600',
+            'truncate' => $labelLines < 2,
+            'line-clamp-2 min-h-[2.125rem] leading-[1.0625rem]' => $labelLines >= 2,
+        ])>{{ $label }}</p>
         @if($href)
         <span class="ml-auto shrink-0 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-brand-600" aria-hidden="true">{{ svg('lucide-arrow-up-right', 'w-4 h-4') }}</span>
         @endif

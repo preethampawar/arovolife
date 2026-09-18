@@ -26,6 +26,11 @@ final class AdminHelpController extends Controller
      * @var array<string, array{title: string, description: string, file: string}>
      */
     private const DOCS = [
+        'dashboard' => [
+            'title' => 'Admin Dashboard',
+            'description' => 'What each dashboard panel counts, which permission reveals it, why panels load one at a time, how fresh the numbers are, and why sales on the order date will not match the Profit report.',
+            'file' => 'dashboard.md',
+        ],
         'glossary' => [
             'title' => 'Glossary',
             'description' => 'The vocabulary used across the platform and our policies — ADN, BV, Genos, sponsor vs placement, cooling-off, KYC and more.',

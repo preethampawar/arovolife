@@ -4,103 +4,34 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Http\Controllers;
 
-use App\Modules\ActionCenter\Services\ActionCenterService;
-use App\Modules\Compliance\Services\AuditLogPresenter;
-use App\Modules\Inventory\Services\InventoryAlertService;
-use App\Modules\Inventory\Services\InventorySettings;
+use App\Modules\Admin\Support\DashboardPanels;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
+/**
+ * The admin dashboard shell.
+ *
+ * This method runs **no query**. It used to compute everything eagerly — seven
+ * counts, a joined audit feed with a presenter warm-up per row, a recent
+ * registrations list and three inventory alerts — so every visit to the console
+ * landing page paid for numbers the viewer might never scroll to.
+ *
+ * Now it emits one placeholder per panel {@see DashboardPanels::visibleTo()}
+ * says this viewer may see, and each panel fetches its own rendered fragment
+ * from {@see AdminDashboardPanelController}: on load for the two above the
+ * fold, on scroll for the rest.
+ *
+ * `visibleTo()` runs the permission and feature-flag checks here rather than in
+ * the view, so a panel the viewer may not see never reaches the DOM — hiding
+ * one in the browser would still have shipped the fact that the module exists.
+ */
 final class AdminDashboardController extends Controller
 {
-    public function index(Request $request, AuditLogPresenter $presenter, InventoryAlertService $inventoryAlerts, InventorySettings $inventorySettings, ActionCenterService $actionCenter): View
+    public function index(Request $request): View
     {
-        // Each stat below is JOINed against distributors where the
-        // dashboard tile claims to be about distributors. A previous
-        // version of "pending_users" counted any users.status='pending'
-        // row, which silently included legacy orphan accounts from before
-        // the wizard switched to pure-session-only user creation. The
-        // tile read "11 pending" while the KYC queue only showed 1 —
-        // confusing for operators.
-        //
-        // The cooling-off stats now also filter by users.status='active'
-        // so a terminated/rejected distributor whose timer hasn't expired
-        // yet doesn't inflate the "Cooling-Off Active" count.
-        $stats = [
-            'total_users' => DB::table('users')->count(),
-            'active_distributors' => DB::table('distributors')
-                ->join('users', 'distributors.user_id', '=', 'users.id')
-                ->where('users.status', 'active')->count(),
-            'pending_users' => DB::table('distributors')
-                ->join('users', 'distributors.user_id', '=', 'users.id')
-                ->where('users.status', 'pending')->count(),
-            'cooling_off_active' => DB::table('distributors')
-                ->join('users', 'distributors.user_id', '=', 'users.id')
-                ->where('users.status', 'active')
-                ->where('distributors.cooling_off_end_at', '>', now())->count(),
-            'cooling_off_expiring' => DB::table('distributors')
-                ->join('users', 'distributors.user_id', '=', 'users.id')
-                ->where('users.status', 'active')
-                ->where('distributors.cooling_off_end_at', '>', now())
-                ->where('distributors.cooling_off_end_at', '<=', now()->addDays(7))->count(),
-            'frozen_users' => DB::table('users')->where('status', 'frozen')->count(),
-            'audit_entries_today' => DB::table('audit_log')
-                ->whereDate('created_at', today())->count(),
-        ];
-
-        $recentAuditQuery = DB::table('audit_log')
-            ->leftJoin('users', 'audit_log.actor_id', '=', 'users.id')
-            ->select('audit_log.*', 'users.email as actor_email');
-
-        $presenter->hidePrivilegedSubjects($recentAuditQuery, $request->user());
-
-        $recentAudit = $recentAuditQuery
-            ->orderByDesc('audit_log.created_at')
-            ->limit(10)
-            ->get();
-
-        // Pre-warm name/ADN lookups for every referenced distributor / user
-        // in one batch (one SELECT each), then attach the rendered
-        // {title, subtitle} pair to each row so the Blade is dumb.
-        $presenter->maskPrivilegedActors($recentAudit, $request->user());
-        $presenter->warmCaches($recentAudit);
-        foreach ($recentAudit as $row) {
-            $rendered = $presenter->present($row);
-            $row->display_title = $rendered['title'];
-            $row->display_subtitle = $rendered['subtitle'];
-        }
-
-        $recentDistributors = DB::table('distributors')
-            ->join('users', 'distributors.user_id', '=', 'users.id')
-            ->select('distributors.id', 'distributors.adn', 'distributors.depth',
-                'distributors.placement_side', 'distributors.effective_date',
-                'distributors.cooling_off_end_at', 'users.email', 'users.full_name', 'users.status')
-            ->orderByDesc('distributors.id')
-            ->limit(8)
-            ->get();
-
-        $inventoryCard = null;
-
-        if ($request->user()?->can('inventory.view')) {
-            $inventoryCard = [
-                'low_stock' => $inventoryAlerts->lowStock()->count(),
-                'expiring' => $inventoryAlerts->expiring($inventorySettings->expiryAlertDays())->count(),
-                'expired' => $inventoryAlerts->expired()->count(),
-                'expiry_days' => $inventorySettings->expiryAlertDays(),
-            ];
-        }
-
-        // Five oldest critical items across every Action Center group this
-        // viewer may see (plan §7). Empty for a viewer who holds no provider
-        // permission at all, or when nothing critical is outstanding — no
-        // card content is rendered for either case (silence means nothing to
-        // do, plan §10.5).
-        $actionCenterItems = $request->user()?->can('action.center.view')
-            ? $actionCenter->oldestCriticalItems($request->user(), 5)
-            : collect();
-
-        return view('admin.dashboard', compact('stats', 'recentAudit', 'recentDistributors', 'inventoryCard', 'actionCenterItems'));
+        return view('admin.dashboard', [
+            'panels' => DashboardPanels::visibleTo($request->user()),
+        ]);
     }
 }
