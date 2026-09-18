@@ -123,9 +123,22 @@ it('INV-04: the invoice never shows BV (customer-facing tax document, hard rule 
     $distId = oinvDistributor('900900901', 'Sharer Distributor');
     $order = oinvOrder($buyer, $distId);
 
-    $this->actingAs($buyer)->get(route('orders.invoice', $order->order_no))
+    $body = $this->actingAs($buyer)->get(route('orders.invoice', $order->order_no))
         ->assertOk()
-        ->assertDontSee('BV');
+        ->getContent();
+
+    // Word-bounded, and still against the raw body. A bare `assertDontSee('BV')`
+    // searched the whole document including the `@vite` asset URLs, and a Vite
+    // content hash is random: on 2026-09-18 the stylesheet built as
+    // `app-CBVAT0HH.css`, whose hash contains the letters BV, and this test
+    // failed with nothing about the invoice changed.
+    //
+    // `\bBV\b` fixes that without giving anything up. Stripping the tags would
+    // have worked too, but it would also blind the test to attribute values
+    // permanently — a future `title="1,200 BV"` would sail through. A Vite hash
+    // is a single alphanumeric run, so a word-bounded BV cannot occur inside
+    // one, while "1,200 BV" anywhere in the markup still matches.
+    expect($body)->not->toMatch('/\bBV\b/');
 });
 
 it('INV-05: a non-owner cannot view someone else\'s invoice (IDOR)', function (): void {
