@@ -33,7 +33,7 @@
                     <td class="px-4 py-3 text-gray-700">{{ $adjustment->variant?->variant_sku }} — {{ $adjustment->variant?->product?->name }}</td>
                     <td class="px-4 py-3 font-mono {{ $adjustment->qty_delta > 0 ? 'text-green-700' : 'text-red-700' }}">{{ $adjustment->qty_delta > 0 ? '+' : '' }}{{ $adjustment->qty_delta }}</td>
                     <td class="px-4 py-3 text-gray-600">{{ str_replace('_', ' ', ucfirst($adjustment->reason)) }}</td>
-                    <td class="px-4 py-3 text-gray-600">{{ $adjustment->actor?->name ?? '—' }}</td>
+                    <td class="px-4 py-3 text-gray-600">{{ $adjustment->actor?->full_name ?? '—' }}</td>
                     <td class="px-4 py-3 text-gray-600 text-xs">{{ $adjustment->occurred_at->format('d M Y H:i') }}</td>
                 </tr>
             @empty

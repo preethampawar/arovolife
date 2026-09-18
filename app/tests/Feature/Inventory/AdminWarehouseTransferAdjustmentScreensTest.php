@@ -140,6 +140,12 @@ it('lets an operations admin record a stock adjustment via the real screen', fun
     ])->assertRedirect(route('admin.inventory.adjustments.index'));
 
     expect(app(StockLedger::class)->onHand($variant->id, Warehouse::DEFAULT_CODE))->toBe(8);
+
+    // The register is the audit surface for stock, so it has to name who made
+    // the change. `users` carries that as full_name; there is no `name`.
+    $this->actingAs($admin)->get(route('admin.inventory.adjustments.index'))
+        ->assertOk()
+        ->assertSee($admin->full_name);
 });
 
 it('refuses a distributor who lacks inventory.manage on the warehouse, transfer and adjustment screens', function (): void {
