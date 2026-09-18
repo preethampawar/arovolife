@@ -113,8 +113,87 @@ final class IndianStates
     }
 
     /**
-     * Resolve a state written either way to its canonical name, or null when
-     * it is not a state we recognise.
+     * The statutory numeric GST state code, canonical name → code.
+     *
+     * This is the code the law actually names (Telangana is 36); the
+     * two-letter alphas above are conveniences that two standards disagree
+     * about {@see aliases()}. Printed on the invoice beside the state, and the
+     * vocabulary behind the `tax.seller_state_code` setting.
+     *
+     * @return array<string, string>
+     */
+    public static function gstCodes(): array
+    {
+        return [
+            'Jammu and Kashmir' => '01',
+            'Himachal Pradesh' => '02',
+            'Punjab' => '03',
+            'Chandigarh' => '04',
+            'Uttarakhand' => '05',
+            'Haryana' => '06',
+            'Delhi' => '07',
+            'Rajasthan' => '08',
+            'Uttar Pradesh' => '09',
+            'Bihar' => '10',
+            'Sikkim' => '11',
+            'Arunachal Pradesh' => '12',
+            'Nagaland' => '13',
+            'Manipur' => '14',
+            'Mizoram' => '15',
+            'Tripura' => '16',
+            'Meghalaya' => '17',
+            'Assam' => '18',
+            'West Bengal' => '19',
+            'Jharkhand' => '20',
+            'Odisha' => '21',
+            'Chhattisgarh' => '22',
+            'Madhya Pradesh' => '23',
+            'Gujarat' => '24',
+            'Dadra and Nagar Haveli and Daman and Diu' => '26',
+            'Maharashtra' => '27',
+            'Karnataka' => '29',
+            'Goa' => '30',
+            'Lakshadweep' => '31',
+            'Kerala' => '32',
+            'Tamil Nadu' => '33',
+            'Puducherry' => '34',
+            'Andaman and Nicobar Islands' => '35',
+            'Telangana' => '36',
+            'Andhra Pradesh' => '37',
+            'Ladakh' => '38',
+        ];
+    }
+
+    /**
+     * Spellings that are not ISO 3166-2:IN but turn up in real data anyway.
+     *
+     * Four states are coded differently by the GST portal than by ISO, and
+     * neither is wrong — the two-letter alpha is not the statutory code (that
+     * is the numeric one {@see gstCodes()}), so a GST-portal code is a
+     * legitimate value, not a typo, and rejecting it would strand real rows.
+     * The two pre-merger territory names are here for the same reason: the
+     * shipped address forms offered them separately until 2020.
+     *
+     * Kept apart from {@see codes()} so that map stays exactly one standard.
+     *
+     * @return array<string, string>
+     */
+    public static function aliases(): array
+    {
+        return [
+            'TS' => 'Telangana',        // ISO says TG
+            'OD' => 'Odisha',           // ISO says OR
+            'CG' => 'Chhattisgarh',     // ISO says CT
+            'UK' => 'Uttarakhand',      // ISO says UT
+            'UA' => 'Uttarakhand',      // and the older Uttaranchal code
+            'DADRA AND NAGAR HAVELI' => 'Dadra and Nagar Haveli and Daman and Diu',
+            'DAMAN AND DIU' => 'Dadra and Nagar Haveli and Daman and Diu',
+        ];
+    }
+
+    /**
+     * Resolve a state written any of the ways we accept to its canonical name,
+     * or null when it is not a state we recognise.
      *
      * Two representations coexist in the data and neither is going away:
      * distributor addresses persist a two-letter code, while order and centre
@@ -122,6 +201,9 @@ final class IndianStates
      * must normalise first — comparing the raw strings answers "different" for
      * `TG` against `Telangana`, which on the tax invoice charged IGST on every
      * intra-state supply.
+     *
+     * ISO codes resolve first, so {@see aliases()} can only ever fill a gap and
+     * never shadow a code that means something else under the other standard.
      */
     public static function canonical(?string $state): ?string
     {
@@ -131,21 +213,19 @@ final class IndianStates
             return null;
         }
 
-        static $byName = null;
+        static $lookup = null;
 
-        if ($byName === null) {
-            $byName = [];
+        if ($lookup === null) {
+            $lookup = self::aliases();
 
             foreach (self::all() as $name) {
-                $byName[strtoupper($name)] = $name;
+                $lookup[strtoupper($name)] = $name;
             }
 
-            // The pre-merger spellings, which the shipped address forms still
-            // offer as two separate territories.
-            $byName['DADRA AND NAGAR HAVELI'] = 'Dadra and Nagar Haveli and Daman and Diu';
-            $byName['DAMAN AND DIU'] = 'Dadra and Nagar Haveli and Daman and Diu';
+            // Last, so an ISO code wins any future overlap with an alias.
+            $lookup = self::codes() + $lookup;
         }
 
-        return self::codes()[$value] ?? $byName[$value] ?? null;
+        return $lookup[$value] ?? null;
     }
 }

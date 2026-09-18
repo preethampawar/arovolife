@@ -367,3 +367,28 @@ it('AS-FLAG-03: every stream config carries its feature flag — GSB, MSB, GBB, 
         ->assertSee('comp.gsb.pool_rate_bp')
         ->assertSee('comp.repurchase.rate_bp');
 });
+
+it('AS-24: the supply-from state is a vocabulary, not free text', function (): void {
+    $admin = asvSeedAdmin();
+    $this->actingAs($admin);
+
+    asvSeedSetting('tax.seller_state', 'TG');
+
+    // As a `string` capped at 2 characters this silently stored "Te" — and the
+    // invoice generator now REFUSES a state it cannot read rather than guessing
+    // a head of tax, so one typo in a developer-only field would stop invoicing
+    // for every order in the system. Blank did the same.
+    foreach (['Telangana', 'Te', 'XX', ''] as $rejected) {
+        $this->withoutMiddleware(PreventRequestForgery::class)
+            ->post('/admin/settings/tax.seller_state', ['value' => $rejected]);
+
+        expect(DB::table('settings')->where('key', 'tax.seller_state')->value('value'))
+            ->toBe('TG', "'{$rejected}' must not be storable as the supply-from state");
+    }
+
+    // A real code still saves.
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/admin/settings/tax.seller_state', ['value' => 'MH']);
+
+    expect(DB::table('settings')->where('key', 'tax.seller_state')->value('value'))->toBe('MH');
+});

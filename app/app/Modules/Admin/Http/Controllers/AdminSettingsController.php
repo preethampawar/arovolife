@@ -22,6 +22,7 @@ use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use App\Modules\Shared\Features\ShiprocketFulfilmentFeature;
+use App\Modules\Shared\Support\IndianStates;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -145,22 +146,28 @@ final class AdminSettingsController extends Controller
                 'max' => 200,
                 'default' => 'Arovolife Private Limited',
             ],
+            // Both of these are picked from a list, never typed. As free text
+            // capped at 2 characters, "Telangana" saved silently as "Te" — and
+            // since the invoice generator now refuses a state it cannot read
+            // rather than guessing a head of tax, one typo in a developer-only
+            // field would stop invoicing for every order in the system. An
+            // enum cannot be typo'd and cannot be cleared.
             'tax.seller_state' => [
                 'group' => 'commerce',
                 'owner' => 'developer',
-                'label' => 'Supply-from state code',
-                'description' => 'Two-letter state of supply. Decides the CGST+SGST versus IGST split: a place of supply in this state is intra-state, anywhere else is inter-state.',
-                'type' => 'string',
-                'max' => 2,
+                'label' => 'Supply-from state',
+                'description' => 'The state the company supplies from. Decides the CGST+SGST versus IGST split: a place of supply in this state is intra-state, anywhere else is inter-state.',
+                'type' => 'enum',
+                'options' => self::stateCodeOptions(),
                 'default' => 'TG',
             ],
             'tax.seller_state_code' => [
                 'group' => 'commerce',
                 'owner' => 'developer',
                 'label' => 'GST state code',
-                'description' => 'The numeric GST state code, printed alongside the state name. Telangana is 36.',
-                'type' => 'string',
-                'max' => 2,
+                'description' => 'The statutory numeric GST state code, printed alongside the state name. It must name the same state as the supply-from state above.',
+                'type' => 'enum',
+                'options' => self::gstStateCodeOptions(),
                 'default' => '36',
             ],
             'tax.seller_address' => [
@@ -1695,6 +1702,49 @@ final class AdminSettingsController extends Controller
      * or written. Entries without a 'feature' field are always visible.
      *
      * @param  array{feature?: class-string}  $meta
+     */
+    /**
+     * The two-letter state codes, as enum options labelled with the state.
+     *
+     * Built from `IndianStates::codes()` so the invoice generator and this
+     * picker cannot drift: every option here is a value `canonical()` resolves,
+     * which is the whole point — an unresolvable one halts invoicing.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private static function stateCodeOptions(): array
+    {
+        $options = [];
+
+        foreach (IndianStates::codes() as $code => $name) {
+            $options[] = ['value' => $code, 'label' => "{$name} ({$code})"];
+        }
+
+        usort($options, fn (array $a, array $b): int => strcmp($a['label'], $b['label']));
+
+        return $options;
+    }
+
+    /**
+     * The statutory numeric GST state codes, as enum options.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private static function gstStateCodeOptions(): array
+    {
+        $options = [];
+
+        foreach (IndianStates::gstCodes() as $name => $code) {
+            $options[] = ['value' => $code, 'label' => "{$code} — {$name}"];
+        }
+
+        usort($options, fn (array $a, array $b): int => strcmp($a['value'], $b['value']));
+
+        return $options;
+    }
+
+    /**
+     * @param  array<string, mixed>  $meta  a registry entry
      */
     private static function featureVisible(array $meta): bool
     {

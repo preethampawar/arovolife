@@ -95,9 +95,13 @@ final class AdminPaymentController extends Controller
     }
 
     /**
-     * Issue the invoice a confirmed payment failed to produce. The generator
-     * is idempotent (an existing invoice is returned, never a second one)
-     * and allocates the next consecutive number under its own lock.
+     * Issue the invoice a confirmed payment failed to produce, allocating the
+     * next consecutive number under the generator's own lock.
+     *
+     * Issues only where there is nothing to issue. This is not a reissue and
+     * cannot become one: an invoice already raised is a statutory document,
+     * and correcting it means a §34 credit note and a fresh invoice, never an
+     * overwrite.
      */
     public function generateInvoice(Request $request, Order $order): RedirectResponse
     {
@@ -111,6 +115,20 @@ final class AdminPaymentController extends Controller
             Log::channel('payments')->error('manual invoice generation failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
 
             return back()->withErrors(['invoice' => 'Invoice generation failed again: '.$e->getMessage()]);
+        }
+
+        // `generate()` is idempotent — it hands back an existing invoice rather
+        // than issuing a second one — so pressing this twice used to write
+        // `invoice.generated_manually` with a `no_invoice` before-state either
+        // way: an audit row asserting an issue that never happened, naming a
+        // pre-existing invoice as the new one.
+        //
+        // The generator now answers the question itself, inside the same
+        // transaction that allocates the number. A check here before calling
+        // would read the same "no invoice" under two simultaneous presses and
+        // still write the false row for whichever lost.
+        if (! $invoice->wasRecentlyCreated) {
+            return back()->with('status', "Order {$order->order_no} already carries invoice {$invoice->invoice_no}. Nothing was issued — an invoice is never replaced in place; a wrong one needs a credit note.");
         }
 
         AuditLog::create([

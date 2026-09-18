@@ -25,6 +25,7 @@ use App\Modules\Payments\Services\PaymentConfirmationService;
 use App\Modules\Payments\Services\PaymentGatewayResolver;
 use App\Modules\Payments\Services\StubGateway;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
+use App\Modules\Shared\Support\IndianStates;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -198,7 +199,7 @@ final class CheckoutController extends Controller
             'ship_line1' => [Rule::requiredIf(! $isCollection), 'nullable', 'string', 'max:255'],
             'ship_line2' => ['nullable', 'string', 'max:255'],
             'ship_city' => [Rule::requiredIf(! $isCollection), 'nullable', 'string', 'max:100'],
-            'ship_state' => [Rule::requiredIf(! $isCollection), 'nullable', 'string', 'max:64'],
+            'ship_state' => [Rule::requiredIf(! $isCollection), 'nullable', 'string', Rule::in(IndianStates::all())],
             // Delivery pincode: format, then the mainland-India serving area
             // (skipped for ADC collection — the centre's own pincode is used).
             'ship_pincode' => $isCollection
@@ -210,7 +211,7 @@ final class CheckoutController extends Controller
             'bill_line1' => [Rule::requiredIf(! $billingSame && ! $isCollection), 'nullable', 'string', 'max:255'],
             'bill_line2' => ['nullable', 'string', 'max:255'],
             'bill_city' => [Rule::requiredIf(! $billingSame && ! $isCollection), 'nullable', 'string', 'max:100'],
-            'bill_state' => [Rule::requiredIf(! $billingSame && ! $isCollection), 'nullable', 'string', 'max:64'],
+            'bill_state' => [Rule::requiredIf(! $billingSame && ! $isCollection), 'nullable', 'string', Rule::in(IndianStates::all())],
             'bill_pincode' => [Rule::requiredIf(! $billingSame && ! $isCollection), 'nullable', 'regex:/^\d{6}$/'],
             'save_address' => ['nullable', 'boolean'],
             'address_label' => ['nullable', 'string', 'max:40'],

@@ -81,9 +81,17 @@ it('wipes purchase-derived tables but preserves distributors, plan config and se
     // orphaned — the next order takes the id it points at and inherits it.
     // Children before parents, or the truncate hits a foreign key.
     $tables = PurchaseDataResetAction::wipeTables();
-    expect($tables)->toContain('invoices')->toContain('invoice_lines')
-        ->and(array_search('invoice_lines', $tables, true))->toBeLessThan(array_search('invoices', $tables, true))
-        ->and(array_search('invoices', $tables, true))->toBeLessThan(array_search('orders', $tables, true));
+    expect($tables)->toContain('invoices')->toContain('invoice_lines')->toContain('orders');
+
+    // Positions, resolved once. `array_search` returns int|false, and comparing
+    // a false against an int would silently read as position 0 — the very
+    // ordering this test exists to pin.
+    $linesAt = (int) array_search('invoice_lines', $tables, true);
+    $invoicesAt = (int) array_search('invoices', $tables, true);
+    $ordersAt = (int) array_search('orders', $tables, true);
+
+    expect($linesAt)->toBeLessThan($invoicesAt)
+        ->and($invoicesAt)->toBeLessThan($ordersAt);
 
     // Preserved: the distributor row itself, plan configuration, settings.
     expect(Distributor::query()->whereKey($dist->id)->exists())->toBeTrue()

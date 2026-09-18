@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Inventory\Http\Requests;
 
 use App\Modules\Inventory\Models\Warehouse;
+use App\Modules\Shared\Support\IndianStates;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -30,7 +31,7 @@ final class WarehouseRequest extends FormRequest
             'type' => ['required', Rule::in([Warehouse::TYPE_HUB, Warehouse::TYPE_WAREHOUSE, Warehouse::TYPE_FRANCHISE])],
             'line1' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:100'],
-            'state' => ['nullable', 'string', 'max:64'],
+            'state' => ['nullable', 'string', Rule::in(IndianStates::all())],
             'pincode' => ['nullable', 'string', 'max:10'],
             'contact_phone_e164' => ['nullable', 'string', 'max:20'],
             'fulfils_orders' => ['nullable', 'boolean'],

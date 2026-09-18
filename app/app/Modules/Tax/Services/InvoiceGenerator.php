@@ -7,6 +7,7 @@ namespace App\Modules\Tax\Services;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Shared\Support\IndianStates;
+use App\Modules\Tax\Exceptions\UnresolvablePlaceOfSupplyException;
 use App\Modules\Tax\Models\Invoice;
 use App\Modules\Tax\Models\InvoiceLine;
 use Illuminate\Database\Eloquent\Collection;
@@ -41,7 +42,9 @@ use Illuminate\Support\Facades\DB;
  * state, IGST where it is not — correct in shape, but it compared a two-letter
  * setting against a display-name column, so 'TG' never equalled 'Telangana' and
  * every intra-state supply was billed IGST. Both sides now normalise through
- * `IndianStates::canonical()` before the comparison.
+ * `IndianStates::canonical()` before the comparison, and a state that cannot be
+ * read at all is refused rather than guessed
+ * ({@see UnresolvablePlaceOfSupplyException}).
  */
 final class InvoiceGenerator
 {
@@ -90,28 +93,51 @@ final class InvoiceGenerator
         // Centre where CGST+SGST was due, on an invoice no later render can
         // correct. Normalise both to the canonical name before deciding.
         //
-        // Absent and unrecognised are different answers and must stay that way.
-        // No place of supply at all falls back to the seller's own state, as it
-        // always has. A state that is present but unreadable must NOT: pointing
-        // it at the seller would call an unknown supply intra-state, which is
-        // the failure this whole comparison exists to prevent. It resolves to
-        // null and bills IGST, so null === null can never read as a match.
+        // Missing and unreadable are the same answer here, and both are
+        // refused rather than guessed. See UnresolvablePlaceOfSupplyException
+        // for why: there is no "unknown" head of tax under IGST §10(1)(a), so a
+        // guess is wrong roughly half the time and writes its error somewhere
+        // nothing re-renders.
+        //
+        // The `?? $sellerState` fallback this used to carry looked like it
+        // served the collection case. It did not: a collection reads the
+        // CENTRE's state, and the only way that is empty is a centre record
+        // with no state — at which point the fallback silently bills CGST+SGST
+        // on a supply that may well be inter-state, which is exactly the defect
+        // the comment above it warned about. A delivery cannot reach it at all;
+        // `ship_state` is required at checkout.
         $rawSellerState = $this->settings->sellerState();
         $rawPlaceOfSupply = $this->placeOfSupplyState($order);
-        $hasPlaceOfSupply = trim((string) $rawPlaceOfSupply) !== '';
 
-        $sellerCanonical = IndianStates::canonical($rawSellerState);
-        $placeCanonical = $hasPlaceOfSupply
-            ? IndianStates::canonical($rawPlaceOfSupply)
-            : $sellerCanonical;
+        $sellerState = IndianStates::canonical($rawSellerState);
 
-        $isIntraState = $sellerCanonical !== null && $sellerCanonical === $placeCanonical;
+        if ($sellerState === null) {
+            throw new UnresolvablePlaceOfSupplyException(
+                (string) $order->order_no,
+                'the supply-from state setting (tax.seller_state)',
+                $rawSellerState,
+                'Set it in Admin → Settings → Commerce, then re-issue the invoice from Admin → Payments. '
+                .'No invoice can be issued for any order until it is readable.',
+            );
+        }
 
-        // An unrecognised state still has to print something, and the raw value
-        // is more use to whoever has to fix it than a blank.
-        $sellerState = $sellerCanonical ?? strtoupper($rawSellerState);
-        $placeOfSupply = $placeCanonical
-            ?? ($hasPlaceOfSupply ? strtoupper((string) $rawPlaceOfSupply) : $sellerState);
+        $placeOfSupply = IndianStates::canonical($rawPlaceOfSupply);
+
+        if ($placeOfSupply === null) {
+            throw new UnresolvablePlaceOfSupplyException(
+                (string) $order->order_no,
+                $order->isCollection()
+                    ? 'the collection centre\'s state ('.($order->areteCenter->name ?? 'centre not found').')'
+                    : 'the delivery state',
+                $rawPlaceOfSupply,
+                $order->isCollection()
+                    ? 'Set the state on that centre in Admin → Arete Centers, then re-issue the invoice from Admin → Payments.'
+                    : 'The delivery state is written at checkout and has no admin editor yet (R-28); '
+                        .'raise this with engineering rather than re-pressing the button.',
+            );
+        }
+
+        $isIntraState = $sellerState === $placeOfSupply;
 
         // Everything that reduced what the buyer actually paid for goods: a
         // coupon and any redeemed points.
@@ -187,7 +213,17 @@ final class InvoiceGenerator
                 'igst_paise' => $igstTotal,
             ]);
 
-            return $invoice->fresh(['lines']);
+            // `load()`, not `fresh()`. `fresh()` re-reads the row and returns a
+            // different instance with `wasRecentlyCreated` false, so callers
+            // could not tell an invoice this call issued from one that already
+            // existed — and the admin action above wrote an audit row claiming
+            // an issue that never happened. `load()` keeps the flag true on the
+            // instance we created, and the early return above hands back a
+            // model read from the database, where it is false. That makes
+            // `wasRecentlyCreated` the honest answer to "did this issue one",
+            // decided under this method's own transaction rather than by a
+            // caller's check-then-act.
+            return $invoice->load('lines');
         });
     }
 

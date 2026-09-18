@@ -280,7 +280,14 @@ final class AdminAreteCenterController extends Controller
             'district' => ['nullable', 'string', 'max:100'],
             'location' => ['nullable', 'string', 'max:300'],
             'pincode' => ['nullable', 'digits:6'],
-            'state' => ['nullable', Rule::in(IndianStates::all())],
+            // Required, not nullable. A collection order takes its PLACE OF
+            // SUPPLY from the centre, so a centre with no state is an order
+            // whose head of tax cannot be determined — the generator now
+            // refuses it rather than billing CGST+SGST on a supply that may be
+            // inter-state. Deactivating a centre goes through its own action
+            // and does not come through here, so this only ever asks an admin
+            // who is already editing the record.
+            'state' => ['required', Rule::in(IndianStates::all())],
             'property_type' => ['nullable', Rule::in(array_keys(AreteCenter::PROPERTY_TYPES))],
             'premises_sqft' => ['nullable', 'integer', 'min:1', 'max:100000'],
             'distance_to_nearest_adc_km' => ['nullable', 'numeric', 'min:0', 'max:9999.9'],

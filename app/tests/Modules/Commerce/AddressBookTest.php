@@ -34,7 +34,7 @@ function abPayload(array $overrides = []): array
         'line1' => '12 MG Road',
         'line2' => 'Near Park',
         'city' => 'Pune',
-        'state' => 'MH',
+        'state' => 'Maharashtra',
         'pincode' => '411001',
     ], $overrides);
 }
@@ -123,4 +123,25 @@ it('AB-07: rejects an invalid phone / pincode', function (): void {
         ->assertSessionHasErrors(['phone', 'pincode']);
 
     expect(CustomerAddress::count())->toBe(0);
+});
+
+it('AB-08: the state must be one of the 36 states and union territories', function (): void {
+    $user = abUser();
+
+    // The state decides the head of GST on every order shipped to this
+    // address, and it used to be free text validated only as `max:64`. A
+    // misspelling reads as an unknown state, and an unknown state cannot be
+    // classified intra- or inter-supply at all.
+    $this->actingAs($user)->post(route('addresses.store'), abPayload(['state' => 'Telengana']))
+        ->assertSessionHasErrors('state');
+
+    $this->actingAs($user)->post(route('addresses.store'), abPayload(['state' => 'Hyderabad']))
+        ->assertSessionHasErrors('state');
+
+    expect(CustomerAddress::count())->toBe(0);
+
+    $this->actingAs($user)->post(route('addresses.store'), abPayload(['state' => 'Telangana']))
+        ->assertSessionHasNoErrors();
+
+    expect(CustomerAddress::sole()->state)->toBe('Telangana');
 });

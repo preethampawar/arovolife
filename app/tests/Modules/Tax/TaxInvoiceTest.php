@@ -19,6 +19,7 @@ declare(strict_types=1);
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Tax\Exceptions\UnresolvablePlaceOfSupplyException;
 use App\Modules\Tax\Models\Invoice;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use App\Modules\Tax\Services\InvoiceNumberSequence;
@@ -263,29 +264,66 @@ it('TAX-010: the seller state code and the order state name are the same state',
         ->and($invoice->place_of_supply)->toBe('Telangana');
 });
 
-it('TAX-011: an unrecognised place of supply is billed IGST, never matched', function () {
+it('TAX-011: an unreadable place of supply is refused, not guessed', function () {
     taxSetGstin();
 
-    // Normalising introduces a null, and null === null would read as a match
-    // and make an unknown supply intra-state. It must fall to IGST instead.
-    $invoice = taxGenerate(taxOrder(10_00_000, 'Atlantis'));
+    // There is no "unknown" head of tax under IGST s10(1)(a). Guessing IGST
+    // burns a serial from a gap-free series onto a row nothing re-renders and
+    // hands a B2B buyer a credit they must reverse with interest. Refusing
+    // leaves the sale standing and raises the invoice-gap worklist instead.
+    $order = taxOrder(10_00_000, 'Atlantis');
 
-    expect($invoice->cgst_paise)->toBe(0)
-        ->and($invoice->sgst_paise)->toBe(0)
-        ->and($invoice->igst_paise)->toBe(1_52_542)
-        ->and($invoice->place_of_supply)->toBe('ATLANTIS');
+    expect(fn () => taxGenerate($order))
+        ->toThrow(UnresolvablePlaceOfSupplyException::class);
+
+    // And it wrote nothing on the way out: no invoice, and no number burned.
+    expect(Invoice::where('order_id', $order->id)->exists())->toBeFalse()
+        ->and(DB::table('invoice_number_sequences')->sum('last_number'))->toBe(0);
 });
 
-it('TAX-012: an absent place of supply falls back to the seller state, a blank one is not printed', function () {
+it('TAX-013: an unreadable seller state is refused too', function () {
+    taxSetGstin();
+    DB::table('settings')->updateOrInsert(['key' => 'tax.seller_state'], ['value' => 'XX', 'updated_at' => now()]);
+
+    // Misconfiguring the supply-from state cannot be allowed to bill every
+    // order as inter-state; it is a configuration error, not a tax position.
+    expect(fn () => taxGenerate(taxOrder(10_00_000, 'Telangana')))
+        ->toThrow(UnresolvablePlaceOfSupplyException::class);
+});
+
+it('TAX-012: an absent place of supply is refused, not read as the seller state', function () {
     taxSetGstin();
 
-    // Absent and unrecognised are different answers. No place of supply at all
-    // is the seller's own state — an intra-state supply. The `??` this replaced
-    // only caught null, so an empty string reached the invoice and printed a
-    // blank Rule 46(n) field.
-    $invoice = taxGenerate(taxOrder(10_00_000, ''));
+    // This used to fall back to the seller's own state and bill CGST+SGST. It
+    // read as "the collection case" and it was not: a collection takes the
+    // CENTRE's state, so the only way this is empty is a record with no state
+    // at all — and guessing intra-state there charges the wrong head on a
+    // supply that may well be inter-state, onto a serial nothing re-renders.
+    expect(fn () => taxGenerate(taxOrder(10_00_000, '')))
+        ->toThrow(UnresolvablePlaceOfSupplyException::class);
 
-    expect($invoice->place_of_supply)->toBe('Telangana')
-        ->and($invoice->igst_paise)->toBe(0)
-        ->and($invoice->cgst_paise + $invoice->sgst_paise)->toBe(1_52_542);
+    // And it burns no number doing it (Rule 46(b) wants the series gap-free).
+    expect((int) DB::table('invoice_number_sequences')->sum('last_number'))->toBe(0)
+        ->and(Invoice::count())->toBe(0);
+});
+
+it('TAX-014: a collection at a centre with no state is refused and names the centre', function () {
+    taxSetGstin();
+
+    $centerId = DB::table('arete_centers')->insertGetId([
+        'name' => 'Stateless Centre',
+        'centre_type' => 'company',
+        'status' => 'active',
+        'state' => null,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $order = taxOrder(10_00_000, '');
+    $order->update(['delivery_type' => Order::DELIVERY_COLLECT, 'arete_center_id' => $centerId]);
+
+    // The operator has to be told WHICH record to fix. A centre does have an
+    // admin editor, so this message names an action that exists.
+    expect(fn () => taxGenerate($order->fresh(['items'])))
+        ->toThrow(UnresolvablePlaceOfSupplyException::class, 'Stateless Centre');
 });

@@ -236,9 +236,13 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">State *</label>
-                    <input name="ship_state" type="text" required value="{{ old('ship_state') }}"
-                        placeholder="e.g. Karnataka"
+                    <select name="ship_state" required
                         class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                        <option value="">— Select state —</option>
+                        @foreach(\App\Modules\Shared\Support\IndianStates::all() as $stateName)
+                        <option value="{{ $stateName }}" @selected(\App\Modules\Shared\Support\IndianStates::canonical(old('ship_state')) === $stateName)>{{ $stateName }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Pincode *</label>
@@ -298,8 +302,13 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">State</label>
-                    <input name="bill_state" type="text" value="{{ old('bill_state') }}"
+                    <select name="bill_state"
                         class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                        <option value="">— Select state —</option>
+                        @foreach(\App\Modules\Shared\Support\IndianStates::all() as $stateName)
+                        <option value="{{ $stateName }}" @selected(\App\Modules\Shared\Support\IndianStates::canonical(old('bill_state')) === $stateName)>{{ $stateName }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Pincode</label>
@@ -514,7 +523,23 @@
     (function () {
         const radios = document.querySelectorAll('input[name="__saved_address"]');
         if (!radios.length) return;
-        const set = (name, val) => { const el = document.querySelector('[name="' + name + '"]'); if (el) el.value = val || ''; };
+        const set = (name, val) => {
+            const el = document.querySelector('[name="' + name + '"]');
+            if (!el) return;
+            el.value = val || '';
+            // A <select> silently selects nothing when the saved value is not
+            // byte-identical to one of its options — a legacy address holding
+            // a two-letter code or an old spelling would blank the state and
+            // the buyer would not see it change. Surface it instead of
+            // pretending: keep the stored value visible and let `required`
+            // stop the submit until they pick a real one.
+            if (el.tagName === 'SELECT' && el.value !== (val || '')) {
+                const orphan = new Option(val + ' (not a recognised state — please re-select)', val, true, true);
+                orphan.disabled = true;
+                el.add(orphan);
+                el.value = val;
+            }
+        };
 
         const shipFields = ['ship_line1', 'ship_line2', 'ship_city', 'ship_state', 'ship_pincode'];
 
@@ -594,7 +619,10 @@
         if (dt) { dt.value = mode; }
 
         const shipReqFields = shipSection
-            ? shipSection.querySelectorAll('input[name="ship_line1"], input[name="ship_city"], input[name="ship_state"], input[name="ship_pincode"]')
+            // Element-agnostic: ship_state is a <select>, not an <input>, and an
+            // `input[...]` selector would silently miss it and leave the hidden
+            // field required — blocking checkout on the collection path.
+            ? shipSection.querySelectorAll('[name="ship_line1"], [name="ship_city"], [name="ship_state"], [name="ship_pincode"]')
             : [];
 
         // Show the summary the server costed for this method. No arithmetic

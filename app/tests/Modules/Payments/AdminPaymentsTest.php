@@ -297,6 +297,13 @@ it('APT-10: a paid order without an invoice is listed; finance issues it, operat
         ->assertRedirect(route('admin.payments.index'));
     expect(Invoice::where('order_id', $order->id)->count())->toBe(1);
 
+    // And the second press writes NO audit row. It used to write another
+    // `invoice.generated_manually` with a `no_invoice` before-state, asserting
+    // an issue that never happened and naming the existing invoice as the new
+    // one — a false entry in the trail that is supposed to be the record of
+    // what staff actually did.
+    expect(AuditLog::where('action', 'invoice.generated_manually')->where('subject_id', $order->id)->count())->toBe(1);
+
     // Unpaid orders are refused outright.
     $this->actingAs($finance)->post(route('admin.payments.invoices.generate', aptOrder()))->assertSessionHasErrors('invoice');
 });

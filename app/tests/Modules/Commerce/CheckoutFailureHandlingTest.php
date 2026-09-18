@@ -57,7 +57,7 @@ function cfhPayload(): array
         'buyer_phone' => '9800000000',
         'ship_line1' => '1 Test St',
         'ship_city' => 'Pune',
-        'ship_state' => 'MH',
+        'ship_state' => 'Maharashtra',
         'ship_pincode' => '411001',
         'delivery_type' => 'ship',
         'payment_method' => 'online',

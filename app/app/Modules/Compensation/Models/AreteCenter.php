@@ -225,6 +225,9 @@ final class AreteCenter extends Model
         }
     }
 
+    /**
+     * @return Collection<int, self>
+     */
     public static function collectionChoicesFor(?int $distributorId): Collection
     {
         // Gating here closes both surfaces at once: the checkout picker reads

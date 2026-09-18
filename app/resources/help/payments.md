@@ -111,8 +111,33 @@ allocated, never a duplicate, and the action is audit-logged.
 
 The same control sits on the order itself (Commerce → Orders → an order), in
 the **Invoice** panel, alongside the invoice number and the amount once one has
-been issued, and a link to the gateway payment behind the order. Re-issuing
-from there allocates a fresh number and is audit-logged in the same way.
+been issued, and a link to the gateway payment behind the order.
+
+**It issues, and it never re-issues.** Pressing it on an order that already has
+an invoice does nothing and says so. An invoice already raised is a statutory
+document: correcting one means a credit note and a fresh invoice, never an
+overwrite, and there is no screen for that yet — raise it with the developer.
+(Until 2026-09-18 a second press wrote an audit entry claiming it had issued an
+invoice when it had not, naming the existing one as new. Any
+`invoice.generated_manually` entry dated before then may be that, not a real
+issue.)
+
+**"…is not a state this system recognises".** The invoice cannot be issued
+because a state it needs is not one of the 36 states and union territories. GST
+decides the CGST+SGST versus IGST split from that state, so an unreadable one
+leaves no honest answer and the invoice is refused rather than guessed. The
+message names which state, and what you can do about it differs:
+
+- **The supply-from state setting.** Settings → Commerce → *Supply-from state*.
+  While this is wrong, no invoice can be issued for any order, so fix it first.
+- **A collection centre's state.** Arete Centers → that centre → set the state.
+  A centre cannot be saved without one from 2026-09-18.
+- **The delivery state on an order.** There is no screen for this — the state is
+  written once at checkout and cannot be edited afterwards. Raise it with the
+  developer rather than pressing the button again.
+
+The last case should not arise for orders placed after 2026-09-18, when every
+state field became a fixed list rather than something typed.
 
 ## When something looks wrong
 

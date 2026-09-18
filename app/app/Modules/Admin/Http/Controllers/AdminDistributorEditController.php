@@ -366,7 +366,10 @@ final class AdminDistributorEditController extends Controller
                 Rule::unique('users', 'email')->ignore($user->id),
             ],
             'date_of_birth' => ['nullable', 'date'],
-            'state' => ['required', 'string', 'max:64'],
+            // Gated against the same map the create path uses. This column
+            // holds two-letter codes; as free text an admin could write a
+            // display name into it and the two would stop being one vocabulary.
+            'state' => ['required', 'in:'.implode(',', array_keys(self::indianStates()))],
             // Bank is optional. IFSC is nullable; if the admin types one
             // it must validate. The pre-existing account_number field was
             // already nullable + format-validated. Clearing the IFSC

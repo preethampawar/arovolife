@@ -171,7 +171,7 @@ it('AED-03: admin can rotate bank account; new value stored encrypted; audit sho
     $this->actingAs($admin)->withoutMiddleware(PreventRequestForgery::class)->patch(route('admin.distributors.update', $id), [
         'phone_e164' => $user->phone_e164,
         'email' => $user->email,
-        'state' => 'TS',
+        'state' => 'TG',
         'bank_ifsc' => 'SBIN0000001',
         'bank_account' => $newAccount,
     ])->assertRedirect();

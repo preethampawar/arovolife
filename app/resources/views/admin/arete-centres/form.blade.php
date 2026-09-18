@@ -106,11 +106,13 @@
                     <input type="text" name="city" value="{{ $v('city', $center?->district ?? '') }}" maxlength="100" class="{{ $inp }}">
                 </div>
                 <div>
-                    <label class="{{ $lbl }}">State / Union Territory</label>
-                    <select name="state" class="{{ $inp }}">
+                    <label class="{{ $lbl }}">State / Union Territory *</label>
+                    {{-- Required: a collection order takes its place of supply from
+                         the centre, so a centre with no state cannot be invoiced. --}}
+                    <select name="state" required class="{{ $inp }}">
                         <option value="">— Select state —</option>
                         @foreach(\App\Modules\Shared\Support\IndianStates::all() as $stateName)
-                        <option value="{{ $stateName }}" @selected($v('state') === $stateName)>{{ $stateName }}</option>
+                        <option value="{{ $stateName }}" @selected(\App\Modules\Shared\Support\IndianStates::canonical($v('state')) === $stateName)>{{ $stateName }}</option>
                         @endforeach
                     </select>
                 </div>

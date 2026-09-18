@@ -387,6 +387,7 @@ it('audit-logs a centre creation', function (): void {
         ->post(route('admin.arete-centres.store'), [
             'name' => 'Medak Center',
             'pincode' => '502001',
+            'state' => 'Telangana',
             'assigned_adn' => $assignee->adn,
         ])
         ->assertRedirect(route('admin.arete-centres.index'));
@@ -465,6 +466,7 @@ it('records a phase upgrade and cap override on the centre form and audit-logs t
             'name' => 'Medak Center',
             'assigned_adn' => $assignee->adn,
             'development_phase' => 2,
+            'state' => 'Telangana',
             'monthly_cap_override' => 20000,
         ])
         ->assertRedirect(route('admin.arete-centres.index'));
@@ -500,6 +502,7 @@ it('clears the cap override when the field is left blank', function (): void {
             'name' => 'Medak Center',
             'assigned_adn' => $assignee->adn,
             'development_phase' => 2,
+            'state' => 'Telangana',
             'monthly_cap_override' => '',
         ])
         ->assertRedirect(route('admin.arete-centres.index'));

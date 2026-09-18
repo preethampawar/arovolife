@@ -62,8 +62,13 @@
             </label>
             <label class="block">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">State</span>
-                <input type="text" name="state" value="{{ old('state', $warehouse->state) }}" maxlength="64"
+                <select name="state"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <option value="">— Select state —</option>
+                    @foreach(\App\Modules\Shared\Support\IndianStates::all() as $stateName)
+                    <option value="{{ $stateName }}" @selected(old('state', $warehouse->state) === $stateName)>{{ $stateName }}</option>
+                    @endforeach
+                </select>
             </label>
             <label class="block">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">Pincode</span>

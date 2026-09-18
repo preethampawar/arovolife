@@ -39,7 +39,7 @@ function areaPayload(array $overrides = []): array
         'phone' => '9876543210',
         'line1' => '12 MG Road',
         'city' => 'Pune',
-        'state' => 'MH',
+        'state' => 'Maharashtra',
         'pincode' => '411001',
     ], $overrides);
 }
@@ -82,7 +82,7 @@ it('F57-05: saving an island address is rejected with a clear message', function
     areaSetting('true');
 
     $this->actingAs(areaUser())
-        ->post(route('addresses.store'), areaPayload(['pincode' => '744101', 'city' => 'Port Blair', 'state' => 'AN']))
+        ->post(route('addresses.store'), areaPayload(['pincode' => '744101', 'city' => 'Port Blair', 'state' => 'Andaman and Nicobar Islands']))
         ->assertSessionHasErrors(['pincode' => 'We cannot deliver to this pincode. arovolife currently ships to mainland India only — the Andaman & Nicobar Islands and Lakshadweep are not served. Please use a mainland delivery address or contact support.']);
 
     expect(CustomerAddress::count())->toBe(0);

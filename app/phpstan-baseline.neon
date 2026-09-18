@@ -1965,7 +1965,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 15
+			count: 16
 			path: tests/Feature/Inventory/AdminWarehouseTransferAdjustmentScreensTest.php
 
 		-
@@ -2031,7 +2031,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 4
+			count: 6
 			path: tests/Feature/Inventory/ReportsRenderTest.php
 
 		-
@@ -2039,6 +2039,24 @@ parameters:
 			identifier: method.notFound
 			count: 2
 			path: tests/Feature/Inventory/ReportsRenderTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: tests/Feature/Inventory/ReservationIntegrityTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:artisan\(\)\.$#'
+			identifier: method.notFound
+			count: 5
+			path: tests/Feature/Inventory/ReservationIntegrityTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/ReservationIntegrityTest.php
 
 		-
 			message: '#^Access to an undefined property App\\Modules\\Returns\\Models\\BuybackDecision\:\:\$net_refund_paise\.$#'
@@ -2475,7 +2493,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 19
+			count: 20
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
 
 		-
@@ -2487,7 +2505,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:withoutMiddleware\(\)\.$#'
 			identifier: method.notFound
-			count: 10
+			count: 12
 			path: tests/Modules/Admin/AdminSettingsViewTest.php
 
 		-
@@ -2691,7 +2709,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 15
+			count: 18
 			path: tests/Modules/Commerce/AddressBookTest.php
 
 		-

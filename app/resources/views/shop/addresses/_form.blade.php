@@ -58,8 +58,13 @@
     </div>
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1.5">State *</label>
-        <input name="state" type="text" required maxlength="64" value="{{ old('state', $a->state ?? '') }}"
-               class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+        <select name="state" required
+                class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+            <option value="">— Select state —</option>
+            @foreach(\App\Modules\Shared\Support\IndianStates::all() as $stateName)
+            <option value="{{ $stateName }}" @selected(\App\Modules\Shared\Support\IndianStates::canonical(old('state', $a->state ?? '')) === $stateName)>{{ $stateName }}</option>
+            @endforeach
+        </select>
     </div>
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1.5">Pincode *</label>
