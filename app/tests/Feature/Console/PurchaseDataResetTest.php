@@ -76,6 +76,15 @@ it('wipes purchase-derived tables but preserves distributors, plan config and se
     expect(PurchaseDataResetAction::wipeTables())->toContain('gsb_daily_pools')
         ->and(PurchaseDataResetAction::wipeTables())->toContain('msb_daily_pools');
 
+    // The tax invoice goes with the order it belongs to. Truncating `orders`
+    // restarts AUTO_INCREMENT at 1, so a surviving invoice is not merely
+    // orphaned — the next order takes the id it points at and inherits it.
+    // Children before parents, or the truncate hits a foreign key.
+    $tables = PurchaseDataResetAction::wipeTables();
+    expect($tables)->toContain('invoices')->toContain('invoice_lines')
+        ->and(array_search('invoice_lines', $tables, true))->toBeLessThan(array_search('invoices', $tables, true))
+        ->and(array_search('invoices', $tables, true))->toBeLessThan(array_search('orders', $tables, true));
+
     // Preserved: the distributor row itself, plan configuration, settings.
     expect(Distributor::query()->whereKey($dist->id)->exists())->toBeTrue()
         ->and(DB::table('gsb_slabs')->count())->toBe($slabCount)

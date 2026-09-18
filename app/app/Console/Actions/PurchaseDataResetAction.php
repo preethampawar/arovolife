@@ -54,6 +54,19 @@ final class PurchaseDataResetAction
         'refund_intents',
         'payment_intents',
         'shipments',
+        // The tax invoice and its lines. Left out until 2026-09-18, and the
+        // bug that exposed it is worth keeping written down: this reset
+        // truncates `orders`, which resets AUTO_INCREMENT to 1, so the next
+        // orders take ids 1, 2, 3 — ids that surviving invoice rows still
+        // pointed at. Staging ended up with 13 orders and invoice rows
+        // referencing order ids up to 354, and order 13 (₹710.00, placed
+        // 16 Sep) rendered the admin invoice panel of a deleted order:
+        // INV-26-809520, ₹809.00, issued 07 Jun. A tax document against the
+        // wrong order is worse than no tax document, and `InvoiceGapWorklist`
+        // could not see it either — it looks for orders with no invoice, and
+        // this order had one.
+        'invoice_lines',
+        'invoices',
         'ledger_entries',
         'ledger_tx',
         'order_cooling_off',
