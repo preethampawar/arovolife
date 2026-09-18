@@ -2,9 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Services\EngineStatusService;
+use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Support\EngineRegistry;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -196,4 +201,61 @@ it('--in-flight runs today deliberately, for a provisional test cut-off', functi
 
 it('runs a closed day with no override at all', function (): void {
     expect(Artisan::call('gsb:daily-cutoff', ['--date' => Carbon::yesterday()->toDateString()]))->toBe(0);
+});
+
+it('records a SKIPPED run when a later cut-off has already passed the day, and the day stays proven', function (): void {
+    // A1/R-91. The carry-forward store is rolling, so a day a later cut-off has
+    // passed cannot be recomputed — an ordering decision, not an attempt that
+    // failed. Recorded as `failed` it would un-prove a day that was cut off
+    // correctly (D13: the latest finished attempt decides), and the month
+    // containing it would be unclosable over a refusal nobody can clear.
+    $day = Carbon::today()->subDays(2);
+    $next = $day->copy()->addDay();
+
+    $distributor = Distributor::factory()->create(['status' => 'active', 'adn' => '100000001']);
+    BvLedgerEntry::create([
+        'distributor_id' => $distributor->id,
+        'order_id' => 999_101,
+        'bv_paise' => 300_000,
+        'type' => 'accrual',
+        'effective_at' => $day->copy()->subDay(),
+    ]);
+
+    // Below the slab-1 threshold on both days: the cut-off records `no_match`,
+    // which still advances the rolling store. A CREDITED day would never reach
+    // the guard — the engine's idempotency check returns first.
+    foreach ([$day, $next] as $date) {
+        GroupBvDaily::create([
+            'distributor_id' => $distributor->id,
+            'date' => $date->toDateString(),
+            'left_bv_paise' => 1_000_000,
+            'right_bv_paise' => 800_000,
+        ]);
+    }
+
+    // The day was cut off correctly; the next day then advanced the store.
+    app(GsbCutoffService::class)->runForDistributor($distributor->id, $day);
+    app(GsbCutoffService::class)->runForDistributor($distributor->id, $next);
+
+    // The run row the chain recorded for the day, started once the day ended.
+    EngineRun::create([
+        'engine_key' => 'gsb.daily-cutoff',
+        'period_start' => $day->toDateString(),
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => $next->copy()->setTime(0, 6),
+        'finished_at' => $next->copy()->setTime(0, 8),
+    ]);
+
+    $exitCode = Artisan::call('gsb:daily-cutoff', ['--date' => $day->toDateString()]);
+
+    $run = EngineRun::where('engine_key', 'gsb.daily-cutoff')->latest('id')->first();
+
+    // Non-zero all the same: the caller asked for work that did not happen.
+    expect($exitCode)->toBe(1)
+        ->and($run->period_start->toDateString())->toBe($day->toDateString())
+        ->and($run->status)->toBe(EngineRun::STATUS_SKIPPED)
+        ->and($run->error)->toContain('only while it is the newest one')
+        ->and(app(EngineStatusService::class)->completedCutoffDatesBetween($day, $day))
+        ->toBe([$day->toDateString()]);
 });

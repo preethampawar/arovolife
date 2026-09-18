@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -115,6 +117,12 @@ beforeEach(function (): void {
     disableTestForeignKeys();
     activateCompensationFeatures();
     stubCreditingEngines();
+    // A distributor from before August, so every one of the month's 31 days is
+    // owed a cut-off. Days on which the platform had nobody are not owed one
+    // ({@see MonthCutoffCoverage}), and without this the coverage check would
+    // wave the month through on a database with no distributors in it — which
+    // is exactly what the refusal tests below are here to catch.
+    Distributor::factory()->create(['effective_date' => '2026-07-15']);
     seedWholeMonthOfCutoffs(Carbon::parse('2026-08-01'));
 });
 
@@ -409,4 +417,96 @@ it('asks for no cut-offs at all while GSB is off', function (): void {
     EngineRun::where('engine_key', 'gsb.daily-cutoff')->delete();
 
     expect(Artisan::call('compensation:monthly-close', ['--month' => '2026-08']))->toBe(0);
+});
+
+it('closes a launch month although the platform began part-way through it', function (): void {
+    // T5. A day with no distributor has nobody to hold BV, no group to match
+    // and no carry-forward to advance — it is provably vacuous. Demanding one
+    // is what would leave a launch month unclosable for ever, and from the 8th
+    // of the next month the monthly run failing on a month that can never be
+    // completed.
+    Distributor::query()->update(['effective_date' => '2026-08-20']);
+    EngineRun::where('engine_key', 'gsb.daily-cutoff')
+        ->whereDate('period_start', '<', '2026-08-20')
+        ->delete();
+
+    expect(Artisan::call('compensation:monthly-close', ['--month' => '2026-08']))->toBe(0);
+    expect(StubEngineCommand::$calls)->toHaveCount(7);
+});
+
+it('still refuses a month missing days on which distributors existed', function (): void {
+    // T6. D2 is not a general relaxation: a day on which distributors existed
+    // and bought nothing is still a day the engines owe a cut-off for, and a
+    // run of such days is also exactly what a broken order feed looks like.
+    Distributor::query()->update(['effective_date' => '2026-08-05']);
+    EngineRun::where('engine_key', 'gsb.daily-cutoff')
+        ->whereDate('period_start', '<', '2026-08-20')
+        ->delete();
+
+    expect(Artisan::call('compensation:monthly-close', ['--month' => '2026-08']))->toBe(Command::FAILURE);
+    expect(StubEngineCommand::$calls)->toBe([]);
+
+    // 5–19 August missing out of the 27 days the month owed.
+    expect(AuditLog::where('action', 'compensation.monthly_close.aborted')->sole()->details['reason'])
+        ->toContain('15 of the 27 days in August 2026')
+        ->toContain('Days before 05 Aug 2026 are not owed one');
+});
+
+it('refuses a frozen month even with --force, recording the run as skipped', function (): void {
+    // Once finance has approved the month's payout batch, money has left on
+    // these figures. Re-crediting the month would write a credit nothing will
+    // ever sweep. `--force` is for an operator who accepts a partial month;
+    // there is no operator who can accept paying one twice.
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_MONTHLY,
+        'batch_date' => '2026-09-01',
+        'earnings_through' => '2026-08-31',
+        'status' => PayoutBatch::STATUS_APPROVED,
+        'approved_at' => Carbon::parse('2026-09-08 11:30:00'),
+        'processed_at' => Carbon::parse('2026-09-08 04:05:00'),
+    ]);
+
+    $exitCode = Artisan::call('compensation:monthly-close', ['--month' => '2026-08', '--force' => true]);
+
+    expect($exitCode)->toBe(Command::FAILURE);
+    expect(StubEngineCommand::$calls)->toBe([]);
+
+    // A refusal is a decision, not a breakage.
+    $run = EngineRun::where('engine_key', 'compensation.monthly-close')->sole();
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->error)->toContain("payout batch #{$batch->id} is approved");
+
+    // A8: audited like every other refusal — the run log is not the durable
+    // record of a month that was declined.
+    $audit = AuditLog::where('action', 'compensation.monthly_close.aborted')->sole();
+    expect($audit->details['stage'])->toBe('frozen');
+    expect($audit->details['month'])->toBe('2026-08');
+    expect($audit->details['reason'])->toContain('August 2026 is frozen');
+});
+
+it('refuses a month whose batch is built and awaiting approval, even with --force', function (): void {
+    // A10. Not frozen — finance has decided nothing and the batch can still be
+    // rebuilt — but the sweep is over, so a credit written now would never be
+    // picked up and finance would approve a batch that no longer matches the
+    // ledger.
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_MONTHLY,
+        'batch_date' => '2026-09-01',
+        'earnings_through' => '2026-08-31',
+        'status' => PayoutBatch::STATUS_PENDING,
+        'processed_at' => Carbon::parse('2026-09-08 04:05:00'),
+    ]);
+
+    $exitCode = Artisan::call('compensation:monthly-close', ['--month' => '2026-08', '--force' => true]);
+
+    expect($exitCode)->toBe(Command::FAILURE);
+    expect(StubEngineCommand::$calls)->toBe([]);
+
+    $run = EngineRun::where('engine_key', 'compensation.monthly-close')->sole();
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->error)->toContain("payout batch #{$batch->id} was built on 08 Sep 2026 04:05 and awaits approval");
+
+    $audit = AuditLog::where('action', 'compensation.monthly_close.aborted')->sole();
+    expect($audit->details['stage'])->toBe('frozen');
+    expect($audit->details['reason'])->toContain('compensation:rebuild-payout --month=2026-08');
 });

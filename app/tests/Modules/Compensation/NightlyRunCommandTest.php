@@ -440,8 +440,8 @@ it('records a night the scheduler skipped, and reports it in the health digest',
     Carbon::setTestNow('2026-09-16 00:05:00');
     seedMonthlyBatch('2026-09-01');
 
-    NightlyRunAlert::skippedNight(Carbon::parse('2026-09-16'), 'still running');
-    NightlyRunAlert::skippedNight(Carbon::parse('2026-09-16'), 'still running');
+    NightlyRunAlert::skippedNight(Carbon::parse('2026-09-16'), 'still running', EngineStatusService::CHAIN_KEY);
+    NightlyRunAlert::skippedNight(Carbon::parse('2026-09-16'), 'still running', EngineStatusService::CHAIN_KEY);
 
     expect(AuditLog::where('action', NightlyRunAlert::ACTION_SKIPPED_NIGHT)->count())->toBe(1);
 
@@ -472,6 +472,19 @@ it('records a gap it will not heal, because nothing else can see one', function 
     // — the alert says so rather than inventing one.
     expect($alert->details['last_proven_cutoff'])->toBeNull();
     expect(app(EngineHealthService::class)->report(Carbon::now())->chainAlerts)->toHaveCount(1);
+});
+
+it('writes one deferred-close alert per night, not one per month', function (): void {
+    // A9. The health digest reads a seven-day window: a month deferred once, on
+    // the 1st, would be out of the digest by the 9th while nobody had yet been
+    // credited for it.
+    $month = Carbon::parse('2026-09-01');
+
+    NightlyRunAlert::monthCloseDeferred(Carbon::parse('2026-10-01'), $month, 3, 'coverage', 'three days missing');
+    NightlyRunAlert::monthCloseDeferred(Carbon::parse('2026-10-01'), $month, 3, 'coverage', 'three days missing');
+    NightlyRunAlert::monthCloseDeferred(Carbon::parse('2026-10-02'), $month, 3, 'coverage', 'three days missing');
+
+    expect(AuditLog::where('action', NightlyRunAlert::ACTION_MONTH_DEFERRED)->count())->toBe(2);
 });
 
 it('records the month it would not close', function (): void {

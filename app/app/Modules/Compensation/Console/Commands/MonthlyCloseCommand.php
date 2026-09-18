@@ -8,6 +8,8 @@ use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Compensation\Support\FrozenPayoutGuard;
+use App\Modules\Compensation\Support\MonthCutoffCoverage;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
 use App\Modules\Compensation\Support\ResolvesMonthOption;
 use App\Modules\Compensation\Support\WorkerFreshness;
@@ -104,6 +106,17 @@ final class MonthlyCloseCommand extends Command
         'offers.monthly',
     ];
 
+    /**
+     * Abort stages that are a DECISION rather than a breakage — recorded
+     * `skipped`, so neither the Engine Runs page nor the health digest reports
+     * them for thirty days as an engine somebody should re-run. Every other
+     * stage is an engine key, and an engine that exited non-zero really did
+     * fail.
+     *
+     * @var list<string>
+     */
+    private const DECIDED_STAGES = ['preflight', 'frozen'];
+
     public function __construct(private readonly EngineStatusService $status)
     {
         parent::__construct();
@@ -118,6 +131,23 @@ final class MonthlyCloseCommand extends Command
         }
 
         $this->info("Monthly close — {$month->format('F Y')}");
+
+        // Before the preflight, and NOT overridable by --force: once finance
+        // has approved the month's payout batch, money has left on these
+        // figures. Re-crediting the month would write a credit nothing will
+        // ever sweep and a statement that no longer reconciles with what the
+        // distributor was paid. `--force` is for an operator who accepts a
+        // partial month; there is no operator who can accept paying one twice.
+        //
+        // creditingRefusal(), not refusal(): a batch that has been built and is
+        // waiting for finance is not frozen — it can still be rebuilt — but
+        // nothing may be credited into its month either, because the sweep is
+        // over and the credit would never be picked up (A10).
+        $frozen = FrozenPayoutGuard::creditingRefusal($month);
+
+        if ($frozen !== null) {
+            return $this->abort($month, 'frozen', $frozen);
+        }
 
         $refusal = $this->preflight($month);
 
@@ -216,7 +246,11 @@ final class MonthlyCloseCommand extends Command
      * 3. The month's cut-offs, all of them. Every monthly engine reads the
      *    month's cut-off results and then FREEZES what it computed, so a month
      *    closed three days short is a month permanently priced short — a re-run
-     *    reuses the frozen pool rather than repairing it.
+     *    reuses the frozen pool rather than repairing it. "All of them" means
+     *    every day the month OWED one ({@see MonthCutoffCoverage}): days before
+     *    the platform had a single distributor have nobody to match and nothing
+     *    to carry forward, and demanding them is what would make a launch month
+     *    impossible to close for ever.
      *
      * Checks 2 and 3 used to be a single ten-minute POLL: as a separate process
      * fired on a clock offset, this close had no way to observe that the
@@ -253,24 +287,9 @@ final class MonthlyCloseCommand extends Command
             );
         }
 
-        $lastDay = $month->copy()->endOfMonth()->startOfDay();
-        $covered = $this->status->completedCutoffDatesBetween($month->copy()->startOfMonth(), $lastDay);
-        $missing = $lastDay->day - count(array_unique($covered));
+        $coverage = MonthCutoffCoverage::for($month, $this->status);
 
-        if ($missing > 0) {
-            return sprintf(
-                '%d of the %d days in %s have no completed cut-off. Every monthly engine prices the month from '
-                ."those results and freezes what it computes, so closing now would price %s short for good.\n"
-                .'Run php artisan gsb:daily-cutoff --date=<day> for each missing day — the Engine Runs page lists '
-                .'them — and then run this close again.',
-                $missing,
-                $lastDay->day,
-                $month->format('F Y'),
-                $month->format('F Y'),
-            );
-        }
-
-        return null;
+        return $coverage->isWhole() ? null : $coverage->refusal();
     }
 
     /**
@@ -286,11 +305,13 @@ final class MonthlyCloseCommand extends Command
         // to credit money from a process that may be running pre-deploy code.
         // Recorded as failed it reads on the Engine Runs page and in the health
         // digest as a broken engine to re-run, when what is owed is a worker
-        // restart. A step that actually broke stays a failure — with its
+        // restart. A frozen — or built-and-awaiting-approval — month is the
+        // same kind of answer, and a stronger one: nothing about it can be
+        // re-run at all. A step that actually broke stays a failure, with its
         // message.
         $context = app(EngineRunContext::class);
 
-        if ($stage === 'preflight') {
+        if (in_array($stage, self::DECIDED_STAGES, true)) {
             $context->noteSkipped($reason);
         } else {
             $context->noteFailed($reason);

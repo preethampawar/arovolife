@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Listeners;
 
+use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Support\NightlyRunAlert;
 use Illuminate\Console\Events\ScheduledTaskFinished;
 use Illuminate\Support\Carbon;
@@ -36,6 +37,7 @@ final class RecordSkippedNightlyRun
             Carbon::now(),
             'The previous nightly chain was still running at 00:05, so tonight\'s was skipped by withoutOverlapping(). '
             .'The next chain to start backfills the days this one would have cut off.',
+            EngineStatusService::CHAIN_KEY,
         );
     }
 }

@@ -328,6 +328,31 @@ it('replays a window and leaves the clock on real time', function (): void {
     expect(Carbon::hasTestNow())->toBeFalse();
 });
 
+it('replays from the platform\'s first day when a distributor pre-dates the first sale', function (): void {
+    // A3. A full recompute truncates `engine_runs` and rebuilds it from what it
+    // fires, and a month is later judged on the days it owed from the first
+    // DISTRIBUTOR, not from the first sale. Starting at the sale would leave
+    // the days before it with no cut-off proof, and a month containing that gap
+    // could never be closed again. One anchor, or the two questions disagree.
+    $dist = Distributor::factory()->create(['effective_date' => '2026-06-05']);
+    recomputeSeedPaidOrder($dist->id, '2026-06-08 10:00:00', 100_000);
+
+    $report = recomputeAsAt('2026-06-10 09:00:00');
+
+    expect($report->from->toDateString())->toBe('2026-06-05');
+});
+
+it('replays from the first sale when no distributor pre-dates it', function (): void {
+    // The mirror: the anchor is the EARLIER of the two, so a platform whose
+    // first sale comes first still starts on the sale, exactly as before.
+    $dist = Distributor::factory()->create(['effective_date' => '2026-06-20']);
+    recomputeSeedPaidOrder($dist->id, '2026-06-08 10:00:00', 100_000);
+
+    $report = recomputeAsAt('2026-06-10 09:00:00');
+
+    expect($report->from->toDateString())->toBe('2026-06-08');
+});
+
 it('leaves notifications on the real channel manager after a replay', function (): void {
     // Regression: the runner muted notifications with `Notification::fake()`
     // and switched the mailer to `array`, but restored neither. In a request

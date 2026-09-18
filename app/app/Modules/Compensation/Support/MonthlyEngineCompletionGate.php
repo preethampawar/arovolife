@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Support;
 
+use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use Illuminate\Support\Carbon;
 use Laravel\Pennant\Feature;
 use Throwable;
@@ -43,6 +45,10 @@ use Throwable;
  *   • The close itself FAILED with no later success — it can abort before step
  *     1 and leave every engine carrying an older succeeded run, so a month
  *     whose crediting never ran would otherwise read as ready to pay.
+ *
+ * And one outcome that is not about the engines at all:
+ *   • NO PRODUCT SALES in the month — nothing could have been credited, so no
+ *     engine's absence can be stranding a credit. It does NOT block.
  */
 final class MonthlyEngineCompletionGate
 {
@@ -84,6 +90,19 @@ final class MonthlyEngineCompletionGate
     public static function blockingFailure(Carbon $month): ?array
     {
         $monthStart = $month->copy()->startOfMonth();
+
+        // A month in which nothing was sold owes no crediting, so there is
+        // nothing for this gate to protect. Hard rule 2 makes that exact: no
+        // credit may exist without a product sale, so a month with no BV can
+        // hold no commission, and no engine's absence can be stranding one.
+        //
+        // This is the platform's pre-trading months. Without it the monthly run
+        // asks for a payout for such a month every night from the 8th, is
+        // refused every night, and no operator action can ever clear it.
+        if (self::owedNoCrediting($monthStart)) {
+            return null;
+        }
+
         $monthClosedAt = $monthStart->copy()->addMonthNoOverflow();
         $runs = self::runsForMonth($monthStart);
 
@@ -297,6 +316,39 @@ final class MonthlyEngineCompletionGate
             'reason' => $reason,
             'message' => self::refusalMessage($monthStart, $definition->key, $detail),
         ];
+    }
+
+    /**
+     * Could this month have produced a commission at all?
+     *
+     * The product-sale question, not the "are there credits" question: a month
+     * in which every engine crashed also has no credits, and that month must
+     * still be refused. Sales are the cause; credits are an effect shared by
+     * both cases.
+     *
+     * Public because the monthly run asks it directly too — it bounds the
+     * lookback branch of the payout phase, which must not manufacture a batch
+     * for a month the platform never traded in.
+     */
+    public static function owedNoCrediting(Carbon $month): bool
+    {
+        $monthStart = $month->copy()->startOfMonth();
+
+        $hasSales = BvLedgerEntry::query()
+            ->dateRange($monthStart, $monthStart->copy()->endOfMonth()->endOfDay())
+            ->exists();
+
+        if ($hasSales) {
+            return false;
+        }
+
+        // Belt. A credit stamped to a month with no sales should be impossible
+        // (hard rule 2, CommissionHasProductSaleTest). If one exists anyway,
+        // something upstream is wrong and this is precisely the month the gate
+        // must keep guarding.
+        return ! WalletLedgerEntry::query()
+            ->whereDate('bonus_month', $monthStart->toDateString())
+            ->exists();
     }
 
     private static function featureFlagIsOff(EngineDefinition $definition): bool

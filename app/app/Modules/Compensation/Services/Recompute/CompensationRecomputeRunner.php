@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services\Recompute;
 
 use App\Modules\Compensation\Services\DTOs\RecomputeReport;
+use App\Modules\Compensation\Support\PlatformStart;
 use App\Modules\Compliance\Models\AuditLog;
 use Closure;
 use Illuminate\Database\DatabaseManager;
@@ -208,9 +209,19 @@ final class CompensationRecomputeRunner
     }
 
     /**
-     * The first day to replay: the caller's date, or the first BV / first paid
-     * order (whichever is earlier, since propagation keys on paid_at while the
-     * pools key on effective_at).
+     * The first day to replay: the caller's date, or the earliest of the
+     * platform's first day, the first BV and the first paid order (BV and
+     * orders both, since propagation keys on paid_at while the pools key on
+     * effective_at).
+     *
+     * {@see PlatformStart} is in that list because a full recompute truncates
+     * `engine_runs` and then rebuilds it from what it replays, and the days a
+     * month is later judged on — "was every owed day cut off?" — are counted
+     * from the platform's first distributor, not from its first sale. A replay
+     * that started at the first sale would leave every day between the first
+     * distributor and it with no cut-off proof, and a month containing that
+     * gap can never be closed again. One anchor for both questions, or the two
+     * disagree.
      *
      * There is no `to`: where a replay stops is a {@see RecomputeHorizon}, and
      * the horizon is an INSTANT rather than a date because the engines that
@@ -226,11 +237,12 @@ final class CompensationRecomputeRunner
 
         $firstBv = $this->db->table('bv_ledger_entries')->min('effective_at');
         $firstOrder = $this->db->table('orders')->where('status', 'paid')->min('paid_at');
+        $firstDistributor = PlatformStart::firstDay()?->toDateString();
 
-        $candidates = array_filter([$firstBv, $firstOrder]);
+        $candidates = array_filter([$firstBv, $firstOrder, $firstDistributor]);
 
         if ($candidates === []) {
-            $warnings[] = 'No BV and no paid orders — there is nothing to replay.';
+            $warnings[] = 'No distributor, no BV and no paid orders — there is nothing to replay.';
 
             return Carbon::today();
         }

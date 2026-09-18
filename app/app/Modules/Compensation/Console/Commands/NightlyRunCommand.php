@@ -437,7 +437,15 @@ final class NightlyRunCommand extends Command
         if (! $this->status->payoutBatchExists(PayoutBatch::TYPE_MONTHLY, $lastBatchMonth)) {
             $olderCrediting = $lastBatchMonth->copy()->subMonthNoOverflow();
 
-            if (MonthlyEngineCompletionGate::blockingFailure($olderCrediting) === null) {
+            // D1b: the lookback catches a batch UP, it never invents one. The
+            // gate now waves through a month with no product sales (nothing
+            // could have been credited, hard rule 2) — so without this bound a
+            // platform that opened in October would build an empty
+            // September-dated batch for an August the company did not exist in,
+            // in front of finance. The main branch below is a payment that is
+            // due and is deliberately not bounded.
+            if (! MonthlyEngineCompletionGate::owedNoCrediting($olderCrediting)
+                && MonthlyEngineCompletionGate::blockingFailure($olderCrediting) === null) {
                 $this->warn(sprintf(
                     "The %s payout batch was never built. Building it tonight rather than leaving %s's credits to "
                     .'next month.',
@@ -615,7 +623,7 @@ final class NightlyRunCommand extends Command
 
         $this->warn($reason);
 
-        NightlyRunAlert::monthCloseDeferred($night, $monthStart, $missing, $reason);
+        NightlyRunAlert::monthCloseDeferred($night, $monthStart, $missing, 'coverage', $reason);
 
         return false;
     }
