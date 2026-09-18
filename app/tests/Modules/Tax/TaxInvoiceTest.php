@@ -46,7 +46,7 @@ function taxSetGstin(string $gstin = '36AABCA1234F1Z5'): void
  * An order with GST-inclusive line prices, built the way CheckoutService does:
  * the tax is extracted out of the gross, never added to it.
  */
-function taxOrder(int $grossPaise, string $shipState = 'TG', int $discountPaise = 0, int $redeemPaise = 0, ?string $buyerGstin = null): Order
+function taxOrder(int $grossPaise, string $shipState = 'Telangana', int $discountPaise = 0, int $redeemPaise = 0, ?string $buyerGstin = null): Order
 {
     static $sequence = 0;
     $sequence++;
@@ -151,8 +151,8 @@ it('TAX-005: an intra-state supply splits CGST and SGST; inter-state is IGST', f
     taxSetGstin();
 
     // Supplier is in Telangana.
-    $intra = taxGenerate(taxOrder(10_00_000, 'TG'));
-    $inter = taxGenerate(taxOrder(10_00_000, 'KA'));
+    $intra = taxGenerate(taxOrder(10_00_000, 'Telangana'));
+    $inter = taxGenerate(taxOrder(10_00_000, 'Karnataka'));
 
     expect($intra->igst_paise)->toBe(0)
         ->and($intra->cgst_paise + $intra->sgst_paise)->toBe(1_52_542)
@@ -246,4 +246,46 @@ it('TAX-010: the invoice, the order and the shipment journal all carry the same 
 
     expect($invoiceTax)->toBe((int) $order->gst_paise)
         ->and($posted)->toBe((int) $order->gst_paise);
+});
+
+it('TAX-010: the seller state code and the order state name are the same state', function () {
+    taxSetGstin();
+
+    // `tax.seller_state` persists 'TG' (the setting caps at two characters);
+    // checkout persists 'Telangana'. Compared raw they are never equal, so
+    // every supply the company made from its own state was billed IGST and
+    // remitted to the wrong head. Both sides normalise before the comparison.
+    $invoice = taxGenerate(taxOrder(10_00_000, 'Telangana'));
+
+    expect($invoice->igst_paise)->toBe(0)
+        ->and($invoice->cgst_paise + $invoice->sgst_paise)->toBe(1_52_542)
+        ->and($invoice->seller_state)->toBe('Telangana')
+        ->and($invoice->place_of_supply)->toBe('Telangana');
+});
+
+it('TAX-011: an unrecognised place of supply is billed IGST, never matched', function () {
+    taxSetGstin();
+
+    // Normalising introduces a null, and null === null would read as a match
+    // and make an unknown supply intra-state. It must fall to IGST instead.
+    $invoice = taxGenerate(taxOrder(10_00_000, 'Atlantis'));
+
+    expect($invoice->cgst_paise)->toBe(0)
+        ->and($invoice->sgst_paise)->toBe(0)
+        ->and($invoice->igst_paise)->toBe(1_52_542)
+        ->and($invoice->place_of_supply)->toBe('ATLANTIS');
+});
+
+it('TAX-012: an absent place of supply falls back to the seller state, a blank one is not printed', function () {
+    taxSetGstin();
+
+    // Absent and unrecognised are different answers. No place of supply at all
+    // is the seller's own state — an intra-state supply. The `??` this replaced
+    // only caught null, so an empty string reached the invoice and printed a
+    // blank Rule 46(n) field.
+    $invoice = taxGenerate(taxOrder(10_00_000, ''));
+
+    expect($invoice->place_of_supply)->toBe('Telangana')
+        ->and($invoice->igst_paise)->toBe(0)
+        ->and($invoice->cgst_paise + $invoice->sgst_paise)->toBe(1_52_542);
 });

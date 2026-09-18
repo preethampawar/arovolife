@@ -172,7 +172,11 @@ it('never writes the centre address into the buyer\'s address book', function ()
 
 it('charges IGST on an inter-state collection, not CGST and SGST', function () {
     // Seller in Telangana; the buyer collects from a centre in Andhra Pradesh.
-    feeSetting('tax.seller_state', 'TELANGANA');
+    // The setting holds the two-letter code the admin screen actually writes —
+    // it caps at two characters — while the centre holds a display name. This
+    // used to be configured as 'TELANGANA' here, a value the UI cannot produce,
+    // which is how a comparison that never matched stayed green.
+    feeSetting('tax.seller_state', 'TG');
     $order = placeOrder(sellableVariant(), collectionCentre('ANDHRA PRADESH'));
 
     $invoice = app(InvoiceGenerator::class)->generate($order);
@@ -180,8 +184,8 @@ it('charges IGST on an inter-state collection, not CGST and SGST', function () {
     // With `ship_state` null and no centre lookup, place of supply fell back to
     // the SELLER's state and this invoice came out intra-state — CGST/SGST
     // where IGST is due, frozen at checkout where no later render fixes it.
-    expect($invoice->place_of_supply)->toBe('ANDHRA PRADESH')
-        ->and($invoice->buyer_state)->toBe('ANDHRA PRADESH');
+    expect($invoice->place_of_supply)->toBe('Andhra Pradesh')
+        ->and($invoice->buyer_state)->toBe('Andhra Pradesh');
 
     $lines = DB::table('invoice_lines')->where('invoice_id', $invoice->id)->get();
     expect($lines)->not->toBeEmpty();
@@ -193,12 +197,12 @@ it('charges IGST on an inter-state collection, not CGST and SGST', function () {
 });
 
 it('charges CGST and SGST on an intra-state collection', function () {
-    feeSetting('tax.seller_state', 'TELANGANA');
+    feeSetting('tax.seller_state', 'TG');
     $order = placeOrder(sellableVariant(), collectionCentre('TELANGANA'));
 
     $invoice = app(InvoiceGenerator::class)->generate($order);
 
-    expect($invoice->place_of_supply)->toBe('TELANGANA');
+    expect($invoice->place_of_supply)->toBe('Telangana');
 
     $lines = DB::table('invoice_lines')->where('invoice_id', $invoice->id)->get();
     foreach ($lines as $line) {

@@ -6,6 +6,7 @@ namespace App\Modules\Tax\Services;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
+use App\Modules\Shared\Support\IndianStates;
 use App\Modules\Tax\Models\Invoice;
 use App\Modules\Tax\Models\InvoiceLine;
 use Illuminate\Database\Eloquent\Collection;
@@ -36,8 +37,11 @@ use Illuminate\Support\Facades\DB;
  * apportionment below is what implements the other position if counsel ever
  * settles it that way (R-48 gate (c)).
  *
- * The split itself was already right: CGST + SGST where the place of supply is
- * the supplier's own state, IGST where it is not.
+ * **The head.** CGST + SGST where the place of supply is the supplier's own
+ * state, IGST where it is not — correct in shape, but it compared a two-letter
+ * setting against a display-name column, so 'TG' never equalled 'Telangana' and
+ * every intra-state supply was billed IGST. Both sides now normalise through
+ * `IndianStates::canonical()` before the comparison.
  */
 final class InvoiceGenerator
 {
@@ -77,9 +81,37 @@ final class InvoiceGenerator
             return $existing;
         }
 
-        $sellerState = $this->settings->sellerState();
-        $placeOfSupply = strtoupper($this->placeOfSupplyState($order) ?? $sellerState);
-        $isIntraState = $placeOfSupply === $sellerState;
+        // The two sides of this comparison are written in different alphabets.
+        // `tax.seller_state` is a two-letter code by design (the setting caps
+        // at 2 characters), while checkout persists `orders.ship_state` as the
+        // display name and a centre stores the same. Comparing them raw made
+        // 'TELANGANA' !== 'TG' and answered "inter-state" for every supply the
+        // company makes from its own state — IGST charged and remitted to the
+        // Centre where CGST+SGST was due, on an invoice no later render can
+        // correct. Normalise both to the canonical name before deciding.
+        //
+        // Absent and unrecognised are different answers and must stay that way.
+        // No place of supply at all falls back to the seller's own state, as it
+        // always has. A state that is present but unreadable must NOT: pointing
+        // it at the seller would call an unknown supply intra-state, which is
+        // the failure this whole comparison exists to prevent. It resolves to
+        // null and bills IGST, so null === null can never read as a match.
+        $rawSellerState = $this->settings->sellerState();
+        $rawPlaceOfSupply = $this->placeOfSupplyState($order);
+        $hasPlaceOfSupply = trim((string) $rawPlaceOfSupply) !== '';
+
+        $sellerCanonical = IndianStates::canonical($rawSellerState);
+        $placeCanonical = $hasPlaceOfSupply
+            ? IndianStates::canonical($rawPlaceOfSupply)
+            : $sellerCanonical;
+
+        $isIntraState = $sellerCanonical !== null && $sellerCanonical === $placeCanonical;
+
+        // An unrecognised state still has to print something, and the raw value
+        // is more use to whoever has to fix it than a blank.
+        $sellerState = $sellerCanonical ?? strtoupper($rawSellerState);
+        $placeOfSupply = $placeCanonical
+            ?? ($hasPlaceOfSupply ? strtoupper((string) $rawPlaceOfSupply) : $sellerState);
 
         // Everything that reduced what the buyer actually paid for goods: a
         // coupon and any redeemed points.
