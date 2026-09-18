@@ -479,6 +479,10 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
 
         Route::get('/grns', [AdminPurchaseInvoiceController::class, 'index'])->name('grns.index');
         Route::get('/grns/create', [AdminPurchaseInvoiceController::class, 'create'])->name('grns.create');
+        // Outstanding lines for the create form's purchase-order picker. Must
+        // stay above `/grns/{purchaseInvoice}` so the literal segment wins.
+        Route::get('/grns/po-lines/{purchaseOrder}', [AdminPurchaseInvoiceController::class, 'purchaseOrderLines'])
+            ->name('grns.po-lines');
         Route::post('/grns', [AdminPurchaseInvoiceController::class, 'store'])->name('grns.store');
         Route::get('/grns/{purchaseInvoice}', [AdminPurchaseInvoiceController::class, 'show'])->name('grns.show');
         Route::get('/grns/{purchaseInvoice}/edit', [AdminPurchaseInvoiceController::class, 'edit'])->name('grns.edit');

@@ -15,9 +15,11 @@ use App\Modules\Inventory\Services\PurchaseInvoiceService;
 use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use RuntimeException;
 
@@ -52,16 +54,7 @@ final class AdminPurchaseInvoiceController extends Controller
             ? PurchaseOrder::with('items.variant.product')->where('id', $request->integer('purchase_order_id'))->first()
             : null;
 
-        $items = $fromPo?->items->map(fn ($item) => [
-            'product_variant_id' => $item->product_variant_id,
-            'variant_label' => $item->variant->variant_sku.' — '.$item->variant->product->name,
-            'batch_no' => '',
-            'mfg_date' => null,
-            'expiry_date' => null,
-            'qty' => $item->outstandingQty(),
-            'unit_cost' => number_format($item->unit_cost_paise / 100, 2, '.', ''),
-            'gst_rate' => number_format($item->variant->gst_rate_bp / 100, 2, '.', ''),
-        ])->filter(fn (array $line): bool => $line['qty'] > 0)->values() ?? collect();
+        $items = $fromPo !== null ? $this->linesFromPurchaseOrder($fromPo) : collect();
 
         return view('admin.inventory.grns.form', [
             'invoice' => new PurchaseInvoice([
@@ -171,6 +164,87 @@ final class AdminPurchaseInvoiceController extends Controller
         }
 
         return redirect()->route('admin.inventory.grns.show', $purchaseInvoice)->with('status', "GRN {$purchaseInvoice->grn_no} cancelled.");
+    }
+
+    /**
+     * The receipt lines a purchase order still has outstanding.
+     *
+     * Only what is still owed: `outstandingQty()` is ordered minus already
+     * received, so a partially-received order pre-fills the remainder rather
+     * than the original order quantity, and a line already received in full
+     * drops out instead of arriving as a zero the receiver has to delete.
+     *
+     * Batch and dates are deliberately blank — they are properties of the
+     * physical consignment that turned up, and no purchase order can know them.
+     *
+     * `mfg_date` and `expiry_date` are typed `null`, not `?string`: this method
+     * never produces one, because only the consignment that physically arrives
+     * carries those dates.
+     *
+     * @return Collection<int, array{product_variant_id: int, variant_label: string, batch_no: string,
+     *                               mfg_date: null, expiry_date: null, qty: int,
+     *                               unit_cost: string, gst_rate: string}>
+     */
+    private function linesFromPurchaseOrder(PurchaseOrder $purchaseOrder): Collection
+    {
+        // Built as a plain list and wrapped once, rather than map()->filter():
+        // Collection's value template is invariant, so a mapped closure's
+        // literal shape (`batch_no: ''`) is not interchangeable with the
+        // declared one however compatible it looks.
+        $lines = [];
+
+        foreach ($purchaseOrder->items as $item) {
+            $qty = (int) $item->outstandingQty();
+
+            if ($qty <= 0) {
+                continue;
+            }
+
+            $lines[] = [
+                'product_variant_id' => (int) $item->product_variant_id,
+                'variant_label' => (string) $item->variant->variant_sku.' — '.(string) $item->variant->product->name,
+                'batch_no' => '',
+                'mfg_date' => null,
+                'expiry_date' => null,
+                'qty' => $qty,
+                'unit_cost' => number_format($item->unit_cost_paise / 100, 2, '.', ''),
+                'gst_rate' => number_format($item->variant->gst_rate_bp / 100, 2, '.', ''),
+            ];
+        }
+
+        return collect($lines);
+    }
+
+    /**
+     * The outstanding lines of a purchase order, for the create form.
+     *
+     * Choosing a purchase order on the form fetches this and fills the line
+     * table in, which previously only happened when the page was *opened* with
+     * a `purchase_order_id` in the query string — so a receiver who picked the
+     * order from the dropdown, the obvious way to do it, got an empty table and
+     * retyped every line by hand.
+     *
+     * Same source as {@see create()}, deliberately: two code paths building
+     * "what is still owed on this order" is how the dropdown and the deep link
+     * would eventually come to disagree.
+     *
+     * Restricted to the statuses the dropdown itself offers — a draft order has
+     * not been placed and a cancelled one is not coming.
+     */
+    public function purchaseOrderLines(PurchaseOrder $purchaseOrder): JsonResponse
+    {
+        abort_unless(
+            in_array($purchaseOrder->status, [PurchaseOrder::STATUS_SENT, PurchaseOrder::STATUS_PARTIALLY_RECEIVED], true),
+            404,
+        );
+
+        $purchaseOrder->load('items.variant.product');
+
+        return response()->json([
+            'supplier_id' => $purchaseOrder->supplier_id,
+            'warehouse_code' => $purchaseOrder->warehouse_code,
+            'lines' => $this->linesFromPurchaseOrder($purchaseOrder),
+        ]);
     }
 
     /** @return array<string, mixed> */

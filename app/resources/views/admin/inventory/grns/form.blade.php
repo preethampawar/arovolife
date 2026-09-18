@@ -38,6 +38,9 @@
                         <option value="{{ $po->id }}" @selected((int) old('purchase_order_id', $invoice->purchase_order_id) === $po->id)>{{ $po->po_no }}</option>
                     @endforeach
                 </select>
+                <span id="grnPoError" hidden class="mt-1 block text-xs text-red-600">
+                    Could not load that order's lines. Leave the lines below as they are and try again, or enter them by hand.
+                </span>
             </label>
             <label class="block">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">Receiving warehouse <x-help-tip text="Where this stock physically arrives." /></span>
@@ -75,7 +78,11 @@
                 Leave them at zero if the supplier price is already delivered-to-door.
             </p>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {{-- items-end so the inputs sit on one line whatever the labels do:
+             "Loading / handling (₹)" plus its help tip wraps to two lines at
+             this column width, which pushed its input a row below its
+             neighbours. --}}
+        <div class="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-5">
             @foreach ([
                 'freight' => ['Freight', $invoice->freight_paise, 'Transport from the supplier to your warehouse.'],
                 'insurance' => ['Insurance', $invoice->insurance_paise, 'Transit insurance on this consignment.'],
@@ -106,13 +113,17 @@
         <table class="w-full text-sm min-w-[900px]" id="grnLinesTable">
             <thead class="text-gray-600 text-left">
                 <tr>
-                    <th class="py-2 pr-2 font-semibold">Product</th>
+                    {{-- Widest column by content (SKU — product name) and the only
+                         one with no fixed width, so without a floor it was the one
+                         the table squeezed: the select collapsed until its
+                         placeholder read "Cho…". --}}
+                    <th class="py-2 pr-2 font-semibold min-w-[220px]">Product</th>
                     <th class="py-2 pr-2 font-semibold w-32">Batch no.</th>
                     <th class="py-2 pr-2 font-semibold w-36">Mfg date</th>
                     <th class="py-2 pr-2 font-semibold w-36">Expiry date</th>
                     <th class="py-2 pr-2 font-semibold w-24">Qty</th>
                     <th class="py-2 pr-2 font-semibold w-32">Unit cost (₹)</th>
-                    <th class="py-2 pr-2 font-semibold w-24">GST %</th>
+                    <th class="py-2 pr-2 font-semibold w-28">GST %</th>
                     <th class="py-2 pr-2 font-semibold w-32 text-right">Line total</th>
                     <th class="py-2 w-10"></th>
                 </tr>
@@ -140,10 +151,10 @@
             </tfoot>
         </table>
         <button type="button" id="grnAddLine" class="text-sm text-brand-700 hover:text-brand-800 font-medium">{{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Add line</button>
-    </div>
+    </x-ui.card>
 
-    </x-ui.card> class="flex items-center gap-3">
-        <x-ui.button >
+    <div class="flex items-center gap-3">
+        <x-ui.button type="submit">
             {{ $isEdit ? 'Save changes' : 'Save as draft' }}
         </x-ui.button>
         <a href="{{ $isEdit ? route('admin.inventory.grns.show', $invoice) : route('admin.inventory.grns.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
@@ -165,7 +176,7 @@
         <td class="py-2 pr-2"><input type="date" name="lines[__INDEX__][expiry_date]" class="grn-field w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></td>
         <td class="py-2 pr-2"><input type="number" min="1" step="1" name="lines[__INDEX__][qty]" class="grn-qty w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" required></td>
         <td class="py-2 pr-2"><input type="number" min="0" step="0.01" name="lines[__INDEX__][unit_cost]" class="grn-cost w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" required></td>
-        <td class="py-2 pr-2"><input type="number" min="0" max="100" step="0.01" name="lines[__INDEX__][gst_rate]" class="grn-gst w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" required></td>
+        <td class="py-2 pr-2"><input type="number" min="0" max="100" step="0.01" name="lines[__INDEX__][gst_rate]" class="grn-gst w-full rounded-lg border border-gray-300 px-2 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" required></td>
         <td class="py-2 pr-2 text-right font-mono grn-line-total">₹0.00</td>
         <td class="py-2 text-right"><button type="button" class="grn-remove-line text-red-600 hover:text-red-700 text-xs font-medium">Remove</button></td>
     </tr>
@@ -237,9 +248,68 @@
     document.getElementById('grnAddLine').addEventListener('click', function () { addLine(null); });
 
     if (existingLines.length > 0) {
-        existingLines.forEach(addLine);
+        existingLines.forEach(function (line) { addLine(line); });
     } else {
         addLine(null);
+    }
+
+    // Choosing a purchase order fills the table with what that order still has
+    // outstanding. This used to happen only when the page was OPENED with a
+    // ?purchase_order_id in the query string — reachable from the purchase
+    // order screen, but not from the dropdown on this form, so picking the
+    // order the obvious way left the receiver retyping every line by hand.
+    //
+    // The lines come from the server rather than being computed here: what is
+    // still owed on an order is ordered-minus-received, and duplicating that
+    // arithmetic in the browser is how the two would drift apart.
+    const poSelect = document.querySelector('select[name="purchase_order_id"]');
+    const supplierSelect = document.querySelector('select[name="supplier_id"]');
+    const warehouseSelect = document.querySelector('select[name="warehouse_code"]');
+    const poLinesUrl = @json(route('admin.inventory.grns.po-lines', ['purchaseOrder' => '__PO__']));
+
+    if (poSelect) {
+        poSelect.addEventListener('change', function () {
+            if (!poSelect.value) { return; }
+
+            poSelect.disabled = true;
+
+            fetch(poLinesUrl.replace('__PO__', encodeURIComponent(poSelect.value)), {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin',
+            })
+                .then(function (r) {
+                    if (!r.ok) { throw new Error(String(r.status)); }
+                    return r.json();
+                })
+                .then(function (data) {
+                    // The receipt must land against the same supplier and
+                    // warehouse the order was raised for; leaving the old
+                    // values would post stock to the wrong place.
+                    if (supplierSelect && data.supplier_id) { supplierSelect.value = data.supplier_id; }
+                    if (warehouseSelect && data.warehouse_code) { warehouseSelect.value = data.warehouse_code; }
+
+                    body.replaceChildren();
+                    index = 0;
+
+                    if (data.lines.length > 0) {
+                        data.lines.forEach(function (line) { addLine(line); });
+                    } else {
+                        addLine(null);
+                    }
+
+                    recalc();
+                })
+                .catch(function () {
+                    // Leave whatever is on screen alone and say so — silently
+                    // doing nothing reads as "this order has no lines", which
+                    // would get a receipt posted for nothing.
+                    const note = document.getElementById('grnPoError');
+                    if (note) { note.hidden = false; }
+                })
+                .finally(function () {
+                    poSelect.disabled = false;
+                });
+        });
     }
 })();
 </script>
