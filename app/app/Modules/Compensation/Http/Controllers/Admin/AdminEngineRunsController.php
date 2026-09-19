@@ -6,12 +6,18 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Console\Actions\PurchaseDataResetAction;
 use App\Console\Actions\PurchaseResetBlocked;
+use App\Modules\Compensation\Jobs\RebuildPeriodJob;
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\EngineChainResolver;
 use App\Modules\Compensation\Services\EngineStatusService;
+use App\Modules\Compensation\Services\Rebuild\RebuildKind;
+use App\Modules\Compensation\Services\Rebuild\RebuildPlan;
+use App\Modules\Compensation\Services\Rebuild\RebuildPlanner;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeHorizon;
@@ -20,8 +26,10 @@ use App\Modules\Compensation\Services\Recompute\RecomputeState;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
+use App\Modules\Compensation\Support\FrozenPayoutGuard;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
+use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -143,6 +151,9 @@ final class AdminEngineRunsController extends Controller
             // Empty on every healthy night, which is what keeps these banners
             // off a page nobody needs to act on.
             'failedRuns' => $this->failedRunPayloads(),
+            // Null for every role but `developer`. The view gates on
+            // `@developer` as well, so neither gate alone decides.
+            'rebuildPanel' => $this->rebuildPanel($request),
         ]);
     }
 
@@ -204,6 +215,339 @@ final class AdminEngineRunsController extends Controller
         }
 
         return $payloads;
+    }
+
+    /**
+     * The developer's rebuild surface, or null for everybody else.
+     *
+     * Null rather than an empty array: the view's `@developer` block never
+     * renders, so an admin — super staff included, because this is a ROLE and
+     * not a permission the Gate::before bypass can open — receives no markup,
+     * no period lists and no hint that a repair path exists. That is the whole
+     * point of the developer role being stealth (F84).
+     *
+     * The lists are candidates, never permissions: what may actually be rebuilt
+     * is decided by {@see RebuildPlanner::plan()} when the preview is asked for,
+     * and again when the confirm arrives.
+     *
+     * @return array{nights: list<array{value: string, label: string}>, weeklyBatches: list<array{value: string, label: string}>, months: list<array{value: string, label: string}>, monthlyBatches: list<array{value: string, label: string}>, maxNight: string, maxMonth: string, preview: array<string, mixed>|null}|null
+     */
+    private function rebuildPanel(Request $request): ?array
+    {
+        if (! $this->isDeveloper($request)) {
+            return null;
+        }
+
+        $preview = session('rebuild_preview');
+        $today = Carbon::today();
+
+        return [
+            'nights' => $this->recentNights(),
+            'weeklyBatches' => $this->rebuildableBatches(
+                PayoutBatch::TYPE_WEEKLY,
+                $today->copy()->subWeeks(8),
+            ),
+            'months' => $this->recentMonths(),
+            'monthlyBatches' => $this->rebuildableBatches(
+                PayoutBatch::TYPE_MONTHLY,
+                $today->copy()->subMonthsNoOverflow(6),
+            ),
+            'maxNight' => $today->toDateString(),
+            'maxMonth' => $today->copy()->subMonthNoOverflow()->format('Y-m'),
+            'preview' => is_array($preview) ? $preview : null,
+        ];
+    }
+
+    /**
+     * The last seven nights that have anything to rebuild, newest first.
+     *
+     * Both sources are read because either one alone lies: a night whose run
+     * row was never written still left cut-off rows behind, and a night that
+     * failed before its cut-off has a run row and no results. A cut-off dated
+     * day D belongs to night D+1, which is how the nightly run dates itself.
+     *
+     * Only the newest of them can actually be rebuilt (D11) — the list is a
+     * reading aid, and the preview's refusal is what settles it.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private function recentNights(): array
+    {
+        $nights = [];
+
+        // DISTINCT on both: a night has one run row per attempt and a cut-off
+        // has one row per distributor, so seven ROWS could be a single date.
+        foreach (EngineRun::query()
+            ->select('period_start')
+            ->distinct()
+            ->where('engine_key', EngineStatusService::CHAIN_KEY)
+            ->orderByDesc('period_start')
+            ->limit(7)
+            ->get() as $run) {
+            $nights[] = $run->period_start->toDateString();
+        }
+
+        foreach (GsbCutoffResult::query()
+            ->select('cutoff_date')
+            ->distinct()
+            ->orderByDesc('cutoff_date')
+            ->limit(7)
+            ->get() as $result) {
+            $nights[] = $result->cutoff_date->copy()->addDay()->toDateString();
+        }
+
+        // Sorted before it is cut: the two sources interleave, so taking the
+        // first seven of the concatenation would drop nights newer than the
+        // ones the first query happened to return.
+        $nights = array_unique($nights);
+        rsort($nights);
+
+        return array_map(static fn (string $night): array => [
+            'value' => $night,
+            'label' => Carbon::parse($night)->format('D d M Y'),
+        ], array_slice($nights, 0, 7));
+    }
+
+    /**
+     * The payout batches of one type that nobody has signed off yet.
+     *
+     * A frozen batch is left out of the list entirely rather than offered and
+     * refused: finance has approved it, its remedy is a per-line retry on the
+     * Payouts page, and putting it in a rebuild picker invites the wrong
+     * instinct. The planner refuses it too if one is typed in by hand.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private function rebuildableBatches(string $type, Carbon $since): array
+    {
+        $options = [];
+
+        foreach (PayoutBatch::query()
+            ->where('batch_type', $type)
+            ->whereDate('batch_date', '>=', $since->toDateString())
+            ->orderByDesc('batch_date')
+            ->get() as $batch) {
+            if (FrozenPayoutGuard::isFrozen($batch)) {
+                continue;
+            }
+
+            // A monthly batch is dated the month the money MOVES; the rebuild
+            // is asked for in the crediting month it pays, which is the month
+            // before it.
+            $isMonthly = $type === PayoutBatch::TYPE_MONTHLY;
+            $crediting = $batch->batch_date->copy()->subMonthNoOverflow();
+
+            $options[] = [
+                'value' => $isMonthly
+                    ? $crediting->format('Y-m')
+                    : $batch->batch_date->toDateString(),
+                'label' => sprintf(
+                    '#%d — %s · %s · %s distributor(s)',
+                    $batch->id,
+                    $isMonthly
+                        ? $crediting->format('F Y').' (paid '.$batch->batch_date->format('d M Y').')'
+                        : $batch->batch_date->format('D d M Y'),
+                    $batch->status,
+                    IndianNumber::format($batch->distributor_count),
+                ),
+            ];
+        }
+
+        return $options;
+    }
+
+    /**
+     * The three months that have ended, newest first — the only months a
+     * crediting close can be asked for.
+     *
+     * @return list<array{value: string, label: string}>
+     */
+    private function recentMonths(): array
+    {
+        $months = [];
+
+        for ($back = 1; $back <= 3; $back++) {
+            $month = Carbon::today()->startOfMonth()->subMonthsNoOverflow($back);
+
+            $months[] = [
+                'value' => $month->format('Y-m'),
+                'label' => $month->format('F Y'),
+            ];
+        }
+
+        return $months;
+    }
+
+    /**
+     * Step one of the two-step confirm: say what a rebuild would remove, and
+     * why it might not be allowed to, without writing anything.
+     *
+     * A redirect rather than a rendered response so the preview lands on the
+     * page that owns it — the same page carries the failure banners a developer
+     * read to get here, and a separate screen would divorce the two.
+     */
+    public function rebuildPreview(Request $request, RebuildPlanner $planner): RedirectResponse
+    {
+        abort_unless($this->isDeveloper($request), 404);
+
+        $kind = $this->rebuildKindOrFail($request);
+
+        $validated = $request->validate([
+            'period' => ['required', 'string', 'date_format:'.$this->rebuildPeriodFormat($kind)],
+        ]);
+
+        $plan = $this->planRebuild($planner, $kind, (string) $validated['period']);
+
+        return redirect()->route('admin.compensation.engine-runs.index')
+            ->with('rebuild_preview', $plan->toArray());
+    }
+
+    /**
+     * Step two: queue the rebuild the developer previewed, and nothing else.
+     *
+     * The plan is computed AGAIN here rather than trusted from the form, and its
+     * fingerprint compared with the previewed one — a rebuild must act on the
+     * state that was read, not on a form field somebody could edit. Anything
+     * that changed in between (a batch approved, a later night cut off, another
+     * run started) moves the fingerprint and sends the reader back to preview.
+     */
+    public function rebuild(Request $request, RebuildPlanner $planner): RedirectResponse
+    {
+        $actor = $request->user();
+
+        abort_unless($actor !== null && $actor->hasRole('developer'), 404);
+
+        $kind = $this->rebuildKindOrFail($request);
+
+        $validated = $request->validate([
+            'period' => ['required', 'string', 'date_format:'.$this->rebuildPeriodFormat($kind)],
+            'fingerprint' => ['required', 'string', 'max:64'],
+            'reason' => ['required', 'string', 'min:10', 'max:500'],
+        ]);
+
+        $plan = $this->planRebuild($planner, $kind, (string) $validated['period']);
+
+        // Both failures put the FRESH plan back on the page: the reader has to
+        // see what changed, and a stale preview card beside a refusal about
+        // newer state is how somebody confirms the same thing twice.
+        if ($plan->isRefused()) {
+            $request->session()->flash('rebuild_preview', $plan->toArray());
+
+            throw ValidationException::withMessages([
+                'period' => $plan->refusals,
+            ]);
+        }
+
+        if (! hash_equals($plan->fingerprint(), (string) $validated['fingerprint'])) {
+            $request->session()->flash('rebuild_preview', $plan->toArray());
+
+            throw ValidationException::withMessages([
+                'fingerprint' => 'The state changed since the preview — preview again.',
+            ]);
+        }
+
+        $actorId = (int) $actor->id;
+        $chainId = (string) Str::uuid();
+
+        AuditLog::create([
+            'actor_id' => $actorId,
+            'action' => 'compensation.rebuild.queued',
+            'subject_type' => 'engine',
+            'subject_id' => 0,
+            // The rows standing when the rebuild was authorised — the
+            // before-state the wipe is measured against. Nothing is written
+            // yet, so there is no after.
+            'before_hash' => AuditDigests::of($plan->rowsToRemove),
+            'after_hash' => null,
+            'details' => [
+                'kind' => $plan->kind->value,
+                'period' => $plan->periodValue(),
+                'reason' => $validated['reason'],
+                'warnings' => $plan->warnings,
+                'rows_to_remove' => $plan->rowsToRemove,
+                'unsweeps' => $plan->unsweeps,
+                // A night rebuild CORRECTS `group_bv_daily` in place rather than
+                // deleting it — BV handed back to the accumulators. It is part
+                // of what was authorised, so it is recorded at the moment of
+                // authorisation and not only on the later `.wiped` row.
+                'adjustments' => $plan->adjustments,
+                'rerun_command' => $plan->rerunCommand(),
+                'chain_id' => $chainId,
+            ],
+            // The console path records `null` here, which is honest for a
+            // shell. A request has an address, and a deletion of derived money
+            // rows decided over the web must carry where it was decided from.
+            'ip' => $request->ip(),
+        ]);
+
+        RebuildPeriodJob::dispatch($plan->kind->value, $plan->periodValue(), $actorId, $chainId);
+
+        Log::info('compensation.rebuild.queued', [
+            'kind' => $plan->kind->value,
+            'period' => $plan->periodValue(),
+            'actor_id' => $actorId,
+            'chain_id' => $chainId,
+            'rows_to_remove' => array_sum($plan->rowsToRemove),
+            'unsweeps' => $plan->unsweeps,
+        ]);
+
+        // The card described state that is about to stop being true.
+        $request->session()->forget('rebuild_preview');
+
+        $message = sprintf(
+            'Queued the %s rebuild for %s. %s row(s) are removed first, then %s runs again for that period.',
+            Str::lower(Str::after($plan->kind->label(), 'The ')),
+            EngineRegistry::get($plan->kind->registryKey())->displayPeriod($plan->period),
+            IndianNumber::format(array_sum($plan->rowsToRemove)),
+            $plan->rerunCommand(),
+        );
+
+        foreach ($plan->warnings as $warning) {
+            $message .= ' After it succeeds: '.$warning;
+        }
+
+        return redirect()->route('admin.compensation.engine-runs.index')->with('status', $message);
+    }
+
+    /** The period as the kind's own engine spells it, then the plan for it. */
+    private function planRebuild(RebuildPlanner $planner, RebuildKind $kind, string $period): RebuildPlan
+    {
+        return $planner->plan(
+            $kind,
+            EngineRegistry::get($kind->registryKey())->parsePeriod($period),
+        );
+    }
+
+    /**
+     * Which period kind is being rebuilt — validated before the period is, so
+     * the period's own rule can be the right one for that kind.
+     */
+    private function rebuildKindOrFail(Request $request): RebuildKind
+    {
+        $validated = $request->validate([
+            'kind' => ['required', 'string', Rule::in(RebuildKind::values())],
+        ]);
+
+        return RebuildKind::from((string) $validated['kind']);
+    }
+
+    /** `Y-m` for a month-typed rebuild, `Y-m-d` for a night or a Tuesday. */
+    private function rebuildPeriodFormat(RebuildKind $kind): string
+    {
+        return EngineRegistry::get($kind->registryKey())->periodType === EnginePeriodType::Month
+            ? 'Y-m'
+            : 'Y-m-d';
+    }
+
+    /**
+     * The hidden super-role, asked for by role and never by permission.
+     *
+     * `hasRole`, not `can`: {@see AppServiceProvider} lets super staff past
+     * every Gate, so a permission check would answer true for `admin` as well.
+     */
+    private function isDeveloper(Request $request): bool
+    {
+        return $request->user()?->hasRole('developer') === true;
     }
 
     /**
@@ -416,8 +760,21 @@ final class AdminEngineRunsController extends Controller
 
     public function events(Request $request): View
     {
+        // The rebuilds are registry entries so their runs are recorded, and the
+        // ROWS stay visible to everyone — a rebuild that happened is an audit
+        // fact. The dropdown is a different thing: a standing menu entry would
+        // name the developer-only control on a fresh platform where no rebuild
+        // has ever run, which is the feature announcing itself before there is
+        // any fact to record (F84).
+        $selectable = $this->isDeveloper($request)
+            ? EngineRegistry::all()
+            : array_filter(
+                EngineRegistry::all(),
+                static fn (EngineDefinition $definition): bool => ! $definition->developerOnly,
+            );
+
         $validated = $request->validate([
-            'engine' => ['nullable', 'string', Rule::in(EngineRegistry::keys())],
+            'engine' => ['nullable', 'string', Rule::in(array_keys($selectable))],
             // The sidebar failure badge links straight here with status=failed.
             'status' => ['nullable', 'string', Rule::in([
                 EngineRun::STATUS_RUNNING,
@@ -466,7 +823,7 @@ final class AdminEngineRunsController extends Controller
             // label; the filter dropdown only offers currently visible engines.
             'definitions' => EngineRegistry::all(),
             'filterOptions' => array_filter(
-                EngineRegistry::all(),
+                $selectable,
                 static fn (EngineDefinition $definition): bool => $definition->featureFlagClass === null
                     || Feature::for(null)->active($definition->featureFlagClass),
             ),
@@ -556,7 +913,7 @@ final class AdminEngineRunsController extends Controller
             ]);
         }
 
-        $period = $this->parsePeriodOrFail($engine, $validated['period']);
+        $period = $this->parsePeriodOrFail($request, $engine, $validated['period']);
 
         // Resolved once here so the audit row records what the admin was told
         // would run; the job resolves again at execution time.
@@ -641,7 +998,7 @@ final class AdminEngineRunsController extends Controller
             : $limit->format('Y-m-d');
     }
 
-    private function parsePeriodOrFail(EngineDefinition $engine, string $input): Carbon
+    private function parsePeriodOrFail(Request $request, EngineDefinition $engine, string $input): Carbon
     {
         try {
             $period = $engine->parsePeriod($input);
@@ -679,6 +1036,98 @@ final class AdminEngineRunsController extends Controller
             ]);
         }
 
+        // A month whose payout finance has approved is final, and a month whose
+        // batch has been BUILT is closed to new credits: a credit written after
+        // the sweep would never be picked up by it, and finance would approve a
+        // batch that no longer matches the ledger. Every month-typed engine that
+        // reaches this line is a crediting engine — the payout engines are
+        // scheduler-only and refused above — so the period IS the crediting
+        // month. The same guard the seven commands apply on the server; without
+        // it the button would be the one way past a rule with no override.
+        if ($engine->periodType === EnginePeriodType::Month
+            && ($refusal = FrozenPayoutGuard::creditingRefusal($period)) !== null) {
+            throw ValidationException::withMessages([
+                'period' => $this->refusalForReader($request, $refusal),
+            ]);
+        }
+
+        // The carry-forward store is rolling and holds one state per
+        // distributor. Once a later day has been cut off, recomputing this one
+        // would fold its BV in on top of the later day's — GsbCutoffService
+        // throws on exactly this, per distributor, halfway through a run that
+        // has already written rows for the distributors it reached first. Said
+        // here instead, before anything is queued.
+        if ($engine->key === 'gsb.daily-cutoff' && ($newest = $this->cutoffFrontierPast($period)) !== null) {
+            throw ValidationException::withMessages([
+                'period' => sprintf(
+                    'The cut-off for %s cannot be run now: %s has already been cut off and the carry-forward has '
+                    .'moved past %s. A day is processed only while it is the newest one, so re-running this day '
+                    .'would fold its Genos BV in on top of a later day\'s. The nightly run backfills a day it '
+                    .'missed in order, oldest first, on its own — send this to the platform team if %s is still '
+                    .'missing tomorrow.',
+                    $engine->displayPeriod($period),
+                    $newest,
+                    $engine->displayPeriod($period),
+                    $engine->displayPeriod($period),
+                ),
+            ]);
+        }
+
         return $period;
+    }
+
+    /**
+     * The newest cut-off that has already moved the carry-forward store past
+     * this day, or null while this day is still the newest.
+     *
+     * Only the statuses that ADVANCED the store count, which is the same list
+     * {@see GsbCutoffService}'s own out-of-order guard reads: a `below_600bv`
+     * row returned before touching it, and a forfeited day left it exactly
+     * where the due date did.
+     */
+    private function cutoffFrontierPast(Carbon $day): ?string
+    {
+        $newest = GsbCutoffResult::query()
+            ->whereDate('cutoff_date', '>', $day->toDateString())
+            ->whereIn('status', GsbCutoffResult::CARRY_FORWARD_ADVANCING_STATUSES)
+            ->max('cutoff_date');
+
+        return $newest === null ? null : Carbon::parse((string) $newest)->format('d M Y');
+    }
+
+    /**
+     * A refusal written for the server, made safe to show on an admin screen.
+     *
+     * {@see FrozenPayoutGuard} speaks to whoever is repairing the platform, so
+     * its remedy names the developer-only rebuild command. An admin is never
+     * handed a command they cannot run, so that sentence is dropped for anyone
+     * but a developer — the refusal itself, which is what the admin needs, is
+     * unchanged. That is the claim this delivers; it is not a guarantee that
+     * the word "rebuild" never reaches an admin screen (the frozen-month
+     * refusal uses it as an ordinary noun, and the Run events page lists the
+     * rebuild runs that happened as the audit facts they are).
+     */
+    private function refusalForReader(Request $request, string $refusal): string
+    {
+        if ($this->isDeveloper($request)) {
+            return $refusal;
+        }
+
+        $sentences = preg_split('/(?<=\.)\s+/', $refusal) ?: [$refusal];
+
+        $kept = array_values(array_filter(
+            $sentences,
+            static fn (string $sentence): bool => ! str_contains($sentence, 'php artisan compensation:rebuild-'),
+        ));
+
+        // A frozen month's refusal names no command at all — it is already
+        // written for whoever reads it, and adding a remedy to a month whose
+        // money has left would be false.
+        if (count($kept) === count($sentences)) {
+            return $refusal;
+        }
+
+        return implode(' ', $kept).' The platform team has to put the batch back in step before this month can be '
+            .'credited again.';
     }
 }

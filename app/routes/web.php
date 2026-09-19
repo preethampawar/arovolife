@@ -801,6 +801,18 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             // TESTING ONLY — wipes the purchases as well, for a clean-slate test
             // cycle. Same guard, same scaffold, removed at the same sign-off.
             Route::post('reset-purchase-data', [AdminEngineRunsController::class, 'resetPurchaseData'])->name('reset-purchase-data')->middleware('role:developer|admin');
+
+            // The period rebuilds (ADR-0016, D4) — developer only, on every
+            // environment including production. `role:developer` is a ROLE
+            // check, which the Gate::before super-staff bypass in
+            // AppServiceProvider cannot open: `admin` is super staff and is
+            // still refused here. The controller aborts 404 as well, so neither
+            // gate alone decides, and the page renders nothing for a reader who
+            // is not a developer (F84: the role is never revealed).
+            Route::middleware('role:developer')->group(function (): void {
+                Route::post('rebuild/preview', [AdminEngineRunsController::class, 'rebuildPreview'])->name('rebuild.preview');
+                Route::post('rebuild', [AdminEngineRunsController::class, 'rebuild'])->name('rebuild');
+            });
         });
     });
 

@@ -2,14 +2,20 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Jobs\RebuildPeriodJob;
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\GsbPersonalBvTopup;
+use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\DTOs\RecomputeReport;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeNotPermitted;
 use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
+use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
@@ -77,6 +83,22 @@ it('renders the engine runs index with every engine, its schedule and dependenci
         ->assertSee('Scheduler-only.')
         ->assertSee('Runs first:')
         ->assertSee(route('admin.compensation.engine-runs.events', ['engine' => 'gbb.monthly']), false);
+});
+
+it('never shows a rebuild engine card, whatever the role', function (): void {
+    // The four rebuilds are registry entries so their runs are recorded, not
+    // engines anyone starts from this page — the developer's rebuild panel is
+    // its own surface (S4). Asserted for the developer too: `developerOnly` hides
+    // the CARD from everyone.
+    foreach (['admin', 'admin-finance', 'developer'] as $role) {
+        $response = $this->actingAs(engineRunsUser($role))
+            ->get(route('admin.compensation.engine-runs.index'))
+            ->assertOk();
+
+        foreach (EngineRegistry::rebuildKeys() as $key) {
+            $response->assertDontSee(EngineRegistry::get($key)->label);
+        }
+    }
 });
 
 it('hides flag-off engines from the index entirely, including their dependency chips', function (): void {
@@ -1189,4 +1211,621 @@ it('caps the failure text it renders, so a query exception cannot dump its bindi
         ->assertOk();
 
     expect(substr_count($response->getContent() ?: '', 'E'))->toBeLessThan(2000);
+});
+
+/*
+|--------------------------------------------------------------------------
+| The developer rebuild surface (ADR-0016, D4)
+|--------------------------------------------------------------------------
+|
+| A rebuild deletes derived money rows in production, so it belongs to one
+| role and is invisible to every other. Two kinds of assertion follow and both
+| matter: the POSTs are refused to the whole admin family, AND the page they
+| land on carries no trace of the feature. A control an admin can see but not
+| use is an invitation to ask who can — and the developer role is never
+| surfaced anywhere in the UI (F84).
+*/
+
+/** A pending Tuesday batch — the cheapest period that has something to un-build. */
+function rebuildableWeeklyBatch(string $tuesday = '2025-12-30', string $status = PayoutBatch::STATUS_PENDING): PayoutBatch
+{
+    return PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => $tuesday,
+        'status' => $status,
+        'approved_at' => $status === PayoutBatch::STATUS_PENDING ? null : Carbon::parse($tuesday.' 10:00:00'),
+    ]);
+}
+
+it('leaves no trace of the rebuild surface on an admin\'s page, healthy or failed', function (): void {
+    rebuildableWeeklyBatch();
+    // The state a developer would come here to repair: the banners are shown to
+    // everyone, the repair is not.
+    chainRun('2025-12-31', EngineRun::STATUS_FAILED, 'GSB Daily Cut-off exited 1.');
+    rootRun('compensation.weekly-run', '2025-12-30', EngineRun::STATUS_FAILED, 'weekly boom');
+
+    foreach (['admin', 'admin-finance', 'admin-compliance', 'admin-operations'] as $role) {
+        $html = $this->actingAs(engineRunsUser($role))
+            ->get(route('admin.compensation.engine-runs.index'))
+            ->assertOk()
+            ->assertSee('The nightly run failed on 31 Dec 2025')
+            ->getContent() ?: '';
+
+        // The CONTROL, not the word. The standard is "no control, no command":
+        // no panel, neither form target, no reason field and no rebuild command
+        // an admin could copy into a shell. The bare noun is not the test —
+        // FrozenPayoutGuard's frozen-month refusal uses "rebuild" as an ordinary
+        // English word, and it renders here through the layout's $errors block.
+        expect($html)->not->toContain('Rebuild a period')
+            ->and($html)->not->toContain('Preview rebuild')
+            ->and($html)->not->toContain('Rebuild now')
+            ->and($html)->not->toContain('rebuild-reason')
+            ->and($html)->not->toContain(route('admin.compensation.engine-runs.rebuild.preview', absolute: false))
+            ->and($html)->not->toContain(route('admin.compensation.engine-runs.rebuild', absolute: false))
+            ->and($html)->not->toContain('compensation:rebuild-');
+    }
+});
+
+it('refuses both rebuild routes to every admin role, super staff included', function (): void {
+    Queue::fake();
+
+    foreach (['admin', 'admin-finance', 'admin-compliance', 'admin-operations'] as $role) {
+        $user = engineRunsUser($role);
+
+        $this->actingAs($user)
+            ->post(route('admin.compensation.engine-runs.rebuild.preview'), [
+                'kind' => 'week',
+                'period' => '2025-12-30',
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->post(route('admin.compensation.engine-runs.rebuild'), [
+                'kind' => 'week',
+                'period' => '2025-12-30',
+                'fingerprint' => 'anything',
+                'reason' => 'Trying it on from an admin account.',
+            ])
+            ->assertForbidden();
+    }
+
+    Queue::assertNothingPushed();
+});
+
+it('keeps the rebuilds out of the admin\'s Run events filter until one has run', function (): void {
+    // The rebuild rows are an audit fact; the DROPDOWN is not. On a platform
+    // where no rebuild has ever happened, listing the four in the Engine filter
+    // announces a developer-only control with no fact behind it (F84).
+    foreach (['admin', 'admin-finance', 'admin-compliance', 'admin-operations'] as $role) {
+        $this->actingAs(engineRunsUser($role))
+            ->get(route('admin.compensation.engine-runs.events'))
+            ->assertOk()
+            ->assertSee('All engines')
+            ->assertDontSee('Rebuild — night')
+            ->assertDontSee('Rebuild — weekly payout')
+            ->assertDontSee('Rebuild — monthly close')
+            ->assertDontSee('Rebuild — monthly payout');
+    }
+
+    $this->actingAs(engineRunsUser('developer'))
+        ->get(route('admin.compensation.engine-runs.events'))
+        ->assertOk()
+        ->assertSee('Rebuild — night')
+        ->assertSee('Rebuild — weekly payout')
+        ->assertSee('Rebuild — monthly close')
+        ->assertSee('Rebuild — monthly payout');
+});
+
+it('still lists a rebuild that happened to every admin role', function (): void {
+    // The other half of the same rule: what the dropdown withholds, the run log
+    // does not. A rebuild deleted derived money rows, and that is an audit fact
+    // for `admin-compliance` whether or not they can start one.
+    rootRun('compensation.rebuild-night', '2026-01-01', EngineRun::STATUS_SUCCEEDED);
+
+    foreach (['admin', 'admin-compliance'] as $role) {
+        $this->actingAs(engineRunsUser($role))
+            ->get(route('admin.compensation.engine-runs.events'))
+            ->assertOk()
+            ->assertSee('Rebuild — night');
+    }
+});
+
+it('refuses an admin a Run events filter on a rebuild engine, and allows the developer one', function (): void {
+    $this->actingAs(engineRunsUser('admin'))
+        ->from(route('admin.compensation.engine-runs.index'))
+        ->get(route('admin.compensation.engine-runs.events', ['engine' => 'compensation.rebuild-night']))
+        ->assertSessionHasErrors('engine');
+
+    $this->actingAs(engineRunsUser('developer'))
+        ->get(route('admin.compensation.engine-runs.events', ['engine' => 'compensation.rebuild-night']))
+        ->assertOk();
+});
+
+it('shows the developer the rebuild panel and its four periods', function (): void {
+    rebuildableWeeklyBatch();
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_MONTHLY,
+        'batch_date' => '2026-01-01',
+        'status' => PayoutBatch::STATUS_PENDING,
+    ]);
+
+    $this->actingAs(engineRunsUser('developer'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('Rebuild a period (platform team)')
+        // The form-purpose note, before any field. Raw: it is literal Blade
+        // text, so its apostrophes are not HTML-escaped in the response.
+        ->assertSee('Rebuild wipes one period\'s computed rows and runs that period\'s command again from scratch.', false)
+        ->assertSee('Night')
+        ->assertSee('Weekly payout batch')
+        ->assertSee('Monthly close')
+        ->assertSee('Monthly payout batch')
+        // The unapproved batches are offered by id and date; December 2025 is
+        // the newest ended month.
+        ->assertSee('Tue 30 Dec 2025')
+        ->assertSee('December 2025')
+        ->assertSee('Preview rebuild');
+});
+
+it('leaves an approved batch out of the developer\'s pickers entirely', function (): void {
+    rebuildableWeeklyBatch('2025-12-30', PayoutBatch::STATUS_APPROVED);
+
+    $this->actingAs(engineRunsUser('developer'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('No unapproved weekly batch in the last eight weeks.')
+        ->assertDontSee('Tue 30 Dec 2025');
+});
+
+it('previews a rebuild with its row counts, un-sweeps and warnings, and no confirm until then', function (): void {
+    $batch = rebuildableWeeklyBatch();
+    $developer = engineRunsUser('developer');
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild.preview'), [
+            'kind' => 'week',
+            'period' => '2025-12-30',
+        ])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'))
+        ->assertSessionHas('rebuild_preview');
+
+    $this->actingAs($developer)
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('Removed first')
+        ->assertSee('payout_batches')
+        ->assertSee('Wallet credits un-swept (batch stamp removed, credit kept):')
+        // R-102's precise rule, not the blanket claim the old line made while
+        // sitting under a table that can list `wallet_ledger_entries`.
+        ->assertSee('A credit is deleted only together with the result row it derives from')
+        ->assertSee('Run these after it succeeds:')
+        ->assertSee('The rebuilt batch records you as its maker; a second person must approve it.')
+        ->assertSee('gsb:weekly-payout --date=2025-12-30')
+        ->assertSee('Rebuild now');
+
+    expect($batch->fresh())->not->toBeNull();
+});
+
+it('names what a night rebuild corrects in place, not only what it deletes', function (): void {
+    Queue::fake();
+
+    $developer = engineRunsUser('developer');
+
+    // The night of 1 Jan rebuilds the 31 Dec cut-off. A personal-BV top-up on
+    // that day is not deleted outright: its BV is handed back to the
+    // `group_bv_daily` accumulator it inflated. That is a mutation of BV, so the
+    // preview and the confirm have to disclose it — a confirm that lists only
+    // deletions understates what is being authorised (compliance C1).
+    GsbPersonalBvTopup::create([
+        'distributor_id' => 1,
+        'order_id' => 1,
+        'bv_paise' => 250000,
+        'side' => 'L',
+        'date' => '2025-12-31',
+    ]);
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild.preview'), [
+            'kind' => 'night',
+            'period' => '2026-01-01',
+        ])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'));
+
+    $preview = session('rebuild_preview');
+
+    expect($preview['adjustments'])->toBe(['group_bv_daily' => 1]);
+
+    $this->actingAs($developer)
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('Rebuild — night')
+        ->assertSee('Corrected in place, not deleted:')
+        ->assertSee('group_bv_daily')
+        ->assertSee('gsb_personal_bv_topups')
+        // And in the confirm modal's own impact line, not only in the card
+        // above it: the modal is the last thing read before the rebuild is
+        // authorised, and it summed deletions alone.
+        ->assertSee('Corrected in place, not deleted: group_bv_daily — 1 row(s).', false);
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild'), [
+            'kind' => 'night',
+            'period' => '2026-01-01',
+            'fingerprint' => $preview['fingerprint'],
+            'reason' => 'Cut-off exited 1 on a deadlocked write — re-running the night.',
+        ])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'));
+
+    $log = AuditLog::where('action', 'compensation.rebuild.queued')->sole();
+
+    expect($log->details['adjustments'])->toBe(['group_bv_daily' => 1]);
+});
+
+it('previews a monthly close, whose period is a month rather than a date', function (): void {
+    $developer = engineRunsUser('developer');
+
+    // The `Y-m` half of the two period formats, and the months picker that
+    // feeds it — December 2025 is the newest ended month at the frozen clock.
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild.preview'), [
+            'kind' => 'month',
+            'period' => '2025-12',
+        ])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'));
+
+    $this->actingAs($developer)
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('Rebuild — monthly close')
+        ->assertSee('Nothing to remove for this period')
+        ->assertSee('Repurchase cycle verdicts taken between the original close and now are not re-taken.')
+        ->assertSee('Rebuild now');
+});
+
+it('offers the developer the nights that have something to rebuild', function (): void {
+    // Both sources `recentNights()` reads: a run row for one night, a cut-off
+    // row that dates its own night a day later.
+    chainRun('2025-12-30', EngineRun::STATUS_FAILED, 'GSB Daily Cut-off exited 1.');
+    GsbCutoffResult::create([
+        'distributor_id' => 1,
+        'cutoff_date' => '2025-12-31',
+        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
+        'slab' => 0, 'score' => 0, 'score_value_paise' => 0,
+        'gross_gsb_paise' => 0, 'repurchase_deduction_paise' => 0, 'admin_charge_paise' => 0,
+        'tds_paise' => 0, 'net_gsb_paise' => 0,
+        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
+        'status' => GsbCutoffResult::STATUS_NO_MATCH,
+    ]);
+
+    $this->actingAs(engineRunsUser('developer'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        // The cut-off dated 31 Dec belongs to the night of 1 Jan.
+        ->assertSee('Thu 01 Jan 2026')
+        ->assertSee('Tue 30 Dec 2025');
+});
+
+it('renders the refusals and offers no confirm form when a period cannot be rebuilt', function (): void {
+    // No batch exists for that Tuesday: nothing to un-build, so the planner
+    // refuses rather than queueing a job that would do nothing.
+    $developer = engineRunsUser('developer');
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild.preview'), [
+            'kind' => 'week',
+            'period' => '2025-12-30',
+        ])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'));
+
+    $this->actingAs($developer)
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('This period cannot be rebuilt:')
+        ->assertSee('No weekly batch is dated 2025-12-30')
+        ->assertDontSee('Rebuild now')
+        ->assertSee('Dismiss');
+});
+
+it('queues the rebuild, audits it under the developer with the client IP, and clears the preview', function (): void {
+    Queue::fake();
+
+    $batch = rebuildableWeeklyBatch();
+    $developer = engineRunsUser('developer');
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild.preview'), ['kind' => 'week', 'period' => '2025-12-30']);
+
+    $preview = session('rebuild_preview');
+    expect($preview)->toBeArray();
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild'), [
+            'kind' => 'week',
+            'period' => '2025-12-30',
+            'fingerprint' => $preview['fingerprint'],
+            'reason' => 'Weekly run exited 1 on a deadlocked write — rebuilding the batch.',
+        ])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'))
+        ->assertSessionHas('status')
+        ->assertSessionMissing('rebuild_preview');
+
+    Queue::assertPushed(RebuildPeriodJob::class, function (RebuildPeriodJob $job) use ($developer): bool {
+        return $job->kind === 'week'
+            && $job->period === '2025-12-30'
+            && $job->actorId === $developer->id
+            && $job->chainId !== '';
+    });
+
+    $log = AuditLog::where('action', 'compensation.rebuild.queued')->sole();
+
+    expect($log->actor_id)->toBe($developer->id)
+        ->and($log->details['kind'])->toBe('week')
+        ->and($log->details['period'])->toBe('2025-12-30')
+        ->and($log->details['reason'])->toBe('Weekly run exited 1 on a deadlocked write — rebuilding the batch.')
+        ->and($log->details['warnings'])->toContain('The rebuilt batch records you as its maker; a second person must approve it.')
+        ->and($log->details['rows_to_remove'])->toBe(['payout_batches' => 1])
+        // Everything the rebuild touches, at the moment it was authorised: a
+        // batch corrects nothing in place, but the key is recorded either way
+        // so a night's `group_bv_daily` hand-back can never go unrecorded here.
+        ->and($log->details)->toHaveKey('adjustments')
+        ->and($log->details['adjustments'])->toBe([])
+        ->and($log->details['chain_id'])->not->toBeEmpty()
+        // A shell rebuild records no address; a decision taken over the web
+        // must carry where it was taken from.
+        ->and($log->ip)->not->toBeNull();
+
+    expect(PayoutBatch::find($batch->id))->not->toBeNull();
+});
+
+it('refuses a confirm whose fingerprint does not match the state it was previewed against', function (): void {
+    Queue::fake();
+
+    rebuildableWeeklyBatch();
+    $developer = engineRunsUser('developer');
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild'), [
+            'kind' => 'week',
+            'period' => '2025-12-30',
+            'fingerprint' => str_repeat('0', 64),
+            'reason' => 'Confirming against a preview nobody took.',
+        ])
+        ->assertSessionHasErrors('fingerprint')
+        // The fresh plan goes back on the page: a refusal beside a stale card
+        // is how somebody confirms the same thing twice.
+        ->assertSessionHas('rebuild_preview');
+
+    Queue::assertNothingPushed();
+});
+
+it('refuses a confirm once the state moved under it, and says so', function (): void {
+    Queue::fake();
+
+    $batch = rebuildableWeeklyBatch();
+    $developer = engineRunsUser('developer');
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild.preview'), ['kind' => 'week', 'period' => '2025-12-30']);
+
+    $fingerprint = session('rebuild_preview')['fingerprint'];
+
+    // One more line item than the preview counted — the same batch, a
+    // different wipe.
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => 1,
+        'gross_paise' => 100000,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'wallet_balance_paise' => 0,
+        'repurchase_deduction_paise' => 0,
+        'net_transferred_paise' => 100000,
+        'status' => PayoutLineItem::STATUS_PENDING,
+    ]);
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild'), [
+            'kind' => 'week',
+            'period' => '2025-12-30',
+            'fingerprint' => $fingerprint,
+            'reason' => 'Rebuilding the Tuesday batch after the failed weekly run.',
+        ])
+        ->assertSessionHasErrors(['fingerprint' => 'The state changed since the preview — preview again.']);
+
+    Queue::assertNothingPushed();
+});
+
+it('refuses a confirm for a period the planner will not rebuild, naming every refusal', function (): void {
+    Queue::fake();
+
+    rebuildableWeeklyBatch('2025-12-30', PayoutBatch::STATUS_APPROVED);
+    $developer = engineRunsUser('developer');
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild'), [
+            'kind' => 'week',
+            'period' => '2025-12-30',
+            'fingerprint' => str_repeat('0', 64),
+            'reason' => 'Trying to rebuild a batch finance already signed off.',
+        ])
+        ->assertSessionHasErrors('period');
+
+    expect(session('errors')->get('period')[0])->toContain('finance has signed off is not rebuilt');
+
+    Queue::assertNothingPushed();
+});
+
+it('requires a reason of at least ten characters and a period in the kind\'s own format', function (): void {
+    Queue::fake();
+
+    rebuildableWeeklyBatch();
+    $developer = engineRunsUser('developer');
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild'), [
+            'kind' => 'week',
+            'period' => '2025-12-30',
+            'fingerprint' => str_repeat('0', 64),
+            'reason' => 'too short',
+        ])
+        ->assertSessionHasErrors('reason');
+
+    // A month rebuild takes YYYY-MM; a date typed into it is refused before
+    // anything is planned.
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild.preview'), [
+            'kind' => 'month',
+            'period' => '2025-12-30',
+        ])
+        ->assertSessionHasErrors('period');
+
+    $this->actingAs($developer)
+        ->post(route('admin.compensation.engine-runs.rebuild.preview'), [
+            'kind' => 'not-a-kind',
+            'period' => '2025-12-30',
+        ])
+        ->assertSessionHasErrors('kind');
+
+    Queue::assertNothingPushed();
+});
+
+/*
+|--------------------------------------------------------------------------
+| The manual trigger's own refusals (A1, A10)
+|--------------------------------------------------------------------------
+*/
+
+it('refuses a manual monthly engine for a month whose payout finance has approved', function (): void {
+    Queue::fake();
+    Feature::activate(RankBonusFeature::class);
+
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_MONTHLY,
+        'batch_date' => '2026-01-01',
+        'status' => PayoutBatch::STATUS_APPROVED,
+        'approved_at' => Carbon::parse('2026-01-08 10:00:00'),
+    ]);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'rank.check',
+            'period' => '2025-12',
+            'reason' => 'Re-running December after the fix.',
+        ])
+        ->assertSessionHasErrors('period');
+
+    expect(session('errors')->get('period')[0])->toContain('December 2025 is frozen');
+
+    Queue::assertNothingPushed();
+});
+
+it('never names the developer\'s rebuild command to an admin when a month is closed to credits', function (): void {
+    Queue::fake();
+    Feature::activate(RankBonusFeature::class);
+
+    // Built and waiting for finance: nothing may be credited into December any
+    // more, but the batch itself can still be taken apart — by the platform
+    // team, on a surface this admin must not learn about.
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_MONTHLY,
+        'batch_date' => '2026-01-01',
+        'status' => PayoutBatch::STATUS_PENDING,
+        'processed_at' => Carbon::parse('2026-01-08 03:00:00'),
+    ]);
+
+    $this->actingAs(engineRunsUser('admin-finance'))
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'rank.check',
+            'period' => '2025-12',
+            'reason' => 'Re-running December after the fix.',
+        ])
+        ->assertSessionHasErrors('period');
+
+    $message = session('errors')->get('period')[0];
+
+    expect($message)->toContain('awaits approval')
+        ->and($message)->toContain('The platform team has to put the batch back in step')
+        ->and($message)->not->toContain('compensation:rebuild-payout');
+
+    // The developer, who can act on it, is told exactly what to run.
+    $this->actingAs(engineRunsUser('developer'))
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'rank.check',
+            'period' => '2025-12',
+            'reason' => 'Re-running December after the fix.',
+        ])
+        ->assertSessionHasErrors('period');
+
+    expect(session('errors')->get('period')[0])->toContain('compensation:rebuild-payout --month=2025-12');
+
+    Queue::assertNothingPushed();
+});
+
+it('refuses a manual cut-off for a day the carry-forward has already moved past', function (): void {
+    Queue::fake();
+    Feature::activate(GenosSalesBonusFeature::class);
+
+    // 30 Dec advanced the rolling store; re-running 28 Dec now would fold its
+    // Genos BV in on top of the 30th's. GsbCutoffService throws on exactly this
+    // per distributor, halfway through a run that has already written rows.
+    GsbCutoffResult::create([
+        'distributor_id' => 1,
+        'cutoff_date' => '2025-12-30',
+        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
+        'slab' => 0, 'score' => 0, 'score_value_paise' => 0,
+        'gross_gsb_paise' => 0, 'repurchase_deduction_paise' => 0, 'admin_charge_paise' => 0,
+        'tds_paise' => 0, 'net_gsb_paise' => 0,
+        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
+        'status' => GsbCutoffResult::STATUS_NO_MATCH,
+    ]);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gsb.daily-cutoff',
+            'period' => '2025-12-28',
+            'reason' => 'Cut-off missed on the 28th — backfilling it.',
+        ])
+        ->assertSessionHasErrors('period');
+
+    $message = session('errors')->get('period')[0];
+
+    expect($message)->toContain('30 Dec 2025 has already been cut off')
+        ->and($message)->toContain('only while it is the newest one')
+        // The remedy an admin is given is the run that heals itself, never a
+        // control they do not have.
+        ->and($message)->not->toContain('rebuild-night');
+
+    Queue::assertNothingPushed();
+});
+
+it('lets a manual cut-off through when the later day never advanced the carry-forward', function (): void {
+    Queue::fake();
+    Feature::activate(GenosSalesBonusFeature::class);
+
+    // `below_600bv` returns before touching the rolling store, so the 30th
+    // moved nothing and the 28th is still the newest day that matters.
+    GsbCutoffResult::create([
+        'distributor_id' => 1,
+        'cutoff_date' => '2025-12-30',
+        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
+        'slab' => 0, 'score' => 0, 'score_value_paise' => 0,
+        'gross_gsb_paise' => 0, 'repurchase_deduction_paise' => 0, 'admin_charge_paise' => 0,
+        'tds_paise' => 0, 'net_gsb_paise' => 0,
+        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
+        'status' => GsbCutoffResult::STATUS_BELOW_600BV,
+    ]);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gsb.daily-cutoff',
+            'period' => '2025-12-28',
+            'reason' => 'Cut-off missed on the 28th — backfilling it.',
+        ])
+        ->assertRedirect(route('admin.compensation.engine-runs.index'))
+        ->assertSessionHasNoErrors();
+
+    Queue::assertPushed(RunEngineChainJob::class);
 });
