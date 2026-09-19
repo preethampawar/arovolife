@@ -1,6 +1,6 @@
 # ADR-0015 — One nightly chain replaces the compensation clock offsets
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by ADR-0016 (steps 3–5 moved to their own runs; the retry became a developer rebuild, 2026-09-18)
 - **Date:** 2026-09-15
 - **Deciders:** Platform Architect, Product Manager, Compliance Officer
 - **Builds on:** ADR-0011 (queue transport), ADR-0014 (test-environment recompute), the monthly close (2026-09-08)
