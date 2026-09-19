@@ -294,8 +294,13 @@ it('leaves every distributor enough orders to settle both instants', function ()
 
     expect($counts)->toHaveCount(7);
 
+    // Two instants take two orders, and pool drift means the settlement has to
+    // be run again afterwards to clear the residue — each of those top-up
+    // rounds needs another unclaimed order. With exactly two, round two spends
+    // nothing and reports "had a balance but no seeded order to apply it to"
+    // forever, which is how 146 cycles stayed suspended through three rounds.
     foreach ($counts as $distributorId => $n) {
-        expect((int) $n)->toBeGreaterThanOrEqual(2, "distributor {$distributorId} has only {$n} order(s)");
+        expect((int) $n)->toBeGreaterThanOrEqual(4, "distributor {$distributorId} has only {$n} order(s)");
     }
 });
 

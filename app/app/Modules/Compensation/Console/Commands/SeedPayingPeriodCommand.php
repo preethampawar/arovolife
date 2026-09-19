@@ -398,17 +398,42 @@ final class SeedPayingPeriodCommand extends Command
                 continue;
             }
 
-            foreach ([$month->copy()->subMonth(), $month] as $cycleMonth) {
-                $bv += $this->order(
-                    $id,
-                    $cycleMonth->copy()->addDays(9)->setTime(12, 0),
-                    // Two units, not one: rank_tiers.repurchase_bv_paise asks
-                    // 1,000 BV at Silver and 1,100 at Pearl, so a single 600 BV
-                    // anchor purchase satisfies the repurchase engine and still
-                    // fails every rank's own repurchase requirement.
-                    [[self::REPURCHASE_VARIANT, 2]],
-                );
-                $orders++;
+            // Weekly, and through the month after the target one as well.
+            //
+            // Not for the BV — one order a month already cleared the 600 BV
+            // requirement. It is that a repurchase order is the only thing a
+            // wallet spend can attach to, and the ledger's unique key on
+            // (type, reference_type, reference_id) allows exactly one spend per
+            // order. Two settlement instants consumed a distributor's only two
+            // orders, and every later round then reported "had a balance but no
+            // seeded order to apply it to" and spent nothing — 146 cycles stayed
+            // suspended no matter how many times the loop ran. Four orders a
+            // month leaves headroom for the top-up rounds that pool drift makes
+            // necessary, and buying weekly is what a real distributor does
+            // anyway.
+            foreach ([$month->copy()->subMonth(), $month, $month->copy()->addMonth()] as $cycleMonth) {
+                foreach ([7, 14, 21, 28] as $dayOffset) {
+                    $at = $cycleMonth->copy()->addDays($dayOffset)->setTime(12, 0);
+
+                    // Never seed a paid order in the future: the replay walks
+                    // the calendar to today, so an order dated after it would
+                    // sit unpropagated and silently short every leg it belongs
+                    // to.
+                    if ($at->greaterThan(Carbon::now())) {
+                        continue;
+                    }
+
+                    $bv += $this->order(
+                        $id,
+                        $at,
+                        // Two units, not one: rank_tiers.repurchase_bv_paise asks
+                        // 1,000 BV at Silver and 1,100 at Pearl, so a single 600 BV
+                        // anchor purchase satisfies the repurchase engine and still
+                        // fails every rank's own repurchase requirement.
+                        [[self::REPURCHASE_VARIANT, 2]],
+                    );
+                    $orders++;
+                }
             }
         }
 
