@@ -222,18 +222,17 @@ final class SeedPayingPeriodCommand extends Command
         $this->newLine();
         $this->info('Seeded. Nothing derived has been computed yet — next:');
         $this->line('  1. php artisan compensation:recompute-all --horizon=now --force');
-        $this->line(sprintf(
-            '  2. php artisan compensation:seed-paying-period --settle-repurchase=%s',
-            $month->copy()->subMonth()->format('Y-m'),
-        ));
+        $this->line('  2. php artisan compensation:seed-paying-period --settle-repurchase=YYYY-MM');
         $this->line('  3. php artisan compensation:recompute-all --horizon=now --force');
         $this->newLine();
-        $this->line(sprintf(
-            'Step 2 settles %s so %s pays. Leave %s itself unsettled while you intend to rebuild it.',
-            $month->copy()->subMonth()->format('F'),
-            $month->format('F'),
-            $month->format('F'),
-        ));
+        $this->line('Step 2 takes the month a cycle CLOSES in, which is not the month it covers:');
+        $this->line('repurchase_cycles runs 30 days from a distributor\'s first order, so a window');
+        $this->line('opened 02 Jul is judged on 01 Aug and settling it is --settle-repurchase=2026-08.');
+        $this->line('Read the due dates rather than assuming the calendar:');
+        $this->line('  select cycle_start_date, due_date, status, count(*) from repurchase_cycles group by 1,2,3;');
+        $this->newLine();
+        $this->line('Settle the cycles you want to pay THROUGH, and stop before the one whose month');
+        $this->line('you mean to rebuild — a settled month\'s rebuild is refused, by design.');
 
         if ($this->areteCenterId === null) {
             $this->warn('No active distributor-owned Arete centre — the ADC engine will credit nobody.');
