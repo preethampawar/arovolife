@@ -31,8 +31,17 @@ beside the stamp re-fetches that one panel; if the cache is still warm you will
 get the same figures back, which is correct — the number has not changed, only
 your patience has.
 
-Nothing on this page auto-refreshes. A dashboard left open on a wall display
-costs the server nothing after it has loaded.
+Each panel then refreshes itself about once a minute, so a dashboard left open
+on a wall display stays current without anyone touching it. Two limits keep that
+cheap. A panel still below the fold that you have never scrolled to is not
+refreshed — it has nothing to refresh yet. And a dashboard in a background tab
+refreshes nothing at all; it catches up the moment you switch back to it.
+
+Because the refresh interval and the cache window are both a minute, an
+automatic refresh usually costs one cached read per panel, not a recomputation.
+If a refresh fails — the network drops, the session expires — the panel keeps
+showing the figures it already had rather than replacing them with an error, and
+tries again on the next turn.
 
 ## What you can see
 

@@ -4,7 +4,9 @@
  * The dashboard's contract is a loading contract, and that is the part only a
  * browser can prove: the shell paints with no data, the panels above the fold
  * fetch themselves immediately, the rest wait until they are scrolled near,
- * each is fetched exactly once, and nothing polls afterwards.
+ * each is fetched exactly once on arrival, and the only thing that fetches it
+ * again is the once-a-minute refresh — never a panel nobody has scrolled to,
+ * and never a tab nobody is looking at.
  *
  * Requires:
  *   - App running at APP_URL (default http://localhost:8084)
@@ -69,9 +71,17 @@ test.describe('Admin dashboard: shell', () => {
     });
 
     test('E2E-03: a below-fold panel stays unfetched until it is scrolled near', async ({ adminPage: page }) => {
-        // A tall-but-narrow viewport keeps the lower panels well outside the
-        // observer's 250px margin on first paint.
-        await page.setViewportSize({ width: 1280, height: 600 });
+        // First paint is the only moment that matters here: the panels above
+        // grow as they load, so a panel outside the margin while everything is
+        // still a skeleton only moves further away.
+        //
+        // The viewport has to be measured against the *skeleton* layout, not the
+        // loaded one. With five panels visible the last skeleton's top sits at
+        // 645px, so the original 600px viewport put it 5px inside the observer's
+        // 600 + 250 margin: the test passed only when the first panel's response
+        // happened to beat the observer's first callback and push the rest down.
+        // 300px ends the margin at 550px, clear of it whatever the server does.
+        await page.setViewportSize({ width: 1280, height: 300 });
         await page.goto('/admin');
 
         await expect(panel(page, 'sales')).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
@@ -132,7 +142,7 @@ test.describe('Admin dashboard: shell', () => {
         expect(requests.filter((u) => !u.includes('/panel/sales'))).toHaveLength(0);
     });
 
-    test('E2E-07: each panel is fetched once and nothing polls afterwards', async ({ adminPage: page }) => {
+    test('E2E-07: each panel is fetched once on arrival and nothing polls before its turn', async ({ adminPage: page }) => {
         // Leave the dashboard before counting anything. The `adminPage` fixture
         // finishes its login on /admin, and `goto` resolves at the load event —
         // but the lazy panels are started by an IntersectionObserver callback
@@ -162,12 +172,109 @@ test.describe('Admin dashboard: shell', () => {
 
         const afterLoad = requests.length;
 
-        // No duplicates: a panel fetched twice means the observer re-fired.
+        // No duplicates: a panel fetched twice on arrival means the observer
+        // re-fired.
         expect(new Set(requests).size).toBe(afterLoad);
 
-        // Nothing polls. This is the assertion that keeps an idle dashboard
-        // from costing the server a request per panel per interval, forever.
+        // The refresh is on a minute. Nothing may go out before then — the
+        // assertion that stops a stray timer turning an idle dashboard into a
+        // request per panel every few seconds.
         await page.waitForTimeout(5_000);
         expect(requests.length).toBe(afterLoad);
+    });
+
+    test('E2E-08: every loaded panel refreshes itself once a minute', async ({ adminPage: page }) => {
+        // Fake timers, so a one-minute interval does not cost the suite a
+        // minute. `clock.install` must precede the navigation that registers
+        // the interval. The panels are rendered server-side, so the faked clock
+        // only ever drives the page's own scheduling — the figures inside them
+        // still come from the real application.
+        await page.clock.install();
+        await page.goto('about:blank');
+
+        const requests = [];
+        page.on('request', (r) => {
+            if (r.url().includes('/dashboard/panel/')) {
+                requests.push(r.url().replace(/^.*\/panel\//, ''));
+            }
+        });
+
+        await page.goto('/admin');
+
+        // Wait for the arrival round to finish completely — not just for the
+        // above-fold panels. A panel still in flight is in `loading`, and the
+        // refresh deliberately skips those; fast-forwarding over one would make
+        // this test read a race as a missing refresh.
+        const settled = () =>
+            page.evaluate(() =>
+                Array.prototype.slice
+                    .call(document.querySelectorAll('[data-panel-url]'))
+                    .filter((el) => el.dataset.panelState === 'done')
+                    .map((el) => el.dataset.panelUrl.replace(/^.*\/panel\//, '')),
+            );
+
+        const noneInFlight = () =>
+            page.evaluate(() =>
+                Array.prototype.slice
+                    .call(document.querySelectorAll('[data-panel-url]'))
+                    .every((el) => el.dataset.panelState !== 'loading'),
+            );
+
+        await expect.poll(noneInFlight, { timeout: 20_000 }).toBe(true);
+        await page.waitForTimeout(500);
+        await expect.poll(noneInFlight, { timeout: 20_000 }).toBe(true);
+
+        const loaded = new Set(await settled());
+        expect(loaded.size).toBeGreaterThan(0);
+
+        requests.length = 0;
+        await page.clock.fastForward('01:05');
+
+        // One refresh round: every panel that had loaded is fetched again,
+        // exactly once, and nothing else is.
+        await expect.poll(() => requests.length, { timeout: 20_000 }).toBe(loaded.size);
+        expect(new Set(requests)).toEqual(loaded);
+
+        for (const key of loaded) {
+            await expect(panel(page, key)).toHaveAttribute('data-panel-state', 'done', { timeout: 20_000 });
+        }
+    });
+
+    test('E2E-09: a hidden tab refreshes nothing, and catches up when it is looked at again', async ({ adminPage: page }) => {
+        await page.clock.install();
+        await page.goto('about:blank');
+
+        const requests = [];
+        page.on('request', (r) => {
+            if (r.url().includes('/dashboard/panel/')) {
+                requests.push(r.url().replace(/^.*\/panel\//, ''));
+            }
+        });
+
+        await page.goto('/admin');
+        await expect(panel(page, 'sales')).toHaveAttribute('data-panel-state', 'done', { timeout: 20_000 });
+
+        // Chromium exposes no way to background a tab from the page, so the
+        // visibility API is stubbed directly: this asserts the branch the
+        // production code takes, which is the part that decides whether an
+        // abandoned dashboard costs the server anything.
+        await page.evaluate(() => {
+            Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+            document.dispatchEvent(new Event('visibilitychange'));
+        });
+
+        requests.length = 0;
+        await page.clock.fastForward('05:00');
+        await page.waitForTimeout(1_000);
+        expect(requests).toEqual([]);
+
+        await page.evaluate(() => {
+            Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+            document.dispatchEvent(new Event('visibilitychange'));
+        });
+
+        // Coming back is itself the refresh — the viewer does not wait out the
+        // rest of an interval to be shown current figures.
+        await expect.poll(() => requests.length, { timeout: 20_000 }).toBeGreaterThan(0);
     });
 });

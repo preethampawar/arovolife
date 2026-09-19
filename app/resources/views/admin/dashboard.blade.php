@@ -73,8 +73,13 @@
         return '';
     }
 
-    function load(el) {
+    // `background` marks a refresh nobody asked for: the 60-second tick. It
+    // changes one thing — a failure leaves the panel as it is. Figures a minute
+    // old beat an error card the viewer never clicked for, and the next tick
+    // will try again anyway.
+    function load(el, background) {
         if (el.dataset.panelState === 'loading') { return; }
+        var previous = el.dataset.panelState;
         el.dataset.panelState = 'loading';
         fetch(el.dataset.panelUrl, {
             headers: { 'Accept': 'text/html', 'X-Requested-With': 'XMLHttpRequest' },
@@ -89,19 +94,32 @@
                 el.dataset.panelState = 'done';
             })
             .catch(function () {
+                if (background && previous === 'done') {
+                    el.dataset.panelState = 'done';
+                    return;
+                }
                 el.dataset.panelState = 'error';
                 el.innerHTML = markup('error', el.dataset.panelUrl);
+            })
+            .then(function () {
+                // Stamped on success and on failure alike, so a panel that
+                // errors waits its full turn before being tried again instead
+                // of being retried on every tick.
+                el.dataset.panelFetchedAt = String(Date.now());
             });
     }
 
     var panels = Array.prototype.slice.call(root.querySelectorAll('[data-panel-url]'));
 
-    panels.filter(function (el) { return el.dataset.panelLazy !== '1'; }).forEach(load);
+    panels.filter(function (el) { return el.dataset.panelLazy !== '1'; })
+        // Not `.forEach(load)`: forEach passes the index as a second argument,
+        // which `load` reads as its `background` flag.
+        .forEach(function (el) { load(el); });
 
     var lazy = panels.filter(function (el) { return el.dataset.panelLazy === '1'; });
 
     if (!('IntersectionObserver' in window)) {
-        lazy.forEach(load);
+        lazy.forEach(function (el) { load(el); });
     } else {
         var io = new IntersectionObserver(function (entries) {
             entries.forEach(function (entry) {
@@ -121,6 +139,41 @@
         if (!el) { return; }
         el.dataset.panelState = '';
         load(el);
+    });
+
+    // Auto-refresh.
+    //
+    // STALE_MS matches DashboardPanelData::TTL_SECONDS — refreshing faster than
+    // the cache would spend a request to be handed the same numbers back.
+    //
+    // The tick runs more often than that and re-fetches per panel by age, so a
+    // panel that happened to load just before a tick is not held for a second
+    // full interval. A tick costs nothing on its own; only a panel that is
+    // genuinely a minute old makes a request.
+    //
+    // Two things are deliberately excluded. A panel that has never loaded — a
+    // lazy one still below the fold — stays untouched, so scrolling remains the
+    // only thing that fetches it. And a hidden tab refreshes nothing at all: a
+    // dashboard left open in a background tab overnight is a request per panel
+    // per minute for an audience of nobody. Returning to the tab refreshes it
+    // immediately, which is also what makes the figures right when you come
+    // back to them.
+    var STALE_MS = 60000;
+    var TICK_MS = 15000;
+
+    function refreshStale() {
+        if (document.hidden) { return; }
+        var cutoff = Date.now() - STALE_MS;
+        panels.forEach(function (el) {
+            if (el.dataset.panelState !== 'done' && el.dataset.panelState !== 'error') { return; }
+            if (Number(el.dataset.panelFetchedAt || 0) > cutoff) { return; }
+            load(el, true);
+        });
+    }
+
+    setInterval(refreshStale, TICK_MS);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) { refreshStale(); }
     });
 })();
 </script>
