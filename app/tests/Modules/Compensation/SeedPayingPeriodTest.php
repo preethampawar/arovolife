@@ -255,6 +255,51 @@ it('takes its wallet spends back out on rollback, because a recompute will not',
         ->and((int) $left[0]->distributor_id)->toBe(3);
 });
 
+it('refuses to roll back an order something else has attached a record to, and leaves it whole', function (): void {
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    $orderId = (int) DB::table('orders')->where('order_no', 'like', 'PS-%')->min('id');
+    DB::table('payment_events')->insert([
+        'order_id' => $orderId,
+        'gateway' => 'razorpay',
+        'direction' => 'inbound',
+        'event_type' => 'payment.captured',
+        'created_at' => now(),
+    ]);
+
+    $before = DB::table('orders')->count();
+
+    $exit = Artisan::call('compensation:seed-paying-period', ['--rollback' => true]);
+
+    // The refusal has to be total. A rollback that deleted the children and
+    // then hit the RESTRICT would leave orders answering to the tag with no
+    // items and no BV behind them — which is what made a re-seed stack a
+    // second fixture on top of the first.
+    expect($exit)->toBe(1)
+        ->and(DB::table('orders')->count())->toBe($before)
+        ->and(DB::table('orders')->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('order_items')->whereColumn('order_items.order_id', 'orders.id'))->count())->toBe(0)
+        ->and(DB::table('orders')->whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('bv_ledger_entries')->whereColumn('bv_ledger_entries.order_id', 'orders.id'))->count())->toBe(0);
+});
+
+it('clears the referencing rows too when forced', function (): void {
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    $orderId = (int) DB::table('orders')->where('order_no', 'like', 'PS-%')->min('id');
+    DB::table('payment_events')->insert([
+        'order_id' => $orderId,
+        'gateway' => 'razorpay',
+        'direction' => 'inbound',
+        'event_type' => 'payment.captured',
+        'created_at' => now(),
+    ]);
+
+    $exit = Artisan::call('compensation:seed-paying-period', ['--rollback' => true, '--force' => true]);
+
+    expect($exit)->toBe(0)
+        ->and(DB::table('orders')->where('order_no', 'like', 'PS-%')->count())->toBe(0)
+        ->and(DB::table('payment_events')->count())->toBe(0);
+});
+
 it('refuses wherever a recompute would refuse', function (): void {
     config(['arovolife.recompute.allowed_databases' => ['some-other-database']]);
 

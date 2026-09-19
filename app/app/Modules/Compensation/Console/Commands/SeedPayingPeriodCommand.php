@@ -667,22 +667,28 @@ final class SeedPayingPeriodCommand extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * Tables whose foreign key to `orders` is ON DELETE RESTRICT, so a row in
+     * any of them pins the order it points at. None of them is written by this
+     * fixture — they are what a human or a gateway callback leaves behind on a
+     * fixture order — which is why finding one stops the rollback instead of
+     * being cleared out from under whoever made it.
+     *
+     * @var list<string>
+     */
+    private const RESTRICTING_TABLES = [
+        'invoices',
+        'payment_events',
+        'payment_intents',
+        'refund_intents',
+        'return_requests',
+        'shipment_events',
+        'shipments',
+    ];
+
     /** Remove exactly what a previous run wrote — matched on the order tag. */
     private function rollback(): int
     {
-        // The wallet spends go first and unconditionally. They are the one
-        // thing this fixture writes that a recompute preserves, so leaving
-        // them behind would keep debiting a wallet whose credits have been
-        // rebuilt from orders that no longer exist.
-        $spends = DB::table('wallet_ledger_entries')
-            ->where('type', 'repurchase_wallet_used')
-            ->where('memo', 'like', self::WALLET_TAG.'%')
-            ->delete();
-
-        if ($spends > 0) {
-            $this->info(sprintf('Removed %d seeded repurchase wallet spend(s).', $spends));
-        }
-
         $ids = DB::table('orders')->where('order_no', 'like', self::TAG.'%')->pluck('id')->all();
 
         if ($ids === []) {
@@ -691,10 +697,69 @@ final class SeedPayingPeriodCommand extends Command
             return self::SUCCESS;
         }
 
-        foreach (array_chunk($ids, 500) as $chunk) {
-            DB::table('bv_ledger_entries')->whereIn('order_id', $chunk)->delete();
-            DB::table('order_items')->whereIn('order_id', $chunk)->delete();
-            DB::table('orders')->whereIn('id', $chunk)->delete();
+        // Find what pins these orders BEFORE deleting anything. The delete used
+        // to run children-first in chunks and trip a RESTRICT on the parent
+        // half way through, which left the orders standing with their items
+        // and BV already gone — 500 hollow orders that still counted as
+        // seeded, so the next run seeded a second set on top of them.
+        $pinned = [];
+
+        foreach (self::RESTRICTING_TABLES as $table) {
+            $count = 0;
+
+            foreach (array_chunk($ids, 500) as $chunk) {
+                $count += DB::table($table)->whereIn('order_id', $chunk)->count();
+            }
+
+            if ($count > 0) {
+                $pinned[$table] = $count;
+            }
+        }
+
+        if ($pinned !== [] && ! $this->option('force')) {
+            $this->error('Fixture orders are referenced by rows this fixture did not write:');
+
+            foreach ($pinned as $table => $count) {
+                $this->line(sprintf('  %-16s %d row(s)', $table, $count));
+            }
+
+            $this->newLine();
+            $this->line('Those are a human\'s or a gateway\'s, not the seed\'s. Re-run with --force to');
+            $this->line('delete them along with the orders, or resolve them first.');
+
+            return self::FAILURE;
+        }
+
+        // One transaction: a rollback that fails half way is worse than one
+        // that refuses, because what it leaves behind still answers to the tag.
+        DB::transaction(function () use ($ids, $pinned): void {
+            // The wallet spends are the one thing this fixture writes that a
+            // recompute preserves, so leaving them behind would keep debiting a
+            // wallet whose credits have been rebuilt from deleted orders.
+            $spends = DB::table('wallet_ledger_entries')
+                ->where('type', 'repurchase_wallet_used')
+                ->where('memo', 'like', self::WALLET_TAG.'%')
+                ->delete();
+
+            if ($spends > 0) {
+                $this->info(sprintf('Removed %d seeded repurchase wallet spend(s).', $spends));
+            }
+
+            foreach (array_keys($pinned) as $table) {
+                foreach (array_chunk($ids, 500) as $chunk) {
+                    DB::table($table)->whereIn('order_id', $chunk)->delete();
+                }
+            }
+
+            foreach (array_chunk($ids, 500) as $chunk) {
+                DB::table('bv_ledger_entries')->whereIn('order_id', $chunk)->delete();
+                DB::table('order_items')->whereIn('order_id', $chunk)->delete();
+                DB::table('orders')->whereIn('id', $chunk)->delete();
+            }
+        });
+
+        foreach ($pinned as $table => $count) {
+            $this->warn(sprintf('Also removed %d %s row(s) that referenced a fixture order.', $count, $table));
         }
 
         $this->info(sprintf('Removed %d fixture order(s).', count($ids)));
