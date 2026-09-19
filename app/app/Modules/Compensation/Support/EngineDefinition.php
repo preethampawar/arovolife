@@ -149,6 +149,22 @@ final readonly class EngineDefinition
     }
 
     /**
+     * The next instant the scheduler fires this engine — the twin of
+     * {@see scheduleText()}, and split the same way: the day is this engine's
+     * own rule, the clock belongs to the run that fires it.
+     *
+     * Asking the run's cadence outright instead is wrong in both directions.
+     * The three runs are nightly and work out inside themselves whether an
+     * engine is owed tonight, so a monthly bonus would claim to run tomorrow at
+     * 04:00; and an engine's own declared minute is a POSITION in its run, not
+     * a clock ({@see EngineCadence::$time}).
+     */
+    public function nextRunAfter(Carbon $from): ?Carbon
+    {
+        return $this->cadence->nextRunAfter($from, $this->chainRoot()?->cadence);
+    }
+
+    /**
      * The period an operator most likely wants, matching the command's own
      * default.
      *

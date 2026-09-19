@@ -47,12 +47,10 @@ final class RunClockService
      */
     public function from(EngineDefinition $definition, ?EngineRun $lastRun): RunClock
     {
-        $root = $definition->chainRoot() ?? $definition;
-
         return new RunClock(
             $definition,
             $lastRun,
-            $root->cadence->nextRunAfter(Carbon::now('Asia/Kolkata')),
+            $definition->nextRunAfter(Carbon::now('Asia/Kolkata')),
             $this->schedulerPaused(),
         );
     }

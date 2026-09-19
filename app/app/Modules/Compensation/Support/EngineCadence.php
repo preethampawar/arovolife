@@ -128,18 +128,32 @@ final readonly class EngineCadence
      * class existed. Sixty-two days covers two whole months, so every cadence
      * this registry declares resolves well inside it; anything that does not
      * returns null and the surface says so rather than printing a guess.
+     *
+     * $firedBy is the cadence of the run that fires this engine, and it splits
+     * the question exactly as {@see describe()} splits the sentence: the DAY is
+     * this engine's own rule, the CLOCK belongs to the run. The three runs are
+     * all nightly and decide inside themselves whether their engine is owed, so
+     * taking the run's cadence whole would have the monthly bonuses claiming to
+     * run tomorrow at 04:00 and the weekly payout on a Sunday. The day must
+     * satisfy both, or a run that fires only on some days could be promised for
+     * one it sits out.
      */
-    public function nextRunAfter(Carbon $from): ?Carbon
+    public function nextRunAfter(Carbon $from, ?self $firedBy = null): ?Carbon
     {
         if ($this->type === self::NONE) {
             return null;
         }
 
+        $clock = $firedBy->time ?? $this->time;
         $day = $from->copy()->startOfDay();
 
         for ($i = 0; $i <= 62; $i++) {
-            if ($this->runsOn($day) && $this->atOn($day)->greaterThan($from)) {
-                return $this->atOn($day);
+            if ($this->runsOn($day) && ($firedBy === null || $firedBy->runsOn($day))) {
+                $at = $clock === null ? $this->atOn($day) : self::atTime($day, $clock);
+
+                if ($at->greaterThan($from)) {
+                    return $at;
+                }
             }
 
             $day->addDay();
@@ -154,11 +168,14 @@ final readonly class EngineCadence
      */
     public function atOn(Carbon $date): Carbon
     {
-        if ($this->time === null) {
-            return $date->copy()->startOfDay();
-        }
+        return $this->time === null
+            ? $date->copy()->startOfDay()
+            : self::atTime($date, $this->time);
+    }
 
-        [$hour, $minute] = array_map('intval', explode(':', $this->time));
+    private static function atTime(Carbon $date, string $time): Carbon
+    {
+        [$hour, $minute] = array_map('intval', explode(':', $time));
 
         return $date->copy()->setTime($hour, $minute);
     }

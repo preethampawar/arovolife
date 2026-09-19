@@ -113,18 +113,12 @@ final readonly class RunClock
     }
 
     /**
-     * When the run next fires AFTER a given instant — "the day now in flight
-     * ends at 23:59, so which run works it?".
-     *
-     * Asks the cadence of the run that actually fires, which for an
-     * orchestrated engine is its orchestrator's: an engine inside a run has a
-     * position, not a clock ({@see EngineCadence::$time}).
+     * When this next fires AFTER a given instant — "the day now in flight ends
+     * at 23:59, so which run works it?".
      */
     public function firesAfter(Carbon $instant): ?Carbon
     {
-        $root = $this->definition->chainRoot() ?? $this->definition;
-
-        return $root->cadence->nextRunAfter($instant);
+        return $this->definition->nextRunAfter($instant);
     }
 
     /** The same instant as a label, for copy that quotes a specific fire. */

@@ -100,16 +100,22 @@ it('promises nothing while the scheduler is held, and nothing before the first r
         ->and($held->lastRunStatus())->toBe('never run');
 });
 
-it('gives an orchestrated engine the clock of the run that fires it', function (): void {
+it('gives an orchestrated engine its own day and the clock of the run that fires it', function (): void {
+    // Saturday 19 Sep 2026, 09:00.
     Carbon::setTestNow(Carbon::parse('2026-09-19 09:00', 'Asia/Kolkata'));
+
+    $now = Carbon::now('Asia/Kolkata');
+    $next = fn (string $key): string => EngineRegistry::get($key)->nextRunAfter($now)->toDateTimeString();
 
     // The cut-off declares 00:10, but that is its POSITION in the nightly run,
     // not a promise about the clock — it fires when the step before it exits 0.
-    $clock = new RunClock(
-        EngineRegistry::get('gsb.daily-cutoff'),
-        null,
-        null,
-    );
+    expect($next('gsb.daily-cutoff'))->toBe('2026-09-20 00:05:00');
 
-    expect($clock->firesAfterLabel(Carbon::now('Asia/Kolkata')))->toBe('20 Sep 2026, 00:05 IST');
+    // The half that the Engine Runs page caught. All three runs are NIGHTLY and
+    // decide inside themselves whether their engine is owed, so borrowing the
+    // run's cadence whole had the weekly payout landing on a Sunday and every
+    // monthly bonus claiming to run tomorrow morning.
+    expect($next('gsb.weekly-payout'))->toBe('2026-09-22 03:00:00')   // Tuesday, at the weekly run's clock
+        ->and($next('gbb.monthly'))->toBe('2026-10-01 04:00:00')      // the 1st, at the monthly run's clock
+        ->and($next('payout.monthly'))->toBe('2026-10-08 04:00:00');  // the 8th, ditto
 });
