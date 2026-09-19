@@ -4,6 +4,19 @@
     $fmt = \App\Modules\Shared\Support\IndianNumber::class;
     $tiles = [];
 
+    // Order is the display order, and the two rows are meant to read as two
+    // thoughts: who you have and what you have earned on the first row, then
+    // the two Genos groups side by side on the second so Left and Right sit
+    // next to each other rather than wrapping apart.
+    $tiles[] = [
+        'label' => 'Total team',
+        'value' => $fmt::format((int) ($teamStats['total_team'] ?? 0)),
+        'sub'   => 'Members in your Genos downline',
+        'roster' => 'total',
+        'tone'  => 'brand',
+        'tip'   => 'Everyone placed below you in the Genos, on both sides. Click to see the list.',
+        'icon'   => 'users-round',
+    ];
     $tiles[] = [
         'label' => 'Personal BV',
         'value' => $personalBvPaise !== null ? \App\Modules\Commerce\Support\Bv::format($personalBvPaise) : '—',
@@ -47,15 +60,6 @@
             'icon'   => 'arrow-right',
         ];
     }
-    $tiles[] = [
-        'label' => 'Total team',
-        'value' => $fmt::format((int) ($teamStats['total_team'] ?? 0)),
-        'sub'   => 'Members in your Genos downline',
-        'roster' => 'total',
-        'tone'  => 'brand',
-        'tip'   => 'Everyone placed below you in the Genos, on both sides. Click to see the list.',
-        'icon'   => 'users-round',
-    ];
     $tiles[] = [
         'label' => 'Direct referrals',
         'value' => $fmt::format((int) ($teamStats['direct_referrals'] ?? 0)),
