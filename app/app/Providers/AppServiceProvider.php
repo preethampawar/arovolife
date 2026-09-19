@@ -35,6 +35,7 @@ use App\Modules\Compensation\Console\Commands\RebuildWeekCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Compensation\Console\Commands\ScaleBenchmarkCommand;
 use App\Modules\Compensation\Console\Commands\ScaleSeedCommand;
+use App\Modules\Compensation\Console\Commands\SeedPayingPeriodCommand;
 use App\Modules\Compensation\Console\Commands\WeeklyRunCommand;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
 use App\Modules\Compensation\Listeners\RecordEngineRun;
@@ -191,6 +192,7 @@ class AppServiceProvider extends ServiceProvider
                 RebuildMonthCommand::class,
                 RebuildPayoutCommand::class,
                 ScaleSeedCommand::class,
+                SeedPayingPeriodCommand::class,
                 ScaleBenchmarkCommand::class,
                 MonthlyPayoutCloseCommand::class,
                 PayoutReopenStuckBatchCommand::class,

@@ -1,0 +1,504 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Compensation\Console\Commands;
+
+use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
+use App\Modules\Compensation\Services\Recompute\RecomputeNotPermitted;
+use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+/**
+ * Lays down the paid orders a test environment needs before any compensation
+ * engine can be rehearsed against MONEY.
+ *
+ * Staging reached September 2026 holding 13 orders and 70,195 BV in total,
+ * which is why all 24,409 of its cut-off rows read `no_match` or
+ * `below_600bv`: nobody had the 600 BV that opens the income gate, and no leg
+ * had ever accumulated the 15,000 BV that slab 1 matches. Every engine ran
+ * nightly, correctly, and paid nothing — so the code paths that exist only
+ * when a row carries money (the swept-credit refusal, the wallet-entry delete,
+ * the repurchase-deduction halves, a payout batch with line items) had never
+ * been executed once, on any environment.
+ *
+ * This writes the INPUT only — orders, their items, and the personal BV ledger
+ * entry each one produces. Nothing derived is written here: group_bv_daily,
+ * the cut-offs, the pools and every bonus row are rebuilt by
+ * `compensation:recompute-all`, which re-dispatches the real propagation job
+ * per paid order and then replays each engine at the instant the scheduler
+ * would have fired it. That division is the whole point — a fixture that wrote
+ * its own derived rows would prove the fixture correct, not the engines.
+ *
+ * THE SHAPE, and why each part of it is there:
+ *
+ *  - TITLES. Every distributor gets one personal order, sized by placement
+ *    depth. This clears the 600 BV income gate for all of them and buys each a
+ *    GSB title, because the title is the ceiling on which slab a distributor
+ *    may earn however large their legs get. Depth 0-2 are sized to reach slabs
+ *    5, 4 and 3 so the rehearsal spans more than one slab's arithmetic.
+ *  - GROUP BV. Every leaf buys weekly through the target month. A leaf's BV
+ *    propagates to every ancestor on the side it sits, so purchases at the
+ *    bottom are what fill both legs of everyone above — which is the only way
+ *    a cut-off ever matches.
+ *  - REPURCHASE. The earners repurchase monthly, except a deliberate one in
+ *    twelve who does not, so the forfeit path has live subjects too.
+ *  - THE NIGHT. A concentrated burst on one recent day, because the night
+ *    rebuild may only run while its night is the newest one (R-91): an August
+ *    night is out of window by the time the replay reaches today, so a night
+ *    that pays has to be a recent one.
+ *
+ * Every row it writes is tagged — `order_no` starts `PS-`, `idempotency_key`
+ * starts `payseed:` — so `--rollback` removes exactly this fixture and nothing
+ * a human created. Gated by {@see RecomputeGuard}: same three locks as the
+ * recompute, because this is just as unwelcome in a database anybody depends
+ * on, and one gate is better than two that can disagree.
+ *
+ * DELETE THIS COMMAND before production launch, alongside
+ * {@see FortuneStagingE2ESeedCommand} (R-102).
+ */
+final class SeedPayingPeriodCommand extends Command
+{
+    protected $signature = 'compensation:seed-paying-period
+                            {--titles-on=2026-07-02 : Day the personal-BV / title orders are placed}
+                            {--month=2026-08 : The month to make pay (YYYY-MM)}
+                            {--night= : An extra paying day (YYYY-MM-DD); defaults to yesterday}
+                            {--rollback : Delete every order a previous run of this command seeded}
+                            {--force : Skip the typed confirmation}';
+
+    protected $description = 'TEST ENVIRONMENTS ONLY — seed paid orders that make a month and a night actually pay every bonus';
+
+    /** Orders carrying this prefix are this fixture's, and only this fixture's. */
+    private const TAG = 'PS-';
+
+    /**
+     * Personal-BV order per placement depth, as [variant id, qty].
+     *
+     * Sized against gsb_slabs.title_min_bv_paise: 68,000 BV reaches the slab-5
+     * title, 32,000 slab 4, 15,000 slab 3, 7,000 slab 2, 3,000 slab 1. Depth
+     * decides it because depth is what decides how much group BV can ever
+     * arrive underneath — a title above that is a ceiling nothing reaches.
+     *
+     * @var array<int, array{int, int}>
+     */
+    private const TITLE_PLAN = [
+        0 => [4, 7],   // 70,000 BV — slab 5 title
+        1 => [4, 4],   // 40,000 BV — slab 4 title
+        2 => [4, 2],   // 20,000 BV — slab 3 title
+    ];
+
+    /** Depths 3-6: 12,000 BV, the slab-2 title. */
+    private const TITLE_MID = [9, 2];
+
+    /** Depth 7 and below: 6,000 BV, the slab-1 title — and clear of the 600 BV gate. */
+    private const TITLE_DEEP = [9, 1];
+
+    /** 15,000 BV — exactly slab 1's matched threshold, so one order per leg moves a slab. */
+    private const GROUP_BV_VARIANT = 7;
+
+    /** 600 BV — the repurchase anchor. */
+    private const REPURCHASE_VARIANT = 6;
+
+    /** One in twelve earners skips their repurchase, to keep the forfeit path populated. */
+    private const FORFEIT_EVERY = 12;
+
+    /** @var array<int, array<string, mixed>> variant id => row */
+    private array $variants = [];
+
+    /** @var array<int, array<string, mixed>> distributor id => row */
+    private array $distributors = [];
+
+    /** @var array<int, int> distributor id => customer id */
+    private array $customers = [];
+
+    /** @var list<array<string, mixed>> */
+    private array $orderRows = [];
+
+    /** @var list<array<string, mixed>> */
+    private array $itemRows = [];
+
+    /** @var list<array<string, mixed>> */
+    private array $bvRows = [];
+
+    private int $nextOrderId = 1;
+
+    public function handle(RecomputeGuard $guard): int
+    {
+        try {
+            $guard->ensurePermitted();
+        } catch (RecomputeNotPermitted $e) {
+            $this->error($e->getMessage());
+
+            return self::FAILURE;
+        }
+
+        if ($this->option('rollback')) {
+            return $this->rollback();
+        }
+
+        $month = Carbon::parse($this->option('month').'-01')->startOfMonth();
+        $titlesOn = Carbon::parse((string) $this->option('titles-on'))->startOfDay();
+        $night = Carbon::parse(((string) $this->option('night')) ?: Carbon::yesterday()->toDateString())->startOfDay();
+
+        if (! $this->option('force') && ! $this->confirm(
+            sprintf('Seed fixture orders into %s for %s? ', $guard->targetDatabase(), $month->format('F Y')),
+        )) {
+            $this->line('Nothing written.');
+
+            return self::SUCCESS;
+        }
+
+        $this->load();
+
+        $titles = $this->seedTitles($titlesOn);
+        // The month before the target month as well, and not for symmetry: the
+        // Growth Booster pool is gated on the PRIOR month's rank, so a single
+        // seeded month produces a rank nothing can spend and GBB pays nobody.
+        $runway = $this->seedGroupBv($month->copy()->subMonth());
+        $target = $this->seedGroupBv($month);
+        $group = [
+            'orders' => $runway['orders'] + $target['orders'],
+            'bv' => $runway['bv'] + $target['bv'],
+        ];
+        $repurchase = $this->seedRepurchase($month);
+        $nightly = $this->seedNight($night);
+
+        $this->flush();
+
+        $this->newLine();
+        $this->table(['Part', 'Orders', 'BV'], [
+            ['Titles / income gate', $titles['orders'], number_format($titles['bv'] / 100)],
+            ['Group BV (leaves)', $group['orders'], number_format($group['bv'] / 100)],
+            ['Repurchase', $repurchase['orders'], number_format($repurchase['bv'] / 100)],
+            ['The paying night', $nightly['orders'], number_format($nightly['bv'] / 100)],
+        ]);
+
+        $this->newLine();
+        $this->info('Seeded. Nothing derived has been computed yet — next:');
+        $this->line('  php artisan compensation:recompute-all --horizon=now --force');
+
+        return self::SUCCESS;
+    }
+
+    /** Load the catalogue, the tree and each distributor's customer record. */
+    private function load(): void
+    {
+        // The HSN code lives on the product, not the variant, and the order
+        // line snapshots it — an invoice has to state the code that was in
+        // force when the sale happened, not the one the catalogue holds today.
+        foreach (
+            DB::table('product_variants')
+                ->leftJoin('products', 'products.id', '=', 'product_variants.product_id')
+                ->select('product_variants.*', 'products.hsn_code')
+                ->get() as $variant
+        ) {
+            $this->variants[(int) $variant->id] = (array) $variant;
+        }
+
+        foreach (DB::table('distributors')->select('id', 'depth', 'placement_parent_id', 'user_id')->get() as $row) {
+            $this->distributors[(int) $row->id] = (array) $row;
+        }
+
+        foreach (DB::table('customers')->whereNotNull('distributor_id')->get(['id', 'distributor_id']) as $row) {
+            $this->customers[(int) $row->distributor_id] = (int) $row->id;
+        }
+
+        $this->nextOrderId = ((int) DB::table('orders')->max('id')) + 1;
+    }
+
+    /**
+     * One personal order each, so every distributor clears the 600 BV income
+     * gate and holds a title the engine can pay against.
+     *
+     * @return array{orders: int, bv: int}
+     */
+    private function seedTitles(Carbon $on): array
+    {
+        $orders = 0;
+        $bv = 0;
+
+        foreach ($this->distributors as $id => $distributor) {
+            $depth = (int) $distributor['depth'];
+
+            [$variantId, $qty] = match (true) {
+                isset(self::TITLE_PLAN[$depth]) => self::TITLE_PLAN[$depth],
+                $depth <= 6 => self::TITLE_MID,
+                default => self::TITLE_DEEP,
+            };
+
+            $bv += $this->order($id, $on->copy()->setTime(10, 0), [[$variantId, $qty]]);
+            $orders++;
+        }
+
+        return ['orders' => $orders, 'bv' => $bv];
+    }
+
+    /**
+     * Every leaf buys once a week through the month.
+     *
+     * Leaves specifically: their BV rolls up to every ancestor and is never
+     * diluted by having a leg of their own, which is what puts matched volume
+     * on both sides of everyone above them.
+     *
+     * @return array{orders: int, bv: int}
+     */
+    private function seedGroupBv(Carbon $month): array
+    {
+        $orders = 0;
+        $bv = 0;
+        $leaves = $this->leaves();
+        $end = $month->copy()->endOfMonth();
+
+        foreach ($leaves as $index => $leafId) {
+            // Stagger the start across the first week so the days fill evenly
+            // rather than every leaf buying on the same four dates.
+            $day = $month->copy()->addDays(2 + ($index % 7));
+
+            while ($day->lessThanOrEqualTo($end)) {
+                $bv += $this->order($leafId, $day->copy()->setTime(11, 0), [[self::GROUP_BV_VARIANT, 1]]);
+                $orders++;
+                $day->addWeek();
+            }
+        }
+
+        return ['orders' => $orders, 'bv' => $bv];
+    }
+
+    /**
+     * The earners repurchase, except one in twelve.
+     *
+     * The skipped ones are not an oversight: a fixture where every cycle is
+     * fulfilled never exercises the forfeit verdict, and forfeiture is the
+     * half of the repurchase engine that decides a day pays nothing.
+     *
+     * @return array{orders: int, bv: int}
+     */
+    private function seedRepurchase(Carbon $month): array
+    {
+        $orders = 0;
+        $bv = 0;
+        $seen = 0;
+
+        foreach ($this->distributors as $id => $distributor) {
+            if ((int) $distributor['depth'] > 6) {
+                continue;
+            }
+
+            $seen++;
+
+            if ($seen % self::FORFEIT_EVERY === 0) {
+                continue;
+            }
+
+            foreach ([$month->copy()->subMonth(), $month] as $cycleMonth) {
+                $bv += $this->order(
+                    $id,
+                    $cycleMonth->copy()->addDays(9)->setTime(12, 0),
+                    // Two units, not one: rank_tiers.repurchase_bv_paise asks
+                    // 1,000 BV at Silver and 1,100 at Pearl, so a single 600 BV
+                    // anchor purchase satisfies the repurchase engine and still
+                    // fails every rank's own repurchase requirement.
+                    [[self::REPURCHASE_VARIANT, 2]],
+                );
+                $orders++;
+            }
+        }
+
+        return ['orders' => $orders, 'bv' => $bv];
+    }
+
+    /**
+     * A burst on one recent day, so the newest night is a night that pays.
+     *
+     * R-91: a night may only be rebuilt while it is the newest one, so the
+     * paying night the rebuild rehearsal needs cannot be a month old.
+     *
+     * @return array{orders: int, bv: int}
+     */
+    private function seedNight(Carbon $night): array
+    {
+        $orders = 0;
+        $bv = 0;
+
+        foreach ($this->leaves() as $leafId) {
+            $bv += $this->order($leafId, $night->copy()->setTime(13, 0), [[self::GROUP_BV_VARIANT, 1]]);
+            $orders++;
+        }
+
+        return ['orders' => $orders, 'bv' => $bv];
+    }
+
+    /**
+     * Distributors with no placement children — the bottom of the tree.
+     *
+     * @return list<int>
+     */
+    private function leaves(): array
+    {
+        $parents = [];
+
+        foreach ($this->distributors as $distributor) {
+            if ($distributor['placement_parent_id'] !== null) {
+                $parents[(int) $distributor['placement_parent_id']] = true;
+            }
+        }
+
+        return array_values(array_filter(
+            array_keys($this->distributors),
+            static fn (int $id): bool => ! isset($parents[$id]),
+        ));
+    }
+
+    /**
+     * Stage one paid order, its items and its BV ledger entry. Returns the BV.
+     *
+     * @param  list<array{int, int}>  $lines  [variant id, qty]
+     */
+    private function order(int $distributorId, Carbon $at, array $lines): int
+    {
+        $orderId = $this->nextOrderId++;
+        $orderNo = self::TAG.$at->format('ymd').'-'.strtoupper(Str::random(6));
+        $stamp = $at->toDateTimeString();
+
+        $subtotal = 0;
+        $gst = 0;
+        $bv = 0;
+
+        foreach ($lines as [$variantId, $qty]) {
+            $variant = $this->variants[$variantId];
+            $unit = (int) ($variant['sale_price_paise'] ?: $variant['mrp_paise']);
+            $rate = (int) $variant['gst_rate_bp'];
+
+            // The catalogue price is GST-inclusive, so the taxable value is
+            // backed out of it — matching how a real checkout stores the line.
+            $lineTotal = $unit * $qty;
+            $taxable = (int) round($lineTotal * 10000 / (10000 + $rate));
+            $lineGst = $lineTotal - $taxable;
+            $lineBv = (int) $variant['bv_paise'] * $qty;
+
+            $this->itemRows[] = [
+                'order_id' => $orderId,
+                'product_variant_id' => $variantId,
+                'product_name_snapshot' => (string) $variant['name'],
+                'variant_sku_snapshot' => (string) $variant['variant_sku'],
+                'hsn_code_snapshot' => (string) ($variant['hsn_code'] ?? ''),
+                'qty' => $qty,
+                'unit_price_paise' => $unit,
+                'bv_paise' => $lineBv,
+                'gst_rate_bp' => $rate,
+                'taxable_value_paise' => $taxable,
+                'gst_paise' => $lineGst,
+                'line_total_paise' => $lineTotal,
+                'created_at' => $stamp,
+            ];
+
+            $subtotal += $lineTotal;
+            $gst += $lineGst;
+            $bv += $lineBv;
+        }
+
+        $this->orderRows[] = [
+            'id' => $orderId,
+            'order_no' => $orderNo,
+            'customer_id' => $this->customerFor($distributorId),
+            'attributed_distributor_id' => $distributorId,
+            'delivery_type' => 'ship',
+            'attribution_source' => 'logged_in',
+            'payment_method' => 'online',
+            'status' => 'paid',
+            'self_consumption' => 1,
+            'subtotal_paise' => $subtotal,
+            'gst_paise' => $gst,
+            'total_paise' => $subtotal,
+            'idempotency_key' => 'payseed:'.$orderNo,
+            'placed_at' => $stamp,
+            'paid_at' => $stamp,
+            'created_at' => $stamp,
+            'updated_at' => $stamp,
+        ];
+
+        $this->bvRows[] = [
+            'distributor_id' => $distributorId,
+            'order_id' => $orderId,
+            'bv_paise' => $bv,
+            'type' => 'accrual',
+            'effective_at' => $stamp,
+            'created_at' => $stamp,
+            'updated_at' => $stamp,
+        ];
+
+        return $bv;
+    }
+
+    /**
+     * The distributor's own customer record, created if they never bought.
+     *
+     * Orders cannot exist without one, and 110 of the 317 distributors on
+     * staging had never placed an order and so had none.
+     */
+    private function customerFor(int $distributorId): int
+    {
+        if (isset($this->customers[$distributorId])) {
+            return $this->customers[$distributorId];
+        }
+
+        $id = (int) DB::table('customers')->insertGetId([
+            'user_id' => $this->distributors[$distributorId]['user_id'],
+            'distributor_id' => $distributorId,
+            'display_name' => 'Fixture '.$distributorId,
+            'marketing_opt_in' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $this->customers[$distributorId] = $id;
+    }
+
+    /** Write the staged rows, children after their parents. */
+    private function flush(): void
+    {
+        $bar = $this->output->createProgressBar(count($this->orderRows));
+        $bar->start();
+
+        foreach (array_chunk($this->orderRows, 500) as $chunk) {
+            DB::table('orders')->insert($chunk);
+            $bar->advance(count($chunk));
+        }
+
+        $bar->finish();
+        $this->newLine();
+
+        foreach (array_chunk($this->itemRows, 500) as $chunk) {
+            DB::table('order_items')->insert($chunk);
+        }
+
+        foreach (array_chunk($this->bvRows, 500) as $chunk) {
+            DB::table('bv_ledger_entries')->insert($chunk);
+        }
+    }
+
+    /** Remove exactly what a previous run wrote — matched on the order tag. */
+    private function rollback(): int
+    {
+        $ids = DB::table('orders')->where('order_no', 'like', self::TAG.'%')->pluck('id')->all();
+
+        if ($ids === []) {
+            $this->line('No fixture orders to remove.');
+
+            return self::SUCCESS;
+        }
+
+        foreach (array_chunk($ids, 500) as $chunk) {
+            DB::table('bv_ledger_entries')->whereIn('order_id', $chunk)->delete();
+            DB::table('order_items')->whereIn('order_id', $chunk)->delete();
+            DB::table('orders')->whereIn('id', $chunk)->delete();
+        }
+
+        $this->info(sprintf('Removed %d fixture order(s).', count($ids)));
+        $this->line('The derived rows they produced are still there — run compensation:recompute-all to clear them.');
+
+        return self::SUCCESS;
+    }
+}
