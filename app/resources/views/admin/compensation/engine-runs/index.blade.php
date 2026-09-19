@@ -104,6 +104,18 @@
             array_values($rebuildPreview['adjustments']),
         )),
     );
+    // Joined here rather than interpolated inline, so an empty adjustment or
+    // warning list cannot leave a run of blank spaces in the attribute.
+    $rebuildImpactText = $rebuildPreview === null ? '' : implode(' ', array_filter([
+        sprintf(
+            '%s row(s) across %d table(s) are deleted and rebuilt through the ordinary engines.',
+            \App\Modules\Shared\Support\IndianNumber::format($rebuildRowTotal),
+            count($rebuildPreview['rowsToRemove']),
+        ),
+        $rebuildAdjustmentText,
+        implode(' ', $rebuildPreview['warnings']),
+        'Runs in the background; refresh to follow it.',
+    ]));
 @endphp
 <div class="mb-6 rounded-xl border-2 border-slate-400 bg-slate-50 p-4">
     <div class="flex items-center gap-2">
@@ -297,9 +309,9 @@
 
         <form method="POST" action="{{ route('admin.compensation.engine-runs.rebuild') }}"
               class="mt-4 border-t border-gray-200 pt-3"
-              data-confirm="Wipe {{ $rebuildPreview['label'] }} for {{ $rebuildPreview['period'] }} and run it again?"
-              data-confirm-title="Rebuild {{ $rebuildPreview['label'] }} — {{ $rebuildPreview['period'] }}"
-              data-confirm-impact="{{ \App\Modules\Shared\Support\IndianNumber::format($rebuildRowTotal) }} row(s) across {{ count($rebuildPreview['rowsToRemove']) }} table(s) are deleted and rebuilt through the ordinary engines. {{ $rebuildAdjustmentText }} {{ implode(' ', $rebuildPreview['warnings']) }} Runs in the background; refresh to follow it.">
+              data-confirm="Wipe {{ $rebuildPreview['period'] }} and re-derive it through the ordinary engines?"
+              data-confirm-title="{{ $rebuildPreview['label'] }} · {{ $rebuildPreview['period'] }}"
+              data-confirm-impact="{{ $rebuildImpactText }}">
             @csrf
             <input type="hidden" name="kind" value="{{ $rebuildPreview['kind'] }}">
             <input type="hidden" name="period" value="{{ $rebuildPreview['period'] }}">

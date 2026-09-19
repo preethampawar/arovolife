@@ -1445,7 +1445,11 @@ it('names what a night rebuild corrects in place, not only what it deletes', fun
         // And in the confirm modal's own impact line, not only in the card
         // above it: the modal is the last thing read before the rebuild is
         // authorised, and it summed deletions alone.
-        ->assertSee('Corrected in place, not deleted: group_bv_daily — 1 row(s).', false);
+        ->assertSee('Corrected in place, not deleted: group_bv_daily — 1 row(s).', false)
+        // The registry label already begins with "Rebuild — ", so the modal
+        // title must not prefix it again.
+        ->assertSee('data-confirm-title="Rebuild — night · 2026-01-01"', false)
+        ->assertDontSee('Rebuild Rebuild', false);
 
     $this->actingAs($developer)
         ->post(route('admin.compensation.engine-runs.rebuild'), [
