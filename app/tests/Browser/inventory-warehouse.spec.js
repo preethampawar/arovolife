@@ -95,6 +95,10 @@ test.describe('Inventory: Suppliers', () => {
         await page.getByRole('button', { name: 'Create supplier' }).click();
 
         await page.waitForURL('**/admin/inventory/suppliers');
+        // Same reason as the warehouse list above: ordered and paginated, so a
+        // new row is not necessarily on page one once runs accumulate. Search
+        // for it rather than assume where it landed.
+        await page.goto(`/admin/inventory/suppliers?q=${encodeURIComponent(supplierName)}`);
         const row = page.locator('tbody tr').filter({ hasText: supplierName });
         await expect(row).toBeVisible();
         await expect(row.locator('td').last().locator('..')).toContainText('Active');
@@ -177,32 +181,36 @@ test.describe('Inventory: Goods receipt (GRN)', () => {
         await page.waitForURL('**/admin/inventory/grns/create**');
         await expect(page.getByRole('heading', { name: 'New goods receipt (GRN)' })).toBeVisible();
 
+        // Measured before anything is typed: each reload below discards form
+        // input. The line item wraps over two rows precisely so this page
+        // never needs a horizontal scrollbar — checked at a narrow laptop
+        // width, where the old single-row grid's 1140px floor overflowed.
+        await page.setViewportSize({ width: 1024, height: 900 });
+        await page.reload();
+        const overflowsAt1024 = await page.evaluate(
+            () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        );
+        expect(overflowsAt1024).toBe(false);
+
+        // On a phone the row stacks to two columns. The reload matters: the
+        // admin shell sizes its sidebar from the width it saw at load, so
+        // resizing without one leaves the content column ~98px wide and
+        // measures the stale shell rather than this layout.
+        await page.setViewportSize({ width: 390, height: 900 });
+        await page.reload();
+        const phoneLine = page.locator('#grnLinesBody .grn-line').first();
+        await expect(phoneLine).toBeVisible();
+        expect(await phoneLine.evaluate((el) => el.scrollWidth > el.clientWidth + 1)).toBe(false);
+
+        await page.setViewportSize({ width: 1280, height: 900 });
+        await page.reload();
+
         await page.fill('input[name="supplier_invoice_no"]', grnInvoiceNo);
         await page.fill('input[name="supplier_invoice_date"]', new Date().toISOString().slice(0, 10));
 
         const line = page.locator('#grnLinesBody .grn-line').first();
         await expect(line).toBeVisible();
 
-        // The line item wraps over two rows precisely so this page never needs
-        // a horizontal scrollbar. Checked at a narrow laptop width, where the
-        // old single-row grid's 1140px floor overflowed.
-        await page.setViewportSize({ width: 1024, height: 900 });
-        const overflowsAt1024 = await page.evaluate(
-            () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-        );
-        expect(overflowsAt1024).toBe(false);
-
-        // On a phone the row stacks to two columns. Scoped to the line item
-        // itself: the admin shell reports a ~31px document overflow at this
-        // width that predates this layout and is clipped by body's
-        // overflow-x-hidden, so asserting on the document would be asserting
-        // someone else's bug.
-        await page.setViewportSize({ width: 390, height: 900 });
-        const lineOverflows = await line.evaluate(
-            (el) => el.scrollWidth > el.clientWidth + 1 || el.getBoundingClientRect().right > document.documentElement.clientWidth + 1,
-        );
-        expect(lineOverflows).toBe(false);
-        await page.setViewportSize({ width: 1280, height: 900 });
 
         await line.locator('input[name$="[batch_no]"]').fill(batchNo);
         const expiry = new Date();
