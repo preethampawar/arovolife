@@ -21,6 +21,7 @@
 <div class="mb-6 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-900">
     <p class="font-semibold mb-2"><strong>{{ $invoiceGapCount }}</strong> paid order{{ $invoiceGapCount === 1 ? '' : 's' }} without a GST invoice</p>
     <p class="text-xs text-red-800 mb-3">The payment was confirmed but the invoice failed to generate. A tax invoice must be issued for every supply (CGST §31); issue it here — the next consecutive number is allocated, never a duplicate.</p>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm bg-white rounded-lg border border-red-200">
         <thead><tr class="text-left text-xs text-gray-600 uppercase border-b border-red-200"><th class="px-3 py-2 w-12">S.No.</th><th class="px-3 py-2">Order</th><th class="px-3 py-2">Customer</th><th class="px-3 py-2">Paid</th><th class="px-3 py-2 text-right">Total</th><th></th></tr></thead>
         <tbody class="divide-y divide-red-100">
@@ -44,6 +45,7 @@
         @endforeach
         </tbody>
     </table>
+    </div>
 </div>
 @endif
 

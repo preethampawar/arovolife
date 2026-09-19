@@ -117,7 +117,7 @@
                         {{ $group['label'] }}
                         <span class="text-[9px] leading-none opacity-70">▼</span>
                     </summary>
-                    <div class="absolute left-0 top-full mt-1 z-30 w-72 rounded-xl border border-gray-200 bg-white shadow-lg py-2">
+                    <div class="absolute left-0 top-full mt-1 z-30 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white shadow-lg py-2">
                         @foreach($group['items'] as $item)
                             @if(isset($item['heading']))
                                 <p class="px-4 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-600 whitespace-nowrap">{{ $item['heading'] }}</p>

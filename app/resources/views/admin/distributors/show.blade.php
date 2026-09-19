@@ -505,6 +505,7 @@ function unmaskNomineeAadhaar(btn) {
     <div class="px-6 py-4 border-b border-gray-200">
         <h3 class="font-semibold text-gray-800">Consent Records</h3>
     </div>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead>
             <tr class="border-b border-gray-200 bg-gray-50/50">
@@ -527,6 +528,7 @@ function unmaskNomineeAadhaar(btn) {
             @endforeach
         </tbody>
     </table>
+    </div>
 </x-ui.card>
 @endif
 

@@ -19,6 +19,7 @@
 </x-ui.card>
 
 <x-ui.card flush class="mb-6">
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -46,6 +47,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
 </x-ui.card>
 
 <div class="flex items-center gap-3">

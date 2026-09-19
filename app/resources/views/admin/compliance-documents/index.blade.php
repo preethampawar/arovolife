@@ -51,6 +51,7 @@
     <x-filter-bar :filters="$filters" />
 
     <x-ui.card flush>
+        <div class="overflow-x-auto">
         <table class="w-full text-sm">
             <thead>
                 <tr class="border-b border-gray-200 bg-gray-50/50">
@@ -107,6 +108,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </x-ui.card>
     @if($documents->hasPages())
     <div class="px-4 py-4 border-t border-gray-200">{{ $documents->links() }}</div>

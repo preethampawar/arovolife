@@ -44,6 +44,7 @@
 </x-ui.card>
 
 <x-ui.card flush>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -84,5 +85,6 @@
             </tr>
         </tfoot>
     </table>
+    </div>
 </x-ui.card>
 @endsection

@@ -202,6 +202,14 @@ test.describe('Inventory: Goods receipt (GRN)', () => {
         await expect(phoneLine).toBeVisible();
         expect(await phoneLine.evaluate((el) => el.scrollWidth > el.clientWidth + 1)).toBe(false);
 
+        // And the document itself, which is the thing a person actually sees.
+        // The row's grid children carry min-w-0 for this: without it the
+        // product select's longest <option> set the column's min-width and
+        // pushed the page ~31px past the viewport.
+        expect(await page.evaluate(
+            () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        )).toBe(false);
+
         await page.setViewportSize({ width: 1280, height: 900 });
         await page.reload();
 

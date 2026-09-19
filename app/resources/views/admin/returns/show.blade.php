@@ -66,6 +66,7 @@
         {{-- Order items --}}
         <x-ui.card padding="p-6">
             <h3 class="font-semibold text-gray-900 mb-3">Order items ({{ $order->order_no }})</h3>
+            <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead><tr class="border-b border-gray-100">
                     <th class="text-left py-2 text-xs font-medium text-gray-600 uppercase w-12">S.No.</th>
@@ -87,6 +88,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
             <div class="mt-3 pt-3 border-t border-gray-100 flex flex-col items-end text-sm space-y-1">
                 <div class="flex gap-8"><span class="text-gray-600">Subtotal (incl. GST)</span><span class="w-28 text-right">₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->subtotal_paise / 100, 2) }}</span></div>
                 @if($order->discount_paise > 0)

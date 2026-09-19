@@ -13,6 +13,7 @@
 <x-filter-bar :filters="$filters" />
 
 <x-ui.card flush>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -45,6 +46,7 @@
             @endforelse
         </tbody>
     </table>
+    </div>
 </x-ui.card>
 
 <div class="mt-4">{{ $orders->links() }}</div>

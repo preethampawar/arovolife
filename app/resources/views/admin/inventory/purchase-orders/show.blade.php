@@ -43,6 +43,7 @@
 </x-ui.card>
 
 <x-ui.card flush class="mb-6">
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -63,11 +64,13 @@
             @endforeach
         </tbody>
     </table>
+    </div>
 </x-ui.card>
 
 @if($invoices->isNotEmpty())
 <x-ui.card flush>
     <div class="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-900">Goods receipts against this PO</div>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -88,6 +91,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
 </x-ui.card>
 @endif
 @endsection

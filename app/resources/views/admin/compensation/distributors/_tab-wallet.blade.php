@@ -10,6 +10,7 @@
     @if(empty($ledger) || $ledger->isEmpty())
     <x-ui.empty-state title="No wallet transactions yet." />
     @else
+    <div class="overflow-x-auto">
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
@@ -39,6 +40,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
     @endif
 </x-ui.card>
 
@@ -52,6 +54,7 @@
     <x-ui.empty-state title="No repurchase wallet transactions yet."
                       description="Deductions appear here once the first payout is processed." />
     @else
+    <div class="overflow-x-auto">
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
@@ -76,5 +79,6 @@
             @endforeach
         </tbody>
     </table>
+    </div>
     @endif
 </x-ui.card>

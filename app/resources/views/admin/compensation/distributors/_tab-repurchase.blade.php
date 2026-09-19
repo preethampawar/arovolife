@@ -68,6 +68,7 @@
     @if(empty($rows) || $rows->isEmpty())
     <x-ui.empty-state title="No repurchase cycles yet (the distributor has not reached 600 personal BV, or the engine has not been run)." />
     @else
+    <div class="overflow-x-auto">
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
@@ -112,6 +113,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
 </x-ui.card>

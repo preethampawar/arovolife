@@ -59,6 +59,7 @@
 
     <x-ui.card padding="p-6 space-y-4">
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Line items</h2>
+        <div class="overflow-x-auto">
         <table class="w-full text-sm" id="poLinesTable">
             <thead class="text-gray-600 text-left">
                 <tr>
@@ -78,6 +79,7 @@
                 </tr>
             </tfoot>
         </table>
+        </div>
         <button type="button" id="poAddLine" class="text-sm text-brand-700 hover:text-brand-800 font-medium">{{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Add line</button>
     </x-ui.card>
 

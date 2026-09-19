@@ -30,6 +30,7 @@
 <x-filter-bar :filters="$filters" />
 
 <x-ui.card flush>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
@@ -94,6 +95,7 @@
             @endforelse
         </tbody>
     </table>
+    </div>
 </x-ui.card>
 
 @if($returns->hasPages())

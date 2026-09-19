@@ -39,6 +39,7 @@
     @if($days->isEmpty())
     <x-ui.empty-state title="No Genos BV activity yet." />
     @else
+    <div class="overflow-x-auto">
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
@@ -151,6 +152,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $days->links() }}</div>
     @endif
 </x-ui.card>

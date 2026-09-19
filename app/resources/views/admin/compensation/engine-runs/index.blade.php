@@ -252,6 +252,7 @@
                 @if($rebuildPreview['rowsToRemove'] === [])
                 <p class="mt-1 text-xs text-gray-600">Nothing to remove for this period — the re-run computes it from empty.</p>
                 @else
+                <div class="overflow-x-auto">
                 <table class="mt-1 w-full text-xs">
                     @foreach($rebuildPreview['rowsToRemove'] as $table => $count)
                     <tr>
@@ -262,6 +263,7 @@
                     </tr>
                     @endforeach
                 </table>
+                </div>
                 @endif
                 @if($rebuildPreview['adjustments'] !== [])
                 {{-- A night rebuild does not only delete: it hands the day's
@@ -269,6 +271,7 @@
                      The table above lists deletions, so the correction is named
                      separately or the confirm would not say what it corrects. --}}
                 <p class="mt-2 text-xs text-gray-700">Corrected in place, not deleted:</p>
+                <div class="overflow-x-auto">
                 <table class="mt-1 w-full text-xs">
                     @foreach($rebuildPreview['adjustments'] as $table => $count)
                     <tr>
@@ -279,6 +282,7 @@
                     </tr>
                     @endforeach
                 </table>
+                </div>
                 @endif
                 <p class="mt-2 text-xs text-gray-700">
                     Wallet credits un-swept (batch stamp removed, credit kept):
@@ -381,6 +385,7 @@
     <details class="mt-3">
         <summary class="cursor-pointer text-xs font-medium text-red-800">What would be destroyed</summary>
         <div class="mt-2 max-h-48 overflow-y-auto rounded-lg border border-red-200 bg-white p-3">
+            <div class="overflow-x-auto">
             <table class="w-full text-xs">
                 @foreach($purchaseResetRowCounts as $table => $count)
                 <tr>
@@ -392,6 +397,7 @@
                 </tr>
                 @endforeach
             </table>
+            </div>
         </div>
     </details>
     @endif
@@ -464,6 +470,7 @@
     <details class="mt-3">
         <summary class="cursor-pointer text-xs font-medium text-red-800">What would be destroyed</summary>
         <div class="mt-2 max-h-48 overflow-y-auto rounded-lg border border-red-200 bg-white p-3">
+            <div class="overflow-x-auto">
             <table class="w-full text-xs">
                 @foreach($recomputeRowCounts as $table => $count)
                 <tr>
@@ -475,6 +482,7 @@
                 </tr>
                 @endforeach
             </table>
+            </div>
         </div>
     </details>
     @endif

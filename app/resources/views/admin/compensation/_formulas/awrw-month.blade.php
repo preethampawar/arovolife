@@ -33,6 +33,7 @@
         </div>
         <div>
             <p class="font-semibold text-gray-800 mb-2">With this month's values</p>
+            <div class="overflow-x-auto">
             <table class="w-full font-mono text-gray-700">
                 <thead>
                     <tr class="text-gray-500 font-sans">
@@ -57,6 +58,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </details>

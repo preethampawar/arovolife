@@ -19,6 +19,7 @@
 </form>
 
 <x-ui.card flush>
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="bg-gray-50 text-gray-600 text-left">
             <tr>
@@ -71,6 +72,7 @@
                     <td colspan="9" class="px-4 pb-3 pt-0">
                         <details class="text-xs text-gray-600">
                             <summary class="cursor-pointer text-gray-500">{{ $batches->count() }} batch(es)</summary>
+                            <div class="overflow-x-auto">
                             <table class="w-full mt-2 text-xs">
                                 <thead class="text-gray-500 text-left">
                                     <tr><th class="pr-3 py-1">Batch</th><th class="pr-3 py-1">Expiry</th><th class="pr-3 py-1 text-right">Qty on hand</th><th class="pr-3 py-1 text-right">Unit cost</th></tr>
@@ -86,6 +88,7 @@
                                     @endforeach
                                 </tbody>
                             </table>
+                            </div>
                         </details>
                     </td>
                 </tr>
@@ -95,6 +98,7 @@
             @endforelse
         </tbody>
     </table>
+    </div>
 </x-ui.card>
 
 <div class="mt-4">{{ $levels->links() }}</div>

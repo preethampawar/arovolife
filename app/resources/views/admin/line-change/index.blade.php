@@ -36,6 +36,7 @@
         {{ $currentTab === 'decided' ? 'No decided requests yet.' : 'No pending line-change requests.' }}
     </div>
     @else
+    <div class="overflow-x-auto">
     <table class="w-full text-sm">
         <thead class="text-left text-xs uppercase tracking-wider text-gray-600 border-b border-gray-200">
             <tr>
@@ -67,6 +68,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
     @endif
 </div>
 

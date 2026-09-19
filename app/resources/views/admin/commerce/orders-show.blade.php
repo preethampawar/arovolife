@@ -9,6 +9,7 @@
         {{-- Items --}}
         <x-ui.card padding="p-6">
             <h3 class="font-semibold text-gray-900 mb-4">Items</h3>
+            <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-gray-200">
@@ -38,6 +39,7 @@
                     @endforeach
                 </tbody>
             </table>
+            </div>
             <div class="mt-4 pt-4 border-t border-gray-200 flex flex-col items-end text-sm space-y-1">
                 {{-- BV at the TOP of the totals, mirroring the cart / order summary. --}}
                 <div class="flex gap-8 text-brand-700 pb-2 mb-2 border-b border-gray-200"><span class="font-semibold">Total BV</span><span class="w-32 text-right font-bold">{{ \App\Modules\Shared\Support\IndianNumber::format($order->bvTotalPaise() / 100, 0) }} BV</span></div>

@@ -11,6 +11,7 @@
     @if(empty($rows) || $rows->isEmpty())
     <x-ui.empty-state title="No Rank Bonus history yet." />
     @else
+    <div class="overflow-x-auto">
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
@@ -59,6 +60,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
     <div class="px-4 py-3 border-t border-gray-100">{{ $rows->links() }}</div>
     @endif
 </x-ui.card>
@@ -72,6 +74,7 @@
     @if(empty($quals) || $quals->isEmpty())
     <x-ui.empty-state title="No rank qualification yet." />
     @else
+    <div class="overflow-x-auto">
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
@@ -105,6 +108,7 @@
             @endforeach
         </tbody>
     </table>
+    </div>
     @endif
 </x-ui.card>
 
@@ -155,6 +159,7 @@
         AO-GO grants
         <x-help-tip text="Achieve Once – Get Once: a degraded ex-rank-holder earns offer points in the Rank-1 pool, never in consecutive months, up to the lifetime cap." />
     </p>
+    <div class="overflow-x-auto">
     <table class="w-full text-xs">
         <thead class="bg-gray-50">
             <tr>
@@ -189,5 +194,6 @@
             @endforeach
         </tbody>
     </table>
+    </div>
 </x-ui.card>
 @endif
