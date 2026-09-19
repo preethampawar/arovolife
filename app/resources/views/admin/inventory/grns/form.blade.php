@@ -108,49 +108,63 @@
         </div>
     </x-ui.card>
 
-    <x-ui.card padding="p-6 space-y-4 overflow-x-auto">
+    {{-- Not a table any more. As a table every column had to fit one shared row,
+         which on a 900px floor left Qty roughly 50px of text once the padding
+         and the number spinner were taken out — two digits at a time, and a
+         horizontal scroll on anything narrower. A grid lets the same fields lay
+         out as a row on a wide screen and stack into labelled fields on a phone,
+         which is the only layout that stays usable at 375px.
+
+         Defined out here, not inside the card: a component slot is compiled as
+         its own closure, so a variable declared inside it is not in scope for
+         the template below, and the row would silently lose its column widths. --}}
+    @php
+        // Qty and GST % carry a 110px floor, not the 90px the old columns had.
+        // At 14px monospace that is about eight digits of room once the 24px of
+        // padding is taken off — a goods receipt for 1,00,000 units fits, which
+        // the two-digit field it replaces did not.
+        $grnGrid = 'lg:grid lg:gap-3 lg:items-center lg:grid-cols-[minmax(190px,2.2fr)_minmax(110px,1fr)_minmax(140px,1fr)_minmax(140px,1fr)_minmax(110px,0.8fr)_minmax(130px,1fr)_minmax(110px,0.8fr)_minmax(110px,1fr)_auto]';
+    @endphp
+
+    <x-ui.card padding="p-4 sm:p-6 space-y-4">
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Line items</h2>
-        <table class="w-full text-sm min-w-[900px]" id="grnLinesTable">
-            <thead class="text-gray-600 text-left">
-                <tr>
-                    {{-- Widest column by content (SKU — product name) and the only
-                         one with no fixed width, so without a floor it was the one
-                         the table squeezed: the select collapsed until its
-                         placeholder read "Cho…". --}}
-                    <th class="py-2 pr-2 font-semibold min-w-[220px]">Product</th>
-                    <th class="py-2 pr-2 font-semibold w-32">Batch no.</th>
-                    <th class="py-2 pr-2 font-semibold w-36">Mfg date</th>
-                    <th class="py-2 pr-2 font-semibold w-36">Expiry date</th>
-                    <th class="py-2 pr-2 font-semibold w-24">Qty</th>
-                    <th class="py-2 pr-2 font-semibold w-32">Unit cost (₹)</th>
-                    <th class="py-2 pr-2 font-semibold w-28">GST %</th>
-                    <th class="py-2 pr-2 font-semibold w-32 text-right">Line total</th>
-                    <th class="py-2 w-10"></th>
-                </tr>
-            </thead>
-            <tbody id="grnLinesBody" class="divide-y divide-gray-100"></tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="4"></td>
-                    <td colspan="2" class="pt-3 text-right text-gray-600">Taxable</td>
-                    <td class="pt-3 text-right font-mono" id="grnTaxable">₹0.00</td>
-                    <td colspan="2"></td>
-                </tr>
-                <tr>
-                    <td colspan="4"></td>
-                    <td colspan="2" class="text-right text-gray-600">GST</td>
-                    <td class="text-right font-mono" id="grnGst">₹0.00</td>
-                    <td colspan="2"></td>
-                </tr>
-                <tr>
-                    <td colspan="4"></td>
-                    <td colspan="2" class="text-right font-semibold text-gray-900">Total</td>
-                    <td class="text-right font-semibold font-mono text-gray-900" id="grnGrandTotal">₹0.00</td>
-                    <td colspan="2"></td>
-                </tr>
-            </tfoot>
-        </table>
+
+        <div class="lg:overflow-x-auto">
+            <div class="lg:min-w-[1140px] space-y-3 lg:space-y-2">
+                <div class="{{ $grnGrid }} hidden text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                    <div>Product</div>
+                    <div>Batch no.</div>
+                    <div>Mfg date</div>
+                    <div>Expiry date</div>
+                    <div>Qty</div>
+                    <div>Unit cost (₹)</div>
+                    <div>GST %</div>
+                    <div class="text-right">Line total</div>
+                    <div class="w-16"></div>
+                </div>
+
+                <div id="grnLinesBody" class="space-y-4 lg:space-y-2"></div>
+            </div>
+        </div>
+
         <button type="button" id="grnAddLine" class="text-sm text-brand-700 hover:text-brand-800 font-medium">{{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Add line</button>
+
+        <div class="flex justify-end border-t border-gray-200 pt-4">
+            <dl class="w-full sm:w-72 text-sm space-y-1">
+                <div class="flex justify-between">
+                    <dt class="text-gray-600">Taxable</dt>
+                    <dd class="font-mono" id="grnTaxable">₹0.00</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-gray-600">GST</dt>
+                    <dd class="font-mono" id="grnGst">₹0.00</dd>
+                </div>
+                <div class="flex justify-between border-t border-gray-200 pt-1">
+                    <dt class="font-semibold text-gray-900">Total</dt>
+                    <dd class="font-semibold font-mono text-gray-900" id="grnGrandTotal">₹0.00</dd>
+                </div>
+            </dl>
+        </div>
     </x-ui.card>
 
     <div class="flex items-center gap-3">
@@ -161,25 +175,58 @@
     </div>
 </form>
 
+@php
+    $grnBase = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500';
+    // Spinners cost about 20px of an already narrow field and are useless for a
+    // quantity anyone types. Killing them is what gets Qty from two visible
+    // digits to six; type="number" stays, so the numeric keypad and the min/step
+    // validation are untouched.
+    $grnNum = $grnBase.' font-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
+    $grnLabel = 'lg:hidden block text-xs text-gray-600 mb-1 font-medium';
+@endphp
 <template id="grnLineTemplate">
-    <tr class="grn-line">
-        <td class="py-2 pr-2">
-            <select name="lines[__INDEX__][product_variant_id]" class="grn-variant w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500" required>
+    <div class="grn-line {{ $grnGrid }} rounded-lg border border-gray-200 p-3 lg:border-0 lg:p-0 lg:rounded-none grid grid-cols-2 gap-3">
+        <label class="block col-span-2 lg:col-span-1">
+            <span class="{{ $grnLabel }}">Product</span>
+            <select name="lines[__INDEX__][product_variant_id]" class="grn-variant {{ $grnBase }} bg-white" required>
                 <option value="">Choose a product…</option>
                 @foreach($variants as $variant)
                     <option value="{{ $variant->id }}" data-gst-rate="{{ number_format($variant->gst_rate_bp / 100, 2, '.', '') }}">{{ $variant->variant_sku }} — {{ $variant->product->name }}</option>
                 @endforeach
             </select>
-        </td>
-        <td class="py-2 pr-2"><input type="text" name="lines[__INDEX__][batch_no]" class="grn-field w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" required></td>
-        <td class="py-2 pr-2"><input type="date" name="lines[__INDEX__][mfg_date]" class="grn-field w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></td>
-        <td class="py-2 pr-2"><input type="date" name="lines[__INDEX__][expiry_date]" class="grn-field w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></td>
-        <td class="py-2 pr-2"><input type="number" min="1" step="1" name="lines[__INDEX__][qty]" class="grn-qty w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" required></td>
-        <td class="py-2 pr-2"><input type="number" min="0" step="0.01" name="lines[__INDEX__][unit_cost]" class="grn-cost w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" required></td>
-        <td class="py-2 pr-2"><input type="number" min="0" max="100" step="0.01" name="lines[__INDEX__][gst_rate]" class="grn-gst w-full rounded-lg border border-gray-300 px-2 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500" required></td>
-        <td class="py-2 pr-2 text-right font-mono grn-line-total">₹0.00</td>
-        <td class="py-2 text-right"><button type="button" class="grn-remove-line text-red-600 hover:text-red-700 text-xs font-medium">Remove</button></td>
-    </tr>
+        </label>
+        <label class="block col-span-2 lg:col-span-1">
+            <span class="{{ $grnLabel }}">Batch no.</span>
+            <input type="text" name="lines[__INDEX__][batch_no]" class="grn-field {{ $grnBase }} font-mono" required>
+        </label>
+        <label class="block">
+            <span class="{{ $grnLabel }}">Mfg date</span>
+            <input type="date" name="lines[__INDEX__][mfg_date]" class="grn-field {{ $grnBase }}">
+        </label>
+        <label class="block">
+            <span class="{{ $grnLabel }}">Expiry date</span>
+            <input type="date" name="lines[__INDEX__][expiry_date]" class="grn-field {{ $grnBase }}">
+        </label>
+        <label class="block">
+            <span class="{{ $grnLabel }}">Qty</span>
+            <input type="number" min="1" step="1" inputmode="numeric" name="lines[__INDEX__][qty]" class="grn-qty {{ $grnNum }}" required>
+        </label>
+        <label class="block">
+            <span class="{{ $grnLabel }}">Unit cost (₹)</span>
+            <input type="number" min="0" step="0.01" inputmode="decimal" name="lines[__INDEX__][unit_cost]" class="grn-cost {{ $grnNum }}" required>
+        </label>
+        <label class="block">
+            <span class="{{ $grnLabel }}">GST %</span>
+            <input type="number" min="0" max="100" step="0.01" inputmode="decimal" name="lines[__INDEX__][gst_rate]" class="grn-gst {{ $grnNum }}" required>
+        </label>
+        <div class="flex flex-col justify-center lg:text-right">
+            <span class="{{ $grnLabel }}">Line total</span>
+            <span class="font-mono text-sm text-gray-900 grn-line-total">₹0.00</span>
+        </div>
+        <div class="col-span-2 lg:col-span-1 flex justify-end lg:justify-center">
+            <button type="button" class="grn-remove-line text-red-600 hover:text-red-700 text-xs font-medium py-2 px-2 -mr-2 lg:mr-0">Remove</button>
+        </div>
+    </div>
 </template>
 
 @push('scripts')
@@ -193,7 +240,7 @@
 
     function addLine(prefill) {
         const html = template.innerHTML.replaceAll('__INDEX__', index++);
-        const wrapper = document.createElement('tbody');
+        const wrapper = document.createElement('div');
         wrapper.innerHTML = html.trim();
         const row = wrapper.firstElementChild;
         body.appendChild(row);

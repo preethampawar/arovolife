@@ -199,7 +199,7 @@ it('GPOL-06: the create form renders, with its action bar and its purchase-order
     $response->assertOk()
         ->assertSee('Save as draft')
         ->assertSee('name="purchase_order_id"', false)
-        ->assertSee('id="grnLinesTable"', false)
+        ->assertSee('id="grnLinesBody"', false)
         // The picker's failure notice must exist (hidden) for the script to reveal.
         ->assertSee('id="grnPoError"', false);
 });

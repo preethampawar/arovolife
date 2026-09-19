@@ -180,7 +180,7 @@ test.describe('Inventory: Goods receipt (GRN)', () => {
         await page.fill('input[name="supplier_invoice_no"]', grnInvoiceNo);
         await page.fill('input[name="supplier_invoice_date"]', new Date().toISOString().slice(0, 10));
 
-        const line = page.locator('#grnLinesBody tr.grn-line').first();
+        const line = page.locator('#grnLinesBody .grn-line').first();
         await expect(line).toBeVisible();
         await line.locator('input[name$="[batch_no]"]').fill(batchNo);
         const expiry = new Date();
