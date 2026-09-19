@@ -119,33 +119,21 @@
          its own closure, so a variable declared inside it is not in scope for
          the template below, and the row would silently lose its column widths. --}}
     @php
-        // Qty and GST % carry a 110px floor, not the 90px the old columns had.
-        // At 14px monospace that is about eight digits of room once the 24px of
-        // padding is taken off — a goods receipt for 1,00,000 units fits, which
-        // the two-digit field it replaces did not.
-        $grnGrid = 'lg:grid lg:gap-3 lg:items-center lg:grid-cols-[minmax(190px,2.2fr)_minmax(110px,1fr)_minmax(140px,1fr)_minmax(140px,1fr)_minmax(110px,0.8fr)_minmax(130px,1fr)_minmax(110px,0.8fr)_minmax(110px,1fr)_auto]';
+        // Two rows per line item on a twelve-column grid: what the goods ARE on
+        // the first row, what they COST on the second. Nine fields across one
+        // row needed a 1140px floor and therefore a horizontal scrollbar, which
+        // is the thing being removed — a field narrow enough to avoid the
+        // scrollbar was the two-digit field this started as.
+        $grnGrid = 'grid grid-cols-2 gap-x-3 gap-y-3 sm:grid-cols-12';
     @endphp
 
     <x-ui.card padding="p-4 sm:p-6 space-y-4">
         <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Line items</h2>
 
-        <div class="lg:overflow-x-auto">
-            <div class="lg:min-w-[1140px] space-y-3 lg:space-y-2">
-                <div class="{{ $grnGrid }} hidden text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                    <div>Product</div>
-                    <div>Batch no.</div>
-                    <div>Mfg date</div>
-                    <div>Expiry date</div>
-                    <div>Qty</div>
-                    <div>Unit cost (₹)</div>
-                    <div>GST %</div>
-                    <div class="text-right">Line total</div>
-                    <div class="w-16"></div>
-                </div>
-
-                <div id="grnLinesBody" class="space-y-4 lg:space-y-2"></div>
-            </div>
-        </div>
+        {{-- No column header row: with each line item wrapped over two rows a
+             single header cannot line up with both, so every field carries its
+             own label at every width instead. --}}
+        <div id="grnLinesBody" class="space-y-4"></div>
 
         <button type="button" id="grnAddLine" class="text-sm text-brand-700 hover:text-brand-800 font-medium">{{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Add line</button>
 
@@ -182,11 +170,13 @@
     // digits to six; type="number" stays, so the numeric keypad and the min/step
     // validation are untouched.
     $grnNum = $grnBase.' font-mono [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
-    $grnLabel = 'lg:hidden block text-xs text-gray-600 mb-1 font-medium';
+    $grnLabel = 'block text-xs text-gray-600 mb-1 font-medium';
 @endphp
 <template id="grnLineTemplate">
-    <div class="grn-line {{ $grnGrid }} rounded-lg border border-gray-200 p-3 lg:border-0 lg:p-0 lg:rounded-none grid grid-cols-2 gap-3">
-        <label class="block col-span-2 lg:col-span-1">
+    {{-- Row 1 (5+3+2+2 = 12): what the goods are.
+         Row 2 (2+3+2+3+2 = 12): what they cost. --}}
+    <div class="grn-line {{ $grnGrid }} rounded-lg border border-gray-200 p-3">
+        <label class="block min-w-0 col-span-2 sm:col-span-5">
             <span class="{{ $grnLabel }}">Product</span>
             <select name="lines[__INDEX__][product_variant_id]" class="grn-variant {{ $grnBase }} bg-white" required>
                 <option value="">Choose a product…</option>
@@ -195,36 +185,37 @@
                 @endforeach
             </select>
         </label>
-        <label class="block col-span-2 lg:col-span-1">
+        <label class="block min-w-0 col-span-2 sm:col-span-3">
             <span class="{{ $grnLabel }}">Batch no.</span>
             <input type="text" name="lines[__INDEX__][batch_no]" class="grn-field {{ $grnBase }} font-mono" required>
         </label>
-        <label class="block">
+        <label class="block min-w-0 sm:col-span-2">
             <span class="{{ $grnLabel }}">Mfg date</span>
             <input type="date" name="lines[__INDEX__][mfg_date]" class="grn-field {{ $grnBase }}">
         </label>
-        <label class="block">
+        <label class="block min-w-0 sm:col-span-2">
             <span class="{{ $grnLabel }}">Expiry date</span>
             <input type="date" name="lines[__INDEX__][expiry_date]" class="grn-field {{ $grnBase }}">
         </label>
-        <label class="block">
+
+        <label class="block min-w-0 sm:col-span-2">
             <span class="{{ $grnLabel }}">Qty</span>
             <input type="number" min="1" step="1" inputmode="numeric" name="lines[__INDEX__][qty]" class="grn-qty {{ $grnNum }}" required>
         </label>
-        <label class="block">
+        <label class="block min-w-0 sm:col-span-3">
             <span class="{{ $grnLabel }}">Unit cost (₹)</span>
             <input type="number" min="0" step="0.01" inputmode="decimal" name="lines[__INDEX__][unit_cost]" class="grn-cost {{ $grnNum }}" required>
         </label>
-        <label class="block">
+        <label class="block min-w-0 sm:col-span-2">
             <span class="{{ $grnLabel }}">GST %</span>
             <input type="number" min="0" max="100" step="0.01" inputmode="decimal" name="lines[__INDEX__][gst_rate]" class="grn-gst {{ $grnNum }}" required>
         </label>
-        <div class="flex flex-col justify-center lg:text-right">
+        <div class="block min-w-0 sm:col-span-3">
             <span class="{{ $grnLabel }}">Line total</span>
-            <span class="font-mono text-sm text-gray-900 grn-line-total">₹0.00</span>
+            <span class="block font-mono text-sm text-gray-900 py-2 grn-line-total">₹0.00</span>
         </div>
-        <div class="col-span-2 lg:col-span-1 flex justify-end lg:justify-center">
-            <button type="button" class="grn-remove-line text-red-600 hover:text-red-700 text-xs font-medium py-2 px-2 -mr-2 lg:mr-0">Remove</button>
+        <div class="col-span-2 min-w-0 sm:col-span-2 flex items-end justify-end sm:justify-center pb-1">
+            <button type="button" class="grn-remove-line text-red-600 hover:text-red-700 text-xs font-medium py-2 px-2 -mr-2 sm:mr-0">Remove</button>
         </div>
     </div>
 </template>

@@ -182,6 +182,28 @@ test.describe('Inventory: Goods receipt (GRN)', () => {
 
         const line = page.locator('#grnLinesBody .grn-line').first();
         await expect(line).toBeVisible();
+
+        // The line item wraps over two rows precisely so this page never needs
+        // a horizontal scrollbar. Checked at a narrow laptop width, where the
+        // old single-row grid's 1140px floor overflowed.
+        await page.setViewportSize({ width: 1024, height: 900 });
+        const overflowsAt1024 = await page.evaluate(
+            () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        );
+        expect(overflowsAt1024).toBe(false);
+
+        // On a phone the row stacks to two columns. Scoped to the line item
+        // itself: the admin shell reports a ~31px document overflow at this
+        // width that predates this layout and is clipped by body's
+        // overflow-x-hidden, so asserting on the document would be asserting
+        // someone else's bug.
+        await page.setViewportSize({ width: 390, height: 900 });
+        const lineOverflows = await line.evaluate(
+            (el) => el.scrollWidth > el.clientWidth + 1 || el.getBoundingClientRect().right > document.documentElement.clientWidth + 1,
+        );
+        expect(lineOverflows).toBe(false);
+        await page.setViewportSize({ width: 1280, height: 900 });
+
         await line.locator('input[name$="[batch_no]"]').fill(batchNo);
         const expiry = new Date();
         expiry.setFullYear(expiry.getFullYear() + 1);
