@@ -275,6 +275,30 @@ it('settles the calendar month end as well as the cycle close, because different
         ->and($balanceAt('2026-08-01 23:59:59'))->toBe(0);
 });
 
+it('leaves every distributor enough orders to settle both instants', function (): void {
+    Artisan::call('compensation:seed-paying-period', [
+        '--titles-on' => '2026-07-02',
+        '--month' => '2026-08',
+        '--force' => true,
+    ]);
+
+    // One spend per order is all the ledger's unique key allows, so a
+    // distributor needs at least two orders before the earlier instant or the
+    // second settlement has nothing to attach to and is silently left unspent.
+    $counts = DB::table('orders')
+        ->where('order_no', 'like', 'PS-%')
+        ->where('paid_at', '<=', '2026-07-31 22:00:00')
+        ->selectRaw('attributed_distributor_id, COUNT(*) n')
+        ->groupBy('attributed_distributor_id')
+        ->pluck('n', 'attributed_distributor_id');
+
+    expect($counts)->toHaveCount(7);
+
+    foreach ($counts as $distributorId => $n) {
+        expect((int) $n)->toBeGreaterThanOrEqual(2, "distributor {$distributorId} has only {$n} order(s)");
+    }
+});
+
 it('takes its wallet spends back out on rollback, because a recompute will not', function (): void {
     Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
 

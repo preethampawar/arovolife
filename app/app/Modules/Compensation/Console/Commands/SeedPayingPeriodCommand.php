@@ -383,11 +383,15 @@ final class SeedPayingPeriodCommand extends Command
         $bv = 0;
         $seen = 0;
 
-        foreach ($this->distributors as $id => $distributor) {
-            if ((int) $distributor['depth'] > 6) {
-                continue;
-            }
-
+        foreach (array_keys($this->distributors) as $id) {
+            // Every depth, not just the top seven. Deep distributors earn once
+            // the tree is filled, and each repurchase order is also the thing a
+            // wallet spend attaches to: the ledger's unique key on
+            // (type, reference_type, reference_id) allows one spend per order,
+            // so settling two instants needs two orders. Skipping depth > 6 left
+            // 226 distributors holding a single title order, 97 of them unable
+            // to settle the second instant at all, and August forfeited for
+            // them — an exclusion that cost more than the orders it saved.
             $seen++;
 
             if ($seen % self::FORFEIT_EVERY === 0) {
