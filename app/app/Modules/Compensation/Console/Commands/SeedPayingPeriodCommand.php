@@ -133,9 +133,10 @@ final class SeedPayingPeriodCommand extends Command
 
     /**
      * One group-BV order in four is collected from the Arete centre instead of
-     * shipped. Enough BV to carry the ADC bonus past its ₹1,00,000 monthly cap,
-     * which is the half of that engine worth rehearsing — an uncapped credit
-     * exercises a multiplication, the cap exercises the client's phase penalty.
+     * shipped. On the staging tree that is ~163 orders and 24.4 lakh BV a
+     * month, which credits about ₹20,000 — comfortably UNDER the ₹1,00,000
+     * monthly cap, so this exercises the rate and not the ceiling. Raise it if
+     * the cap itself is what needs rehearsing.
      */
     private const CENTRE_EVERY = 4;
 
@@ -627,7 +628,16 @@ final class SeedPayingPeriodCommand extends Command
     {
         $written = 0;
         $skipped = 0;
-        $rows = [];
+        $rows = 0;
+
+        // Orders already carrying a repurchase-wallet spend, this run's included.
+        $claimed = DB::table('wallet_ledger_entries')
+            ->where('type', 'repurchase_wallet_used')
+            ->where('reference_type', 'order')
+            ->whereNotNull('reference_id')
+            ->pluck('reference_id')
+            ->flip()
+            ->all();
 
         foreach (explode(',', $months) as $token) {
             $month = Carbon::parse(trim($token).'-01')->startOfMonth();
@@ -636,17 +646,44 @@ final class SeedPayingPeriodCommand extends Command
                 ->whereBetween('due_date', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()])
                 ->get(['distributor_id', 'due_date']);
 
-            // Group by due date: the balance query is per instant, and a month
-            // normally closes every cycle on the same day, so this is one pass
-            // over the ledger rather than one per distributor.
+            // TWO instants matter, and settling only one is why the Growth
+            // Booster stayed blocked through a month that otherwise paid.
+            //
+            //  - The repurchase CYCLE closes on its own due date, 30 days from
+            //    the distributor's first order. That verdict decides the daily
+            //    group-BV forfeit.
+            //  - The monthly GATES — Growth Booster, Fortune, rank
+            //    requalification, AO-GO — read
+            //    {@see RepurchaseWalletGateService::clearedAtMonthEnd()},
+            //    which asks about 23:59:59 on the last day of the CALENDAR
+            //    month. The client separated these on 2026-09-05 and confirmed
+            //    it on 2026-09-07.
+            //
+            // A cycle opened 02 Jul is judged on 01 Aug, so a spend that clears
+            // it lands a day AFTER the July month-end the gates read, and July's
+            // Growth Booster sees a full wallet. Both instants get a spend.
             $byDueDate = [];
+
             foreach ($cycles as $cycle) {
                 $byDueDate[(string) $cycle->due_date][] = (int) $cycle->distributor_id;
             }
 
+            $monthEnd = $month->copy()->endOfMonth()->toDateString();
+
+            if (! isset($byDueDate[$monthEnd])) {
+                $byDueDate[$monthEnd] = DB::table('distributors')->pluck('id')->map(
+                    static fn ($id): int => (int) $id,
+                )->all();
+            }
+
+            // Earliest instant first: each spend is sized on what is left after
+            // the ones before it, so settling out of order would overspend.
+            ksort($byDueDate);
+
             foreach ($byDueDate as $dueDate => $distributorIds) {
                 $dueEnd = Carbon::parse($dueDate)->endOfDay();
                 $spentAt = Carbon::parse($dueDate)->setTime(22, 0);
+                $instantRows = [];
 
                 $balances = DB::table('wallet_ledger_entries')
                     ->whereIn('distributor_id', $distributorIds)
@@ -659,17 +696,26 @@ final class SeedPayingPeriodCommand extends Command
                     )
                     ->pluck('balance', 'distributor_id');
 
-                // The order the credit is applied to has to exist and has to
+                // The order the credit is applied to has to exist, has to
                 // predate the spend — a wallet debit pointing at an order
-                // placed after it would be a refund waiting to misbehave.
-                $orders = DB::table('orders')
-                    ->where('order_no', 'like', self::TAG.'%')
-                    ->where('status', 'paid')
-                    ->where('paid_at', '<=', $spentAt)
-                    ->whereIn('attributed_distributor_id', $distributorIds)
-                    ->groupBy('attributed_distributor_id')
-                    ->selectRaw('attributed_distributor_id, MAX(id) AS order_id')
-                    ->pluck('order_id', 'attributed_distributor_id');
+                // placed after it would be a refund waiting to misbehave — and
+                // has to be one no other spend already claims. The ledger holds
+                // a unique key on (type, reference_type, reference_id), which is
+                // what stops one order's repurchase credit being spent twice,
+                // so settling two instants needs two orders.
+                $candidates = [];
+
+                foreach (
+                    DB::table('orders')
+                        ->where('order_no', 'like', self::TAG.'%')
+                        ->where('status', 'paid')
+                        ->where('paid_at', '<=', $spentAt)
+                        ->whereIn('attributed_distributor_id', $distributorIds)
+                        ->orderByDesc('id')
+                        ->get(['id', 'attributed_distributor_id']) as $order
+                ) {
+                    $candidates[(int) $order->attributed_distributor_id][] = (int) $order->id;
+                }
 
                 foreach ($distributorIds as $distributorId) {
                     $balance = (int) ($balances[$distributorId] ?? 0);
@@ -678,31 +724,49 @@ final class SeedPayingPeriodCommand extends Command
                         continue;
                     }
 
-                    if (! isset($orders[$distributorId])) {
+                    $orderId = null;
+
+                    foreach ($candidates[$distributorId] ?? [] as $candidate) {
+                        if (! isset($claimed[$candidate])) {
+                            $orderId = $candidate;
+                            break;
+                        }
+                    }
+
+                    if ($orderId === null) {
                         $skipped++;
 
                         continue;
                     }
 
-                    $rows[] = [
+                    $claimed[$orderId] = true;
+
+                    $instantRows[] = [
                         'distributor_id' => $distributorId,
                         'type' => 'repurchase_wallet_used',
                         'amount_paise' => -$balance,
-                        'reference_id' => (int) $orders[$distributorId],
+                        'reference_id' => $orderId,
                         'reference_type' => 'order',
-                        'memo' => self::WALLET_TAG.' repurchase wallet spent at the close of the '.$month->format('F Y').' cycle',
+                        'memo' => self::WALLET_TAG.' repurchase wallet spent as at '.$dueEnd->toDateTimeString(),
                         'created_at' => $spentAt->toDateTimeString(),
                     ];
                     $written++;
                 }
+
+                // Written before the next instant is measured. Each spend is
+                // sized on the balance the ones before it left behind, and that
+                // balance is read back from the ledger — so holding these in
+                // memory until the end makes every later instant spend the same
+                // money again.
+                foreach (array_chunk($instantRows, 500) as $chunk) {
+                    DB::table('wallet_ledger_entries')->insert($chunk);
+                }
+
+                $rows += count($instantRows);
             }
         }
 
-        foreach (array_chunk($rows, 500) as $chunk) {
-            DB::table('wallet_ledger_entries')->insert($chunk);
-        }
-
-        $this->info(sprintf('Spent %d repurchase wallet balance(s).', $written));
+        $this->info(sprintf('Spent %d repurchase wallet balance(s) across %d row(s).', $written, $rows));
 
         if ($skipped > 0) {
             $this->warn(sprintf('%d had a balance but no seeded order to apply it to — left unspent.', $skipped));

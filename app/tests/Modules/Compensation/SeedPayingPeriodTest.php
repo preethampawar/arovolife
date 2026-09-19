@@ -233,6 +233,48 @@ it('spends the repurchase balance the cycle is judged on, and not a paisa that l
         ->and(strtotime((string) $order->paid_at))->toBeLessThanOrEqual(strtotime('2026-07-31 22:00:00'));
 });
 
+it('settles the calendar month end as well as the cycle close, because different engines read each', function (): void {
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    // A cycle opened 02 Jul is judged on 01 Aug. The monthly gates
+    // (RepurchaseWalletGateService::clearedAtMonthEnd) instead read 31 Jul
+    // 23:59:59, so a fixture that settles only the cycle leaves every monthly
+    // bonus blocked through a month whose daily bonuses pay.
+    DB::table('repurchase_cycles')->insert([
+        'distributor_id' => 2,
+        'cycle_start_date' => '2026-07-02',
+        'due_date' => '2026-08-01',
+        'required_bv_paise' => 60_000,
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    foreach ([['2026-07-20 09:00:00', 100_000], ['2026-08-01 00:10:00', 30_000]] as [$at, $amount]) {
+        DB::table('wallet_ledger_entries')->insert([
+            'distributor_id' => 2,
+            'type' => 'repurchase_deduction',
+            'amount_paise' => $amount,
+            'created_at' => $at,
+        ]);
+    }
+
+    Artisan::call('compensation:seed-paying-period', ['--settle-repurchase' => '2026-07,2026-08']);
+
+    $balanceAt = function (string $at): int {
+        $credits = (int) DB::table('wallet_ledger_entries')->where('distributor_id', 2)
+            ->where('type', 'repurchase_deduction')->where('created_at', '<=', $at)->sum('amount_paise');
+        $debits = abs((int) DB::table('wallet_ledger_entries')->where('distributor_id', 2)
+            ->where('type', 'repurchase_wallet_used')->where('created_at', '<=', $at)->sum('amount_paise'));
+
+        return $credits - $debits;
+    };
+
+    // Zero at BOTH instants, and never overspent at either.
+    expect($balanceAt('2026-07-31 23:59:59'))->toBe(0)
+        ->and($balanceAt('2026-08-01 23:59:59'))->toBe(0);
+});
+
 it('takes its wallet spends back out on rollback, because a recompute will not', function (): void {
     Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
 
