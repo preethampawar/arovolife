@@ -46,9 +46,13 @@ use Illuminate\Support\Str;
  *  - REPURCHASE. The earners repurchase monthly, except a deliberate one in
  *    twelve who does not, so the forfeit path has live subjects too.
  *  - COLLECTION CENTRE. A share of the group-BV orders is collected from an
- *    Arete centre rather than shipped, because the ADC engine pays 3% of the
- *    BV attributed to a centre and reads nothing else — without an
- *    orders.arete_center_id anywhere, that engine runs and credits nobody.
+ *    Arete centre rather than shipped, and each one gets a shipment carrying a
+ *    recorded handover. Both halves are required and the second is the easy
+ *    one to miss: the ADC engine deliberately will not pay on
+ *    orders.arete_center_id alone, because that paid centres for parcels they
+ *    were never sent and never released (R-24, H5). It joins `shipments` and
+ *    demands a non-null collected_at, so the handover is the evidence and a
+ *    fixture without one leaves that engine crediting nobody.
  *  - THE NIGHT. A concentrated burst on one recent day, because the night
  *    rebuild may only run while its night is the newest one (R-91): an August
  *    night is out of window by the time the replay reaches today, so a night
@@ -138,6 +142,9 @@ final class SeedPayingPeriodCommand extends Command
     /** Memo prefix on the wallet rows this fixture writes, so --rollback can find them. */
     private const WALLET_TAG = 'payseed:';
 
+    /** carrier_code on the shipments this fixture writes, for the same reason. */
+    private const SHIPMENT_TAG = 'PAYSEED';
+
     /** @var array<int, array<string, mixed>> variant id => row */
     private array $variants = [];
 
@@ -161,6 +168,9 @@ final class SeedPayingPeriodCommand extends Command
 
     /** @var list<array<string, mixed>> */
     private array $bvRows = [];
+
+    /** @var list<array<string, mixed>> */
+    private array $shipmentRows = [];
 
     private int $nextOrderId = 1;
 
@@ -244,6 +254,18 @@ final class SeedPayingPeriodCommand extends Command
     /** Load the catalogue, the tree and each distributor's customer record. */
     private function load(): void
     {
+        // Artisan resolves this command once and reuses the instance, so a
+        // second run inside the same process inherits the first run's staged
+        // rows and re-inserts them under ids that are now taken. One process
+        // per run hides it; a test that seeds, rolls back and seeds again does
+        // not, and neither would `--rollback && --seed` chained in tinker.
+        $this->orderRows = [];
+        $this->itemRows = [];
+        $this->bvRows = [];
+        $this->shipmentRows = [];
+        $this->customers = [];
+        $this->centreCounter = 0;
+
         // The HSN code lives on the product, not the variant, and the order
         // line snapshots it — an invoice has to state the code that was in
         // force when the sale happened, not the one the catalogue holds today.
@@ -435,9 +457,10 @@ final class SeedPayingPeriodCommand extends Command
      *
      * @param  list<array{int, int}>  $lines  [variant id, qty]
      * @param  int|null  $areteCenterId  the centre this order is collected
-     *                                   from; null ships it. The ADC engine
-     *                                   reads only this column, so it is the
-     *                                   entire input to that bonus.
+     *                                   from; null ships it. A non-null value
+     *                                   also stages the shipment and its
+     *                                   handover, which the ADC engine reads
+     *                                   as the evidence the work was done.
      */
     private function order(int $distributorId, Carbon $at, array $lines, ?int $areteCenterId = null): int
     {
@@ -513,6 +536,25 @@ final class SeedPayingPeriodCommand extends Command
             'updated_at' => $stamp,
         ];
 
+        if ($areteCenterId !== null) {
+            // Collected the next morning. The carrier code is the tag: it is
+            // how --rollback tells a shipment this fixture wrote from one a
+            // human did, which matters because shipments RESTRICT the order.
+            $collectedAt = $at->copy()->addDay()->setTime(10, 0)->toDateTimeString();
+
+            $this->shipmentRows[] = [
+                'order_id' => $orderId,
+                'arete_center_id' => $areteCenterId,
+                'warehouse_code' => 'DEFAULT',
+                'carrier_code' => self::SHIPMENT_TAG,
+                'status' => 'at_centre',
+                'at_centre_at' => $collectedAt,
+                'collected_at' => $collectedAt,
+                'created_at' => $stamp,
+                'updated_at' => $collectedAt,
+            ];
+        }
+
         return $bv;
     }
 
@@ -560,6 +602,10 @@ final class SeedPayingPeriodCommand extends Command
 
         foreach (array_chunk($this->bvRows, 500) as $chunk) {
             DB::table('bv_ledger_entries')->insert($chunk);
+        }
+
+        foreach (array_chunk($this->shipmentRows, 500) as $chunk) {
+            DB::table('shipments')->insert($chunk);
         }
     }
 
@@ -702,13 +748,29 @@ final class SeedPayingPeriodCommand extends Command
         // half way through, which left the orders standing with their items
         // and BV already gone — 500 hollow orders that still counted as
         // seeded, so the next run seeded a second set on top of them.
+        // Shipments are the one restricting table this fixture writes into, so
+        // its own rows are cleared without ceremony and only somebody else's
+        // count as a pin. Tagged on carrier_code, the same way the orders are
+        // tagged on order_no.
+        $ownShipments = 0;
+
+        foreach (array_chunk($ids, 500) as $chunk) {
+            $ownShipments += DB::table('shipments')
+                ->whereIn('order_id', $chunk)
+                ->where('carrier_code', self::SHIPMENT_TAG)
+                ->count();
+        }
+
         $pinned = [];
 
         foreach (self::RESTRICTING_TABLES as $table) {
             $count = 0;
 
             foreach (array_chunk($ids, 500) as $chunk) {
-                $count += DB::table($table)->whereIn('order_id', $chunk)->count();
+                $count += DB::table($table)
+                    ->whereIn('order_id', $chunk)
+                    ->when($table === 'shipments', fn ($q) => $q->where('carrier_code', '!=', self::SHIPMENT_TAG))
+                    ->count();
             }
 
             if ($count > 0) {
@@ -732,7 +794,18 @@ final class SeedPayingPeriodCommand extends Command
 
         // One transaction: a rollback that fails half way is worse than one
         // that refuses, because what it leaves behind still answers to the tag.
-        DB::transaction(function () use ($ids, $pinned): void {
+        DB::transaction(function () use ($ids, $pinned, $ownShipments): void {
+            if ($ownShipments > 0) {
+                foreach (array_chunk($ids, 500) as $chunk) {
+                    DB::table('shipments')
+                        ->whereIn('order_id', $chunk)
+                        ->where('carrier_code', self::SHIPMENT_TAG)
+                        ->delete();
+                }
+
+                $this->info(sprintf('Removed %d seeded shipment(s).', $ownShipments));
+            }
+
             // The wallet spends are the one thing this fixture writes that a
             // recompute preserves, so leaving them behind would keep debiting a
             // wallet whose credits have been rebuilt from deleted orders.

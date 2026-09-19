@@ -174,6 +174,22 @@ it('collects a share of the orders from an Arete centre, which is the ADC engine
 
     // Shipped orders must not carry a centre — the pairing is the whole point.
     expect(DB::table('orders')->where('delivery_type', 'collect')->whereNull('arete_center_id')->count())->toBe(0);
+
+    // The centre on the order is only half the input. AreteDevelopmentCenter-
+    // BonusService joins shipments and requires a recorded handover, because
+    // paying on the order column alone paid centres for parcels they never
+    // received (R-24). Every collected order therefore needs a collected
+    // shipment, or the engine runs and credits nobody — which is exactly what
+    // it did on staging with 327 collected orders and no shipments at all.
+    $collectedIds = DB::table('orders')->whereNotNull('arete_center_id')->pluck('id');
+
+    $handovers = DB::table('shipments')
+        ->whereIn('order_id', $collectedIds)
+        ->where('arete_center_id', 5)
+        ->whereNotNull('collected_at')
+        ->count();
+
+    expect($handovers)->toBe($collectedIds->count());
 });
 
 it('spends the repurchase balance the cycle is judged on, and not a paisa that lands after it', function (): void {
@@ -298,6 +314,45 @@ it('clears the referencing rows too when forced', function (): void {
     expect($exit)->toBe(0)
         ->and(DB::table('orders')->where('order_no', 'like', 'PS-%')->count())->toBe(0)
         ->and(DB::table('payment_events')->count())->toBe(0);
+});
+
+it('clears its own shipments without being forced, and still stops for somebody else\'s', function (): void {
+    DB::table('arete_centers')->insert([
+        'id' => 5,
+        'name' => 'Fixture centre',
+        'centre_type' => 'distributor',
+        'status' => 'active',
+        'assigned_distributor_id' => 1,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    expect(DB::table('shipments')->count())->toBeGreaterThan(0);
+
+    // Shipments RESTRICT the order, and this fixture now writes them — so its
+    // own must not pin its own rollback. A human's still must.
+    $exit = Artisan::call('compensation:seed-paying-period', ['--rollback' => true]);
+
+    expect($exit)->toBe(0)
+        ->and(DB::table('shipments')->count())->toBe(0)
+        ->and(DB::table('orders')->where('order_no', 'like', 'PS-%')->count())->toBe(0);
+
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    $orderId = (int) DB::table('orders')->where('order_no', 'like', 'PS-%')->min('id');
+    DB::table('shipments')->insert([
+        'order_id' => $orderId,
+        'warehouse_code' => 'DEFAULT',
+        'carrier_code' => 'BLUEDART',
+        'status' => 'dispatched',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    expect(Artisan::call('compensation:seed-paying-period', ['--rollback' => true]))->toBe(1)
+        ->and(DB::table('orders')->where('order_no', 'like', 'PS-%')->count())->toBeGreaterThan(0);
 });
 
 it('refuses wherever a recompute would refuse', function (): void {
