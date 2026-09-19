@@ -23,6 +23,7 @@ use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeHorizon;
 use App\Modules\Compensation\Services\Recompute\RecomputeProgress;
 use App\Modules\Compensation\Services\Recompute\RecomputeState;
+use App\Modules\Compensation\Services\RunClockService;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
@@ -61,6 +62,7 @@ final class AdminEngineRunsController extends Controller
         private readonly CompensationStateWiper $wiper,
         private readonly RecomputeProgress $recomputeProgress,
         private readonly RecomputeState $recomputeState,
+        private readonly RunClockService $clocks,
     ) {}
 
     public function index(Request $request): View
@@ -86,6 +88,9 @@ final class AdminEngineRunsController extends Controller
                 'definition' => $definition,
                 'flagOn' => $flagOn,
                 'lastRun' => $lastRun,
+                // Built from the run already loaded above — one query for the
+                // whole page, not one per card.
+                'clock' => $this->clocks->from($definition, $lastRun),
                 // Bootstrap fallback: before the run log has history, the
                 // engine's own result tables are the only proof it ever ran.
                 'derivedPeriod' => $lastRun === null ? $this->status->lastComputedPeriod($key) : null,
@@ -154,6 +159,12 @@ final class AdminEngineRunsController extends Controller
             // Null for every role but `developer`. The view gates on
             // `@developer` as well, so neither gate alone decides.
             'rebuildPanel' => $this->rebuildPanel($request),
+            // A night can only be rebuilt until the next nightly run, so the
+            // panel quotes that instant rather than the bare clock time.
+            'nightlyClock' => $this->clocks->from(
+                EngineRegistry::get(EngineStatusService::CHAIN_KEY),
+                $lastRuns[EngineStatusService::CHAIN_KEY] ?? null,
+            ),
         ]);
     }
 

@@ -82,6 +82,10 @@ it('renders the engine runs index with every engine, its schedule and dependenci
         ->assertSee('Rank Qualification Check')
         ->assertSee('Scheduler-only.')
         ->assertSee('Runs first:')
+        // Every card states the instant it next fires, not only the rule it
+        // fires by: "Daily, 00:05 IST" never told anyone which 00:05.
+        ->assertSee('Next run:')
+        ->assertSee(Carbon::tomorrow()->setTime(0, 5)->format('d M Y, H:i').' IST')
         ->assertSee(route('admin.compensation.engine-runs.events', ['engine' => 'gbb.monthly']), false);
 });
 

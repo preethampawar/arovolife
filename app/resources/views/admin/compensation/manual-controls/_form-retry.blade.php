@@ -1,15 +1,16 @@
 <h3 class="text-sm font-semibold mb-3">Retry Daily Cut-off</h3>
 <div class="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
     <strong>Retry the same day you find it.</strong> A cut-off can only be re-run while nothing later has moved that
-    distributor's carry-forward on, and the Nightly Run moves it for everyone at <strong>00:05 IST</strong>. Inside
-    that window this is safe to press as often as you like &mdash; it lands on identical figures and never
+    distributor's carry-forward on, and the Nightly Run moves it for everyone &mdash; next at
+    <strong>{{ $nightlyClock->nextRunLabel() }}</strong>@if($nightlyClock->nextRunRelative() !== null), {{ $nightlyClock->nextRunRelative() }}@endif.
+    Inside that window this is safe to press as often as you like &mdash; it lands on identical figures and never
     double-credits. After it, the button refuses and recovery becomes a platform-team rebuild. A failed night found the
     next morning is already past retry.
 </div>
 <form method="POST" action="{{ route('admin.compensation.manual-controls.retry') }}"
       data-confirm="This will re-run the 23:59 cut-off for this distributor."
       data-confirm-title="Confirm: Retry Daily Cut-off"
-      data-confirm-impact="GSB will be calculated and credited if not already done. If already credited, no duplicate credit will be issued. This retry runs one distributor and does NOT check that the Repurchase Evaluation has covered that date — it reads whatever repurchase verdict is recorded now, so run it only on a day already settled for everyone else; to run a whole day, use Engine Runs, which chains the evaluation ahead of the cut-off. If the Nightly Run has already run past this date, the retry will be refused rather than produce wrong figures.">
+      data-confirm-impact="GSB will be calculated and credited if not already done. If already credited, no duplicate credit will be issued. This retry runs one distributor and does NOT check that the Repurchase Evaluation has covered that date — it reads whatever repurchase verdict is recorded now, so run it only on a day already settled for everyone else; to run a whole day, use Engine Runs, which chains the evaluation ahead of the cut-off. If the Nightly Run has already run past this date, the retry will be refused rather than produce wrong figures. {{ $nightlyClock->sentence() }}">
     @csrf
     <div class="grid grid-cols-2 gap-4 mb-4">
         <div>

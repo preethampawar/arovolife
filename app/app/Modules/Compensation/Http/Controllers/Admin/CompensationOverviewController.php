@@ -7,7 +7,9 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Services\IncomeOverviewService;
+use App\Modules\Compensation\Services\RunClockService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Contracts\View\View;
@@ -17,6 +19,8 @@ use Laravel\Pennant\Feature;
 
 final class CompensationOverviewController extends Controller
 {
+    public function __construct(private readonly RunClockService $clocks) {}
+
     public function __invoke(): View
     {
         $today = Carbon::today()->toDateString();
@@ -76,11 +80,18 @@ final class CompensationOverviewController extends Controller
                 ->withQueryString()
             : null;
 
+        // Today's cut-off card reads Pending until the Nightly Run works this
+        // day, which is tomorrow morning — so the page says when, rather than
+        // leaving an operator to read Pending as a fault.
+        $nightlyClock = $this->clocks->for(EngineStatusService::CHAIN_KEY);
+        $todayCutoffRunsAt = $nightlyClock->firesAfterLabel(Carbon::today()->endOfDay());
+
         return view('admin.compensation.overview', compact(
             'gsbOn', 'cutoffStatus', 'todayFailed', 'pendingPayoutPaise',
             'gsbThisWeekPaise', 'gsbReversalsThisWeekPaise',
             'nextWeeklyPayout', 'nextWeeklyEarningsThrough',
             'failedCutoffs', 'cutoffTable', 'today',
+            'nightlyClock', 'todayCutoffRunsAt',
         ));
     }
 }

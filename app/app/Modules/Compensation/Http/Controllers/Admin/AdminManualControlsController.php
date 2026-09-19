@@ -10,8 +10,10 @@ use App\Modules\Compensation\Exceptions\ReversalRequestStale;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbReversalRequest;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\MentorshipBonusService;
+use App\Modules\Compensation\Services\RunClockService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
@@ -37,6 +39,7 @@ final class AdminManualControlsController extends Controller
         private readonly GsbCutoffService $cutoff,
         private readonly WalletService $wallet,
         private readonly MentorshipBonusService $mentorship,
+        private readonly RunClockService $clocks,
     ) {}
 
     public function index(Request $request): View
@@ -61,8 +64,13 @@ final class AdminManualControlsController extends Controller
             ->orderBy('created_at')
             ->get();
 
+        // Retry is only open until the Nightly Run moves past the date, so the
+        // page states both instants — the one that has been and the one coming.
+        $nightlyClock = $this->clocks->for(EngineStatusService::CHAIN_KEY);
+
         return view('admin.compensation.manual-controls.index', compact(
             'distributor', 'adn', 'action', 'date', 'recentActions', 'pendingReversals',
+            'nightlyClock',
         ));
     }
 

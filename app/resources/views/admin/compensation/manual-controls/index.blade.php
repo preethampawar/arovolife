@@ -5,14 +5,17 @@
 @section('content')
 
 {{-- Warning banner --}}
-<div class="mb-5 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+<div class="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
     <strong>These controls affect real money and wallet balances.</strong>
     Every action is permanently audit-logged with your admin ID, a timestamp, the before/after state, and the reason you provide.
     There is no undo. Reach for <strong>Retry</strong> first — safe and idempotent, but only until the Nightly Run
-    runs past that date at <strong>00:05 IST</strong>; after that it refuses.
+    runs past that date; after that it refuses. That run's own clock is below, so the deadline is a time, not a rule to apply.
     <strong>Reverse</strong> is a one-way door: it walks a credit back, and nothing on this page puts it back again —
     so it now takes two admins. One requests it, a different one approves it.
 </div>
+
+{{-- The deadline every control on this page is measured against, as instants. --}}
+<x-compensation.run-clock :clock="$nightlyClock" class="mb-5" />
 
 {{-- Success flash --}}
 {{-- Action selector grid --}}

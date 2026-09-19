@@ -15,13 +15,20 @@
 </div>
 @enddeveloper
 
+{{-- When the engines actually fire. Every "Pending" on this page is measured
+     against these two instants, so they are stated for every role, not tucked
+     into the developer note above. --}}
+@if($gsbOn)
+<x-compensation.run-clock :clock="$nightlyClock" class="mb-6" />
+@endif
+
 {{-- Stat cards --}}
 <div class="grid grid-cols-2 {{ $gsbOn ? 'lg:grid-cols-4' : 'lg:grid-cols-1' }} gap-3 mb-6">
     @if($gsbOn)
     <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
             Today's cut-off
-            <x-help-tip text="The 23:59 daily GSB cut-off runs automatically. If it shows Failed, use Manual Controls → Retry." />
+            <x-help-tip :text="'The 23:59 daily GSB cut-off runs automatically, inside the Nightly Run the morning after the day it cuts off. Today\'s is due at '.$todayCutoffRunsAt.', so this card reads Pending until then and that is not a fault. If it shows Failed, use Manual Controls → Retry.'" />
         </p>
         {{-- The icon is chosen alongside the label rather than embedded in it:
              the label is a PHP string, and an icon helper inside one would be

@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
+use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
@@ -142,4 +144,26 @@ it('still retries a failed night while nothing later has advanced the store', fu
         ->exists())->toBeFalse()
         ->and(AuditLog::where('action', 'compensation.cutoff.manual_retry')->exists())->toBeTrue()
         ->and(AuditLog::where('action', 'compensation.cutoff.manual_retry_refused')->exists())->toBeFalse();
+});
+
+it('states the nightly run as instants, not as a rule the admin has to apply', function () {
+    // 09:00 on the 19th: tonight's run has been, tomorrow's has not. The retry
+    // window an admin is deciding about sits between those two times, so both
+    // are on the page rather than a bare "00:05 IST".
+    Carbon::setTestNow(Carbon::parse('2026-09-19 09:00', 'Asia/Kolkata'));
+
+    EngineRun::create([
+        'engine_key' => EngineStatusService::CHAIN_KEY,
+        'period_start' => '2026-09-19',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => 'scheduler',
+        'started_at' => Carbon::parse('2026-09-19 00:05', 'Asia/Kolkata'),
+        'finished_at' => Carbon::parse('2026-09-19 00:07', 'Asia/Kolkata'),
+    ]);
+
+    $this->actingAs(retryAdmin())
+        ->get(route('admin.compensation.manual-controls.index', ['action' => 'retry']))
+        ->assertOk()
+        ->assertSee('19 Sep 2026, 00:05 IST')
+        ->assertSee('20 Sep 2026, 00:05 IST');
 });

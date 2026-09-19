@@ -115,6 +115,40 @@ final readonly class EngineCadence
     }
 
     /**
+     * The next instant the scheduler fires this engine, strictly after $from.
+     *
+     * The complement of {@see runsOn()}: that answers "did it fire on this
+     * date", this answers "when does it fire next" — the question every admin
+     * surface naming a run as a deadline used to leave the reader to work out
+     * from a bare "00:05 IST".
+     *
+     * Walks the calendar rather than doing arithmetic per type: the day rule is
+     * already written once in runsOn(), and a second copy of it here is exactly
+     * how the cadence came to be stated in three disagreeing forms before this
+     * class existed. Sixty-two days covers two whole months, so every cadence
+     * this registry declares resolves well inside it; anything that does not
+     * returns null and the surface says so rather than printing a guess.
+     */
+    public function nextRunAfter(Carbon $from): ?Carbon
+    {
+        if ($this->type === self::NONE) {
+            return null;
+        }
+
+        $day = $from->copy()->startOfDay();
+
+        for ($i = 0; $i <= 62; $i++) {
+            if ($this->runsOn($day) && $this->atOn($day)->greaterThan($from)) {
+                return $this->atOn($day);
+            }
+
+            $day->addDay();
+        }
+
+        return null;
+    }
+
+    /**
      * The clock time on that date, used by the replay so back-dated rows carry
      * the timestamp the real scheduler would have written.
      */

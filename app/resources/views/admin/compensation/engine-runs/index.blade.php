@@ -144,7 +144,7 @@
             <input type="hidden" name="kind" value="night">
             <label for="rebuild-night-period" class="block text-xs font-medium text-gray-700 mb-1">
                 Night
-                <x-help-tip text="The NIGHT the run belongs to — the cut-off it rebuilds is the day before. Only the newest night can be rebuilt: the carry-forward store is rolling, so the deadline is the next nightly run at 00:05 IST." />
+                <x-help-tip :text="'The NIGHT the run belongs to — the cut-off it rebuilds is the day before. Only the newest night can be rebuilt: the carry-forward store is rolling, so the deadline is the next nightly run. '.$nightlyClock->sentence()" />
             </label>
             <input type="date" name="period" id="rebuild-night-period" required
                    value="{{ $rebuildPanel['nights'][0]['value'] ?? $rebuildPanel['maxNight'] }}"
@@ -740,6 +740,17 @@
                         <span class="text-gray-600">(derived from result tables — no run log yet)</span>
                     @else
                         <span class="text-gray-600">never recorded</span>
+                    @endif
+                </p>
+
+                {{-- Next run. The schedule sentence above states the rule; this
+                     states the instant it lands on, which is what an operator
+                     deciding whether to wait or to act actually needs. --}}
+                <p class="text-xs text-gray-600 mb-2">
+                    <span class="font-medium text-gray-700">Next run:</span>
+                    {{ $engine['clock']->nextRunLabel() }}
+                    @if($engine['clock']->nextRunRelative() !== null)
+                    <span class="text-gray-600">({{ $engine['clock']->nextRunRelative() }})</span>
                     @endif
                 </p>
 
