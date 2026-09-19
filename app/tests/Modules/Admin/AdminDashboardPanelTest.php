@@ -176,7 +176,6 @@ it('DSH-09: the dashboard shell carries no panel data and no audit feed', functi
     // headings that only ever appear inside a rendered fragment. The skeleton
     // carries panel titles and pulse bars, nothing else.
     expect($body)->not->toMatch('/₹\s?[0-9]/')
-        ->and($body)->not->toContain('Recent registrations')
         ->and($body)->not->toContain('Stock value')
         ->and($body)->not->toContain('Revenue ex GST');
 
@@ -270,6 +269,19 @@ it('DSH-11: the pending count joins distributors, so an orphan user never inflat
     $data = app(DashboardPanelData::class)->people();
 
     expect($data['pending'])->toBe(0);
+});
+
+it('DSH-18: the network panel is counts only — the registration list is gone', function (): void {
+    // The list was eight rows of ADN, name and join time on a page whose job is
+    // a snapshot; the counts above it already link to the filtered list that
+    // does the job properly. Removing it also takes eight distributors' names
+    // back out of a payload cached in a Redis shared with eight other apps.
+    $admin = dashUser('admin');
+
+    $body = $this->actingAs($admin)->get(panelUrl('people'))->assertOk()->getContent();
+
+    expect($body)->not->toContain('Recent registrations')
+        ->and(app(DashboardPanelData::class)->people())->not->toHaveKey('latest');
 });
 
 it('DSH-12: sales counts on the order date, so an unshipped order still counts today', function (): void {

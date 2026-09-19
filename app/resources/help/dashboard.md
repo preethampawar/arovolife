@@ -48,7 +48,7 @@ A panel you may not see is never sent to your browser at all.
 | **Stock & warehouses** | Low stock, expiring and expired batches and what the stock is worth. Active warehouses, open purchase orders and transfers in transit appear only for staff who hold `inventory.manage`, because those are the screens they link to. | `inventory.view` |
 | **Payouts & commission** | The latest payout batch, batches awaiting approval, money held in wallets that nothing can pay out, and what each bonus has cost this month. | `finance.record` |
 | **Engine health** | Whether the compensation engines ran: failures, missed periods, stuck runs, premature freezes and nightly-chain alerts. | `finance.record` |
-| **Network** | Active, pending and blocked distributors, cooling-off windows, who joined this month, and the most recent registrations. | admin console access |
+| **Network** | Active, pending and blocked distributors, cooling-off windows, and who joined this month. | admin console access |
 
 Stock & warehouses disappears entirely when `InventoryFeature` is off, and Needs
 attention when `ActionCenterFeature` is off — not greyed out, absent.

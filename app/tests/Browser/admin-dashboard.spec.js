@@ -97,15 +97,17 @@ test.describe('Admin dashboard: shell', () => {
         }
     });
 
-    test('E2E-05: the removed audit feed is gone', async ({ adminPage: page }) => {
+    test('E2E-05: the removed feeds are gone', async ({ adminPage: page }) => {
         await page.goto('/admin');
         await expect(panel(page, 'sales')).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
+        await expect(panel(page, 'people')).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
 
         const body = await page.locator('body').innerText();
 
         expect(body).not.toContain('Recent Audit Events');
         expect(body).not.toContain('Audit Events Today');
         expect(body).not.toContain('Total Users');
+        expect(body).not.toContain('Recent registrations');
     });
 
     test('E2E-06: the refresh control re-fetches just its own panel', async ({ adminPage: page }) => {

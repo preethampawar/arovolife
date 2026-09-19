@@ -416,7 +416,7 @@ final class DashboardPanelData
     }
 
     /**
-     * Who is in the network, and who just joined.
+     * Who is in the network.
      *
      * Every count joins `distributors`, never `users` alone. A bare
      * `users.status = 'pending'` count includes legacy orphan accounts left by
@@ -452,27 +452,6 @@ final class DashboardPanelData
                     ->where('distributors.cooling_off_end_at', '>', $now)
                     ->where('distributors.cooling_off_end_at', '<=', $now->copy()->addDays(7))
                     ->count(),
-                // No email column. This list is cached for 60 seconds in a Redis
-                // shared with eight other apps (ADR-0011), and the ADN above the
-                // name already identifies the row for anyone who needs to open
-                // it — caching a contact address to use as a fallback label is
-                // more personal data at rest than the panel earns.
-                'latest' => $base()
-                    ->select(
-                        'distributors.id',
-                        'distributors.adn',
-                        'distributors.effective_date',
-                        'users.full_name',
-                        'users.status',
-                    )
-                    ->orderByDesc('distributors.id')
-                    ->limit(8)
-                    ->get()
-                    // Plain arrays. `get()` hands back a Collection of
-                    // stdClass, and neither survives the cache — see
-                    // `remember()`. The view reads `$row['adn']`.
-                    ->map(fn (object $row): array => (array) $row)
-                    ->all(),
                 'generated_at' => Carbon::now()->getTimestamp(),
             ];
         });
