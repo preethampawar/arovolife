@@ -32,7 +32,7 @@ final class GroupBvReplayService
 {
     /**
      * Orders per chunk. Doubles as the progress-bar resolution — see the
-     * comment on the chunkById() call below before raising it.
+     * comment on the chunk() call below before raising it.
      */
     private const PROGRESS_CHUNK = 25;
 
@@ -68,7 +68,20 @@ final class GroupBvReplayService
             // pinned is put back below, so a run inside a pinned test clock —
             // which is the only way to test a historical horizon — is not
             // silently unpinned half way through.
-            ->chunkById(self::PROGRESS_CHUNK, function ($orders) use (&$propagated, $log): void {
+            //
+            // chunk(), NOT chunkById(), and the distinction is load-bearing.
+            // chunkById() pages with `WHERE id > :lastId`, taking :lastId from
+            // the LAST ROW OF THE PAGE — which under an ORDER BY paid_at is an
+            // arbitrary id, not the largest one seen. Every order with a
+            // smaller id is then excluded for the rest of the run. On staging
+            // that silently dropped 1,332 of 1,966 orders: two thirds of the
+            // group BV never propagated and every figure downstream was short,
+            // with nothing in the output to say so. It stayed invisible while
+            // the environment held 13 orders, because a single partial page
+            // never pages. Offset paging is safe here precisely because this
+            // loop writes to group_bv_* and never to `orders`, so the set it
+            // walks cannot shift underneath it.
+            ->chunk(self::PROGRESS_CHUNK, function ($orders) use (&$propagated, $log): void {
                 foreach ($orders as $order) {
                     $bvPaise = (int) BvLedgerEntry::where('order_id', $order->id)
                         ->where('type', BvLedgerEntry::TYPE_ACCRUAL)

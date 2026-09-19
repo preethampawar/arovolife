@@ -908,6 +908,33 @@ it('publishes propagation progress often enough to show a stall as a stall', fun
     expect(array_filter($published, fn ($done) => $done > 0 && $done < 30))->not->toBeEmpty();
 });
 
+it('propagates every order when the id order and the paid_at order disagree', function (): void {
+    // The replay walks orders by paid_at, and chunkById() pages with
+    // `WHERE id > :lastId` taking :lastId from the LAST ROW OF THE PAGE — under
+    // that ordering an arbitrary id, not the largest seen. Every order with a
+    // smaller id is then excluded for the rest of the run, silently: the count
+    // it returns is the count it propagated, so a short replay looks like a
+    // complete one. On staging it dropped 1,332 of 1,966 orders.
+    //
+    // Seeding in REVERSE date order is what exposes it. The progress test above
+    // gives all 30 of its orders one timestamp, so ids and paid_at agree there
+    // and the cursor never goes backwards.
+    $expected = 60; // more than two chunks of 25
+
+    for ($i = 0; $i < $expected; $i++) {
+        recomputeSeedPaidOrder(
+            Distributor::factory()->create()->id,
+            Carbon::parse('2026-06-30 10:00:00')->subDays($i)->toDateTimeString(),
+            100_000,
+        );
+    }
+
+    $propagated = app(GroupBvReplayService::class)->replay();
+
+    expect($propagated)->toBe($expected)
+        ->and((int) DB::table('bv_propagation_log')->distinct()->count('order_id'))->toBe($expected);
+});
+
 it('refuses a partial replay that leaves out the repurchase evaluation the cut-off needs', function (): void {
     // The wipe deletes the window's repurchase cycles whatever is selected, and
     // gsb:daily-cutoff then refuses to run without them — aborting the replay
