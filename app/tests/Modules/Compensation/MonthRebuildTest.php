@@ -456,12 +456,16 @@ it('refuses when one of the month\'s credits was swept by a batch this rebuild d
     expect(implode("\n", $plan->refusals))->toContain('#'.$later->id);
 });
 
-it('refuses when the month\'s repurchase-wallet credits have since been spent', function (): void {
+it('rebuilds a month whose repurchase-wallet credits have since been spent', function (): void {
+    // Spending is what the month-end "wallet must be zero" gates REQUIRE, so a
+    // refusal here refused every month that ever paid GBB, Fortune or a rank
+    // requalification. The wipe deletes the credit and the replay writes it
+    // again; only a replay that credits LESS is a real shortfall, and that is
+    // measured after the re-run.
     [$distributor] = seedCreditingMonth();
 
     expect(WalletLedgerEntry::where('type', 'repurchase_deduction')->count())->toBeGreaterThan(0);
 
-    // The credit funded a discount on a repurchase order. That money left.
     app(WalletService::class)->debit(
         distributorId: $distributor->id,
         amountPaise: 1_000,
@@ -472,8 +476,69 @@ it('refuses when the month\'s repurchase-wallet credits have since been spent', 
 
     $plan = app(RebuildPlanner::class)->plan(RebuildKind::Month, Carbon::parse(REBUILD_MONTH_START));
 
-    expect($plan->isRefused())->toBeTrue();
-    expect(implode("\n", $plan->refusals))->toContain('repurchase wallet has been drawn on');
+    expect($plan->isRefused())->toBeFalse();
+    expect(array_keys($plan->repurchasePositions))->toContain($distributor->id);
+});
+
+it('reports a repurchase shortfall the replay left behind, instead of hiding it at zero', function (): void {
+    [$distributor] = seedCreditingMonth();
+    $developer = monthRebuildDeveloper();
+
+    // Far more spent than the month ever credited, so the replay cannot cover
+    // it however it lands. The balance floors at 0 and would say nothing.
+    app(WalletService::class)->debit(
+        distributorId: $distributor->id,
+        amountPaise: 90_00_000,
+        type: 'repurchase_wallet_used',
+        referenceId: 4_242,
+        referenceType: 'order',
+    );
+
+    expect(Artisan::call('compensation:rebuild-month', [
+        '--month' => REBUILD_MONTH,
+        '--actor' => $developer->id,
+        '--yes' => true,
+    ]))->toBe(0);
+
+    // Artisan::output() holds the nested re-run's output by now, so the
+    // durable record is what this asserts on.
+    $audit = AuditLog::where('action', 'compensation.rebuild.repurchase_shortfall')->first();
+
+    expect($audit)->not->toBeNull()
+        ->and($audit->details['total_paise'])->toBeGreaterThan(0)
+        ->and(array_keys($audit->details['shortfalls_paise']))->toContain($distributor->id)
+        ->and($audit->details['shortfalls_paise'][$distributor->id]['after'])->toBeLessThan(0);
+});
+
+it('still names who is short when the wipe lands but the re-run fails', function (): void {
+    // The branch where a shortfall is MOST likely — every credit the month
+    // funded is gone and nothing has replaced it — used to be the one branch
+    // that never measured. Whoever decides the correction needs the list.
+    [$distributor] = seedCreditingMonth();
+    $developer = monthRebuildDeveloper();
+
+    app(WalletService::class)->debit(
+        distributorId: $distributor->id,
+        amountPaise: 90_00_000,
+        type: 'repurchase_wallet_used',
+        referenceId: 4_242,
+        referenceType: 'order',
+    );
+
+    StubMonthlyClose::$exitCode = 1;
+
+    expect(Artisan::call('compensation:rebuild-month', [
+        '--month' => REBUILD_MONTH,
+        '--actor' => $developer->id,
+        '--yes' => true,
+    ]))->toBe(1);
+
+    $audit = AuditLog::where('action', 'compensation.rebuild.repurchase_shortfall')->first();
+
+    expect($audit)->not->toBeNull()
+        ->and(array_keys($audit->details['shortfalls_paise']))->toContain($distributor->id);
+    expect(AuditLog::where('action', 'compensation.rebuild.rerun_failed')->value('details'))
+        ->toHaveKey('repurchase_shortfalls');
 });
 
 it('records how much credited income the wipe removed', function (): void {

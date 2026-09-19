@@ -571,13 +571,15 @@ it('turns a period that moved under the confirm into a refusal the operator can 
     expect(AuditLog::where('action', 'compensation.rebuild.refused')->exists())->toBeTrue();
 });
 
-it('refuses when the day\'s repurchase-wallet credits have since been spent', function (): void {
+it('rebuilds a night whose repurchase-wallet credits have since been spent', function (): void {
+    // The wipe deletes the credit and the replay writes it again from the same
+    // cut-off, so a spend on its own is not a shortfall. Refusing on one
+    // stopped the rebuild for an ordinary repurchase order.
     [, $sponsee] = seedNightRebuildTree(Carbon::parse(REBUILD_DAY));
     runCutoffForDay();
 
     $credit = WalletLedgerEntry::where('type', 'repurchase_deduction')->firstOrFail();
 
-    // The distributor spent the credit on a repurchase order this afternoon.
     app(WalletService::class)->debit(
         distributorId: (int) $credit->distributor_id,
         amountPaise: 50_000,
@@ -588,8 +590,8 @@ it('refuses when the day\'s repurchase-wallet credits have since been spent', fu
 
     $plan = app(RebuildPlanner::class)->plan(RebuildKind::Night, Carbon::parse(REBUILD_NIGHT));
 
-    expect($plan->isRefused())->toBeTrue();
-    expect(implode("\n", $plan->refusals))->toContain('repurchase wallet has been drawn on');
+    expect($plan->isRefused())->toBeFalse();
+    expect(array_keys($plan->repurchasePositions))->toContain((int) $credit->distributor_id);
 });
 
 it('records the wipe with the money it removed and the accumulator it corrected', function (): void {

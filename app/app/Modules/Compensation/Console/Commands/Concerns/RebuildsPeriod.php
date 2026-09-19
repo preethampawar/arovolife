@@ -10,8 +10,10 @@ use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Services\Rebuild\RebuildKind;
 use App\Modules\Compensation\Services\Rebuild\RebuildPlan;
 use App\Modules\Compensation\Services\Rebuild\RebuildPlanner;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Compensation\Support\RepurchaseShortfallGuard;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\User;
@@ -128,18 +130,29 @@ trait RebuildsPeriod
 
             $this->error($reason);
             $context->noteFailed($reason);
+
+            // The wipe landed and the replay did not, so every credit this
+            // period funded is now uncovered. This is the branch where a
+            // shortfall is MOST likely and it must not be the one that never
+            // looks: whoever decides the correction needs the list.
+            $shortfalls = $this->reportRepurchaseShortfall($plan, $actorId);
+
             $this->audit('compensation.rebuild.rerun_failed', $actorId, $plan, null, [
                 'removed' => $removed,
                 'exit_code' => $exit,
                 'reason' => $reason,
+                'repurchase_shortfalls' => count($shortfalls),
             ]);
 
             return self::FAILURE;
         }
 
+        $shortfalls = $this->reportRepurchaseShortfall($plan, $actorId);
+
         $this->audit('compensation.rebuild.completed', $actorId, $plan, null, [
             'removed' => $removed,
             'warnings' => $plan->warnings,
+            'repurchase_shortfalls' => count($shortfalls),
         ]);
 
         $this->info(sprintf('Rebuilt %s — %d row(s) removed and re-derived.', $plan->periodValue(), array_sum($removed)));
@@ -294,6 +307,47 @@ trait RebuildsPeriod
         ]);
 
         return self::FAILURE;
+    }
+
+    /**
+     * Compare the repurchase positions this rebuild touched against where they
+     * stood before it, and record anyone left below zero.
+     *
+     * A shortfall is not a refusal: the discount left on a real order long ago,
+     * and refusing would only block the correction of everything else. But
+     * {@see WalletService::repurchaseWalletBalancePaise()}
+     * floors the balance at zero, so unreported it would never surface at all.
+     * The row detects; a human still has to post the correction.
+     *
+     * @return array<int, array{before: int, after: int}>
+     */
+    private function reportRepurchaseShortfall(RebuildPlan $plan, int $actorId): array
+    {
+        $after = RepurchaseShortfallGuard::positions(array_keys($plan->repurchasePositions));
+        $shortfalls = RepurchaseShortfallGuard::shortfalls($plan->repurchasePositions, $after);
+
+        if (($warning = RepurchaseShortfallGuard::warning($shortfalls)) === null) {
+            return [];
+        }
+
+        $total = array_sum(array_map(static fn (array $p): int => -$p['after'], $shortfalls));
+
+        // Not noteSkipped/noteFailed on the success path: the rebuild worked.
+        // Logged as well as audited because this row is now the only durable
+        // record of a money-affecting condition, and writeAudit() swallows a
+        // failed insert.
+        $this->warn($warning);
+        Log::warning('compensation.rebuild.repurchase_shortfall', [
+            'period' => $plan->periodValue(),
+            'shortfalls_paise' => $shortfalls,
+            'total_paise' => $total,
+        ]);
+        $this->audit('compensation.rebuild.repurchase_shortfall', $actorId, $plan, null, [
+            'shortfalls_paise' => $shortfalls,
+            'total_paise' => $total,
+        ]);
+
+        return $shortfalls;
     }
 
     /**

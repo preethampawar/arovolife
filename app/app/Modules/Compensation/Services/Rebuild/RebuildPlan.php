@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services\Rebuild;
 
 use App\Modules\Compensation\Support\EngineRegistry;
+use App\Modules\Compensation\Support\RepurchaseShortfallGuard;
 use Illuminate\Support\Carbon;
 
 /**
@@ -23,6 +24,11 @@ final readonly class RebuildPlan
      * @param  array<string, int>  $rowsToRemove  table => row count.
      * @param  int  $unsweeps  Wallet credits whose batch stamp is removed (never deleted).
      * @param  array<string, int>  $adjustments  table => rows corrected in place rather than deleted.
+     * @param  array<int, int>  $repurchasePositions  distributor id => unfloored repurchase position BEFORE the
+     *                                                wipe, for the people this period's credits fund. Re-measured
+     *                                                after the replay so a shortfall this rebuild caused can be
+     *                                                told from one that already existed
+     *                                                ({@see RepurchaseShortfallGuard}).
      */
     public function __construct(
         public RebuildKind $kind,
@@ -32,6 +38,7 @@ final readonly class RebuildPlan
         public array $rowsToRemove,
         public int $unsweeps,
         public array $adjustments = [],
+        public array $repurchasePositions = [],
     ) {}
 
     /** The ordinary command the rebuild re-runs once the period is wiped. */
@@ -83,6 +90,7 @@ final readonly class RebuildPlan
             'rowsToRemove' => $this->rowsToRemove,
             'unsweeps' => $this->unsweeps,
             'adjustments' => $this->adjustments,
+            'repurchaseDistributors' => count($this->repurchasePositions),
             'rerunCommand' => $this->rerunCommand(),
             'fingerprint' => $this->fingerprint(),
         ];
@@ -104,6 +112,7 @@ final readonly class RebuildPlan
             $this->rowsToRemove,
             $this->unsweeps,
             $this->adjustments,
+            $this->repurchasePositions,
         );
     }
 }

@@ -228,9 +228,9 @@ it('spends the repurchase balance the cycle is judged on, and not a paisa that l
         ->and($spend[0]->reference_type)->toBe('order');
 
     // It has to point at an order that already existed when it was spent.
-    $order = DB::table('orders')->find($spend[0]->reference_id);
-    expect($order)->not->toBeNull()
-        ->and(strtotime((string) $order->paid_at))->toBeLessThanOrEqual(strtotime('2026-07-31 22:00:00'));
+    $paidAt = DB::table('orders')->where('id', $spend[0]->reference_id)->value('paid_at');
+    expect($paidAt)->not->toBeNull()
+        ->and(strtotime((string) $paidAt))->toBeLessThanOrEqual(strtotime('2026-07-31 22:00:00'));
 });
 
 it('settles the calendar month end as well as the cycle close, because different engines read each', function (): void {

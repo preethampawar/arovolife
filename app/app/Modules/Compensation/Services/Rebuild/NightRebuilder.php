@@ -16,6 +16,7 @@ use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Services\Recompute\CarryforwardRewind;
 use App\Modules\Compensation\Support\FrozenPayoutGuard;
+use App\Modules\Compensation\Support\RepurchaseShortfallGuard;
 use Closure;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Eloquent\Builder;
@@ -88,6 +89,7 @@ final class NightRebuilder
             array_filter($rows, static fn (int $count): bool => $count > 0),
             0,
             array_filter(['group_bv_daily' => count($this->topupsToReturn($day))], static fn (int $count): bool => $count > 0),
+            RepurchaseShortfallGuard::positions($this->repurchaseDistributorIds($resultIds, $mentorshipIds)),
         );
     }
 
@@ -185,10 +187,6 @@ final class NightRebuilder
 
         if (($reversed = $this->reversedResults($day)) !== null) {
             $refusals[] = $reversed;
-        }
-
-        if (($spent = $this->spentRepurchaseCredit($resultIds, $mentorshipIds, $day->toDateString())) !== null) {
-            $refusals[] = $spent;
         }
 
         $month = $day->copy()->startOfMonth();
@@ -542,64 +540,34 @@ final class NightRebuilder
     }
 
     /**
-     * Refuse when the repurchase-wallet credits this wipe would delete have
-     * since been drawn on.
+     * Whose repurchase wallet this night's credits fund.
      *
      * A `repurchase_deduction` row is not only a record: it is the balance
-     * itself, and an order can spend against it the same day. Deleting the
-     * credit while the `repurchase_wallet_used` debit stays leaves a real
-     * position below zero, which {@see WalletService::repurchaseWalletBalancePaise()}
-     * floors at 0 and therefore hides — and the "repurchase wallet must be zero"
-     * gates would then read a wallet that goes non-zero again the moment any
-     * credit lands. A discount taken on an order is money that left; the
-     * rebuild stops rather than papering over it.
+     * itself, and an order can spend against it the same day. But the rebuild
+     * deletes that credit and writes it again from the same cut-off, so the
+     * spend is only left uncovered when the replay credits LESS than it did
+     * before — which is not knowable until the replay has run. These ids are
+     * what the command reconciles afterwards; {@see RepurchaseShortfallGuard}
+     * explains why refusing up front on a spend existing at all was wrong.
      *
      * @param  list<int>  $resultIds
      * @param  list<int>  $mentorshipIds
+     * @return list<int>
      */
-    private function spentRepurchaseCredit(array $resultIds, array $mentorshipIds, string $period): ?string
+    private function repurchaseDistributorIds(array $resultIds, array $mentorshipIds): array
     {
         $distributorIds = [];
-        $since = null;
 
         foreach ($this->walletQueries($resultIds, $mentorshipIds) as $query) {
             $rows = (clone $query)->where('type', 'repurchase_deduction')
                 ->toBase()
-                ->get(['distributor_id', 'created_at']);
+                ->get(['distributor_id']);
 
             foreach ($rows as $row) {
                 $distributorIds[(int) $row->distributor_id] = true;
-                $createdAt = $row->created_at === null ? null : Carbon::parse((string) $row->created_at);
-
-                if ($createdAt !== null && ($since === null || $createdAt->lessThan($since))) {
-                    $since = $createdAt;
-                }
             }
         }
 
-        if ($distributorIds === [] || $since === null) {
-            return null;
-        }
-
-        $spent = 0;
-
-        foreach (array_chunk(array_keys($distributorIds), self::CHUNK) as $chunk) {
-            $spent += WalletLedgerEntry::query()
-                ->where('type', 'repurchase_wallet_used')
-                ->whereIn('distributor_id', $chunk)
-                ->where('created_at', '>=', $since)
-                ->count();
-        }
-
-        if ($spent === 0) {
-            return null;
-        }
-
-        return sprintf(
-            'The repurchase wallet has been drawn on %d time(s) since %s\'s credits were written; deleting those '
-            .'credits would leave it short of what has already been spent on an order. Resolve those orders first.',
-            $spent,
-            $period,
-        );
+        return array_values(array_map(intval(...), array_keys($distributorIds)));
     }
 }

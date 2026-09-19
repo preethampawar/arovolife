@@ -25,6 +25,7 @@ use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compensation\Support\FrozenPayoutGuard;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
 use App\Modules\Compensation\Support\OpenMonthGuard;
+use App\Modules\Compensation\Support\RepurchaseShortfallGuard;
 use Closure;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Eloquent\Builder;
@@ -125,6 +126,8 @@ final class MonthRebuilder
             $this->warnings($month, $batch),
             array_filter($rows, static fn (int $count): bool => $count > 0),
             $unsweeps,
+            [],
+            RepurchaseShortfallGuard::positions($this->repurchaseDistributorIds($month)),
         );
     }
 
@@ -250,10 +253,6 @@ final class MonthRebuilder
             $refusals[] = $swept;
         }
 
-        if (($spent = $this->spentRepurchaseCredit($month)) !== null) {
-            $refusals[] = $spent;
-        }
-
         if (($reversed = $this->reversedCredits($month)) > 0) {
             $refusals[] = sprintf(
                 '%d of %s\'s credits were reversed by an admin decision; resolve those first.',
@@ -361,56 +360,32 @@ final class MonthRebuilder
     }
 
     /**
-     * Refuse when the repurchase-wallet credits this wipe would delete have
-     * since been drawn on. Same rule, same reason as
-     * {@see NightRebuilder::spentRepurchaseCredit()}: a discount already taken
-     * on an order is money that left, and the wallet balance floors at zero, so
-     * an overspend would not show anywhere.
+     * Whose repurchase wallet this month's credits fund.
+     *
+     * Collected before the wipe so the command can reconcile the same people
+     * once the replay has written the month again — the wipe deletes their
+     * `repurchase_deduction` rows and the replay puts them back, so a shortfall
+     * only exists if the replay credited less than it did before. Refusing here
+     * because a spend exists at all would refuse every month that ever paid a
+     * gated bonus; see {@see RepurchaseShortfallGuard} for why.
+     *
+     * @return list<int>
      */
-    private function spentRepurchaseCredit(Carbon $month): ?string
+    private function repurchaseDistributorIds(Carbon $month): array
     {
         $distributorIds = [];
-        $since = null;
 
         foreach ($this->walletQueries($month) as $query) {
             $rows = (clone $query)->where('type', 'repurchase_deduction')
                 ->toBase()
-                ->get(['distributor_id', 'created_at']);
+                ->get(['distributor_id']);
 
             foreach ($rows as $row) {
                 $distributorIds[(int) $row->distributor_id] = true;
-                $createdAt = $row->created_at === null ? null : Carbon::parse((string) $row->created_at);
-
-                if ($createdAt !== null && ($since === null || $createdAt->lessThan($since))) {
-                    $since = $createdAt;
-                }
             }
         }
 
-        if ($distributorIds === [] || $since === null) {
-            return null;
-        }
-
-        $spent = 0;
-
-        foreach (array_chunk(array_keys($distributorIds), self::CHUNK) as $chunk) {
-            $spent += WalletLedgerEntry::query()
-                ->where('type', 'repurchase_wallet_used')
-                ->whereIn('distributor_id', $chunk)
-                ->where('created_at', '>=', $since)
-                ->count();
-        }
-
-        if ($spent === 0) {
-            return null;
-        }
-
-        return sprintf(
-            'The repurchase wallet has been drawn on %d time(s) since %s\'s credits were written; deleting those '
-            .'credits would leave it short of what has already been spent on an order. Resolve those orders first.',
-            $spent,
-            $month->format('F Y'),
-        );
+        return array_values(array_map(intval(...), array_keys($distributorIds)));
     }
 
     /**
