@@ -91,6 +91,7 @@ final class SeedPayingPeriodCommand extends Command
                             {--titles-on=2026-07-02 : Day the personal-BV / title orders are placed}
                             {--month=2026-08 : The month to make pay (YYYY-MM)}
                             {--night= : An extra paying day (YYYY-MM-DD); defaults to yesterday}
+                            {--night-only : Seed ONLY that paying day, leaving the rest of the fixture alone}
                             {--settle-repurchase= : Second pass — spend the repurchase wallet at the close of these cycles (YYYY-MM, comma-separated)}
                             {--rollback : Delete every order a previous run of this command seeded}
                             {--force : Skip the typed confirmation}';
@@ -206,6 +207,26 @@ final class SeedPayingPeriodCommand extends Command
         }
 
         $this->load();
+
+        // The newest cut-off advances every midnight, and a night rebuild is
+        // refused for any night that is not the newest one (R-91). So a fixture
+        // left overnight has an empty newest night and nothing to rehearse
+        // against — without this the only way to get one was to re-seed the
+        // whole fixture on top of itself.
+        if ($this->option('night-only')) {
+            $nightly = $this->seedNight($night);
+            $this->flush();
+
+            $this->newLine();
+            $this->info(sprintf(
+                'Seeded %d order(s) / %s BV on %s. Next: php artisan compensation:recompute-all --horizon=now --force',
+                $nightly['orders'],
+                number_format($nightly['bv'] / 100),
+                $night->toDateString(),
+            ));
+
+            return self::SUCCESS;
+        }
 
         $titles = $this->seedTitles($titlesOn);
         // The month before the target month as well, and not for symmetry: the

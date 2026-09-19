@@ -525,3 +525,30 @@ it('warns when the ledger was stamped by a rebuild at the real clock', function 
     expect(Artisan::call('compensation:seed-paying-period', ['--settle-repurchase' => '2026-07']))->toBe(0);
     expect(Artisan::output())->toContain('a wall-clock time no engine runs at');
 });
+
+it('seeds only the paying night when asked, leaving the rest of the fixture alone', function (): void {
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    $onNight = fn (): int => DB::table('orders')
+        ->where('order_no', 'like', 'PS-%')
+        ->whereBetween('paid_at', ['2026-08-20 00:00:00', '2026-08-20 23:59:59'])
+        ->count();
+
+    $before = DB::table('orders')->where('order_no', 'like', 'PS-%')->count();
+    $nightBefore = $onNight();
+
+    // The newest cut-off moves every midnight and a night rebuild is refused
+    // for anything but the newest night, so a fixture left overnight needs one
+    // more paying day — not a second copy of itself.
+    Artisan::call('compensation:seed-paying-period', [
+        '--night' => '2026-08-20',
+        '--night-only' => true,
+        '--force' => true,
+    ]);
+
+    $added = DB::table('orders')->where('order_no', 'like', 'PS-%')->count() - $before;
+
+    // Everything it added landed on that night, and nothing else grew.
+    expect($added)->toBeGreaterThan(0)
+        ->and($onNight() - $nightBefore)->toBe($added);
+});
