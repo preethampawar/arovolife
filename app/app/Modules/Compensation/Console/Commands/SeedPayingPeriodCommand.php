@@ -45,10 +45,32 @@ use Illuminate\Support\Str;
  *    a cut-off ever matches.
  *  - REPURCHASE. The earners repurchase monthly, except a deliberate one in
  *    twelve who does not, so the forfeit path has live subjects too.
+ *  - COLLECTION CENTRE. A share of the group-BV orders is collected from an
+ *    Arete centre rather than shipped, because the ADC engine pays 3% of the
+ *    BV attributed to a centre and reads nothing else — without an
+ *    orders.arete_center_id anywhere, that engine runs and credits nobody.
  *  - THE NIGHT. A concentrated burst on one recent day, because the night
  *    rebuild may only run while its night is the newest one (R-91): an August
  *    night is out of window by the time the replay reaches today, so a night
  *    that pays has to be a recent one.
+ *
+ * THE SECOND PASS, and why it cannot be the first. A distributor who earns is
+ * credited a repurchase deduction, and their next cycle is suspended unless
+ * that wallet reads zero on its due date (REASON_WALLET_NONZERO). The balance
+ * is therefore a function of what the engines credited, which is not known
+ * until the replay has run — a fixture cannot write the spend up front because
+ * it cannot yet know the amount. So: seed, recompute, then
+ * `--settle-repurchase` reads each cycle's closing balance and spends exactly
+ * it, and a second recompute sees cycles that complete. Those spend rows
+ * survive the wipe by design — `repurchase_wallet_used` is the sole member of
+ * {@see DerivedTables::PRESERVED_WALLET_TYPES}, because money that has already
+ * been applied to an order is not the replay's to invent or destroy.
+ *
+ * A settled month can no longer be month-rebuilt, and that is correct rather
+ * than unfortunate: {@see MonthRebuilder::spentRepurchaseCredit()} refuses to
+ * delete credits whose repurchase half has been spent on an order. Settle the
+ * months you want to pay THROUGH, and leave the month you intend to rebuild
+ * unsettled — its own credits accrue untouched and its rebuild stays open.
  *
  * Every row it writes is tagged — `order_no` starts `PS-`, `idempotency_key`
  * starts `payseed:` — so `--rollback` removes exactly this fixture and nothing
@@ -65,6 +87,7 @@ final class SeedPayingPeriodCommand extends Command
                             {--titles-on=2026-07-02 : Day the personal-BV / title orders are placed}
                             {--month=2026-08 : The month to make pay (YYYY-MM)}
                             {--night= : An extra paying day (YYYY-MM-DD); defaults to yesterday}
+                            {--settle-repurchase= : Second pass — spend the repurchase wallet at the close of these cycles (YYYY-MM, comma-separated)}
                             {--rollback : Delete every order a previous run of this command seeded}
                             {--force : Skip the typed confirmation}';
 
@@ -104,6 +127,17 @@ final class SeedPayingPeriodCommand extends Command
     /** One in twelve earners skips their repurchase, to keep the forfeit path populated. */
     private const FORFEIT_EVERY = 12;
 
+    /**
+     * One group-BV order in four is collected from the Arete centre instead of
+     * shipped. Enough BV to carry the ADC bonus past its ₹1,00,000 monthly cap,
+     * which is the half of that engine worth rehearsing — an uncapped credit
+     * exercises a multiplication, the cap exercises the client's phase penalty.
+     */
+    private const CENTRE_EVERY = 4;
+
+    /** Memo prefix on the wallet rows this fixture writes, so --rollback can find them. */
+    private const WALLET_TAG = 'payseed:';
+
     /** @var array<int, array<string, mixed>> variant id => row */
     private array $variants = [];
 
@@ -112,6 +146,12 @@ final class SeedPayingPeriodCommand extends Command
 
     /** @var array<int, int> distributor id => customer id */
     private array $customers = [];
+
+    /** The centre orders are collected from, or null if the environment has none. */
+    private ?int $areteCenterId = null;
+
+    /** Counts group-BV orders so every CENTRE_EVERY-th one is a collection. */
+    private int $centreCounter = 0;
 
     /** @var list<array<string, mixed>> */
     private array $orderRows = [];
@@ -136,6 +176,10 @@ final class SeedPayingPeriodCommand extends Command
 
         if ($this->option('rollback')) {
             return $this->rollback();
+        }
+
+        if (($settle = (string) $this->option('settle-repurchase')) !== '') {
+            return $this->settleRepurchase($settle);
         }
 
         $month = Carbon::parse($this->option('month').'-01')->startOfMonth();
@@ -177,7 +221,23 @@ final class SeedPayingPeriodCommand extends Command
 
         $this->newLine();
         $this->info('Seeded. Nothing derived has been computed yet — next:');
-        $this->line('  php artisan compensation:recompute-all --horizon=now --force');
+        $this->line('  1. php artisan compensation:recompute-all --horizon=now --force');
+        $this->line(sprintf(
+            '  2. php artisan compensation:seed-paying-period --settle-repurchase=%s',
+            $month->copy()->subMonth()->format('Y-m'),
+        ));
+        $this->line('  3. php artisan compensation:recompute-all --horizon=now --force');
+        $this->newLine();
+        $this->line(sprintf(
+            'Step 2 settles %s so %s pays. Leave %s itself unsettled while you intend to rebuild it.',
+            $month->copy()->subMonth()->format('F'),
+            $month->format('F'),
+            $month->format('F'),
+        ));
+
+        if ($this->areteCenterId === null) {
+            $this->warn('No active distributor-owned Arete centre — the ADC engine will credit nobody.');
+        }
 
         return self::SUCCESS;
     }
@@ -206,6 +266,19 @@ final class SeedPayingPeriodCommand extends Command
         }
 
         $this->nextOrderId = ((int) DB::table('orders')->max('id')) + 1;
+
+        // A company centre never earns, whatever its owner column says, and a
+        // centre awaiting its owner has nobody to pay — so the engine only ever
+        // credits an active distributor-owned one. Picking any other kind here
+        // would seed BV that lands nowhere.
+        $centre = DB::table('arete_centers')
+            ->where('status', 'active')
+            ->where('centre_type', 'distributor')
+            ->whereNotNull('assigned_distributor_id')
+            ->orderBy('id')
+            ->value('id');
+
+        $this->areteCenterId = $centre === null ? null : (int) $centre;
     }
 
     /**
@@ -257,7 +330,14 @@ final class SeedPayingPeriodCommand extends Command
             $day = $month->copy()->addDays(2 + ($index % 7));
 
             while ($day->lessThanOrEqualTo($end)) {
-                $bv += $this->order($leafId, $day->copy()->setTime(11, 0), [[self::GROUP_BV_VARIANT, 1]]);
+                $collected = (++$this->centreCounter % self::CENTRE_EVERY) === 0;
+
+                $bv += $this->order(
+                    $leafId,
+                    $day->copy()->setTime(11, 0),
+                    [[self::GROUP_BV_VARIANT, 1]],
+                    $collected ? $this->areteCenterId : null,
+                );
                 $orders++;
                 $day->addWeek();
             }
@@ -355,8 +435,12 @@ final class SeedPayingPeriodCommand extends Command
      * Stage one paid order, its items and its BV ledger entry. Returns the BV.
      *
      * @param  list<array{int, int}>  $lines  [variant id, qty]
+     * @param  int|null  $areteCenterId  the centre this order is collected
+     *                                   from; null ships it. The ADC engine
+     *                                   reads only this column, so it is the
+     *                                   entire input to that bonus.
      */
-    private function order(int $distributorId, Carbon $at, array $lines): int
+    private function order(int $distributorId, Carbon $at, array $lines, ?int $areteCenterId = null): int
     {
         $orderId = $this->nextOrderId++;
         $orderNo = self::TAG.$at->format('ymd').'-'.strtoupper(Str::random(6));
@@ -404,7 +488,8 @@ final class SeedPayingPeriodCommand extends Command
             'order_no' => $orderNo,
             'customer_id' => $this->customerFor($distributorId),
             'attributed_distributor_id' => $distributorId,
-            'delivery_type' => 'ship',
+            'arete_center_id' => $areteCenterId,
+            'delivery_type' => $areteCenterId === null ? 'ship' : 'collect',
             'attribution_source' => 'logged_in',
             'payment_method' => 'online',
             'status' => 'paid',
@@ -479,9 +564,126 @@ final class SeedPayingPeriodCommand extends Command
         }
     }
 
+    /**
+     * Second pass: spend each named cycle's closing repurchase balance, so the
+     * cycle completes and the months after it are not forfeited.
+     *
+     * The verdict {@see RepurchaseCycleService::resolveAtWindowEnd()} takes is
+     * frozen at the window's LAST instant, and it asks two things: was the BV
+     * bought, and did the wallet read zero. The first pass answers the BV; only
+     * a spend answers the wallet, and it has to be dated inside the window or
+     * the balance it clears is not the balance that gets judged. Hence 22:00 on
+     * the due date — late enough to capture everything the engines credited
+     * during the cycle, early enough to be inside it.
+     *
+     * @param  string  $months  comma-separated YYYY-MM
+     */
+    private function settleRepurchase(string $months): int
+    {
+        $written = 0;
+        $skipped = 0;
+        $rows = [];
+
+        foreach (explode(',', $months) as $token) {
+            $month = Carbon::parse(trim($token).'-01')->startOfMonth();
+
+            $cycles = DB::table('repurchase_cycles')
+                ->whereBetween('due_date', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()])
+                ->get(['distributor_id', 'due_date']);
+
+            // Group by due date: the balance query is per instant, and a month
+            // normally closes every cycle on the same day, so this is one pass
+            // over the ledger rather than one per distributor.
+            $byDueDate = [];
+            foreach ($cycles as $cycle) {
+                $byDueDate[(string) $cycle->due_date][] = (int) $cycle->distributor_id;
+            }
+
+            foreach ($byDueDate as $dueDate => $distributorIds) {
+                $dueEnd = Carbon::parse($dueDate)->endOfDay();
+                $spentAt = Carbon::parse($dueDate)->setTime(22, 0);
+
+                $balances = DB::table('wallet_ledger_entries')
+                    ->whereIn('distributor_id', $distributorIds)
+                    ->whereIn('type', ['repurchase_deduction', 'repurchase_wallet_used'])
+                    ->where('created_at', '<=', $dueEnd)
+                    ->groupBy('distributor_id')
+                    ->selectRaw(
+                        "distributor_id, COALESCE(SUM(CASE WHEN type = 'repurchase_deduction' THEN amount_paise ELSE 0 END), 0) "
+                        ."- COALESCE(SUM(CASE WHEN type = 'repurchase_wallet_used' THEN ABS(amount_paise) ELSE 0 END), 0) AS balance",
+                    )
+                    ->pluck('balance', 'distributor_id');
+
+                // The order the credit is applied to has to exist and has to
+                // predate the spend — a wallet debit pointing at an order
+                // placed after it would be a refund waiting to misbehave.
+                $orders = DB::table('orders')
+                    ->where('order_no', 'like', self::TAG.'%')
+                    ->where('status', 'paid')
+                    ->where('paid_at', '<=', $spentAt)
+                    ->whereIn('attributed_distributor_id', $distributorIds)
+                    ->groupBy('attributed_distributor_id')
+                    ->selectRaw('attributed_distributor_id, MAX(id) AS order_id')
+                    ->pluck('order_id', 'attributed_distributor_id');
+
+                foreach ($distributorIds as $distributorId) {
+                    $balance = (int) ($balances[$distributorId] ?? 0);
+
+                    if ($balance <= 0) {
+                        continue;
+                    }
+
+                    if (! isset($orders[$distributorId])) {
+                        $skipped++;
+
+                        continue;
+                    }
+
+                    $rows[] = [
+                        'distributor_id' => $distributorId,
+                        'type' => 'repurchase_wallet_used',
+                        'amount_paise' => -$balance,
+                        'reference_id' => (int) $orders[$distributorId],
+                        'reference_type' => 'order',
+                        'memo' => self::WALLET_TAG.' repurchase wallet spent at the close of the '.$month->format('F Y').' cycle',
+                        'created_at' => $spentAt->toDateTimeString(),
+                    ];
+                    $written++;
+                }
+            }
+        }
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            DB::table('wallet_ledger_entries')->insert($chunk);
+        }
+
+        $this->info(sprintf('Spent %d repurchase wallet balance(s).', $written));
+
+        if ($skipped > 0) {
+            $this->warn(sprintf('%d had a balance but no seeded order to apply it to — left unspent.', $skipped));
+        }
+
+        $this->line('  php artisan compensation:recompute-all --horizon=now --force');
+
+        return self::SUCCESS;
+    }
+
     /** Remove exactly what a previous run wrote — matched on the order tag. */
     private function rollback(): int
     {
+        // The wallet spends go first and unconditionally. They are the one
+        // thing this fixture writes that a recompute preserves, so leaving
+        // them behind would keep debiting a wallet whose credits have been
+        // rebuilt from orders that no longer exist.
+        $spends = DB::table('wallet_ledger_entries')
+            ->where('type', 'repurchase_wallet_used')
+            ->where('memo', 'like', self::WALLET_TAG.'%')
+            ->delete();
+
+        if ($spends > 0) {
+            $this->info(sprintf('Removed %d seeded repurchase wallet spend(s).', $spends));
+        }
+
         $ids = DB::table('orders')->where('order_no', 'like', self::TAG.'%')->pluck('id')->all();
 
         if ($ids === []) {

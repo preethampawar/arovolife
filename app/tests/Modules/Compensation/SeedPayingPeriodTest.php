@@ -150,6 +150,111 @@ it('rolls back exactly its own orders and leaves everything else standing', func
         ->and(DB::table('order_items')->count())->toBe(0);
 });
 
+it('collects a share of the orders from an Arete centre, which is the ADC engine\'s only input', function (): void {
+    DB::table('arete_centers')->insert([
+        'id' => 5,
+        'name' => 'Fixture centre',
+        'centre_type' => 'distributor',
+        'status' => 'active',
+        'assigned_distributor_id' => 1,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    $collected = DB::table('orders')->whereNotNull('arete_center_id')->get(['arete_center_id', 'delivery_type']);
+
+    expect($collected)->not->toBeEmpty();
+
+    foreach ($collected as $order) {
+        expect((int) $order->arete_center_id)->toBe(5)
+            ->and($order->delivery_type)->toBe('collect');
+    }
+
+    // Shipped orders must not carry a centre — the pairing is the whole point.
+    expect(DB::table('orders')->where('delivery_type', 'collect')->whereNull('arete_center_id')->count())->toBe(0);
+});
+
+it('spends the repurchase balance the cycle is judged on, and not a paisa that lands after it', function (): void {
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    DB::table('repurchase_cycles')->insert([
+        'distributor_id' => 2,
+        'cycle_start_date' => '2026-07-01',
+        'due_date' => '2026-07-31',
+        'required_bv_paise' => 60_000,
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    // One credit inside the window and one after it. The verdict is frozen at
+    // the window's last instant, so only the first is the balance to clear;
+    // spending both would leave the wallet negative and the August cycle
+    // already settled before it had begun.
+    foreach ([['2026-07-15 09:00:00', 100_000], ['2026-08-05 09:00:00', 50_000]] as [$at, $amount]) {
+        DB::table('wallet_ledger_entries')->insert([
+            'distributor_id' => 2,
+            'type' => 'repurchase_deduction',
+            'amount_paise' => $amount,
+            'created_at' => $at,
+        ]);
+    }
+
+    Artisan::call('compensation:seed-paying-period', ['--settle-repurchase' => '2026-07']);
+
+    $spend = DB::table('wallet_ledger_entries')->where('type', 'repurchase_wallet_used')->get();
+
+    expect($spend)->toHaveCount(1)
+        ->and((int) $spend[0]->amount_paise)->toBe(-100_000)
+        ->and((string) $spend[0]->created_at)->toBe('2026-07-31 22:00:00')
+        ->and($spend[0]->reference_type)->toBe('order');
+
+    // It has to point at an order that already existed when it was spent.
+    $order = DB::table('orders')->find($spend[0]->reference_id);
+    expect($order)->not->toBeNull()
+        ->and(strtotime((string) $order->paid_at))->toBeLessThanOrEqual(strtotime('2026-07-31 22:00:00'));
+});
+
+it('takes its wallet spends back out on rollback, because a recompute will not', function (): void {
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    DB::table('repurchase_cycles')->insert([
+        'distributor_id' => 2,
+        'cycle_start_date' => '2026-07-01',
+        'due_date' => '2026-07-31',
+        'required_bv_paise' => 60_000,
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    DB::table('wallet_ledger_entries')->insert([
+        'distributor_id' => 2,
+        'type' => 'repurchase_deduction',
+        'amount_paise' => 100_000,
+        'created_at' => '2026-07-15 09:00:00',
+    ]);
+
+    // A spend this fixture did NOT write, which must survive the rollback.
+    DB::table('wallet_ledger_entries')->insert([
+        'distributor_id' => 3,
+        'type' => 'repurchase_wallet_used',
+        'amount_paise' => -7_000,
+        'memo' => 'Applied at checkout — order #ORD-260701-REAL01',
+        'created_at' => '2026-07-20 09:00:00',
+    ]);
+
+    Artisan::call('compensation:seed-paying-period', ['--settle-repurchase' => '2026-07']);
+    expect(DB::table('wallet_ledger_entries')->where('type', 'repurchase_wallet_used')->count())->toBe(2);
+
+    Artisan::call('compensation:seed-paying-period', ['--rollback' => true]);
+
+    $left = DB::table('wallet_ledger_entries')->where('type', 'repurchase_wallet_used')->get();
+    expect($left)->toHaveCount(1)
+        ->and((int) $left[0]->distributor_id)->toBe(3);
+});
+
 it('refuses wherever a recompute would refuse', function (): void {
     config(['arovolife.recompute.allowed_databases' => ['some-other-database']]);
 
