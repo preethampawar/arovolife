@@ -77,12 +77,35 @@ it('has exactly one registry entry per compensation console command', function (
     expect($registered)->toBe($commandClasses);
 });
 
-it('registers sixteen engines with unique keys and signatures', function (): void {
+it('registers twenty engines with unique keys and signatures', function (): void {
     $all = EngineRegistry::all();
 
-    expect($all)->toHaveCount(16);
+    expect($all)->toHaveCount(20);
     expect(array_keys($all))->toBe(EngineRegistry::keys());
-    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(16);
+    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(20);
+});
+
+it('keeps the four developer rebuilds out of the scheduler and off the admin cards', function (): void {
+    // They are registry entries so RecordEngineRun writes their rows and the
+    // signature pin above covers them, never so an admin can start one: the
+    // Engine Runs page skips a `developerOnly` card for every role, and nothing
+    // in routes/console.php fires them.
+    expect(EngineRegistry::rebuildKeys())->toBe([
+        'compensation.rebuild-night',
+        'compensation.rebuild-week',
+        'compensation.rebuild-month',
+        'compensation.rebuild-payout',
+    ]);
+
+    foreach (EngineRegistry::rebuildKeys() as $key) {
+        $definition = EngineRegistry::get($key);
+
+        expect($definition->developerOnly)->toBeTrue();
+        expect($definition->cadence->isScheduled())->toBeFalse();
+        expect($definition->manuallyTriggerable)->toBeFalse();
+        expect($definition->isOrchestrator)->toBeTrue();
+        expect(in_array($key, EngineRegistry::rootOrchestratorKeys(), true))->toBeFalse();
+    }
 });
 
 it('registers every scheduled root orchestrator with the scheduler, and nothing else', function (): void {

@@ -337,13 +337,20 @@ final class EngineStatusService
      * True when the engine has a live run in flight — either one this process
      * knows about or a cron run that started moments ago. `running` rows older
      * than the staleness cutoff are treated as abandoned, not live.
+     *
+     * `$exceptRunId` excludes ONE row: a command that is itself a registry entry
+     * already has its own `running` row by the time it asks this, and a rebuild
+     * refusing because it can see itself would refuse every time
+     * ({@see RebuildPreflight}). Every other caller asks about a different
+     * engine and leaves it null.
      */
-    public function hasRunInFlight(string $key): bool
+    public function hasRunInFlight(string $key, ?int $exceptRunId = null): bool
     {
         return EngineRun::query()
             ->where('engine_key', $key)
             ->where('status', EngineRun::STATUS_RUNNING)
             ->where('started_at', '>=', Carbon::now()->subMinutes(EngineRun::STALE_AFTER_MINUTES))
+            ->when($exceptRunId !== null, fn (Builder $query): Builder => $query->whereKeyNot($exceptRunId))
             ->exists();
     }
 

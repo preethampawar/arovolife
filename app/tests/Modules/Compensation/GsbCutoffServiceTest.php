@@ -11,7 +11,7 @@ use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\DTOs\BonusCreditOutcome;
 use App\Modules\Compensation\Services\GsbCutoffService;
-use App\Modules\Compensation\Services\Recompute\WindowedStateWiper;
+use App\Modules\Compensation\Services\Recompute\CarryforwardRewind;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -711,7 +711,7 @@ it('treats an admin-reversed cut-off as terminal — re-run is a no-op with no n
  * The GsbCutoffResult::STATUS_* constants named inside one method's source.
  *
  * The advancing-status list used to be written out twice — once in
- * advancedCarryForward(), once as a raw whereIn in WindowedStateWiper — and
+ * advancedCarryForward(), once as a raw whereIn in the rewind reader — and
  * this read both to pin them equal. Both now read
  * GsbCutoffResult::CARRY_FORWARD_ADVANCING_STATUSES, so what is left to check
  * is that neither has quietly grown its own copy again.
@@ -760,8 +760,9 @@ it('keeps repurchase_forfeited out of the carry-forward and pool-funded lists', 
 });
 
 it('keeps one source of truth for the carry-forward-advancing statuses', function (): void {
-    // Three readers now: the model predicate, the wiper's rewind query and the
-    // cut-off service's out-of-order guard. A fourth copy is the failure this
+    // Three readers now: the model predicate, CarryforwardRewind's query (which
+    // the windowed replay and the night rebuild share) and the cut-off service's
+    // out-of-order guard. A fourth copy is the failure this
     // pins — a list spelled out again in a method body rather than read from
     // the constant is how the wiper and the model drifted apart before.
     expect(GsbCutoffResult::CARRY_FORWARD_ADVANCING_STATUSES)->toBe([
@@ -781,6 +782,6 @@ it('keeps one source of truth for the carry-forward-advancing statuses', functio
         expect(GsbCutoffResult::CARRY_FORWARD_ADVANCING_STATUSES)->not->toContain($neverAdvances);
     }
 
-    expect(statusConstantsNamedIn(WindowedStateWiper::class, 'readCarryforwardRewind'))->toBe([]);
+    expect(statusConstantsNamedIn(CarryforwardRewind::class, 'readFrom'))->toBe([]);
     expect(statusConstantsNamedIn(GsbCutoffResult::class, 'advancedCarryForward'))->toBe([]);
 });

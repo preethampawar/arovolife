@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services\Recompute;
 
-use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Support\DerivedTables;
 use App\Modules\Compensation\Support\EnginePeriodType;
@@ -14,7 +13,6 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
-use RuntimeException;
 
 /**
  * Removes only the derived rows a windowed replay is about to rebuild, and
@@ -79,7 +77,10 @@ final class WindowedStateWiper
      */
     private const CYCLE_RESET_KEY = 'repurchase_cycles (verdict reset)';
 
-    public function __construct(private readonly DatabaseManager $db) {}
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly CarryforwardRewind $carryforward,
+    ) {}
 
     /**
      * Delete every derived row on or after $from and rewind the rolling stores.
@@ -98,7 +99,10 @@ final class WindowedStateWiper
         $monthStart = $from->copy()->startOfMonth();
 
         // Read the rewind targets BEFORE the rows carrying them are deleted.
-        $carryforwardRewind = $this->readCarryforwardRewind($dayStart);
+        // Rewinding `gsb_carryforward` moved to {@see CarryforwardRewind} when
+        // the developer rebuild (ADR-0016) needed the same two steps for a
+        // single night; read here, applied after the deletes, as before.
+        $carryforwardRewind = $this->carryforward->readFrom($dayStart);
         $debtRewind = $this->readDebtRewind($dayStart);
 
         $removed = [];
@@ -193,7 +197,7 @@ final class WindowedStateWiper
             Schema::enableForeignKeyConstraints();
         }
 
-        $this->applyCarryforwardRewind($carryforwardRewind, $log);
+        $this->carryforward->apply($carryforwardRewind, $log);
         $this->applyDebtRewind($debtRewind, $log);
 
         // Queued propagation jobs reference the pre-wipe state, exactly as in a
@@ -342,51 +346,6 @@ final class WindowedStateWiper
     }
 
     /**
-     * Each distributor's carry-forward as it stood at the start of the window:
-     * the before-state recorded on their earliest in-window cut-off row.
-     *
-     * @return array<int, array{power: int, side: string|null, slab1: int}>
-     */
-    private function readCarryforwardRewind(Carbon $dayStart): array
-    {
-        $rows = $this->db->table('gsb_cutoff_results')
-            ->whereDate('cutoff_date', '>=', $dayStart->toDateString())
-            // Only rows that actually moved the carry-forward carry a
-            // meaningful before-state. A `below_600bv` row records zeros
-            // because the engine returns before it ever reads the store —
-            // rewinding from one would invent an all-zero carry-forward row for
-            // every distributor who has never purchased (126 of 288 on the
-            // reference dataset, none of which a full replay creates).
-            // `repurchase_forfeited` is absent for the same reason: the client's
-            // 2026-09-07 forfeit deliberately leaves both stores untouched.
-            ->whereIn('status', GsbCutoffResult::CARRY_FORWARD_ADVANCING_STATUSES)
-            ->orderBy('distributor_id')
-            ->orderBy('cutoff_date')
-            ->orderBy('id')
-            ->get(['distributor_id', 'cutoff_date', 'power_cf_before_paise', 'power_side_before', 'slab1_weaker_cf_before_paise']);
-
-        $rewind = [];
-
-        foreach ($rows as $row) {
-            $id = (int) $row->distributor_id;
-
-            // Ordered ascending, so the first row seen per distributor is the
-            // earliest in the window — the state to rewind to.
-            if (isset($rewind[$id])) {
-                continue;
-            }
-
-            $rewind[$id] = [
-                'power' => (int) $row->power_cf_before_paise,
-                'side' => $row->power_side_before,
-                'slab1' => (int) $row->slab1_weaker_cf_before_paise,
-            ];
-        }
-
-        return $rewind;
-    }
-
-    /**
      * Reversal debt as it stood at the window's start, per (distributor, side):
      * whatever it is now, plus the debt the deleted credits paid down, minus
      * the debt the deleted reversals created.
@@ -420,73 +379,6 @@ final class WindowedStateWiper
         }
 
         return $delta;
-    }
-
-    /**
-     * @param  array<int, array{power: int, side: string|null, slab1: int}>  $rewind
-     * @param  Closure(string): void  $log
-     */
-    private function applyCarryforwardRewind(array $rewind, Closure $log): void
-    {
-        if ($rewind === []) {
-            return;
-        }
-
-        $now = Carbon::now();
-
-        // `power_side_before` was added on 2026-07-04 without a backfill, so
-        // rows written before then carry NULL. GsbCutoffService reads that
-        // column as `$existing->power_side_before ?? $cfSide` — it falls back to
-        // the side already in the store. Writing the raw NULL here instead would
-        // leave `gsb_carryforward.power_side` null while the balance stayed
-        // non-zero, and the next cut-off adds a null-sided balance to NEITHER
-        // leg: the carry forward silently vanishes from the match. Mirror the
-        // engine's fallback rather than the column.
-        $existingSides = $this->db->table('gsb_carryforward')
-            ->whereIn('distributor_id', array_keys($rewind))
-            ->pluck('power_side', 'distributor_id');
-
-        $legacy = 0;
-
-        foreach ($rewind as $distributorId => $state) {
-            $side = $state['side'];
-
-            if ($side === null && $state['power'] > 0) {
-                $side = $existingSides[$distributorId] ?? null;
-                $legacy++;
-
-                if ($side === null) {
-                    throw new RuntimeException(sprintf(
-                        'Cannot rewind carry-forward for distributor %d: its earliest in-window '
-                        .'cut-off predates the power_side_before column (2026-07-04) and the store '
-                        .'has no side either, so a %d-paise carry forward would be orphaned. '
-                        .'Run a full recompute instead of a windowed one for this date range.',
-                        $distributorId,
-                        $state['power'],
-                    ));
-                }
-            }
-
-            $this->db->table('gsb_carryforward')->updateOrInsert(
-                ['distributor_id' => $distributorId],
-                [
-                    'power_side_bv_paise' => $state['power'],
-                    'power_side' => $side,
-                    'slab1_weaker_bv_paise' => $state['slab1'],
-                    'updated_at' => $now,
-                ],
-            );
-        }
-
-        if ($legacy > 0) {
-            $log(sprintf(
-                '  %-28s %d distributor(s) had no power_side_before (pre-2026-07-04); kept the stored side',
-                'gsb_carryforward',
-                $legacy,
-            ));
-        }
-
-        $log(sprintf('  %-28s %d distributor(s) rewound', 'gsb_carryforward', count($rewind)));
     }
 
     /**

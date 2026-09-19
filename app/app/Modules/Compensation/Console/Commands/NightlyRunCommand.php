@@ -96,7 +96,7 @@ final class NightlyRunCommand extends Command
 
         $this->info("Nightly run — {$night->format('D, d M Y')}");
 
-        $refusal = $this->orchestratorPreflight();
+        $refusal = $this->orchestratorPreflight($night, 'compensation.nightly-run');
 
         if ($refusal !== null) {
             if (! $this->option('force')) {

@@ -28,6 +28,10 @@ use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
 use App\Modules\Compensation\Console\Commands\PayoutReopenStuckBatchCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
+use App\Modules\Compensation\Console\Commands\RebuildMonthCommand;
+use App\Modules\Compensation\Console\Commands\RebuildNightCommand;
+use App\Modules\Compensation\Console\Commands\RebuildPayoutCommand;
+use App\Modules\Compensation\Console\Commands\RebuildWeekCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Compensation\Console\Commands\ScaleBenchmarkCommand;
 use App\Modules\Compensation\Console\Commands\ScaleSeedCommand;
@@ -182,6 +186,10 @@ class AppServiceProvider extends ServiceProvider
                 NightlyRunCommand::class,
                 WeeklyRunCommand::class,
                 MonthlyRunCommand::class,
+                RebuildNightCommand::class,
+                RebuildWeekCommand::class,
+                RebuildMonthCommand::class,
+                RebuildPayoutCommand::class,
                 ScaleSeedCommand::class,
                 ScaleBenchmarkCommand::class,
                 MonthlyPayoutCloseCommand::class,

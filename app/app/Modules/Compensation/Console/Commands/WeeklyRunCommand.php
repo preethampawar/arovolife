@@ -72,7 +72,7 @@ final class WeeklyRunCommand extends Command
 
         $this->info("Weekly run — {$night->format('D, d M Y')}");
 
-        $refusal = $this->orchestratorPreflight();
+        $refusal = $this->orchestratorPreflight($night, 'compensation.weekly-run');
 
         if ($refusal !== null) {
             if (! $this->option('force')) {

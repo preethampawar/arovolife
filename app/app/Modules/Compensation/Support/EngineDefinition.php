@@ -49,6 +49,13 @@ final readonly class EngineDefinition
      *                                themselves. The recompute replay drives the individual engines
      *                                directly, so it must skip these or every step would be invoked
      *                                twice.
+     * @param  bool  $developerOnly  True for the four period rebuilds (ADR-0016). They are registry
+     *                               entries so their runs are recorded and their signatures are pinned
+     *                               like every other engine's, but they are not engines an admin may see:
+     *                               the Engine Runs page skips their cards for EVERY role, and the
+     *                               rebuild surface itself is behind `role:developer`. A flag rather
+     *                               than a hand-written list of keys in the view, for the reason
+     *                               {@see EngineRegistry::rootOrchestratorKeys()} gives.
      */
     public function __construct(
         public string $key,
@@ -67,6 +74,7 @@ final readonly class EngineDefinition
         public bool $requiresClosedPeriod = false,
         public ?string $orchestratedBy = null,
         public bool $isOrchestrator = false,
+        public bool $developerOnly = false,
     ) {}
 
     /**

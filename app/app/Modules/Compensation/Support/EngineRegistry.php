@@ -18,6 +18,10 @@ use App\Modules\Compensation\Console\Commands\MonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
+use App\Modules\Compensation\Console\Commands\RebuildMonthCommand;
+use App\Modules\Compensation\Console\Commands\RebuildNightCommand;
+use App\Modules\Compensation\Console\Commands\RebuildPayoutCommand;
+use App\Modules\Compensation\Console\Commands\RebuildWeekCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Compensation\Console\Commands\WeeklyRunCommand;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
@@ -125,6 +129,30 @@ final class EngineRegistry
             if ($definition->isOrchestrator
                 && $definition->orchestratedBy === null
                 && $definition->cadence->isScheduled()) {
+                $keys[] = $key;
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * The four developer rebuilds (ADR-0016, D4).
+     *
+     * Derived from the flag, never hand-listed, for the same reason as
+     * {@see rootOrchestratorKeys()}: the rebuild preflight refuses while one is
+     * in flight, the Engine Runs page hides their cards and the rebuild surface
+     * validates against them, and a fifth kind added to three of those four
+     * places is the omission nobody notices until two wipes race.
+     *
+     * @return list<string>
+     */
+    public static function rebuildKeys(): array
+    {
+        $keys = [];
+
+        foreach (self::all() as $key => $definition) {
+            if ($definition->developerOnly) {
                 $keys[] = $key;
             }
         }
@@ -476,6 +504,84 @@ final class EngineRegistry
                 defaultPeriod: 'today',
                 manuallyTriggerable: false,
                 isOrchestrator: true,
+            ),
+
+            // The four developer rebuilds. They are registry entries so their
+            // runs are recorded and their signatures pinned like every other
+            // engine's — never so an admin can reach them: `developerOnly` keeps
+            // them off the Engine Runs cards for every role, and
+            // `EngineCadence::unscheduled()` keeps them out of the scheduler, so
+            // the replay (which fires leaves only) cannot touch them either.
+            new EngineDefinition(
+                key: 'compensation.rebuild-night',
+                label: 'Rebuild — night',
+                description: "Deletes the previous day's cut-off results, daily pools, mentorship results and their wallet credits, rewinds the carry-forward, and re-runs the night. Refuses once a later day has been cut off. Impact: removes exactly those rows in one transaction and re-derives them through the ordinary nightly run — no credit is ever written by hand, and a credit that has already been paid refuses the rebuild outright.",
+                periodType: EnginePeriodType::Date,
+                commandClass: RebuildNightCommand::class,
+                commandSignature: 'compensation:rebuild-night',
+                periodOption: '--date',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: null,
+                cadence: EngineCadence::unscheduled(),
+                defaultPeriod: 'today',
+                manuallyTriggerable: false,
+                isOrchestrator: true,
+                developerOnly: true,
+            ),
+
+            new EngineDefinition(
+                key: 'compensation.rebuild-week',
+                label: 'Rebuild — weekly payout',
+                description: "Removes an unapproved Tuesday batch — its lines and its own debits — un-sweeps the credits it took, and builds the batch again. Refuses a batch finance has approved. Impact: deletes the batch's own projection of a payment that never happened and re-derives it through GSB Weekly Payout; the credits themselves are un-swept, never deleted, and the rebuilt batch names its maker so a second person must approve it.",
+                periodType: EnginePeriodType::Date,
+                commandClass: RebuildWeekCommand::class,
+                commandSignature: 'compensation:rebuild-week',
+                periodOption: '--date',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: null,
+                cadence: EngineCadence::unscheduled(),
+                defaultPeriod: 'today',
+                manuallyTriggerable: false,
+                isOrchestrator: true,
+                developerOnly: true,
+            ),
+
+            new EngineDefinition(
+                key: 'compensation.rebuild-month',
+                label: 'Rebuild — monthly close',
+                description: "Deletes the month's rank, Growth Booster, Fortune, ADC and purchase-offer rows and their wallet credits, removes the month's unapproved payout batch if one exists, and re-runs the close. Refuses a frozen month or one the next month was built on. Impact: removes those rows in one transaction and re-derives them through the ordinary monthly close; consumed purchase-offer grants and delivered award milestones are kept, and no credit is ever written by hand.",
+                periodType: EnginePeriodType::Month,
+                commandClass: RebuildMonthCommand::class,
+                commandSignature: 'compensation:rebuild-month',
+                periodOption: '--month',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: null,
+                cadence: EngineCadence::unscheduled(),
+                defaultPeriod: 'prev-month',
+                manuallyTriggerable: false,
+                isOrchestrator: true,
+                developerOnly: true,
+            ),
+
+            new EngineDefinition(
+                key: 'compensation.rebuild-payout',
+                label: 'Rebuild — monthly payout',
+                description: "Removes the month's unapproved payout batch, un-sweeps its credits, deletes its own debits, and re-runs the payout close so every distributor's amount is frozen again. Impact: deletes the batch row, its line items and the three sweep debits it wrote, then re-derives all of them through the monthly payout close; the credits are un-swept rather than deleted, and an approved batch is refused outright.",
+                periodType: EnginePeriodType::Month,
+                commandClass: RebuildPayoutCommand::class,
+                commandSignature: 'compensation:rebuild-payout',
+                periodOption: '--month',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: null,
+                cadence: EngineCadence::unscheduled(),
+                defaultPeriod: 'prev-month',
+                manuallyTriggerable: false,
+                isOrchestrator: true,
+                developerOnly: true,
             ),
         ];
 

@@ -8,6 +8,7 @@ use App\Modules\Compensation\Services\Recompute\RecomputeState;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Compensation\Support\RunPrerequisites;
 use App\Modules\Compensation\Support\WorkerFreshness;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Support\Carbon;
@@ -78,19 +79,24 @@ trait OrchestratesEngineSteps
     }
 
     /**
-     * Two checks, once for the whole run rather than once per engine.
+     * Three checks, once for the whole run rather than once per engine, and all
+     * of them BEFORE the run touches an engine or writes anything derived.
      *
-     * 1. The recompute gate. The scheduler entry already carries
-     *    `->when($compensationEnginesMayRun)`, but these commands are also typed
-     *    by hand — they are what an abort message tells an operator to run — and
-     *    on a dev or staging environment holding a projection the derived state
-     *    is already ahead of the scheduler. It fails closed, exactly as the
-     *    scheduler filter does, and is inert in production where the recompute
-     *    gate is shut.
+     * 1. The recompute gate. These commands are also typed by hand — they are
+     *    what an abort message tells an operator to run — and on a dev or
+     *    staging environment holding a projection the derived state is already
+     *    ahead of the scheduler. It fails closed and is inert in production,
+     *    where the recompute gate is shut.
      * 2. Stale worker — a process running pre-deploy code credits the wrong
      *    money with no error anywhere (see WorkerFreshness).
+     * 3. A developer rebuild in flight. It writes the same rolling per-
+     *    distributor stores this run does, and no mutex covers both
+     *    ({@see RunPrerequisites::rebuildInFlightRefusal()}).
+     *
+     * Each refusal becomes a `skipped` run row carrying the reason, through
+     * {@see abortRun()} — never a silent non-start.
      */
-    protected function orchestratorPreflight(): ?string
+    protected function orchestratorPreflight(Carbon $night, string $registryKey): ?string
     {
         if (! app(RecomputeState::class)->schedulerEnginesAllowed()) {
             return 'A recompute projection is standing (or a replay is in flight) on this environment, so the '
@@ -100,7 +106,11 @@ trait OrchestratesEngineSteps
                 .'production-faithful first.';
         }
 
-        return WorkerFreshness::staleReason();
+        if (($stale = WorkerFreshness::staleReason()) !== null) {
+            return $stale;
+        }
+
+        return app(RunPrerequisites::class)->rebuildInFlightRefusal($night, $registryKey);
     }
 
     /**

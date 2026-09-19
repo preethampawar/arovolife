@@ -109,7 +109,7 @@ final class GsbCutoffResult extends Model
      *
      * Read by three places that each need the same answer in a different shape
      * — {@see advancedCarryForward()} on a loaded row, GsbCutoffService's
-     * out-of-order guard and WindowedStateWiper::readCarryforwardRewind() as a
+     * out-of-order guard and CarryforwardRewind::readFrom() as a
      * query-builder whereIn. It is one constant precisely because three copies
      * of a list is two too many to keep honest by hand.
      *

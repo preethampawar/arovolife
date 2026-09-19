@@ -72,7 +72,7 @@ final class MonthlyRunCommand extends Command
 
         $this->info("Monthly run — {$night->format('D, d M Y')}");
 
-        $refusal = $this->orchestratorPreflight();
+        $refusal = $this->orchestratorPreflight($night, 'compensation.monthly-run');
 
         if ($refusal !== null) {
             if (! $this->option('force')) {

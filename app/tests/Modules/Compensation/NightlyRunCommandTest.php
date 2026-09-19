@@ -338,3 +338,52 @@ it('refuses to run while a projection is standing', function (): void {
     expect(EngineRun::where('engine_key', 'compensation.nightly-run')->sole()->status)
         ->toBe(EngineRun::STATUS_SKIPPED);
 });
+
+it('holds the run back while a developer rebuild is in flight, and says so on the run row', function (): void {
+    Carbon::setTestNow('2026-09-19 00:05:00');
+
+    // A rebuild confirmed at 23:59 and still rewinding `gsb_carryforward`.
+    // `withoutOverlapping()` is per command and would not see it, and the
+    // rebuild reaches the engines through a nested Artisan::call no mutex of
+    // theirs covers.
+    EngineRun::create([
+        'engine_key' => 'compensation.rebuild-night',
+        'period_start' => '2026-09-18',
+        'status' => EngineRun::STATUS_RUNNING,
+        'trigger' => EngineRun::TRIGGER_MANUAL,
+        'started_at' => Carbon::parse('2026-09-18 23:59:00'),
+    ]);
+
+    $exitCode = Artisan::call('compensation:nightly-run');
+
+    // Refused BEFORE any engine work — nothing derived was written.
+    expect($exitCode)->toBe(1);
+    expect(StubEngineStepCommand::$calls)->toBe([]);
+
+    // And visible: a `skipped` row an operator can triage, not a blank
+    // "not computed" with no reason on it.
+    $run = EngineRun::where('engine_key', 'compensation.nightly-run')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->error)->toContain('A developer rebuild');
+    expect($run->error)->toContain('held back');
+    expect($run->error)->toContain('backfills 19 Sep 2026');
+    expect(AuditLog::where('action', 'compensation.nightly_run.aborted')->exists())->toBeTrue();
+});
+
+it('runs normally once the rebuild has finished', function (): void {
+    Carbon::setTestNow('2026-09-19 00:05:00');
+    seedComputedCutoffs('2026-09-17', '2026-09-17');
+
+    EngineRun::create([
+        'engine_key' => 'compensation.rebuild-night',
+        'period_start' => '2026-09-18',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_MANUAL,
+        'started_at' => Carbon::parse('2026-09-18 23:59:00'),
+        'finished_at' => Carbon::parse('2026-09-19 00:02:00'),
+    ]);
+
+    expect(Artisan::call('compensation:nightly-run'))->toBe(0);
+    expect(StubEngineStepCommand::$calls)->not->toBe([]);
+});
