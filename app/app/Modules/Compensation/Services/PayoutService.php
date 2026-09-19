@@ -1740,10 +1740,10 @@ final class PayoutService
      * while a sweep is alive, and a trap once one has been killed outright —
      * OOM, the job's hour-long timeout, SIGKILL — because the command's own
      * catch block never runs and the row keeps a status that says "in progress"
-     * for ever. Nothing can then re-enter it: not the nightly chain (which sees
-     * a batch exists for that date and moves on), not a retry, not
-     * `gsb:weekly-payout` itself. The batch is a permanent half-truth on the
-     * payout report.
+     * for ever. Nothing can then re-enter it: not the weekly run (which proves
+     * the Tuesday from the batch row and not from its status, so it sees one
+     * exists and moves on), not `gsb:weekly-payout` itself. The batch is a
+     * permanent half-truth on the payout report.
      *
      * NO MONEY MOVES HERE, and nothing is recomputed. This writes one status,
      * `processing` → `failed`, which is the state the same crash would have

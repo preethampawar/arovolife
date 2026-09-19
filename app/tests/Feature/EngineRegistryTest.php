@@ -162,9 +162,9 @@ it('points every orchestrated engine at a registered orchestrator', function ():
 });
 
 it('nests orchestrators without ever looping', function (): void {
-    // An orchestrator may be orchestrated: the nightly chain fires the monthly
+    // An orchestrator may be orchestrated: the monthly run fires the monthly
     // close, which fires the seven crediting engines. What must never happen is
-    // a cycle — a chain that invokes something that eventually invokes it back
+    // a cycle — a run that invokes something that eventually invokes it back
     // would recurse until the process died mid-credit.
     foreach (EngineRegistry::keys() as $key) {
         $seen = [];

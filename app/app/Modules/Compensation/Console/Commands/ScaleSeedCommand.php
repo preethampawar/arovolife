@@ -22,7 +22,7 @@ use Throwable;
 
 /**
  * Builds a synthetic population big enough to answer one question: does the
- * nightly chain finish in an acceptable wall clock at ten lakh distributors?
+ * nightly run finish in an acceptable wall clock at ten lakh distributors?
  *
  * Everything the engines read at scale is written here and nothing else — no
  * KYC, no consent, no PII. The rows are deliberately fiction, which is why

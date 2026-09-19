@@ -33,14 +33,14 @@ use Throwable;
 final class ScaleBenchmarkCommand extends Command
 {
     protected $signature = 'compensation:scale-benchmark
-                            {--engines= : Comma-separated registry keys (default: the nightly chain)}
+                            {--engines= : Comma-separated registry keys (default: the nightly run)}
                             {--date= : The day to cut off (YYYY-MM-DD, default yesterday)}
                             {--month= : The month to close (YYYY-MM, default last month)}
                             {--report= : Write a markdown report to this path}';
 
     protected $description = 'Measure each compensation engine against the synthetic population';
 
-    /** The nightly chain's own engines — what the benchmark exists to answer for. */
+    /** The nightly run's own engines — what the benchmark exists to answer for. */
     private const DEFAULT_ENGINES = ['repurchase.evaluate', 'gsb.daily-cutoff'];
 
     /** Where each engine's output lands, for the rows-written column. */

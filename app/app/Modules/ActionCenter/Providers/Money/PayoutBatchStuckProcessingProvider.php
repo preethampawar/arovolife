@@ -23,14 +23,14 @@ use Illuminate\Support\Collection;
  * when it throws. A row that keeps it is therefore a sweep that ended without
  * running any of its own code: OOM, the queue job's hour-long timeout, SIGKILL.
  *
- * NOTHING ELSE SURFACES THIS, which is why it is here. The night that died is
- * reported as a failed chain and cleared by the retry button, and the retry
- * legitimately "succeeds" — the nightly chain sees a batch exists for that
- * Tuesday and moves on, because it proves a batch from the batch and not from
- * its status. So the banner goes green over a batch that is stuck for good and
- * a week of distributors whose line items were never written. (Their money is
- * safe: unswept income is picked up by the following Tuesday's batch. What is
- * lost is the week, and the truth of the payout report.)
+ * NOTHING ELSE SURFACES THIS, which is why it is here. The weekly run proves a
+ * Tuesday from the batch row and not from its status, so a batch stranded in
+ * `processing` reads as built: that Tuesday is never proposed again, the run
+ * that skipped it succeeds, and no engine reports anything missing. So the
+ * Engine Runs page stays green over a batch that is stuck for good and a week
+ * of distributors whose line items were never written. (Their money is safe:
+ * unswept income is picked up by the following Tuesday's batch. What is lost is
+ * the week, and the truth of the payout report.)
  *
  * The fix is `php artisan payout:reopen-stuck-batch`, deliberately not a button
  * — see {@see PayoutReopenStuckBatchCommand}.

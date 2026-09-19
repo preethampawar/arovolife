@@ -1,5 +1,18 @@
 # Engine cadence split — progress and hand-off (written 2026-09-18, session ~80%)
 
+> **BUILD COMPLETE 2026-09-19 — do not act on the instructions below.** Every
+> slice shipped: S1 `55567a42`, S2 `19a5107a`, S3 `da584146`, S4 `b0e390d0`,
+> S5 `ececec4a`; merged to `main` as `e45fdf40`, pushed, and deployed to
+> staging the same day. The agreed fresh start (ADR-0016, §5 step 7) ran on
+> **staging** (1,691 rows replaced, 183 engine runs, all succeeded) and on
+> **dev** (28,625 rows replaced, 316 orders re-propagated, 79 days, 183 runs;
+> 182 succeeded + 2 `offers.monthly` skipped for a flag that is off). Both
+> environments are on the post-split baseline; production does not exist yet.
+> **Still open, tracked elsewhere:** the staging rebuild rehearsal and the
+> deletion of `FortuneStagingE2ESeedCommand` before launch (both R-102).
+> Kept as the build's record; superseded, not deleted — §2's auto-mode rules
+> and §6's resolved findings are the parts still worth reading.
+
 **Purpose:** a fresh Claude session picks up the build from here. Read this file, then the plan, then act. Nothing here needs the previous session's context.
 
 **Opening prompt for the new session:**
@@ -33,9 +46,9 @@
 |---|---|---|
 | S1 | Support layer: `PlatformStart`, `MonthCutoffCoverage`, `WeeklyRunPlanner`, `MonthlyRunPlanner`(+`MonthlyRunPhase`, `MonthlyRunDeferral`), `RunPrerequisites`, `FrozenPayoutGuard`, D13 in `EngineStatusService`, A1/A6 frontier, D1/D2, R-101 | **Committed `55567a42`** |
 | S2 | `compensation:nightly-run` (narrowed) / `weekly-run` / `monthly-run`, trait `OrchestratesEngineSteps`, three scheduler entries, `RecordSkippedOrchestratorRun`, registry (16 engines, `rootOrchestratorKeys()`), D5, `creditingRefusal()` in the seven monthly engines, admin retry deleted (`RetryNightlyChainJob`, `retry-chain` route, `retryChain()`, button), three informational banners, step list scoped by the failed run's window, IST pin on `defaultPeriodDate()`, `EngineHealthService` §20 copy (pulled forward), `help/compensation.md` retry lines rewritten (pulled forward) | **Committed `19a5107a`** — 1,171 tests green; reviewer + compliance PASS |
-| S3 | Rebuild core: `CarryforwardRewind` (extracted from `WindowedStateWiper`), `PayoutService::unbuildBatch()` + `BatchIsFrozen`, `Services/Rebuild/*` (`RebuildKind`, `RebuildPlan`, `RebuildPreflight`, `NightRebuilder`, `MonthRebuilder`, `RebuildPlanner`), `RebuildPeriodJob`, four commands `compensation:rebuild-night/-week/-month/-payout` + trait `RebuildsPeriod`, four registry entries (`developerOnly`, `rebuildKeys()`, 20 engines), `AppServiceProvider` registration, engine cards hide `developerOnly` | **In the working tree, UNVERIFIED** — an implementer was mid-run when this file was written. All files listed in §4 exist on disk. The new session must verify before reviewing (see §5 step 1). |
-| S4 | Developer surface: `AdminEngineRunsController::rebuildPreview()`/`rebuild()`, `role:developer` routes (`POST engine-runs/rebuild/preview`, `POST engine-runs/rebuild`), `@developer` panel + preview card in `engine-runs/index.blade.php`, `parsePeriodOrFail()` refusals (`creditingRefusal()` for month engines; A1 belt: refuse a manual `gsb.daily-cutoff` for a date with a later advancing cut-off row), whatever §20 health copy S2 did not already cover (most of it is done — verify), controller tests (admin family 403 + no panel copy; developer sees panel; preview/fingerprint/queue/audit `compensation.rebuild.queued`) | Not started (depends on S3) |
-| S5 | Docs (Sonnet): ADR-0016 + ADR-0015 status line; runbooks `engine-failure-triage.md`, `artisan-commands.md`; remaining ~27 "nightly chain" cadence sentences in `help/compensation.md`, `help/payout-operations.md` L41/L80; risk register R-102 + addenda R-81/R-89/R-90/R-91 + a pre-launch note that `FortuneStagingE2ESeedCommand` calls `FortuneBonusService::runForMonth()` directly and bypasses the frozen guard (staging-only, marked delete-before-launch, no env gate); mark the first-month plan superseded; commit the plan copy; reword `overview.blade.php:11` / `manual-controls/index.blade.php:11` only if now false | Not started (can run with S4) |
+| S3 | Rebuild core: `CarryforwardRewind` (extracted from `WindowedStateWiper`), `PayoutService::unbuildBatch()` + `BatchIsFrozen`, `Services/Rebuild/*` (`RebuildKind`, `RebuildPlan`, `RebuildPreflight`, `NightRebuilder`, `MonthRebuilder`, `RebuildPlanner`), `RebuildPeriodJob`, four commands `compensation:rebuild-night/-week/-month/-payout` + trait `RebuildsPeriod`, four registry entries (`developerOnly`, `rebuildKeys()`, 20 engines), `AppServiceProvider` registration, engine cards hide `developerOnly` | **Committed `da584146`** — reviewer + compliance PASS (DN-1 signed off, five conditions recorded in R-102). |
+| S4 | Developer surface: `AdminEngineRunsController::rebuildPreview()`/`rebuild()`, `role:developer` routes (`POST engine-runs/rebuild/preview`, `POST engine-runs/rebuild`), `@developer` panel + preview card in `engine-runs/index.blade.php`, `parsePeriodOrFail()` refusals (`creditingRefusal()` for month engines; A1 belt: refuse a manual `gsb.daily-cutoff` for a date with a later advancing cut-off row), whatever §20 health copy S2 did not already cover (most of it is done — verify), controller tests (admin family 403 + no panel copy; developer sees panel; preview/fingerprint/queue/audit `compensation.rebuild.queued`) | **Committed `b0e390d0`** — three residuals recorded as R-102 addenda. |
+| S5 | Docs (Sonnet): ADR-0016 + ADR-0015 status line; runbooks `engine-failure-triage.md`, `artisan-commands.md`; remaining ~27 "nightly chain" cadence sentences in `help/compensation.md`, `help/payout-operations.md` L41/L80; risk register R-102 + addenda R-81/R-89/R-90/R-91 + a pre-launch note that `FortuneStagingE2ESeedCommand` calls `FortuneBonusService::runForMonth()` directly and bypasses the frozen guard (staging-only, marked delete-before-launch, no env gate); mark the first-month plan superseded; commit the plan copy; reword `overview.blade.php:11` / `manual-controls/index.blade.php:11` only if now false | **Committed `ececec4a`** — ADR-0016, both runbooks, help copy, R-102 + addenda, Fortune pre-launch note. |
 
 ## 4. S3 files present on disk when this was written
 

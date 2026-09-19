@@ -71,7 +71,7 @@ php artisan compensation:engine-health-digest --always
 | `failed` | The step threw. **The run stopped here** — nothing after it ran. | No. A developer rebuild (`compensation:rebuild-*`), or the command by hand. |
 | `running` | A process opened this row and never closed it. If no worker is alive, it is a lie. | Only when a later chain run finds it stale. |
 | `skipped` | The step *declined* to run. | **No button clears this.** See §2. |
-| *(no row at all)* | The chain never started. Scheduler or cron problem, not an engine problem. | No. |
+| *(no row at all)* | The Nightly Run never started. Scheduler or cron problem, not an engine problem. | No. |
 
 > **`skipped` is the one that catches people out.** It is written both for a
 > flag-off engine (correct, nothing owed) *and* for a preflight refusal — a
@@ -254,7 +254,7 @@ Then re-run the night as in §4.
 
 ## 6. No run row at all
 
-The chain never started. This is a scheduler problem.
+The Nightly Run never started. This is a scheduler problem.
 
 ```bash
 php artisan schedule:list                 # is compensation:nightly-run there?
@@ -271,7 +271,7 @@ php artisan compensation:nightly-run --date=2026-09-15
 php artisan compensation:nightly-run --date=2026-09-16
 ```
 
-> The chain backfills at most **31** nights on its own. A longer gap is
+> The Nightly Run backfills at most **31** nights on its own. A longer gap is
 > recorded as `compensation.nightly_run_backfill_gap` in `audit_log` and
 > reported in the digest for seven days, and is left to a human on purpose.
 
@@ -540,7 +540,7 @@ credited for it.
 
 **The commonest way to meet this refusal is the Retry button**, and from
 2026-09-17 it fires more often than it used to. Manual Controls → Retry Daily
-Cut-off is now refused for any night the chain has already run past — including
+Cut-off is now refused for any night the Nightly Run has already run past — including
 a night whose row says *failed*, and including the retry's own deletion of that
 row. Before that date the guard only inspected the row it was replacing, so a
 failed night retried a day late was recomputed against a store that had already
@@ -587,16 +587,36 @@ the store permanently: it is not matched, its remainder never reaches the
 carry-forward, and no later night picks it up. The distributor loses the day's
 match *and* the BV that would have fed every match after it.
 
-**And the chain will not come back for it.**
-`EngineStatusService::computedCutoffDatesBetween()` treats a date as done if
-*any* `gsb_cutoff_results` row exists for it. A `failed` row counts. So does a
-`no_match` row written for a completely different distributor by the idle
-batch. That is the difference between §6 — a night the chain never started,
-which the next backfill genuinely does fix — and this section: a night the
-chain *ran* and failed part-way through already looks computed, is never
-proposed again, and is walled off by the guard the following morning. When you
-read "a failed night is not a lost night" on the admin Engine Runs help, it
-means §6. It does not mean this.
+**Whether the Nightly Run comes back for it depends on what the run row says
+— check that before reaching for any manual remedy.** Since ADR-0016 the
+backfill proves a day from the run log alone
+(`EngineStatusService::completedCutoffDatesBetween()`: a *succeeded*
+`gsb.daily-cutoff` run that started after the day it cut off had ended), never
+from `gsb_cutoff_results`. So a night whose row reads `failed` is not mistaken
+for computed: the next Nightly Run re-proposes it, oldest first, ahead of the
+newer day, and heals it before the guard above can ever apply. That is the §6
+path, and it now covers a failed night as well as a missing one.
+
+Two shapes it does **not** heal, and this section is about them:
+
+- **A row that reads `succeeded` while distributors inside it failed** (§12).
+  The day is proven, so the backfill never revisits it. The per-distributor
+  Retry is the only remedy, and it is bounded by the R-91 window above.
+- **A hole behind the frontier.** The backfill works FORWARD from the newest
+  day it can prove complete and never reaches back past one, so a failed day
+  with a proven day after it — a hand-triggered cut-off, a recompute — is
+  walled off for good.
+
+`EngineChainResolver` still asks the looser `computedCutoffDatesBetween()`,
+where any `gsb_cutoff_results` row counts and a `no_match` row written for a
+different distributor by the idle batch counts too. That is the right question
+for "has this day been started, so a dependency may proceed" and the wrong one
+for "is this day safe to freeze money on" — do not read a green dependency chip
+as a proven day.
+
+When you read "a failed night is not a lost night" on the admin Engine Runs
+help, it means §6 and the first paragraph here. It does not mean the two shapes
+above.
 
 The admin sees the refusal message verbatim on the Manual Controls page (a
 `compensation.cutoff.manual_retry_refused` audit row is written with it, and
@@ -714,7 +734,7 @@ and again after step 6, with the distributor list and the measured figure.
 It runs against a **clone**; nothing touches production until step 6. Budget one
 working day, and do not let step 6 straddle any of these:
 
-- **00:05 IST**, the nightly chain — it would advance the store underneath you
+- **00:05 IST**, the Nightly Run — it would advance the store underneath you
   mid-procedure.
 - **Tuesday 03:00**, the weekly payout sweep — it can sweep a credit between
   6.0's check and 6.3's delete, which silently invalidates the gate that 6.0
