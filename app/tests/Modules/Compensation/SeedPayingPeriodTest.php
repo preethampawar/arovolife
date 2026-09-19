@@ -435,3 +435,93 @@ it('refuses wherever a recompute would refuse', function (): void {
         ->and(DB::table('orders')->count())->toBe(0)
         ->and(app(RecomputeGuard::class)->isPermitted())->toBeFalse();
 });
+
+it('re-sizes its own spend in place instead of needing another order', function (): void {
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    // The engines do not run in a test, so the balance to clear is written by
+    // hand — same shape as the settlement tests above.
+    DB::table('wallet_ledger_entries')->insert([
+        'distributor_id' => 2,
+        'type' => 'repurchase_deduction',
+        'amount_paise' => 100_000,
+        'created_at' => '2026-07-15 00:10:00',
+    ]);
+
+    Artisan::call('compensation:seed-paying-period', ['--settle-repurchase' => '2026-07']);
+
+    $first = DB::table('wallet_ledger_entries')
+        ->where('type', 'repurchase_wallet_used')
+        ->where('created_at', '2026-07-31 22:00:00')
+        ->get();
+
+    expect($first)->toHaveCount(1)
+        ->and((int) $first[0]->amount_paise)->toBe(-100_000);
+
+    // A later replay credits more than the first pass could see, inside the
+    // same window. Re-running must correct the SAME row: the ledger's unique
+    // key allows one spend per order, so adding a second would burn another
+    // order — which is what made this need three rounds and then starve.
+    DB::table('wallet_ledger_entries')->insert([
+        'distributor_id' => 2,
+        'type' => 'repurchase_deduction',
+        'amount_paise' => 50_000,
+        'created_at' => '2026-07-20 00:10:00',
+    ]);
+
+    Artisan::call('compensation:seed-paying-period', ['--settle-repurchase' => '2026-07']);
+
+    $after = DB::table('wallet_ledger_entries')
+        ->where('type', 'repurchase_wallet_used')
+        ->where('created_at', '2026-07-31 22:00:00')
+        ->get();
+
+    expect($after)->toHaveCount(1)
+        ->and((int) $after[0]->id)->toBe((int) $first[0]->id)
+        ->and((int) $after[0]->reference_id)->toBe((int) $first[0]->reference_id)
+        ->and((int) $after[0]->amount_paise)->toBe(-150_000);
+});
+
+it('shrinks its own spend when a later replay credited less than it spent', function (): void {
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    DB::table('wallet_ledger_entries')->insert([
+        'distributor_id' => 2,
+        'type' => 'repurchase_deduction',
+        'amount_paise' => 100_000,
+        'created_at' => '2026-07-15 00:10:00',
+    ]);
+
+    Artisan::call('compensation:seed-paying-period', ['--settle-repurchase' => '2026-07']);
+
+    // The replay re-derived that credit smaller. Without the correction the
+    // position stays below zero behind the max(0, ...) floor.
+    DB::table('wallet_ledger_entries')
+        ->where('type', 'repurchase_deduction')
+        ->where('distributor_id', 2)
+        ->update(['amount_paise' => 60_000]);
+
+    Artisan::call('compensation:seed-paying-period', ['--settle-repurchase' => '2026-07']);
+
+    expect((int) DB::table('wallet_ledger_entries')
+        ->where('type', 'repurchase_wallet_used')
+        ->where('created_at', '2026-07-31 22:00:00')
+        ->value('amount_paise'))->toBe(-60_000);
+});
+
+it('warns when the ledger was stamped by a rebuild at the real clock', function (): void {
+    Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
+
+    DB::table('wallet_ledger_entries')->insert([
+        'distributor_id' => 2,
+        'type' => 'repurchase_deduction',
+        'amount_paise' => 10_000,
+        'reference_id' => 999_002,
+        'reference_type' => 'gbb_monthly_result',
+        'memo' => 'rebuild re-run, real clock',
+        'created_at' => '2026-09-19 20:10:00',
+    ]);
+
+    expect(Artisan::call('compensation:seed-paying-period', ['--settle-repurchase' => '2026-07']))->toBe(0);
+    expect(Artisan::output())->toContain('a wall-clock time no engine runs at');
+});

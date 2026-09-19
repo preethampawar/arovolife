@@ -658,6 +658,7 @@ final class SeedPayingPeriodCommand extends Command
         $written = 0;
         $skipped = 0;
         $rows = 0;
+        $corrected = 0;
 
         // Orders already carrying a repurchase-wallet spend, this run's included.
         $claimed = DB::table('wallet_ledger_entries')
@@ -667,6 +668,38 @@ final class SeedPayingPeriodCommand extends Command
             ->pluck('reference_id')
             ->flip()
             ->all();
+
+        // A rebuild's re-run (`monthly-close --restart`) stamps the credits it
+        // re-derives at the REAL clock, where `compensation:recompute-all`
+        // stamps them at the replayed scheduler clock. Both this settlement and
+        // the engines read the wallet by `created_at`, so against a
+        // rebuild-stamped ledger a month's credits sit outside the window and
+        // the balance reads far too low — 24 distributors instead of 137, on
+        // 2026-09-19.
+        //
+        // The discriminator is the TIME of day, not the date: a replay stamps a
+        // credit at the engine's own cadence (00:05 to 04:00 — ADR-0016), and
+        // today's cut-off legitimately carries today's date. A rebuild's re-run
+        // stamps whatever o'clock the operator typed it at.
+        $misstamped = DB::table('wallet_ledger_entries')
+            ->where('type', 'repurchase_deduction')
+            ->whereRaw('TIME(created_at) > ?', ['04:00:00'])
+            ->count();
+
+        // A warning rather than a refusal: the heuristic cannot tell a
+        // rebuild's re-run from credit written by hand, and re-running this
+        // command after a recompute now corrects its own spends in place, so
+        // the failure it describes costs one more pass rather than a wrong
+        // ledger anybody has to unpick.
+        if ($misstamped > 0) {
+            $this->warn(sprintf(
+                '%d repurchase credit(s) are stamped at a wall-clock time no engine runs at, which is what a '
+                .'rebuild\'s re-run leaves behind. Both this settlement and the engines read the wallet by '
+                .'created_at, so those credits sit outside the window and the balance reads too low. If that is '
+                .'what these are, run `compensation:recompute-all --horizon=now --force` and settle again.',
+                $misstamped,
+            ));
+        }
 
         foreach (explode(',', $months) as $token) {
             $month = Carbon::parse(trim($token).'-01')->startOfMonth();
@@ -725,6 +758,21 @@ final class SeedPayingPeriodCommand extends Command
                     )
                     ->pluck('balance', 'distributor_id');
 
+                // What THIS fixture already spent at this very instant, on a
+                // previous run. `$balances` above has already subtracted it, so
+                // zeroing the wallet means moving the existing row to
+                // (its own amount + what is still left) rather than adding a
+                // second one — `uniq_wallet_ledger_source` allows only one
+                // spend per order, so an under-sized spend could otherwise only
+                // be corrected by burning another order. That is what made the
+                // settlement need three rounds and then starve.
+                $existing = DB::table('wallet_ledger_entries')
+                    ->where('type', 'repurchase_wallet_used')
+                    ->where('memo', 'like', self::WALLET_TAG.'%')
+                    ->where('created_at', $spentAt->toDateTimeString())
+                    ->whereIn('distributor_id', $distributorIds)
+                    ->pluck('amount_paise', 'distributor_id');
+
                 // The order the credit is applied to has to exist, has to
                 // predate the spend — a wallet debit pointing at an order
                 // placed after it would be a refund waiting to misbehave — and
@@ -748,6 +796,29 @@ final class SeedPayingPeriodCommand extends Command
 
                 foreach ($distributorIds as $distributorId) {
                     $balance = (int) ($balances[$distributorId] ?? 0);
+                    $already = abs((int) ($existing[$distributorId] ?? 0));
+
+                    if ($already > 0) {
+                        // Corrects in BOTH directions: $balance below zero means
+                        // the last run spent more than the replay went on to
+                        // credit, and shrinking the row is what repairs it.
+                        $want = $already + $balance;
+
+                        if ($want === $already) {
+                            continue;
+                        }
+
+                        DB::table('wallet_ledger_entries')
+                            ->where('type', 'repurchase_wallet_used')
+                            ->where('memo', 'like', self::WALLET_TAG.'%')
+                            ->where('created_at', $spentAt->toDateTimeString())
+                            ->where('distributor_id', $distributorId)
+                            ->update(['amount_paise' => -max(0, $want)]);
+
+                        $corrected++;
+
+                        continue;
+                    }
 
                     if ($balance <= 0) {
                         continue;
@@ -796,6 +867,10 @@ final class SeedPayingPeriodCommand extends Command
         }
 
         $this->info(sprintf('Spent %d repurchase wallet balance(s) across %d row(s).', $written, $rows));
+
+        if ($corrected > 0) {
+            $this->info(sprintf('Re-sized %d spend(s) a later replay had left wrong.', $corrected));
+        }
 
         if ($skipped > 0) {
             $this->warn(sprintf('%d had a balance but no seeded order to apply it to — left unspent.', $skipped));
