@@ -77,12 +77,73 @@ it('has exactly one registry entry per compensation console command', function (
     expect($registered)->toBe($commandClasses);
 });
 
-it('registers fourteen engines with unique keys and signatures', function (): void {
+it('registers twenty engines with unique keys and signatures', function (): void {
     $all = EngineRegistry::all();
 
-    expect($all)->toHaveCount(14);
+    expect($all)->toHaveCount(20);
     expect(array_keys($all))->toBe(EngineRegistry::keys());
-    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(14);
+    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(20);
+});
+
+it('keeps the four developer rebuilds out of the scheduler and off the admin cards', function (): void {
+    // They are registry entries so RecordEngineRun writes their rows and the
+    // signature pin above covers them, never so an admin can start one: the
+    // Engine Runs page skips a `developerOnly` card for every role, and nothing
+    // in routes/console.php fires them.
+    expect(EngineRegistry::rebuildKeys())->toBe([
+        'compensation.rebuild-night',
+        'compensation.rebuild-week',
+        'compensation.rebuild-month',
+        'compensation.rebuild-payout',
+    ]);
+
+    foreach (EngineRegistry::rebuildKeys() as $key) {
+        $definition = EngineRegistry::get($key);
+
+        expect($definition->developerOnly)->toBeTrue();
+        expect($definition->cadence->isScheduled())->toBeFalse();
+        expect($definition->manuallyTriggerable)->toBeFalse();
+        expect($definition->isOrchestrator)->toBeTrue();
+        expect(in_array($key, EngineRegistry::rootOrchestratorKeys(), true))->toBeFalse();
+    }
+});
+
+it('registers every scheduled root orchestrator with the scheduler, and nothing else', function (): void {
+    // The three runs are what the scheduler actually starts (ADR-0016), and the
+    // registry is what every other reader derives them from — the skipped-run
+    // listener, the health service's D5 failure rule and the Engine Runs page's
+    // banners. A run added to routes/console.php but not to the registry would
+    // fire every night and be reported by nothing; a run added to the registry
+    // but not to the scheduler would be waited for by the ordering guard and
+    // never come.
+    /** @var Schedule $schedule */
+    $schedule = app(Schedule::class);
+
+    $scheduledRoots = [];
+    foreach ($schedule->events() as $event) {
+        foreach (EngineRegistry::all() as $key => $definition) {
+            if (! $definition->isOrchestrator || $definition->orchestratedBy !== null) {
+                continue;
+            }
+
+            $pattern = "/\\bartisan'?\\s+".preg_quote($definition->commandSignature, '/').'(\\s|$)/';
+
+            if (preg_match($pattern, (string) $event->command) === 1) {
+                $scheduledRoots[] = $key;
+            }
+        }
+    }
+
+    sort($scheduledRoots);
+    $declared = EngineRegistry::rootOrchestratorKeys();
+    sort($declared);
+
+    expect($declared)->toBe([
+        'compensation.monthly-run',
+        'compensation.nightly-run',
+        'compensation.weekly-run',
+    ]);
+    expect($scheduledRoots)->toBe($declared);
 });
 
 it('points every orchestrated engine at a registered orchestrator', function (): void {

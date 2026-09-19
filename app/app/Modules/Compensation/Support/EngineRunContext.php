@@ -37,6 +37,18 @@ final class EngineRunContext
     private ?int $activeRunId = null;
 
     /**
+     * The rebuild run whose re-run this process is currently executing.
+     *
+     * A rebuild invokes the ordinary run for its period through
+     * `Artisan::call`, in its own process, while its OWN `engine_runs` row is
+     * still `running`. Without this the orchestrator's rebuild-in-flight guard
+     * ({@see RunPrerequisites::rebuildInFlightRefusal()}) would refuse on the
+     * sight of the very rebuild that asked for it — the race it exists to
+     * prevent is two processes, never a command and the command it called.
+     */
+    private ?int $rebuildRunId = null;
+
+    /**
      * Run id => the outcome the engine itself declared before exiting.
      *
      * CommandFinished carries an exit code and nothing else, so a command that
@@ -64,6 +76,7 @@ final class EngineRunContext
         $this->chainId = null;
         $this->runId = null;
         $this->activeRunId = null;
+        $this->rebuildRunId = null;
         $this->outcomes = [];
     }
 
@@ -103,6 +116,22 @@ final class EngineRunContext
     public function activeRunId(): ?int
     {
         return $this->activeRunId;
+    }
+
+    /**
+     * Declare (or clear) the rebuild this process is running a period again
+     * for. Set immediately before the nested `Artisan::call` and restored
+     * afterwards, so it never outlives the call it describes.
+     */
+    public function enterRebuild(?int $rebuildRunId): void
+    {
+        $this->rebuildRunId = $rebuildRunId;
+    }
+
+    /** {@see $rebuildRunId} — the run row a rebuild-in-flight guard must ignore. */
+    public function rebuildRunId(): ?int
+    {
+        return $this->rebuildRunId;
     }
 
     public function runId(): ?int

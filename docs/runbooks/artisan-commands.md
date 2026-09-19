@@ -21,7 +21,7 @@ docker compose -f docker/docker-compose.yml exec app php artisan <command>
 
 Evaluates each active distributor's Genos BV for the day, determines which GSB slab (if any) they hit, and records the result in `gsb_cutoff_results`. Before the slab check, it injects the distributor's own day's personal order BV into their weaker Genos leg (`gsb_personal_bv_topups`).
 
-**Scheduled:** step 2 of the nightly chain (`compensation:nightly-run`, 00:05 IST) — always processes the *previous* calendar day (the few minutes of buffer let queued BV propagation jobs settle before the cut is made). A night the chain missed is cut off by the next night that runs, oldest first.
+**Scheduled:** step 2 of the Nightly Run (`compensation:nightly-run`, 00:05 IST) — always processes the *previous* calendar day (the few minutes of buffer let queued BV propagation jobs settle before the cut is made). A night the Nightly Run missed is cut off by the next night that runs, oldest first.
 
 **Options:**
 
@@ -60,7 +60,7 @@ php artisan gsb:daily-cutoff --date=2026-07-04 --distributor=59
 
 Aggregates all `CREDITED` GSB cut-off results since the last payout into a weekly payout batch, deducts admin charge (3 %, capped ₹25,000 per batch across four groups) and TDS (5 %), and credits each distributor's wallet.
 
-**Scheduled:** Tuesdays, inside the nightly chain (`compensation:nightly-run`, 00:05 IST). A Tuesday whose batch was never built is retried on the next night, still dated that Tuesday, so the earning week it pays is unchanged.
+**Scheduled:** Tuesdays, by its own Weekly Run (`compensation:weekly-run`, 03:00 IST), once that night's Nightly Run has succeeded. A Tuesday whose batch was never built is retried on the next night, still dated that Tuesday, so the earning week it pays is unchanged.
 
 **Options:**
 
@@ -120,7 +120,7 @@ does not correct historical line items.
 
 Runs all Group B/C/D monthly bonus engines in sequence: Growth Booster Bonus (GBB), Rank Bonus, Fortune Bonus, and ADC Bonus — then credits results to wallets. Each engine is idempotent; re-running for the same month skips already-processed rows.
 
-**Scheduled:** not directly. `compensation:monthly-payout-close` invokes it on the **8th**, inside the nightly chain, and only once every crediting engine for the closed month has succeeded. If the 8th is missed the chain retries on later nights while no batch exists.
+**Scheduled:** not directly. `compensation:monthly-payout-close` invokes it on the **8th**, as the Monthly Run's payout phase, and only once every crediting engine for the closed month has succeeded. If the 8th is missed the Monthly Run retries on later nights while no batch exists.
 
 **Options:**
 
@@ -152,7 +152,7 @@ wrong month. Always pass `--month=` explicitly when running these by hand.
 
 Evaluates each distributor's repurchase cycle for the current month and updates their income-eligibility flag (`income_eligible` on the distributor). Distributors who have not met their monthly repurchase BV threshold have GSB payouts held until the requirement is met.
 
-**Scheduled:** step 1 of the nightly chain (`compensation:nightly-run`, 00:05 IST) — it runs immediately before the GSB cut-off, which processes yesterday, so a run dated today has seen the whole of the day being cut off.
+**Scheduled:** step 1 of the Nightly Run (`compensation:nightly-run`, 00:05 IST) — it runs immediately before the GSB cut-off, which processes yesterday, so a run dated today has seen the whole of the day being cut off.
 
 **Options:**
 
@@ -184,7 +184,7 @@ It reports three things, each with the numbered steps that close it:
 2. **Scheduled runs that did not happen** — for every scheduled, non-orchestrator engine, the period its most recent fire instant should have produced, with no run recorded for it in any status but `failed`.
 3. **Stuck runs** — `status = running` for more than 3 hours: the compensation worker died mid-run.
 
-**Scheduled:** Daily at **08:00 IST** — hours after the nightly chain starts at 00:05, so an ordinary night has long finished.
+**Scheduled:** Daily at **08:00 IST** — hours after the Nightly Run starts at 00:05, so an ordinary night has long finished.
 
 **Options:**
 
@@ -230,10 +230,11 @@ php artisan compensation:monthly-payout-close --month=2026-08
 **Reopen a payout batch stranded in `processing`.** A sweep killed outright —
 OOM, the queue job's hour-long timeout, SIGKILL — never reaches the catch block
 that writes `failed`, so the row keeps saying `processing`, and `processing` is
-closed to re-entry. Nothing re-enters it on its own: the nightly chain proves a
-Tuesday from the existence of a batch, not from its status, so it moves on; the
-retry button reports success over it. This is the command that unsticks it, and
-`failed` is then recoverable by the ordinary re-run above.
+closed to re-entry. Nothing re-enters it on its own: the Weekly and Monthly
+runs prove a Tuesday or a month from the existence of a batch, not from its
+status, so they move on. This is the command that unsticks it, and `failed`
+is then recoverable by the ordinary re-run above, or by a developer rebuild
+(`compensation:rebuild-week` / `compensation:rebuild-payout`).
 
 ```bash
 php artisan payout:reopen-stuck-batch --type=weekly --date=2026-09-15 --actor=<user id>
@@ -523,16 +524,17 @@ environment declares it:
 - **A payout batch cannot be approved, and no bank NEFT file can be built**,
   while a projection stands. Reading a batch is fine; signing off amounts
   computed on a clock that has not arrived is not.
-- **The scheduled compensation engines pause** — the whole nightly chain
-  (`compensation:nightly-run`, and therefore every engine it fires), the health digest
-  (every paused period would read as overdue) and `payout:auto-retry-failed`,
-  which is the only one of them that reaches a bank. The check fails CLOSED: if
-  the state cannot be read the engines stay paused, because a skipped nightly run
-  is recoverable and a corrupted carry-forward chain is not. They would
-  otherwise run tonight against a carry-forward store the projection has already
-  advanced past, and `GsbCutoffService` aborts on exactly that. This also
-  replaces the old operational rule about never recomputing between 00:00 and
-  the position the chain reaches them (F125): a replay in flight pauses them too.
+- **The scheduled compensation engines pause** — all three runs
+  (`compensation:nightly-run`, `weekly-run`, `monthly-run`, and therefore
+  every engine they fire), the health digest (every paused period would read
+  as overdue) and `payout:auto-retry-failed`, which is the only one of them
+  that reaches a bank. The check fails CLOSED: if the state cannot be read the
+  engines stay paused, because a skipped nightly run is recoverable and a
+  corrupted carry-forward store is not. They would otherwise run tonight
+  against a carry-forward store the projection has already advanced past, and
+  `GsbCutoffService` aborts on exactly that. This also replaces the old
+  operational rule about never recomputing between 00:00 and the position the
+  runs reach them (F125): a replay in flight pauses them too.
 - **A nightly reset at 23:30 IST** runs
   `compensation:recompute-all --horizon=now --if-projected --force`, which puts
   the environment back to production-faithful before the 00:05 engines are due —
@@ -641,71 +643,89 @@ line each piece sits on.
 
 ---
 
-## Scheduled command summary
+## The three cadence orchestrators (ADR-0016)
+
+Since 2026-09-18 compensation runs on **three** scheduler entries instead of
+one, each with its own `engine_runs` root row, its own failure banner and its
+own self-heal. A dependent run's wait on another is answered by reading
+`engine_runs`, not by a shared lock or a wider clock gap — see
+`docs/architecture/adr-0016-three-engine-cadences.md`.
+
+### `compensation:nightly-run`
+
+`{--date=} {--force} {--restart}`. Daily **00:05 IST**. Runs, in order:
+`repurchase:evaluate --date=<tonight>`, then `gsb:daily-cutoff` for every
+owed day (yesterday, preceded by any night that was missed, up to 31 nights
+of backfill). No dependency on the other two runs — it is what they wait on.
+`--restart` forces the whole night even where a step already reads succeeded
+(a night rebuild passes this).
+
+### `compensation:weekly-run`
+
+`{--date=} {--force}`. Daily **03:00 IST**, but it only *starts* work on a
+Tuesday, or on any other night when a Tuesday's batch was never built.
+**Waits for that night's Nightly Run to have succeeded first** — the batch
+dated Tuesday T pays the week that closed on T−7, so the wait is the client's
+ordering rule, not a data dependency. When the wait is not met the run
+records its own row `skipped` and writes a `weekly_run_deferred` alert
+naming which Tuesday(s) waited and why; it is retried the next night the
+Nightly Run is green. `--force` skips the wait (the operator's hand only).
+
+### `compensation:monthly-run`
+
+`{--date=} {--force}`. Daily **04:00 IST**, two independent phases in one
+process. **Close phase:** closes the month that just ended, once every day of
+it has a completed cut-off and that night's Nightly Run — and the Weekly Run
+too, on a night a Tuesday batch is owed — has succeeded; deferred (an alert +
+a `skipped` row, never a `failed` night) otherwise, and re-attempted every
+night it is due. **Payout phase**, evaluated after the close phase and with
+**no** dependency on tonight's Nightly/Weekly runs (it pays what the 1st
+already credited): builds the monthly payout batch from the 8th while none
+exists, plus a bounded one-month lookback. `--force` skips the close phase's
+wait.
+
+### Scheduler entries
 
 | Command | Schedule (IST) | Notes |
 |---|---|---|
-| `compensation:nightly-run` | Daily 00:05 | **The only compensation entry.** Runs every engine the night is due, in dependency order, in one process |
+| `compensation:nightly-run` | Daily 00:05 | Repurchase evaluation + GSB/MSB cut-off only. No dependency |
+| `compensation:weekly-run` | Daily 03:00 | Builds the Tuesday batch; waits for tonight's Nightly Run |
+| `compensation:monthly-run` | Daily 04:00 | Closes the month, then pays from the 8th; waits for tonight's Nightly (and Weekly) Run for the close only |
 | `cooling-off:remind` | Daily 09:00 | Statutory D-7/D-1 |
-| `compensation:engine-health-digest` | Daily 08:00 | Emails failed / missed / stuck runs and what the chain could not do; silent when healthy |
-| `compensation:recompute-all --horizon=now --if-projected` | Daily 23:30 | **Dev and staging only** — puts an environment holding simulated figures back to production-faithful before the 00:05 chain. A no-op elsewhere, and the whole entry is filtered out in production |
+| `compensation:engine-health-digest` | Daily 08:00 | Emails failed / missed / stuck / deferred runs; silent when healthy |
+| `compensation:recompute-all --horizon=now --if-projected` | Daily 23:30 | **Dev and staging only** — puts an environment holding simulated figures back to production-faithful before the three runs. A no-op elsewhere, and the whole entry is filtered out in production |
 
-The chain carries a filter that pauses it on a dev or staging environment while
-a projection is standing or a recompute is running; the command re-checks the
-same gate itself, so a hand-typed run is paused too. In production both always
-pass.
+All three orchestrators carry a filter that pauses them on a dev or staging
+environment while a projection is standing or a recompute is running; each
+command re-checks the same gate itself, so a hand-typed run is paused too. In
+production the filters always pass.
 
-### What the chain runs on a given night
+**Resume, never restart.** A re-run of any of the three skips every step
+already recorded *succeeded* for its period. `--restart` (nightly) forces the
+whole night. The repurchase evaluation and the weekly batch are dated
+tonight, and a succeeded run never counts while its period is still in
+flight, so both are safe to repeat.
 
-| # | Step | Period | When |
-|---|---|---|---|
-| 1 | `repurchase:evaluate` | `--date` = tonight | Every night |
-| 2 | `gsb:daily-cutoff` | `--date` = yesterday | Every night, preceded by any night that was missed |
-| 3 | `compensation:monthly-close` | `--month` = the month that just ended | The moment that month's last day has been cut off |
-| 4 | `gsb:weekly-payout` | `--date` = the Tuesday | Tuesdays, and the next night if a Tuesday's batch was never built — unless the GSB feature flag is off, when only the Tuesday itself is stepped (and recorded `skipped`), because with the sweep switched off no Tuesday is owed |
-| 5 | `compensation:monthly-payout-close` | `--month` = the month before last | The 8th, and later nights while no batch exists |
-
-**Why one entry instead of five.** The five were sequenced only by clock offsets
-— 00:05, 00:10, 00:20, Tuesday 03:00, the 8th at 04:00 — and
-`withoutOverlapping()` is per-command: it does not serialise across commands. An
-evaluation that overran five minutes, failed, or never started still let the
-cut-off proceed on yesterday's repurchase verdicts, and a day forfeited by
-mistake is never corrected. Inside one process a step runs only after the step
-before it exited 0.
-
-**Resume, never restart.** A re-run skips every step already recorded
-*succeeded* for its period. `--restart` forces the whole night. Two steps are
-deliberately not skippable — the repurchase evaluation and the weekly batch are
-dated tonight, and a succeeded run never counts while its period is still in
-flight; both are safe to repeat.
-
-**Missed nights heal.** The chain works forward from the newest day it can prove
-was cut off *to completion* (a succeeded run that started after that day ended —
-result rows alone are not proof, because the cut-off commits per distributor and
-a crash leaves a partial day). Up to 31 nights are backfilled in order; a longer
-gap is recorded in `audit_log` and reported in the health digest rather than
-replayed unattended.
+**Missed nights heal.** The Nightly Run works forward from the newest day it
+can prove was cut off *to completion* (a succeeded run that started after
+that day ended — result rows alone are not proof, because the cut-off
+commits per distributor and a crash leaves a partial day). Up to 31 nights
+are backfilled in order; a longer gap is recorded in `audit_log` and reported
+in the health digest rather than replayed unattended.
 
 **A month is never closed short.** If any day of the month has no completed
-cut-off, the close is skipped, recorded and reported — every monthly engine
+cut-off, the close is deferred, recorded and reported — every monthly engine
 freezes what it prices, so a month closed short stays short.
 
-**Catching up by hand.** `compensation:nightly-run --date=<past night>` replays
-that night's cut-offs but builds no payout batch; add `--with-payouts` to
-include steps 4 and 5, or `--weekly-payouts-only` for the weekly batch alone
-(what the admin retry button passes). **Both create real payout batches, and
-from a shell both create them with no maker** — there is no `Auth::id()` and no
-attributed `EngineRunContext` outside the queue worker, so `created_by` lands
-NULL and the platform cannot stop whoever ran the command from also approving
-the batch. Keep that separation by hand, or use the retry button, which records
-a maker and enforces it. `--without-payouts` is the opposite switch and wins
-over both.
+**A deferral is not a failure.** Both the Weekly and Monthly runs record a
+`skipped` root row and an alert — never `failed` — when the run they wait on
+has not succeeded, and re-attempt themselves automatically. There is nothing
+to retry by hand for a deferral; see
+`docs/runbooks/engine-failure-triage.md` §3c.
 
-The seven steps `compensation:monthly-close` runs, in order. **None of these has
-its own scheduler entry** — clock offsets do not serialise commands, so the
-ordering lives in one process. Each still records its own `engine_runs` row and
-each is still individually runnable and individually triggerable from Engine
-Runs.
+The seven steps `compensation:monthly-close` runs, in order, as the Monthly
+Run's close phase. Each still records its own `engine_runs` row and each is
+still individually runnable and individually triggerable from Engine Runs.
 
 | Step | Command | Period |
 |---|---|---|
@@ -742,3 +762,98 @@ proceeds instead of deadlocking every month.
 `payout:monthly-run` is likewise no longer scheduled directly — it is invoked by
 `compensation:monthly-payout-close` on the 8th, dated the month the money moves
 (the month AFTER the crediting month).
+
+---
+
+## Rebuild commands (developer only — ADR-0016)
+
+> **⚠️ Destructive.** Each of the four commands below deletes rows before it
+> re-runs the ordinary engine command for that period, inside one transaction.
+> Nothing here is scheduler-only — they exist because a rebuild is exactly
+> what a human decides, never a cron. There is no admin retry button any
+> more: this is the only repair path for a failed run, and it is reachable
+> only by the `developer` role (Engine Runs page, `@developer` panel; or the
+> CLI with a mandatory `--actor=<developer user id>`, refused otherwise).
+> Every one previews what it would remove and asks for a written reason
+> (min 10 characters) before writing anything; refer to
+> `docs/runbooks/engine-failure-triage.md` for the decision tree and
+> `docs/compliance/risk-register.md` R-102 for the standing risk.
+
+All four: preflight (recompute gate, stale worker, nothing else of the four
+or the three runs in flight) → plan (refusals, row counts, downstream
+warnings) → wipe that period's derived rows in one transaction → re-run the
+ordinary command for the period → print the downstream warnings. A wipe that
+succeeds and a re-run that fails leaves the period reading "not computed"
+(D13), so the next scheduled run or another rebuild attempt lands on the same
+figures — idempotent by construction.
+
+### `compensation:rebuild-night`
+
+`{--date=} {--actor=} {--yes}`. `--date` is the **night**; the cut-off it
+rebuilds is the night before. Deletes the previous day's cut-off results,
+daily pools, mentorship results, personal-BV top-ups and their wallet
+credits, rewinds the carry-forward to the value the day's own rows recorded,
+and re-runs `compensation:nightly-run --date=<night> --restart`. **Refuses
+once a later day has already been cut off** (R-91 — the carry-forward store
+is rolling; the deadline is the next Nightly Run, 00:05 IST), once any of the
+night's credits are swept or reversed, or once the month it falls in is
+closed and frozen.
+
+```bash
+php artisan compensation:rebuild-night --date=2026-09-16 --actor=42
+```
+
+### `compensation:rebuild-week`
+
+`{--date=} {--actor=} {--yes}`. `--date` is **the Tuesday** the batch is
+dated. Un-sweeps the batch's credits, deletes its own debits
+(`payout_debit`/`admin_charge_debit`/`tds_debit`/`income_cap_forfeit`) and
+line items, deletes the batch row, and re-runs
+`gsb:weekly-payout --date=<Tuesday>`. **Refuses** once the batch has been
+approved (finance's hand is on it — retry its failed lines instead), once it
+has any gateway events, or if it is stuck `processing` (`payout:reopen-stuck-batch`
+first). Refused entirely if no batch exists for that Tuesday — nothing to
+remove; the Weekly Run builds a missing one on its own, or run
+`compensation:weekly-run --date=<Tuesday>`.
+
+```bash
+php artisan compensation:rebuild-week --date=2026-09-16 --actor=42
+```
+
+### `compensation:rebuild-month`
+
+`{--month=} {--actor=} {--yes}`. `--month` is the **crediting** month.
+Un-builds the month's unapproved payout batch if one exists, deletes the
+month's rank, Growth Booster, Fortune, ADC and purchase-offer rows and their
+wallet credits, and re-runs `compensation:monthly-close --month=<M> --restart`.
+Consumed purchase-offer grants and delivered award milestones are kept, never
+re-derived. **Refuses** a frozen month (D9 — no override, not even `--force`)
+or one the next month has already been built on top of (D12).
+
+```bash
+php artisan compensation:rebuild-month --month=2026-08 --actor=42
+```
+
+### `compensation:rebuild-payout`
+
+`{--month=} {--actor=} {--yes}`. `--month` is the **crediting** month (the
+batch is dated the 1st of the following month). Un-builds the month's
+unapproved payout batch and re-runs
+`compensation:monthly-payout-close --month=<M>` so every distributor's amount
+is frozen again. Same frozen/approved/gateway/processing refusals as
+`rebuild-week`.
+
+```bash
+php artisan compensation:rebuild-payout --month=2026-08 --actor=42
+```
+
+### What none of the four will ever do
+
+- Delete a credit. A rebuild un-sweeps or deletes only the rows the re-run
+  re-derives — it never touches a wallet credit by hand (D10).
+- Override the frozen-payout lock (D9), or rebuild a batch finance has
+  approved (DN-2) — those go through the ordinary per-line retry or a finance
+  decision instead.
+- Record a maker other than the developer who ran it — `HandlesPayoutBatchActions::approve()`
+  then refuses that developer's own approval of the rebuilt batch (D14, R-81).
+- Run unattended. There is no scheduler entry for any of the four.

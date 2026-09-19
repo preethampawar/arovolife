@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
@@ -20,6 +21,23 @@ beforeEach(function (): void {
     disableTestForeignKeys();
     Feature::for(null)->activate(GenosSalesBonusFeature::class);
 });
+
+/**
+ * One product sale in the month, which is what makes the completion gate
+ * applicable at all: a month with no sales owes no crediting and is waved
+ * through (hard rule 2 — no credit without a product sale), so a refusal test
+ * over a sales-free month would quietly stop testing the refusal.
+ */
+function seedGateMonthSales(Carbon $month): void
+{
+    BvLedgerEntry::create([
+        'distributor_id' => 1,
+        'order_id' => 970_000 + (int) $month->format('Ym'),
+        'bv_paise' => 300_000,
+        'type' => BvLedgerEntry::TYPE_ACCRUAL,
+        'effective_at' => $month->copy()->startOfMonth()->addDays(3),
+    ]);
+}
 
 /** Every flag the monthly completion gate reads; a flag-off engine is excused. */
 function activateCreditingFeatures(): void
@@ -115,6 +133,8 @@ it('payout:monthly-run refuses while the month it pays has incomplete crediting'
     // crediting engine has a run for the month whose credits it would sweep.
     // (A flag-off engine is excused by the gate, so they are on here.)
     activateCreditingFeatures();
+    // The gate judges the CREDITING month — the one before the batch month.
+    seedGateMonthSales(Carbon::parse('2026-07-01'));
     $this->artisan('payout:monthly-run', ['--month' => '2026-08'])
         ->expectsOutputToContain('crediting is incomplete')
         ->assertExitCode(1);
@@ -124,6 +144,7 @@ it('payout:monthly-run refuses while the month it pays has incomplete crediting'
 
 it('payout:monthly-run defaults to the month that has just ended, never the live one', function () {
     activateCreditingFeatures();
+    seedGateMonthSales(Carbon::today()->startOfMonth()->subMonthsNoOverflow(2));
 
     $this->artisan('payout:monthly-run')
         ->expectsOutputToContain(Carbon::today()->startOfMonth()->subMonthNoOverflow()->format('F Y'))

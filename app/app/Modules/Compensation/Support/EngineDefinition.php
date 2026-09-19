@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Support;
 
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
@@ -43,11 +44,18 @@ final readonly class EngineDefinition
      *                                       cadence — that is when it actually runs — but nothing in
      *                                       routes/console.php registers it directly, so
      *                                       EngineRegistryTest looks for the orchestrator instead.
-     * @param  bool  $isOrchestrator  True for the nightly chain and the two monthly close commands,
-     *                                which run other engines rather than computing anything
+     * @param  bool  $isOrchestrator  True for the three scheduled runs and the two monthly close
+     *                                commands, which run other engines rather than computing anything
      *                                themselves. The recompute replay drives the individual engines
      *                                directly, so it must skip these or every step would be invoked
      *                                twice.
+     * @param  bool  $developerOnly  True for the four period rebuilds (ADR-0016). They are registry
+     *                               entries so their runs are recorded and their signatures are pinned
+     *                               like every other engine's, but they are not engines an admin may see:
+     *                               the Engine Runs page skips their cards for EVERY role, and the
+     *                               rebuild surface itself is behind `role:developer`. A flag rather
+     *                               than a hand-written list of keys in the view, for the reason
+     *                               {@see EngineRegistry::rootOrchestratorKeys()} gives.
      */
     public function __construct(
         public string $key,
@@ -66,6 +74,7 @@ final readonly class EngineDefinition
         public bool $requiresClosedPeriod = false,
         public ?string $orchestratedBy = null,
         public bool $isOrchestrator = false,
+        public bool $developerOnly = false,
     ) {}
 
     /**
@@ -88,25 +97,34 @@ final readonly class EngineDefinition
      * Human sentence for the admin console. Generated from {@see $cadence} so
      * the schedule is described in exactly one place.
      *
-     * An orchestrated engine borrows the clock from the chain that fires it —
-     * it no longer has one of its own, and printing the minute it used to fire
-     * at is the kind of small lie an operator plans a morning around.
+     * An orchestrated engine borrows the clock from the run that fires it — it
+     * no longer has one of its own, and printing the minute it used to fire at
+     * is the kind of small lie an operator plans a morning around. Since there
+     * are three runs (ADR-0016) the sentence names which one, so "Tuesdays, in
+     * the Weekly Run from 03:00 IST" reads as the schedule it is.
+     *
+     * The parenthetical is dropped from the run's label — "Weekly Run (Tuesday
+     * payout)" is a card title, not something to read mid-sentence.
      */
     public function scheduleText(): string
     {
-        return $this->cadence->describe($this->chainStartsAt());
+        $root = $this->chainRoot();
+
+        return $this->cadence->describe(
+            $root?->cadence->time,
+            $root === null ? null : Str::before($root->label, ' ('),
+        );
     }
 
     /**
-     * The time the chain that fires this engine starts, or null when the
+     * The run at the ROOT of this engine's orchestration, or null when the
      * scheduler fires the engine directly.
      *
-     * Walks to the ROOT of the orchestration, because an orchestrator may
-     * itself be orchestrated: the monthly close is fired by the nightly chain,
-     * so the clock a crediting engine answers to is the chain's, not the
-     * close's.
+     * Walks all the way up, because an orchestrator may itself be orchestrated:
+     * the monthly close is fired by the monthly run, so the clock a crediting
+     * engine answers to is the monthly run's, not the close's.
      */
-    public function chainStartsAt(): ?string
+    public function chainRoot(): ?EngineDefinition
     {
         if ($this->orchestratedBy === null) {
             return null;
@@ -118,13 +136,34 @@ final readonly class EngineDefinition
             $root = EngineRegistry::get($root->orchestratedBy);
         }
 
-        return $root->cadence->time;
+        return $root;
     }
 
-    /** The period an operator most likely wants, matching the command's own default. */
+    /**
+     * The time the run that fires this engine starts, or null when the
+     * scheduler fires the engine directly.
+     */
+    public function chainStartsAt(): ?string
+    {
+        return $this->chainRoot()?->cadence->time;
+    }
+
+    /**
+     * The period an operator most likely wants, matching the command's own
+     * default.
+     *
+     * IST explicitly, not the app timezone. This is what `RecordEngineRun`
+     * dates a run row with when the command was invoked without its period
+     * option — which is every scheduled run — and what `RunPrerequisites` then
+     * looks that row up by. The three runs resolve their own night with
+     * `Carbon::today('Asia/Kolkata')`, so an APP_TIMEZONE that ever drifted
+     * from IST would have the weekly and monthly runs looking for a row dated
+     * one day from the one that was written, and defer for ever with nothing
+     * failing anywhere. Same shape as F125.
+     */
     public function defaultPeriodDate(): Carbon
     {
-        return $this->periodRelativeTo(Carbon::today());
+        return $this->periodRelativeTo(Carbon::today('Asia/Kolkata'));
     }
 
     /**

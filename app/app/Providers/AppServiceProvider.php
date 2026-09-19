@@ -23,16 +23,22 @@ use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
+use App\Modules\Compensation\Console\Commands\MonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
 use App\Modules\Compensation\Console\Commands\PayoutReopenStuckBatchCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
+use App\Modules\Compensation\Console\Commands\RebuildMonthCommand;
+use App\Modules\Compensation\Console\Commands\RebuildNightCommand;
+use App\Modules\Compensation\Console\Commands\RebuildPayoutCommand;
+use App\Modules\Compensation\Console\Commands\RebuildWeekCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
 use App\Modules\Compensation\Console\Commands\ScaleBenchmarkCommand;
 use App\Modules\Compensation\Console\Commands\ScaleSeedCommand;
+use App\Modules\Compensation\Console\Commands\WeeklyRunCommand;
 use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
 use App\Modules\Compensation\Listeners\RecordEngineRun;
-use App\Modules\Compensation\Listeners\RecordSkippedNightlyRun;
+use App\Modules\Compensation\Listeners\RecordSkippedOrchestratorRun;
 use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Identity\Models\User;
@@ -125,10 +131,10 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(CommandStarting::class, [RecordEngineRun::class, 'starting']);
         Event::listen(CommandFinished::class, [RecordEngineRun::class, 'finished']);
 
-        // A nightly chain the scheduler skipped because the previous one was
-        // still running leaves no run, no exit code and no engine_runs row.
-        // This is the only trace such a night gets.
-        Event::listen(ScheduledTaskFinished::class, [RecordSkippedNightlyRun::class, 'handle']);
+        // One of the three scheduled runs the scheduler skipped because the
+        // previous one was still running leaves no run, no exit code and no
+        // engine_runs row. This is the only trace such a night gets.
+        Event::listen(ScheduledTaskFinished::class, [RecordSkippedOrchestratorRun::class, 'handle']);
 
         // Super staff: `developer` and `admin` bypass every permission check
         // (R-17 separation of duties). The specialised roles (admin-operations
@@ -178,6 +184,12 @@ class AppServiceProvider extends ServiceProvider
                 CompensationRecomputeAllCommand::class,
                 MonthlyCloseCommand::class,
                 NightlyRunCommand::class,
+                WeeklyRunCommand::class,
+                MonthlyRunCommand::class,
+                RebuildNightCommand::class,
+                RebuildWeekCommand::class,
+                RebuildMonthCommand::class,
+                RebuildPayoutCommand::class,
                 ScaleSeedCommand::class,
                 ScaleBenchmarkCommand::class,
                 MonthlyPayoutCloseCommand::class,

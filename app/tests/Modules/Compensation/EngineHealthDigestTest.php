@@ -6,6 +6,7 @@ use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Notifications\EngineHealthDigestNotification;
 use App\Modules\Compensation\Services\EngineHealthService;
 use App\Modules\Compensation\Support\EngineRegistry;
+use App\Modules\Compensation\Support\NightlyRunAlert;
 use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -260,11 +261,13 @@ it('gives each item instructions specific to its engine', function (): void {
         ->toContain('Find the card "GSB Daily Cut-off (incl. MSB)".')
         ->toContain('select 07 Sep 2026 (2026-09-07)')
         ->toContain('Preview & Confirm')
-        // The weekly batch has no button and heals itself a week later.
-        ->toContain("next Tuesday's batch sweeps it automatically")
-        ->toContain('gsb:weekly-payout --date=2026-09-15')
-        // The monthly payout is driven by the CREDITING month, not its own.
-        ->toContain('compensation:monthly-payout-close --month=2026-08')
+        // The weekly batch has no button, and the weekly run rebuilds a missed
+        // Tuesday on its next night — still dated that Tuesday.
+        ->toContain('distributors do not wait a week')
+        ->toContain('compensation:weekly-run --date=2026-09-08')
+        // The monthly payout is re-attempted every night from the 8th; nothing
+        // for an admin to type, and no control to point at.
+        ->toContain('The monthly run re-attempts the payout every night from the 8th')
         // A stuck run is a dead worker, not something to re-trigger.
         ->toContain('queue:restart')
         // The close names the order its steps have to be re-run in.
@@ -409,4 +412,174 @@ it('records a kept premature freeze once, however many runs re-detect it', funct
     );
 
     expect(AuditLog::where('action', PrematureFreezeAlert::ACTION)->count())->toBe(1);
+});
+
+it('stops reporting a failed monthly run once any later night of it succeeded', function (): void {
+    // D5. The period of a root orchestrator's run is a NIGHT, and a night is
+    // never re-run: the monthly run re-attempts what the month owes on its next
+    // night, under a new date. The per-period rule would have kept 08 September
+    // in the digest for thirty days with no run of that date ever coming to
+    // resolve it (staging, since 8 Sep 2026).
+    seedHealthyRuns();
+    engineRun('compensation.monthly-run', '2026-09-06', EngineRun::STATUS_FAILED, '2026-09-06 04:00:00', 'Monthly Close exited 1.');
+    engineRun('compensation.monthly-run', '2026-09-07', EngineRun::STATUS_SUCCEEDED, '2026-09-07 04:00:00');
+
+    $this->artisan('compensation:engine-health-digest')
+        ->expectsOutputToContain('All engines healthy')
+        ->assertExitCode(0);
+
+    Notification::assertNothingSent();
+});
+
+it('still reports a failed leaf that a later period of the same engine did not fix', function (): void {
+    // The other half of D5: a cut-off that failed for the 5th is still owed
+    // however many later days succeed, because that day's results do not exist.
+    seedHealthyRuns();
+    engineRun('gsb.daily-cutoff', '2026-09-05', EngineRun::STATUS_FAILED, '2026-09-06 00:10:00', 'Boom.');
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    expect(digestText(sentDigest()))->toContain('GSB Daily Cut-off (incl. MSB) — 05 Sep 2026');
+});
+
+it('names the run a skipped-night alert belongs to', function (): void {
+    // Three runs fire on their own clocks now, and a nightly overlap says
+    // nothing about whether the weekly one started. The orchestrator key is in
+    // the dedupe key as well as the row, so one night can carry one alert per
+    // run rather than the first one swallowing the rest.
+    seedHealthyRuns();
+
+    NightlyRunAlert::skippedNight(Carbon::parse('2026-09-08'), 'nightly overlapped', 'compensation.nightly-run');
+    NightlyRunAlert::skippedNight(Carbon::parse('2026-09-08'), 'weekly overlapped', 'compensation.weekly-run');
+    NightlyRunAlert::skippedNight(Carbon::parse('2026-09-08'), 'weekly overlapped', 'compensation.weekly-run');
+
+    expect(AuditLog::where('action', NightlyRunAlert::ACTION_SKIPPED_NIGHT)->count())->toBe(2);
+    expect(
+        AuditLog::where('action', NightlyRunAlert::ACTION_SKIPPED_NIGHT)
+            ->get()
+            ->pluck('details.orchestrator')
+            ->all()
+    )->toBe(['compensation.nightly-run', 'compensation.weekly-run']);
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    expect(app(EngineHealthService::class)->report(Carbon::now())->chainAlerts)->toHaveCount(2);
+});
+
+it('tells a deferred close apart by its cause, and never sends a red run looking for missing days', function (): void {
+    // Plan §20. Three causes, three different actions: a month deferred because
+    // tonight's nightly run failed must not be reported to the ops mailbox as a
+    // coverage gap somebody then goes looking for. `missing_days` is null for
+    // every cause but coverage.
+    seedHealthyRuns();
+
+    NightlyRunAlert::monthCloseDeferred(
+        Carbon::parse('2026-09-08'),
+        Carbon::parse('2026-08-01'),
+        null,
+        'prerequisite',
+        "August 2026 was not closed tonight: tonight's nightly run has not succeeded.",
+    );
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    $text = digestText(sentDigest());
+
+    expect($text)
+        ->toContain("August 2026 was not closed — tonight's nightly run (or the Tuesday batch) had not succeeded")
+        ->toContain('the monthly run closes it on the first night the nightly run');
+    expect($text)->not->toContain('of its days have no completed cut-off');
+    expect($text)->not->toContain('gsb:daily-cutoff --date=<day>');
+});
+
+it('reports a cut-off still running as exactly that', function (): void {
+    seedHealthyRuns();
+
+    NightlyRunAlert::monthCloseDeferred(
+        Carbon::parse('2026-09-08'),
+        Carbon::parse('2026-08-01'),
+        null,
+        'cutoff_in_flight',
+        'August 2026 was not closed tonight: a GSB daily cut-off is still running.',
+    );
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    $text = digestText(sentDigest());
+
+    expect($text)->toContain('August 2026 was not closed — the cut-off was still running; it closes the next night');
+    expect($text)->not->toContain('of its days have no completed cut-off');
+});
+
+it('keeps the coverage headline and its remedy for a genuine coverage gap', function (): void {
+    seedHealthyRuns();
+
+    NightlyRunAlert::monthCloseDeferred(
+        Carbon::parse('2026-09-01'),
+        Carbon::parse('2026-08-01'),
+        3,
+        'coverage',
+        '3 of the 31 days in August 2026 have no completed cut-off.',
+    );
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    expect(digestText(sentDigest()))
+        ->toContain('August 2026 was not closed — 3 of its days have no completed cut-off')
+        ->toContain('gsb:daily-cutoff --date=<day>')
+        ->toContain('the monthly run closes the month the next night; nothing to type');
+});
+
+it('reports a deferred monthly payout as an incomplete month, with no control to click', function (): void {
+    seedHealthyRuns();
+
+    NightlyRunAlert::payoutDeferred(
+        Carbon::parse('2026-09-08'),
+        Carbon::parse('2026-08-01'),
+        'rank.bonus',
+        'The August 2026 payout was not built: Rank Bonus has not succeeded.',
+    );
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    $text = digestText(sentDigest());
+
+    expect($text)
+        ->toContain('August 2026 has not been paid — its crediting is incomplete')
+        ->toContain('The monthly run re-attempts the payout every night from the 8th');
+    expect($text)->not->toContain('The nightly chain reported something it could not do');
+});
+
+it('reports a deferred Tuesday batch by its date, and says what is being waited for', function (): void {
+    seedHealthyRuns();
+
+    NightlyRunAlert::weeklyDeferred(
+        Carbon::parse('2026-09-08'),
+        [Carbon::parse('2026-09-08')],
+        "Tonight's nightly run has not succeeded, so the 2026-09-08 weekly batch was not built.",
+    );
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    $text = digestText(sentDigest());
+
+    expect($text)
+        ->toContain("The 08 Sep 2026 weekly payout was not built — tonight's nightly run had not succeeded")
+        ->toContain('Nothing to click: the weekly run builds it on the first night the nightly run is green.');
+    expect($text)->not->toContain('A scheduled run reported something it could not do');
+});
+
+it('names the run in a skipped-night headline, and what its next night picks up', function (): void {
+    seedHealthyRuns();
+
+    NightlyRunAlert::skippedNight(Carbon::parse('2026-09-08'), 'weekly overlapped', 'compensation.weekly-run');
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    $text = digestText(sentDigest());
+
+    expect($text)
+        ->toContain('The Weekly Run never started — the previous one was still running')
+        ->toContain('the next night builds any Tuesday this one would have');
+    expect($text)->not->toContain('The chain never started');
 });

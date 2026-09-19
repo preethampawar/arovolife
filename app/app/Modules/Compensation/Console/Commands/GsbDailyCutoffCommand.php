@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Console\Commands;
 
+use App\Modules\Compensation\Exceptions\CutoffReplayedOutOfOrder;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\DTOs\GsbCutoffComputation;
 use App\Modules\Compensation\Services\DTOs\MsbAccrual;
@@ -186,6 +187,7 @@ final class GsbDailyCutoffCommand extends Command
         $failed = 0;
         $mbFailed = 0;
         $skipped = 0;
+        $outOfOrder = 0;
 
         $poolPricingActive = Feature::for(null)->active(GsbDailyPoolPricingFeature::class);
 
@@ -215,6 +217,7 @@ final class GsbDailyCutoffCommand extends Command
             &$computations,
             &$failed,
             &$skipped,
+            &$outOfOrder,
         ): void {
             // Batch-load per-distributor data before the loop: personal BV
             // totals, repurchase cycles, and frozen status — replaces ~3 N+1
@@ -238,6 +241,21 @@ final class GsbDailyCutoffCommand extends Command
 
                 try {
                     $computations[$distributorId] = $this->cutoff->computeForDistributor($distributorId, $date);
+                } catch (CutoffReplayedOutOfOrder) {
+                    // Not a failure — an ordering decision, caught by its own
+                    // type so it cannot be filed as one. The day was cut off
+                    // correctly and a later day has since advanced the rolling
+                    // carry-forward store, so this date has nowhere correct to
+                    // start; nothing is written and the earlier cut-off stands.
+                    // Counted apart from $failed because the latest finished
+                    // attempt decides whether a period is computed (D13): a
+                    // `failed` row here would un-prove a day that IS proven and
+                    // leave the month unclosable on a refusal nobody can clear.
+                    $outOfOrder++;
+                    Log::warning('gsb.cutoff.refused_out_of_order', [
+                        'date' => $date->toDateString(),
+                        'distributor_id' => $distributorId,
+                    ]);
                 } catch (\Throwable $e) {
                     $failed++;
                     Log::error('gsb.cutoff.exception', [
@@ -365,6 +383,37 @@ final class GsbDailyCutoffCommand extends Command
 
         $msbValue = number_format($msbPointValuePaise / 100, 2);
         $this->info("Done — total: {$total}, engine: ".count($computations).", bulk: {$skipped}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}, msb-points: {$msbTotalPoints}, msb-point-value: ₹{$msbValue}");
+
+        // Nothing computed, nothing broken: every distributor the engine could
+        // not compute was refused for the same reason, and the day's earlier
+        // cut-off is still the day's cut-off. Recorded as `skipped` so
+        // completedCutoffDatesBetween() keeps listing the day (D13), and still
+        // exited non-zero so the caller — an operator, or an orchestrator that
+        // asked for this day — sees that the work it asked for did not happen.
+        // A real failure alongside it wins: that run IS a failed attempt.
+        if ($outOfOrder > 0 && $failed === 0 && $mbFailed === 0) {
+            $refusal = sprintf(
+                'The %s GSB cut-off was refused for %d distributor(s): the day has already been passed by a '
+                .'later cut-off, and the rolling carry-forward store cannot be rewound one day at a time. A day '
+                .'can be rebuilt only while it is the newest one, so nothing was written and the cut-off that '
+                ."already stands for %s is unchanged.\n"
+                .'Replaying history from %s forward is a windowed recompute, which runs on dev and staging only '
+                .'(`php artisan compensation:recompute-all --horizon=now`); in production escalate to the '
+                .'platform team (R-91).',
+                $date->toDateString(),
+                $outOfOrder,
+                $date->toDateString(),
+                $date->toDateString(),
+            );
+
+            $this->error($refusal);
+
+            // Resolved per call: EngineRunContext is container-scoped while a
+            // console command is a process-lifetime singleton.
+            app(EngineRunContext::class)->noteSkipped($refusal);
+
+            return self::FAILURE;
+        }
 
         return ($failed > 0 || $mbFailed > 0) ? self::FAILURE : self::SUCCESS;
     }

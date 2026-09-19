@@ -14,10 +14,16 @@ use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
+use App\Modules\Compensation\Console\Commands\MonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
+use App\Modules\Compensation\Console\Commands\RebuildMonthCommand;
+use App\Modules\Compensation\Console\Commands\RebuildNightCommand;
+use App\Modules\Compensation\Console\Commands\RebuildPayoutCommand;
+use App\Modules\Compensation\Console\Commands\RebuildWeekCommand;
 use App\Modules\Compensation\Console\Commands\RepurchaseEvaluateCommand;
+use App\Modules\Compensation\Console\Commands\WeeklyRunCommand;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -99,6 +105,61 @@ final class EngineRegistry
         return self::RETIRED_LABELS[$key] ?? $key;
     }
 
+    /**
+     * The runs the SCHEDULER starts: an orchestrator that nothing else fires
+     * and that has a cadence of its own.
+     *
+     * Derived, never hand-listed. The scheduler entries, the skipped-run
+     * listener, the health service's failure rule (D5) and the Engine Runs
+     * page's failure banners all have to agree on which runs these are, and a
+     * fourth run added to a hand-written list in three of the four places is
+     * exactly the kind of omission nobody notices until a night goes unreported.
+     *
+     * `cadence->isScheduled()` is the third condition on purpose: an
+     * orchestrator that nothing schedules is a command an operator types, and a
+     * run nobody was waiting for at 03:00 is not a run that was missed.
+     *
+     * @return list<string>
+     */
+    public static function rootOrchestratorKeys(): array
+    {
+        $keys = [];
+
+        foreach (self::all() as $key => $definition) {
+            if ($definition->isOrchestrator
+                && $definition->orchestratedBy === null
+                && $definition->cadence->isScheduled()) {
+                $keys[] = $key;
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * The four developer rebuilds (ADR-0016, D4).
+     *
+     * Derived from the flag, never hand-listed, for the same reason as
+     * {@see rootOrchestratorKeys()}: the rebuild preflight refuses while one is
+     * in flight, the Engine Runs page hides their cards and the rebuild surface
+     * validates against them, and a fifth kind added to three of those four
+     * places is the omission nobody notices until two wipes race.
+     *
+     * @return list<string>
+     */
+    public static function rebuildKeys(): array
+    {
+        $keys = [];
+
+        foreach (self::all() as $key => $definition) {
+            if ($definition->developerOnly) {
+                $keys[] = $key;
+            }
+        }
+
+        return $keys;
+    }
+
     /** Reverse lookup for the console listener: artisan name → definition. */
     public static function findBySignature(string $signature): ?EngineDefinition
     {
@@ -168,7 +229,7 @@ final class EngineRegistry
                 cadence: EngineCadence::weeklyOn(2, '03:00'),
                 defaultPeriod: 'today',
                 manuallyTriggerable: false,
-                orchestratedBy: 'compensation.nightly-run',
+                orchestratedBy: 'compensation.weekly-run',
             ),
 
             new EngineDefinition(
@@ -364,7 +425,7 @@ final class EngineRegistry
                 // outcome onto that step's row.
                 manuallyTriggerable: false,
                 requiresClosedPeriod: true,
-                orchestratedBy: 'compensation.nightly-run',
+                orchestratedBy: 'compensation.monthly-run',
                 isOrchestrator: true,
             ),
 
@@ -385,14 +446,14 @@ final class EngineRegistry
                 // that would trigger it is the one that approves the batch.
                 manuallyTriggerable: false,
                 requiresClosedPeriod: true,
-                orchestratedBy: 'compensation.nightly-run',
+                orchestratedBy: 'compensation.monthly-run',
                 isOrchestrator: true,
             ),
 
             new EngineDefinition(
                 key: 'compensation.nightly-run',
-                label: 'Nightly Run (the chain)',
-                description: "Runs every engine tonight is due, in dependency order, in ONE process: the repurchase evaluation for tonight, the GSB cut-off for yesterday, and — when the night calls for them — the monthly crediting close, the Tuesday weekly payout batch and the 8th's monthly payout close. Impact: writes nothing of its own; every credit, result row and payout batch is written by the engine it invokes, each recording its own run. Each step fires the moment the step before it has exited 0, which is what replaced the clock offsets that used to sequence these five entries and did not actually hold the order. A re-run resumes at the first step that has not succeeded, so the steps that already landed are never touched again.",
+                label: 'Nightly Run (repurchase + cut-off)',
+                description: 'Runs the two engines every night is due, in dependency order, in ONE process: the repurchase evaluation dated tonight, then the GSB cut-off for yesterday — preceded by any night that was missed, so a day nobody was credited for is healed rather than lost. Impact: writes nothing of its own; every credit and result row is written by the engine it invokes, each recording its own run. A re-run resumes at the first step that has not succeeded, so the steps that already landed are never touched again. The weekly and monthly runs are their own commands and wait on this one — not the other way round.',
                 periodType: EnginePeriodType::Date,
                 commandClass: NightlyRunCommand::class,
                 commandSignature: 'compensation:nightly-run',
@@ -404,11 +465,123 @@ final class EngineRegistry
                 defaultPeriod: 'today',
                 // Scheduler-only, like the closes it fires. A manual trigger goes
                 // through EngineRunService, which reads back the run id the
-                // console listener recorded — with the whole chain nested inside
+                // console listener recorded — with the whole run nested inside
                 // it, the last step's id is what it would find, and it would
-                // stamp the chain's outcome onto that step's row.
+                // stamp the run's outcome onto that step's row.
                 manuallyTriggerable: false,
                 isOrchestrator: true,
+            ),
+
+            new EngineDefinition(
+                key: 'compensation.weekly-run',
+                label: 'Weekly Run (Tuesday payout)',
+                description: 'Builds the Tuesday weekly payout batch — and, on any other night, only a Tuesday whose batch was never built, still dated that Tuesday. Waits for tonight\'s nightly run to succeed first. Impact: writes nothing of its own; the batch and its line items are written by GSB Weekly Payout. Runs at 03:00 IST: the batch dated Tuesday T pays the week that closed on T−7, so it never needs tonight\'s cut-off figures, and a night it waits costs a day rather than a figure.',
+                periodType: EnginePeriodType::Date,
+                commandClass: WeeklyRunCommand::class,
+                commandSignature: 'compensation:weekly-run',
+                periodOption: '--date',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: 'admin.compensation.weekly-payouts.index',
+                cadence: EngineCadence::daily('03:00', 'the Tuesday batch; on other nights only a Tuesday that was never built'),
+                defaultPeriod: 'today',
+                manuallyTriggerable: false,
+                isOrchestrator: true,
+            ),
+
+            new EngineDefinition(
+                key: 'compensation.monthly-run',
+                label: 'Monthly Run (close + payout)',
+                description: "Closes the month that has just ended — the seven crediting engines, in order — the first night every one of its days has a completed cut-off and tonight's nightly run (and the Tuesday batch, when one is owed) has succeeded; and from the 8th builds the monthly payout batch once every crediting engine for the month has succeeded. Impact: writes nothing of its own. A month it cannot close or pay is recorded as a deferral (an alert and a skipped run), never a failed night, and is re-attempted the next night.",
+                periodType: EnginePeriodType::Date,
+                commandClass: MonthlyRunCommand::class,
+                commandSignature: 'compensation:monthly-run',
+                periodOption: '--date',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: 'admin.compensation.engine-runs.events',
+                cadence: EngineCadence::daily('04:00', 'closes the month once its last day is cut off; pays from the 8th'),
+                defaultPeriod: 'today',
+                manuallyTriggerable: false,
+                isOrchestrator: true,
+            ),
+
+            // The four developer rebuilds. They are registry entries so their
+            // runs are recorded and their signatures pinned like every other
+            // engine's — never so an admin can reach them: `developerOnly` keeps
+            // them off the Engine Runs cards for every role, and
+            // `EngineCadence::unscheduled()` keeps them out of the scheduler, so
+            // the replay (which fires leaves only) cannot touch them either.
+            new EngineDefinition(
+                key: 'compensation.rebuild-night',
+                label: 'Rebuild — night',
+                description: "Deletes the previous day's cut-off results, daily pools, mentorship results and their wallet credits, rewinds the carry-forward, and re-runs the night. Refuses once a later day has been cut off. Impact: removes exactly those rows in one transaction and re-derives them through the ordinary nightly run — no credit is ever written by hand, and a credit that has already been paid refuses the rebuild outright.",
+                periodType: EnginePeriodType::Date,
+                commandClass: RebuildNightCommand::class,
+                commandSignature: 'compensation:rebuild-night',
+                periodOption: '--date',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: null,
+                cadence: EngineCadence::unscheduled(),
+                defaultPeriod: 'today',
+                manuallyTriggerable: false,
+                isOrchestrator: true,
+                developerOnly: true,
+            ),
+
+            new EngineDefinition(
+                key: 'compensation.rebuild-week',
+                label: 'Rebuild — weekly payout',
+                description: "Removes an unapproved Tuesday batch — its lines and its own debits — un-sweeps the credits it took, and builds the batch again. Refuses a batch finance has approved. Impact: deletes the batch's own projection of a payment that never happened and re-derives it through GSB Weekly Payout; the credits themselves are un-swept, never deleted, and the rebuilt batch names its maker so a second person must approve it.",
+                periodType: EnginePeriodType::Date,
+                commandClass: RebuildWeekCommand::class,
+                commandSignature: 'compensation:rebuild-week',
+                periodOption: '--date',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: null,
+                cadence: EngineCadence::unscheduled(),
+                defaultPeriod: 'today',
+                manuallyTriggerable: false,
+                isOrchestrator: true,
+                developerOnly: true,
+            ),
+
+            new EngineDefinition(
+                key: 'compensation.rebuild-month',
+                label: 'Rebuild — monthly close',
+                description: "Deletes the month's rank, Growth Booster, Fortune, ADC and purchase-offer rows and their wallet credits, removes the month's unapproved payout batch if one exists, and re-runs the close. Refuses a frozen month or one the next month was built on. Impact: removes those rows in one transaction and re-derives them through the ordinary monthly close; consumed purchase-offer grants and delivered award milestones are kept, and no credit is ever written by hand.",
+                periodType: EnginePeriodType::Month,
+                commandClass: RebuildMonthCommand::class,
+                commandSignature: 'compensation:rebuild-month',
+                periodOption: '--month',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: null,
+                cadence: EngineCadence::unscheduled(),
+                defaultPeriod: 'prev-month',
+                manuallyTriggerable: false,
+                isOrchestrator: true,
+                developerOnly: true,
+            ),
+
+            new EngineDefinition(
+                key: 'compensation.rebuild-payout',
+                label: 'Rebuild — monthly payout',
+                description: "Removes the month's unapproved payout batch, un-sweeps its credits, deletes its own debits, and re-runs the payout close so every distributor's amount is frozen again. Impact: deletes the batch row, its line items and the three sweep debits it wrote, then re-derives all of them through the monthly payout close; the credits are un-swept rather than deleted, and an approved batch is refused outright.",
+                periodType: EnginePeriodType::Month,
+                commandClass: RebuildPayoutCommand::class,
+                commandSignature: 'compensation:rebuild-payout',
+                periodOption: '--month',
+                dependencies: [],
+                featureFlagClass: null,
+                reportRouteName: null,
+                cadence: EngineCadence::unscheduled(),
+                defaultPeriod: 'prev-month',
+                manuallyTriggerable: false,
+                isOrchestrator: true,
+                developerOnly: true,
             ),
         ];
 

@@ -68,7 +68,7 @@ php artisan compensation:engine-health-digest --always
 | `engine_runs.status` | Means | Clears itself? |
 |---|---|---|
 | `succeeded` | The step finished and its period is closed. | — |
-| `failed` | The step threw. **The chain stopped here** — nothing after it ran. | No. Retry button, or the command by hand. |
+| `failed` | The step threw. **The run stopped here** — nothing after it ran. | No. A developer rebuild (`compensation:rebuild-*`), or the command by hand. |
 | `running` | A process opened this row and never closed it. If no worker is alive, it is a lie. | Only when a later chain run finds it stale. |
 | `skipped` | The step *declined* to run. | **No button clears this.** See §2. |
 | *(no row at all)* | The chain never started. Scheduler or cron problem, not an engine problem. | No. |
@@ -85,8 +85,10 @@ php artisan compensation:engine-health-digest --always
 
 | Symptom | Almost always | Go to |
 |---|---|---|
-| Chain recorded `skipped`, no banner | Stale queue worker after a deploy | [§3](#3-the-night-was-skipped) |
-| Chain recorded `skipped` on dev/staging | A recompute projection is standing | [§3](#3-the-night-was-skipped) |
+| Nightly run recorded `skipped`, no banner | Stale queue worker after a deploy | [§3](#3-the-night-was-skipped) |
+| Nightly run recorded `skipped` on dev/staging | A recompute projection is standing | [§3](#3-the-night-was-skipped) |
+| Weekly run deferred: alert says tonight's nightly run has not succeeded | The night's Nightly Run has not succeeded yet | [§3c](#3c-a-run-was-deferred-on-a-prerequisite) |
+| Month not closed on the 1st: alert names a prerequisite, not a missing cut-off | Tonight's Nightly Run (or the Tuesday's Weekly Run) has not succeeded | [§3c](#3c-a-run-was-deferred-on-a-prerequisite) |
 | One step `failed`, steps after it never ran | The engine threw | [§4](#4-a-step-failed) |
 | A run stuck `running` for hours | Worker died mid-run (OOM/SIGKILL) | [§5](#5-a-run-is-stuck-running) |
 | No `engine_runs` row for last night at all | Scheduler/cron not firing | [§6](#6-no-run-row-at-all) |
@@ -119,7 +121,7 @@ the skip was the engine's own feature flag — correct, and nothing is owed.
 
 ### 3a. Stale worker (the usual one, always after a deploy)
 
-The chain refuses to credit money from a process that may be running
+The engines refuse to credit money from a process that may be running
 pre-deploy code. **Restart the worker and the scheduler — every deploy,
 every time:**
 
@@ -135,8 +137,8 @@ php artisan compensation:nightly-run --date=2026-09-16
 ```
 
 > A skipped night is **not** backfilled automatically for payouts. The
-> cut-offs are (the chain works forward from the last proven day), but the
-> weekly batch for a Tuesday inside the gap needs the date naming — see §7.
+> cut-offs are (the Nightly Run works forward from the last proven day), but
+> the weekly batch for a Tuesday inside the gap needs the date naming — see §7.
 
 ### 3b. A standing recompute projection (dev/staging only)
 
@@ -146,19 +148,40 @@ A projection pauses the scheduled engines until it is cleared. Clear it:
 php artisan compensation:recompute-all --horizon=now
 ```
 
+### 3c. A run was deferred on a prerequisite
+
+Since ADR-0016 the nightly, weekly and monthly runs are three separate
+orchestrators with one ordering rule between them: the Weekly Run (03:00 IST)
+waits for that night's Nightly Run to have succeeded, and the Monthly Run's
+close phase (04:00 IST) waits for both. When the run it waits on has not
+succeeded, the dependent run records its own row as `skipped` — never
+`failed` — and writes an alert naming what it is waiting for
+(`compensation.weekly_run_deferred` / `compensation.month_deferred` with
+`cause: prerequisite`).
+
+**This is not a failure and there is nothing to rebuild.** Read the alert or
+the banner — it names the run whose success is missing. Fix that run using
+§3–§5 above, whatever caused it to fail or never start. The deferred run
+re-attempts itself automatically the next night it is due: a deferred Tuesday
+batch is still dated that Tuesday when it is eventually built, and a deferred
+monthly close is not backdated either. Nothing to type unless the blocking
+run itself needs help.
+
 ---
 
 ## 4. A step `failed`
 
-**The chain stops at its first failing step**, so everything after it did
-not run. Fix the cause, then re-run the whole night — a re-run *resumes*,
-skipping every step already recorded succeeded for its period.
+**Each of the three runs stops at its first failing step**, so everything
+after it did not run. Fix the cause, then re-run the whole night — a re-run
+*resumes*, skipping every step already recorded succeeded for its period.
+There is no admin retry button any more (ADR-0016): the Engine Runs page
+shows the failure to every admin role as information only. Repairing it is
+either the ordinary command by hand, below, or — for a night a later cut-off
+has already passed, or a payout batch that needs to be un-built and re-swept
+— a developer rebuild (`compensation:rebuild-*`, see the table below and
+`docs/runbooks/artisan-commands.md`).
 
 ```bash
-# Preferred: the admin retry button on /admin/compensation/engine-runs.
-# It binds the clicking admin as the actor, which the CLI cannot do.
-
-# By hand, if the button is unavailable:
 php artisan compensation:nightly-run --date=2026-09-16
 
 # Force every step to re-run, ignoring the resume:
@@ -180,23 +203,32 @@ php artisan adc:monthly-run                --month=2026-08
 php artisan offers:monthly-run             --month=2026-08
 ```
 
-### What the retry button does and does not cover
+### What a rebuild does and does not cover
+
+Developer only, from the Engine Runs page or the CLI with `--actor=<developer
+user id>`: `compensation:rebuild-night`, `compensation:rebuild-week`,
+`compensation:rebuild-month`, `compensation:rebuild-payout`. Each previews
+what it would delete and un-sweep before it touches anything, and re-runs the
+ordinary command afterwards.
 
 | | |
 |---|---|
-| Re-runs the failed night, resuming | ✅ |
-| Rebuilds a weekly batch that was **never started** | ✅ (`--weekly-payouts-only`) |
-| Rebuilds the monthly payout close | ❌ — it self-heals from the 8th |
-| Re-enters a batch already `failed` or `processing` | ❌ — §8 / §9 |
-| Clears a `skipped` night | ❌ — §3 |
+| Rebuilds the newest night | ✅ |
+| A night a later cut-off has already passed | ❌ — R-91, [§14](#14-a-cut-off-refuses-because-a-later-one-already-ran) |
+| An unapproved (pending/failed) batch | ✅ |
+| An approved batch | ❌ — retry its failed lines instead ([§8](#8-a-payout-batch-is-failed)) |
+| A frozen month (its payout was approved) | ❌ — no override |
+| A month the next month was built on | ❌ |
+| Clears a `skipped` night | ❌ — [§3](#3-the-night-was-skipped) / [§3c](#3c-a-run-was-deferred-on-a-prerequisite) |
 
 ---
 
 ## 5. A run is stuck `running`
 
 A `running` row is only ever closed by the process that opened it. If that
-process is dead, nothing closes it — and it suppresses the retry button,
-because the page reads it as a run still in flight.
+process is dead, nothing closes it — and a developer rebuild's preflight
+refuses beside it, because `RebuildPreflight` reads it as a run still in
+flight.
 
 ```bash
 # 1. Is anything actually alive?
@@ -260,39 +292,60 @@ php artisan tinker --execute '
 Distributors lose nothing either way: unswept income stays in the wallet and
 the first batch after the flag returns sweeps every older earning week too.
 
-Build a missed weekly batch (the date is **the Tuesday**, and it must be a
-Tuesday):
+**This is now usually not needed by hand.** A missing Tuesday batch or a
+missing monthly payout is exactly what the Weekly Run (03:00 IST) and the
+Monthly Run (04:00 IST) self-heal on their own next night — see
+[§3c](#3c-a-run-was-deferred-on-a-prerequisite) if the alert names a
+prerequisite rather than a missing build. If it needs to happen sooner than
+the next night, run the orchestrator directly — it carries the same ordering
+guards a hand-typed engine command does not:
+
+```bash
+php artisan compensation:weekly-run --date=2026-09-16    # tonight; builds any Tuesday still owed
+php artisan compensation:monthly-run --date=2026-09-16   # tonight; closes/pays whatever is owed
+```
+
+The bare engine commands still work and are what the orchestrators call
+underneath — the date for the weekly one is **the Tuesday itself**, and it
+must be a Tuesday:
 
 ```bash
 php artisan gsb:weekly-payout --date=2026-09-15
-```
-
-Build a missed monthly payout close:
-
-```bash
 php artisan compensation:monthly-payout-close --month=2026-08
 ```
 
-> ⚠️ **A batch built from a shell has NO MAKER.** There is no `Auth::id()`
-> and no attributed run context on the CLI, so `created_by` lands NULL and
-> nothing stops the person who ran it from also approving it. **Whoever runs
-> this must not approve the batch.** Use the admin retry button instead
-> wherever it applies — it records a maker and enforces the bar.
+> ⚠️ **A batch built from any of these commands typed by hand has NO MAKER.**
+> There is no `Auth::id()` and no attributed run context on the CLI, so
+> `created_by` lands NULL and nothing stops the person who ran it from also
+> approving it. **Whoever runs this must not approve the batch.**
 
 ---
 
 ## 8. A payout batch is `failed`
 
 The sweep threw and stopped cleanly. This is the ordinary half-finished
-case and it is **fully recoverable** — the re-run picks up where it stopped
-and skips every distributor who already has a line item.
+case, and while the plain re-run below still resumes it (skipping every
+distributor who already has a line item), the sanctioned developer path is
+now a **rebuild**: it un-sweeps the batch's credits, deletes its own debits
+and line items, deletes the batch row, and re-runs the sweep from scratch —
+audited, with a maker recorded by `--actor`, in one step:
+
+```bash
+php artisan compensation:rebuild-week --date=2026-09-15 --actor=<developer user id>    # weekly
+php artisan compensation:rebuild-payout --month=2026-08 --actor=<developer user id>    # monthly
+```
+
+It refuses (and says why) once the batch has been approved — DN-2: money
+instructions that already left the company are corrected line by line, never
+rebuilt.
+
+The plain re-run still works for a pending/failed batch and carries the same
+maker warning as §7:
 
 ```bash
 php artisan gsb:weekly-payout --date=2026-09-15              # weekly
 php artisan compensation:monthly-payout-close --month=2026-08 # monthly
 ```
-
-Same maker warning as §7: a second person must approve.
 
 ---
 
@@ -301,8 +354,8 @@ Same maker warning as §7: a second person must approve.
 The sweep was **killed outright** — OOM, the queue job's hour-long timeout,
 SIGKILL — so it never reached the code that writes `failed`. `processing` is
 closed to re-entry, so nothing on the platform can re-enter it: not the
-nightly chain (it proves a Tuesday from the *existence* of a batch, not its
-status), not the retry button, not the sweep itself.
+Weekly or Monthly run (each proves a Tuesday or a month from the *existence*
+of a batch, not its status), not a rebuild, not the sweep itself.
 
 It appears in the **Action Center → Money → "Payout batches stuck
 mid-sweep"** once nothing has been written for it for two hours.
@@ -315,8 +368,8 @@ ps aux | grep -c "[q]ueue:work"
 # 2. Reopen it. --actor is REQUIRED and must hold `finance.record`.
 php artisan payout:reopen-stuck-batch --type=weekly --date=2026-09-15 --actor=<user id>
 
-# 3. Re-run it as in §8
-php artisan gsb:weekly-payout --date=2026-09-15
+# 3. Rebuild it (records the developer as maker) or re-run it as in §8
+php artisan compensation:rebuild-week --date=2026-09-15 --actor=<developer user id>
 ```
 
 The command refuses if a payout sweep holds the lock, or if **anything has
@@ -343,6 +396,13 @@ cut-off, the close is refused, recorded as
 `compensation.nightly_run_month_deferred`, and reported. That is deliberate —
 every monthly engine freezes what it prices, so a month closed short stays
 short.
+
+> **If the refusal instead names a frozen month, that is not this section.**
+> Once finance approves that month's payout batch, `FrozenPayoutGuard` refuses
+> every monthly engine, the close and both month rebuilds for it — with no
+> override, not even `--force`. That is D9, not a bug: the money has already
+> moved on that month's figures. The engines run again for the *next* month
+> from its own 1st, 00:00 IST; there is nothing to fix here.
 
 ```bash
 # Which days of the month have no completed cut-off
@@ -488,11 +548,36 @@ absorbed the following night: no error, wrong figures, nobody told. If the night
 you are retrying is the most recent one and nothing has run since, the button
 behaves exactly as it always did.
 
-**So the deadline is the next nightly chain run — 00:05 IST.** Not "usually":
+**Since ADR-0016, `compensation:rebuild-night` (developer only) is the
+sanctioned same-day remedy for a whole failed night**, not just one
+distributor: it wipes the previous day's cut-off results, pools, mentorship
+results and their wallet credits, rewinds the carry-forward, and re-runs the
+night — refusing with this same R-91 message once a later day has already
+been cut off. Manual Controls → Retry Daily Cut-off (above) remains the
+one-distributor fix; reach for the rebuild when the whole night needs it.
+
+**After a night rebuild inside a closed month, these three steps are
+mandatory — not the last of them advice (R-102, condition of the S3
+compliance sign-off):**
+
+1. Confirm the month the rebuilt night falls in is closed but **not yet
+   frozen** (`FrozenPayoutGuard::frozenBatchFor()` — a frozen month refuses
+   the rebuild outright, so if you got this far it is not frozen).
+2. Check `docs/compliance/risk-register.md` R-102 item (3): a night rebuilt
+   inside a closed month changes that night's GSB figures, but the month's
+   Rank, Growth Booster, Fortune and ADC results were already computed on
+   the **pre-rebuild** numbers. Nothing alerts on this by itself.
+3. **Run `php artisan compensation:rebuild-month --month=<that month>
+   --actor=<developer user id>` before you consider the incident closed.**
+   Skipping this step leaves the month's non-GSB bonuses standing on stale
+   figures with no record that they are stale.
+
+**So the deadline is the next Nightly Run — 00:05 IST.** Not "usually":
 `GsbIdleCutoffBatch` writes a `no_match` row for every idle distributor each
-night and `no_match` advances the store, so one chain run closes the window for
-essentially the whole roster. A failed night found the next morning is already
-past retry. Treat a failed cut-off as same-day work.
+night and `no_match` advances the store, so one Nightly Run closes the window
+for essentially the whole roster. A failed night found the next morning is
+already past retry — and past rebuilding. Treat a failed cut-off as same-day
+work.
 
 **What is lost is not only that day's bonus.** A cut-off reads exactly one
 day's `group_bv_daily` row (`GsbCutoffService.php:162`) and nothing else ever

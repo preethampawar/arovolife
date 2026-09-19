@@ -36,17 +36,18 @@ final readonly class EngineCadence
     private function __construct(
         public string $type,
         /**
-         * The clock time this engine fires at — and, for an engine the nightly
-         * chain fires, its POSITION IN THE NIGHT rather than a promise about
-         * the clock.
+         * The clock time this engine fires at — and, for an engine one of the
+         * three scheduled runs fires, its POSITION IN THAT RUN rather than a
+         * promise about the clock.
          *
-         * The chain starts at 00:05 and runs its steps in sequence, so a step
-         * declaring 00:10 does not fire at 00:10; it fires when the step before
-         * it has exited 0, which is the whole reason the clock offsets were
-         * replaced. The declared times are kept because their ORDER is the
-         * chain's order, and two readers depend on exactly that: the recompute
-         * replay sorts a day's engines by this value, and any change to it
-         * would reorder a replayed day's engines and move figures.
+         * A run starts at its own time (00:05, 03:00, 04:00 IST) and invokes
+         * its steps in sequence, so a step declaring 00:10 does not fire at
+         * 00:10; it fires when the step before it has exited 0, which is the
+         * whole reason the clock offsets were replaced. The declared times are
+         * kept because their ORDER is the run's order, and two readers depend
+         * on exactly that: the recompute replay sorts a day's engines by this
+         * value, and any change to it would reorder a replayed day's engines
+         * and move figures.
          *
          * Nothing renders it as a time for such an engine —
          * {@see EngineDefinition::scheduleText()} defers to the orchestrator —
@@ -131,12 +132,15 @@ final readonly class EngineCadence
     /**
      * Human sentence for the admin console — generated, never hand-written.
      *
-     * `$chainStartsAt` is passed for an engine the nightly chain fires: the day
-     * rule is still this engine's own, but the clock belongs to the chain, and
-     * the sentence says when the night starts rather than a minute this engine
-     * has not used since the chain replaced the offsets.
+     * `$chainStartsAt` and `$chainLabel` are passed for an engine an
+     * orchestrator fires: the day rule is still this engine's own, but the
+     * clock belongs to the run that fires it, and the sentence says which run
+     * that is rather than a minute this engine has not used since the runs
+     * replaced the clock offsets. Three runs exist now (ADR-0016), so naming
+     * one is the difference between "Tuesdays, in the Weekly Run from 03:00
+     * IST" and a sentence an operator has to guess at.
      */
-    public function describe(?string $chainStartsAt = null): string
+    public function describe(?string $chainStartsAt = null, ?string $chainLabel = null): string
     {
         if ($this->type === self::NONE) {
             return 'Not scheduled — manual only';
@@ -146,7 +150,7 @@ final readonly class EngineCadence
 
         $clock = $chainStartsAt === null
             ? "{$this->time} IST"
-            : "in the nightly chain from {$chainStartsAt} IST";
+            : sprintf('in the %s from %s IST', $chainLabel ?? 'run that fires it', $chainStartsAt);
 
         return match ($this->type) {
             self::DAILY => "Daily, {$clock}{$suffix}",

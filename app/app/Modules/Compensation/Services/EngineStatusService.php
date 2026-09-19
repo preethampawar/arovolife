@@ -31,7 +31,11 @@ use Illuminate\Support\Facades\DB;
  */
 final class EngineStatusService
 {
-    /** The orchestrator an operator may retry: the night, not a single engine. */
+    /**
+     * The daily run — one of the three scheduled orchestrators
+     * ({@see EngineRegistry::rootOrchestratorKeys()}), and the only one whose
+     * steps are dated the night it belongs to.
+     */
     public const CHAIN_KEY = 'compensation.nightly-run';
 
     /**
@@ -47,25 +51,38 @@ final class EngineStatusService
     }
 
     /**
-     * The nightly chain's last finished attempt, when that attempt FAILED.
+     * The nightly run's last finished attempt, when that attempt FAILED.
      *
      * Deliberately "the latest attempt", not "the oldest unhealed failure". A
-     * night that fails is not a night that is lost: the next chain backfills the
-     * cut-offs it missed and rebuilds a missed Tuesday batch still dated that
-     * Tuesday, so once any later night has exited 0 the gap is closed and a
-     * banner pointing at the old failure would be telling an operator to fix
-     * something that has already fixed itself.
+     * night that fails is not a night that is lost: the next nightly run
+     * backfills the cut-offs it missed, so once any later night has exited 0
+     * the gap is closed and a banner pointing at the old failure would be
+     * telling an operator about something that has already healed itself.
      *
-     * RUNNING rows are excluded — a chain in flight is not a failure — and so
-     * are SKIPPED ones: a preflight refusal is a decision (a stale worker, a
-     * standing projection), and retrying it would only refuse again. Those
-     * surface through {@see EngineHealthService} chain alerts, which say what to
-     * actually do.
+     * RUNNING rows are excluded — a run in flight is not a failure — and so are
+     * SKIPPED ones: a preflight refusal or a deferral is a decision (a stale
+     * worker, a standing projection, a month waiting on tonight's runs), and
+     * nothing would be repaired by reporting it as a breakage. Those surface
+     * through {@see EngineHealthService} run alerts, which say what is actually
+     * being waited for.
      */
     public function failedChainRun(): ?EngineRun
     {
+        return $this->failedRootRun(self::CHAIN_KEY);
+    }
+
+    /**
+     * The same question for any root orchestrator: the nightly, weekly or
+     * monthly run's last finished attempt, when that attempt FAILED.
+     *
+     * Parameterised rather than copied per run, because the rule that makes the
+     * answer honest — latest attempt, `running` and `skipped` excluded — is the
+     * part that would drift if it were written three times.
+     */
+    public function failedRootRun(string $key): ?EngineRun
+    {
         $latest = EngineRun::query()
-            ->where('engine_key', self::CHAIN_KEY)
+            ->where('engine_key', $key)
             ->whereIn('status', [EngineRun::STATUS_SUCCEEDED, EngineRun::STATUS_FAILED])
             ->orderByDesc('id')
             ->first();
@@ -74,35 +91,69 @@ final class EngineStatusService
     }
 
     /**
-     * The steps of a failed night, in chain order, with what each one did.
+     * The steps of a failed nightly run, in the order it invoked them, with
+     * what each one did.
      *
-     * Read from the step engines' own `engine_runs` rows for that period rather
-     * than from the chain's summary: the chain aborts at the first non-zero exit
-     * and never reaches the steps after it, so the only honest account of which
-     * engines ran is the rows they wrote themselves.
+     * Read from the step engines' own `engine_runs` rows rather than from the
+     * run's summary: the run aborts at the first non-zero exit and never
+     * reaches the steps after it, so the only honest account of which engines
+     * ran is the rows they wrote themselves.
+     *
+     * Scoped two ways, and both are needed. By ENGINE, to the nightly run's own
+     * steps — the weekly and monthly runs write rows on the same night, and
+     * listing those under "what each step did" would credit the nightly run
+     * with work it never touched. And by the failed run's own WINDOW rather
+     * than by period: a cut-off is dated night − 1, and every backfilled day is
+     * dated earlier still, so a period filter could never show the one step
+     * whose failure the banner exists to explain. The window also excludes a
+     * hand-typed re-run of the same engine an hour later, which is a different
+     * attempt and belongs to no run row here.
+     *
+     * Each label carries its step's own period, so a night that backfilled four
+     * days reads as four dated lines rather than four identical ones.
      *
      * @return list<array{label: string, status: string, error: string|null}>
      */
-    public function chainStepOutcomes(Carbon $night): array
+    public function chainStepOutcomes(EngineRun $run): array
     {
+        $stepKeys = [];
+
+        foreach (EngineRegistry::all() as $key => $definition) {
+            if ($definition->orchestratedBy === self::CHAIN_KEY) {
+                $stepKeys[] = $key;
+            }
+        }
+
+        if ($stepKeys === [] || $run->started_at === null) {
+            return [];
+        }
+
         $rows = EngineRun::query()
-            ->where('engine_key', '!=', self::CHAIN_KEY)
-            ->whereDate('period_start', $night->toDateString())
+            ->whereIn('engine_key', $stepKeys)
+            ->where('started_at', '>=', $run->started_at)
+            ->where('started_at', '<=', $run->finished_at ?? Carbon::now())
             ->orderBy('id')
-            ->get()
-            ->keyBy('engine_key');
+            ->get();
 
         $steps = [];
 
-        foreach ($rows as $key => $run) {
-            if (! EngineRegistry::has((string) $key)) {
+        foreach ($rows as $step) {
+            $key = (string) $step->engine_key;
+
+            if (! EngineRegistry::has($key)) {
                 continue;
             }
 
+            $definition = EngineRegistry::get($key);
+
             $steps[] = [
-                'label' => EngineRegistry::get((string) $key)->label,
-                'status' => (string) $run->status,
-                'error' => is_string($run->error) ? $run->error : null,
+                'label' => sprintf(
+                    '%s — %s',
+                    $definition->label,
+                    $definition->displayPeriod($step->period_start),
+                ),
+                'status' => (string) $step->status,
+                'error' => is_string($step->error) ? $step->error : null,
             ];
         }
 
@@ -126,15 +177,66 @@ final class EngineStatusService
      * Same rule as {@see hasSucceededRunAfterDay()}, one period type wider: the
      * boundary is the app-timezone midnight that opens the next day for a
      * date-typed engine and the next month for a month-typed one.
+     *
+     * THE LATEST FINISHED ATTEMPT DECIDES (D13). A failed re-run un-proves the
+     * period: a rebuild that wiped the period's rows and then failed must not
+     * read as done, or the resume logic skips past a step whose results no
+     * longer exist and the payout gate a week later pays on nothing. `skipped`
+     * and `running` rows are not attempts and are ignored — a preflight refusal
+     * decided nothing about the period, and a run in flight has not finished
+     * deciding.
      */
     public function hasSucceededRun(string $key, Carbon $period): bool
+    {
+        $latest = $this->latestFinishedRun($key, $period);
+
+        return $latest !== null
+            && $latest->status === EngineRun::STATUS_SUCCEEDED
+            && $latest->started_at !== null
+            && $latest->started_at->greaterThanOrEqualTo(self::periodEndsAt($key, $period));
+    }
+
+    /**
+     * The most recent run of $key for $period that actually finished — the one
+     * row D13's rule is read from.
+     *
+     * Ordered by `started_at` and then `id`, so two attempts inside the same
+     * second still resolve to the later one.
+     *
+     * Public because {@see RunPrerequisites} has to name the attempt it
+     * refused on, and that is this row and no other: a diagnosis read from
+     * {@see self::lastRun()} would reach back to another period's row and tell
+     * an operator about a night nobody asked about. One query, one rule.
+     */
+    public function latestFinishedRun(string $key, Carbon $period): ?EngineRun
     {
         return EngineRun::query()
             ->where('engine_key', $key)
             ->whereDate('period_start', $period->toDateString())
-            ->where('status', EngineRun::STATUS_SUCCEEDED)
-            ->where('started_at', '>=', self::periodEndsAt($key, $period)->toDateTimeString())
-            ->exists();
+            ->whereIn('status', [EngineRun::STATUS_SUCCEEDED, EngineRun::STATUS_FAILED])
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * Did $key succeed for TONIGHT — a run dated $night whose latest finished
+     * attempt succeeded and started after the night began?
+     *
+     * The ordering guard between the three cadences reads this
+     * ({@see RunPrerequisites}). "Started after the night began" is what
+     * separates tonight's process from a replay of that date typed by hand a
+     * week later: the client's rule is about the run that has just finished,
+     * not about the date being covered.
+     */
+    public function hasSucceededRunTonight(string $key, Carbon $night): bool
+    {
+        $latest = $this->latestFinishedRun($key, $night);
+
+        return $latest !== null
+            && $latest->status === EngineRun::STATUS_SUCCEEDED
+            && $latest->started_at !== null
+            && $latest->started_at->greaterThanOrEqualTo($night->copy()->startOfDay());
     }
 
     /**
@@ -235,13 +337,20 @@ final class EngineStatusService
      * True when the engine has a live run in flight — either one this process
      * knows about or a cron run that started moments ago. `running` rows older
      * than the staleness cutoff are treated as abandoned, not live.
+     *
+     * `$exceptRunId` excludes ONE row: a command that is itself a registry entry
+     * already has its own `running` row by the time it asks this, and a rebuild
+     * refusing because it can see itself would refuse every time
+     * ({@see RebuildPreflight}). Every other caller asks about a different
+     * engine and leaves it null.
      */
-    public function hasRunInFlight(string $key): bool
+    public function hasRunInFlight(string $key, ?int $exceptRunId = null): bool
     {
         return EngineRun::query()
             ->where('engine_key', $key)
             ->where('status', EngineRun::STATUS_RUNNING)
             ->where('started_at', '>=', Carbon::now()->subMinutes(EngineRun::STALE_AFTER_MINUTES))
+            ->when($exceptRunId !== null, fn (Builder $query): Builder => $query->whereKeyNot($exceptRunId))
             ->exists();
     }
 
@@ -295,18 +404,38 @@ final class EngineStatusService
     }
 
     /**
+     * A failure is unresolved until a LATER SUCCESS of the same engine covers
+     * it — for a leaf engine, a later success for the same period.
+     *
+     * D5: for a root orchestrator the period equality is dropped, because the
+     * period of one of those runs is a NIGHT, and a night is never re-run. The
+     * nightly run backfills the cut-offs a failed night missed; the weekly and
+     * monthly runs re-attempt what they owe every night. So the first night any
+     * of them exits 0 is the night the earlier failure stopped being anything
+     * to act on — while the per-period rule would keep 8 September's failed run
+     * in the digest for thirty days, with no run of that date ever coming to
+     * resolve it (staging, since 8 Sep 2026).
+     *
+     * A leaf is the opposite case and keeps the period: a cut-off that failed
+     * for the 12th is still owed however many later days succeed.
+     *
      * @return Builder<EngineRun>
      */
     private function unresolvedFailureQuery(Carbon $since): Builder
     {
+        $rootKeys = EngineRegistry::rootOrchestratorKeys();
+
         return EngineRun::query()
             ->where('status', EngineRun::STATUS_FAILED)
             ->where('started_at', '>=', $since)
-            ->whereNotExists(function ($query) use ($since): void {
+            ->whereNotExists(function ($query) use ($since, $rootKeys): void {
                 $query->select(DB::raw(1))
                     ->from('engine_runs as later')
                     ->whereColumn('later.engine_key', 'engine_runs.engine_key')
-                    ->whereColumn('later.period_start', 'engine_runs.period_start')
+                    ->where(function ($scope) use ($rootKeys): void {
+                        $scope->whereColumn('later.period_start', 'engine_runs.period_start')
+                            ->orWhereIn('engine_runs.engine_key', $rootKeys);
+                    })
                     ->whereColumn('later.started_at', '>=', 'engine_runs.started_at')
                     ->where('later.status', EngineRun::STATUS_SUCCEEDED)
                     ->where('later.started_at', '>=', $since);
@@ -395,22 +524,145 @@ final class EngineStatusService
      * comparison is between two columns a day apart, and the range is capped at
      * about a month by every caller.
      *
+     * THE LATEST FINISHED ATTEMPT DECIDES AT THE FRONTIER ONLY (D13 + A6).
+     *
+     * D13 exists for one shape: a night that was wiped and then failed to
+     * rebuild must read "not computed", or the month is closed over rows that
+     * no longer exist. That shape can only occur on the NEWEST day — the
+     * rebuild refuses a day any later cut-off has passed (D11/R-91), because
+     * the carry-forward store is rolling and cannot be rewound one day at a
+     * time. So behind the frontier a failed latest attempt destroyed nothing:
+     * the day's rows are intact, the earlier success still describes them, and
+     * the day stays listed.
+     *
+     * Applying the latest-attempt rule everywhere would hand anyone who can
+     * trigger an engine (`finance.record`, from the Engine Runs page) a way to
+     * block a month's crediting for ever by re-running a past day, whose
+     * re-run cannot succeed — the same R-91 guard refuses it — leaving
+     * `--force` as the only way to pay a month nothing was wrong with. Refusal
+     * is the fail-safe answer only where a refusal can still be cleared.
+     *
+     * A day is therefore listed when its cut-off was ever proven AND either its
+     * latest attempt still proves it, or some LATER day is proven — inside the
+     * range or beyond it. The invariant is about the carry-forward store, not
+     * about the window the caller asked about: a later proven day means the
+     * store has advanced past this one, which means R-91 forbids rebuilding it,
+     * which means its rows are intact. Bounding the frontier by `$to` would
+     * make a genuinely failed re-run of a month's LAST day unclearable — its
+     * proven successor is in the next month, so the month would read short, and
+     * re-running that day only yields `skipped` (A1), which never displaces the
+     * `failed` row. `--force` would be the only way out of a month nothing was
+     * wrong with.
+     *
+     * `skipped` and `running` rows are not attempts: a preflight or ordering
+     * refusal (A1) decided nothing about the period, and a run in flight has
+     * not finished deciding.
+     *
      * @return list<string> Y-m-d
      */
     public function completedCutoffDatesBetween(Carbon $from, Carbon $to): array
     {
-        $completed = EngineRun::query()
+        $runs = EngineRun::query()
             ->where('engine_key', 'gsb.daily-cutoff')
-            ->where('status', EngineRun::STATUS_SUCCEEDED)
+            ->whereIn('status', [EngineRun::STATUS_SUCCEEDED, EngineRun::STATUS_FAILED])
             ->whereBetween('period_start', [$from->toDateString(), $to->copy()->endOfDay()->toDateTimeString()])
-            ->get(['period_start', 'started_at'])
-            ->filter(fn (EngineRun $run): bool => $run->started_at !== null
-                && $run->started_at->greaterThanOrEqualTo($run->period_start->copy()->startOfDay()->addDay()))
-            ->map(fn (EngineRun $run): string => $run->period_start->toDateString())
-            ->unique()
-            ->sort();
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->get(['id', 'period_start', 'status', 'started_at']);
 
-        return array_values($completed->all());
+        /** @var array<string, bool> $everProven day => some attempt proved it */
+        $everProven = [];
+        /** @var array<string, bool> $latestProves day => its latest attempt proves it */
+        $latestProves = [];
+
+        // Ascending, so the last row read for a day is that day's latest attempt.
+        foreach ($runs as $run) {
+            $day = $run->period_start->toDateString();
+            $proves = self::runProvesDay($run);
+
+            $everProven[$day] = ($everProven[$day] ?? false) || $proves;
+            $latestProves[$day] = $proves;
+        }
+
+        $frontier = null;
+
+        foreach ($latestProves as $day => $proves) {
+            if ($proves && ($frontier === null || $day > $frontier)) {
+                $frontier = (string) $day;
+            }
+        }
+
+        $completed = [];
+        $provenBeyondRange = null;
+
+        foreach ($everProven as $day => $proven) {
+            if (! $proven) {
+                continue;
+            }
+
+            $day = (string) $day;
+
+            if ($latestProves[$day] || ($frontier !== null && $day < $frontier)) {
+                $completed[] = $day;
+
+                continue;
+            }
+
+            // The day is the newest proven one INSIDE the range, and its latest
+            // attempt failed. Asked once, lazily, because the answer is the same
+            // for every such day and most ranges never need it at all.
+            $provenBeyondRange ??= $this->provenCutoffExistsAfter($to);
+
+            if ($provenBeyondRange) {
+                $completed[] = $day;
+            }
+        }
+
+        sort($completed);
+
+        return $completed;
+    }
+
+    /**
+     * Is any cut-off day after $day proven, by the same latest-attempt rule?
+     *
+     * What makes the frontier a frontier is the carry-forward store, which is
+     * platform-wide and knows nothing about the range a caller asked about. A
+     * month's last day whose successor — the 1st of the next month — is cut off
+     * is behind the frontier exactly as any mid-month day is.
+     *
+     * Bounded by the calendar rather than by a limit: the days after $day are
+     * the days since the period the caller is asking about ended, which for
+     * every caller is a closed month plus however long ago it closed.
+     */
+    private function provenCutoffExistsAfter(Carbon $day): bool
+    {
+        $latestPerDay = EngineRun::query()
+            ->where('engine_key', 'gsb.daily-cutoff')
+            ->whereIn('status', [EngineRun::STATUS_SUCCEEDED, EngineRun::STATUS_FAILED])
+            ->whereDate('period_start', '>', $day->toDateString())
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->get(['id', 'period_start', 'status', 'started_at'])
+            // Ascending, so the last row read for a day is that day's latest attempt.
+            ->keyBy(fn (EngineRun $run): string => $run->period_start->toDateString());
+
+        return $latestPerDay->contains(fn (EngineRun $run): bool => self::runProvesDay($run));
+    }
+
+    /**
+     * Does this run prove its own day — a success that started after the day it
+     * cut off had ended?
+     *
+     * The period-end rule of {@see hasSucceededRun()}, applied per row: a
+     * succeeded run stamped inside its own day (an admin retry at noon, a
+     * recompute) cannot have seen the evening's sales.
+     */
+    private static function runProvesDay(EngineRun $run): bool
+    {
+        return $run->status === EngineRun::STATUS_SUCCEEDED
+            && $run->started_at !== null
+            && $run->started_at->greaterThanOrEqualTo($run->period_start->copy()->startOfDay()->addDay());
     }
 
     /**

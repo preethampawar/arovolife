@@ -7,11 +7,14 @@ namespace App\Modules\Compensation\Services;
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Enums\BonusType;
 use App\Modules\Compensation\Exceptions\BankDecryptionException;
+use App\Modules\Compensation\Exceptions\BatchIsFrozen;
 use App\Modules\Compensation\Jobs\DispatchRazorpayPayoutsJob;
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutGatewayEvent;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Compensation\Support\FrozenPayoutGuard;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Crypto\PiiCrypter;
@@ -106,6 +109,20 @@ final class PayoutService
 
     /** How long a second sweep queues behind the first before giving up. */
     private const SWEEP_LOCK_WAIT_SECONDS = 120;
+
+    /**
+     * The three debits a sweep writes against a line item, all in the same
+     * transaction as the line. {@see unbuildBatch()} removes exactly these.
+     *
+     * @var list<string>
+     */
+    private const BATCH_DEBIT_TYPES = ['payout_debit', 'admin_charge_debit', 'tds_debit'];
+
+    /**
+     * How many line-item ids go into one `whereIn`. A ten-lakh batch would
+     * otherwise build a single statement with a million placeholders.
+     */
+    private const UNBUILD_CHUNK = 5_000;
 
     /**
      * Weekly payout batch (Group A: GSB + Mentorship).
@@ -1422,12 +1439,239 @@ final class PayoutService
      * wait bounds how long a caller queues before a LockTimeoutException, which
      * the run commands already turn into a failed batch and a non-zero exit.
      *
-     * @param  callable(): PayoutBatch  $sweep
+     * Un-building a batch takes the same lock for the same reason from the
+     * other side: it hands room back under the ceiling, and a sweep reading the
+     * headroom halfway through that would price a batch against rows that are
+     * about to change. Hence the generic return type rather than a second copy
+     * of the lock with a different one.
+     *
+     * @template TLocked
+     *
+     * @param  callable(): TLocked  $sweep
+     * @return TLocked
      */
-    private function withSweepLock(callable $sweep): PayoutBatch
+    private function withSweepLock(callable $sweep): mixed
     {
         return Cache::lock(self::SWEEP_LOCK_KEY, self::SWEEP_LOCK_TTL_SECONDS)
             ->block(self::SWEEP_LOCK_WAIT_SECONDS, $sweep);
+    }
+
+    /**
+     * Take an unapproved payout batch back apart so the period that produced it
+     * can be computed again (ADR-0016, D10/DN-1).
+     *
+     * Three different things happen to three kinds of row, and the difference
+     * is the whole point:
+     *
+     *  - **Credits are never deleted.** Earned commission is append-only. The
+     *    batch's stamp on them (`swept_by_payout_batch_id`) is removed instead,
+     *    which returns them to the pool the next sweep reads — the money is
+     *    still owed, it is simply not on this batch any more.
+     *  - **The batch's OWN debits are deleted**: `payout_debit`,
+     *    `admin_charge_debit`, `tds_debit` and any `income_cap_forfeit`, all of
+     *    them written in the same transaction as the line item they belong to.
+     *    They are the batch's projection of a payment that never happened, and
+     *    the reports that sum TDS and admin charge sum these types live — an
+     *    offsetting `reversal` row would need a netting rule none of them has
+     *    (DN-1, signed off with the S3 review). Their ids and paise are in the
+     *    audit row.
+     *  - **Line items and the batch row go**, because the re-run rebuilds them;
+     *    that is what "re-freeze every distributor's amount" means here.
+     *
+     * Refuses rather than guesses: an approved batch, or one with gateway
+     * events, throws {@see BatchIsFrozen} before anything is written — money, or
+     * an instruction to move it, has left the company.
+     *
+     * @return array{entries_unswept: int, debits_deleted: int, debits_paise: int, forfeits_deleted: int, forfeits_paise: int, line_items: int}
+     */
+    public function unbuildBatch(PayoutBatch $batch, int $actorId, string $reason): array
+    {
+        return $this->withSweepLock(function () use ($batch, $actorId, $reason): array {
+            // Re-read under the lock: approval takes the same lock, so a batch
+            // approved while this call queued reads pending in the caller's copy
+            // and approved here.
+            $batch->refresh();
+
+            if (FrozenPayoutGuard::isFrozen($batch)) {
+                throw BatchIsFrozen::approved($batch);
+            }
+
+            if (PayoutGatewayEvent::query()->where('payout_batch_id', $batch->id)->exists()) {
+                throw BatchIsFrozen::reachedGateway($batch);
+            }
+
+            $before = AuditDigests::of($batch);
+
+            return DB::transaction(function () use ($batch, $actorId, $reason, $before): array {
+                $lineIds = PayoutLineItem::query()
+                    ->where('payout_batch_id', $batch->id)
+                    ->lockForUpdate()
+                    ->pluck('id')
+                    ->all();
+
+                // Belt for a line that reached the gateway without the batch-level
+                // column being set. Inside the transaction, so it rolls the whole
+                // un-build back rather than leaving half a batch.
+                if ($lineIds !== [] && PayoutGatewayEvent::query()->whereIn('payout_line_item_id', $lineIds)->exists()) {
+                    throw BatchIsFrozen::reachedGateway($batch);
+                }
+
+                $summary = [
+                    'entries_unswept' => WalletLedgerEntry::query()
+                        ->where('swept_by_payout_batch_id', $batch->id)
+                        ->update(['swept_by_payout_batch_id' => null]),
+                    'debits_deleted' => 0,
+                    'debits_paise' => 0,
+                    'forfeits_deleted' => 0,
+                    'forfeits_paise' => 0,
+                    'line_items' => count($lineIds),
+                ];
+
+                $debitIds = [];
+                $forfeitIds = [];
+
+                foreach (array_chunk($lineIds, self::UNBUILD_CHUNK) as $chunk) {
+                    $debits = $this->batchDebits($chunk);
+                    $forfeits = $this->batchForfeits($chunk);
+
+                    $debitIds = [...$debitIds, ...(clone $debits)->pluck('id')->all()];
+                    $forfeitIds = [...$forfeitIds, ...(clone $forfeits)->pluck('id')->all()];
+
+                    $summary['debits_paise'] += (int) (clone $debits)->sum('amount_paise');
+                    $summary['forfeits_paise'] += (int) (clone $forfeits)->sum('amount_paise');
+
+                    $debits->delete();
+                    $forfeits->delete();
+
+                    PayoutLineItem::query()->whereIn('id', $chunk)->delete();
+                }
+
+                $summary['debits_deleted'] = count($debitIds);
+                $summary['forfeits_deleted'] = count($forfeitIds);
+
+                $batchId = (int) $batch->id;
+                $batchType = (string) $batch->batch_type;
+                $batchDate = $batch->batch_date?->toDateString();
+                $status = (string) $batch->status;
+                $createdBy = $batch->created_by;
+
+                $batch->delete();
+
+                AuditLog::create([
+                    'actor_id' => $actorId,
+                    'action' => 'payout.batch.unbuilt',
+                    'subject_type' => 'payout_batch',
+                    'subject_id' => $batchId,
+                    'before_hash' => $before,
+                    'after_hash' => null,
+                    'details' => [
+                        'batch_type' => $batchType,
+                        'batch_date' => $batchDate,
+                        'status' => $status,
+                        'created_by' => $createdBy,
+                        'reason' => $reason,
+                        'line_item_ids' => $lineIds,
+                        'debit_ids' => $debitIds,
+                        'forfeit_ids' => $forfeitIds,
+                        ...$summary,
+                    ],
+                    'ip' => app()->runningInConsole() ? null : request()->ip(),
+                ]);
+
+                Log::info('payout.batch.unbuilt', [
+                    'payout_batch_id' => $batchId,
+                    'batch_type' => $batchType,
+                    'batch_date' => $batchDate,
+                    'actor_id' => $actorId,
+                    ...$summary,
+                ]);
+
+                return $summary;
+            });
+        });
+    }
+
+    /**
+     * What {@see unbuildBatch()} would remove, counted instead of deleted.
+     *
+     * The rebuild preview and the un-build itself must describe the same rows —
+     * a preview that undercounts is a confirm nobody gave — so both read the
+     * batch through {@see batchDebits()} and {@see batchForfeits()}.
+     *
+     * @return array{entries_unswept: int, debits_deleted: int, debits_paise: int, forfeits_deleted: int, forfeits_paise: int, line_items: int}
+     */
+    public function unbuildPreview(PayoutBatch $batch): array
+    {
+        $lineIds = PayoutLineItem::query()->where('payout_batch_id', $batch->id)->pluck('id')->all();
+
+        $summary = [
+            'entries_unswept' => WalletLedgerEntry::query()->where('swept_by_payout_batch_id', $batch->id)->count(),
+            'debits_deleted' => 0,
+            'debits_paise' => 0,
+            'forfeits_deleted' => 0,
+            'forfeits_paise' => 0,
+            'line_items' => count($lineIds),
+        ];
+
+        foreach (array_chunk($lineIds, self::UNBUILD_CHUNK) as $chunk) {
+            $summary['debits_deleted'] += $this->batchDebits($chunk)->count();
+            $summary['debits_paise'] += (int) $this->batchDebits($chunk)->sum('amount_paise');
+            $summary['forfeits_deleted'] += $this->batchForfeits($chunk)->count();
+            $summary['forfeits_paise'] += (int) $this->batchForfeits($chunk)->sum('amount_paise');
+        }
+
+        return $summary;
+    }
+
+    /**
+     * The three sweep-time debits written against these line items.
+     *
+     * @param  list<int>  $lineIds
+     * @return Builder<WalletLedgerEntry>
+     */
+    private function batchDebits(array $lineIds): Builder
+    {
+        return WalletLedgerEntry::query()
+            ->where('reference_type', 'payout_line_item')
+            ->whereIn('reference_id', $lineIds)
+            ->whereIn('type', self::BATCH_DEBIT_TYPES);
+    }
+
+    /**
+     * The income-cap forfeits written against these line items. Their
+     * `reference_type` carries the EARNED month as a suffix
+     * ({@see writeIncomeCapForfeits()}), so they are matched by prefix.
+     *
+     * @param  list<int>  $lineIds
+     * @return Builder<WalletLedgerEntry>
+     */
+    private function batchForfeits(array $lineIds): Builder
+    {
+        return WalletLedgerEntry::query()
+            ->where('type', 'income_cap_forfeit')
+            ->where('reference_type', 'like', self::FORFEIT_REFERENCE_PREFIX.'%')
+            ->whereIn('reference_id', $lineIds);
+    }
+
+    /**
+     * Batches of any type dated after this one — what a rebuild has to warn
+     * about.
+     *
+     * The ₹50L ceiling is measured per EARNED month across every batch that has
+     * swept, so un-building this one hands headroom back and every later batch
+     * was priced against the headroom it used. Which of them can be rebuilt and
+     * which stand is the caller's judgement (an approved one stands); this only
+     * finds them, oldest first.
+     *
+     * @return EloquentCollection<int, PayoutBatch>
+     */
+    public function laterBatchesAfter(PayoutBatch $batch): EloquentCollection
+    {
+        return PayoutBatch::query()
+            ->whereDate('batch_date', '>', $batch->batch_date?->toDateString() ?? '')
+            ->orderBy('batch_date')
+            ->orderBy('id')
+            ->get();
     }
 
     /**
@@ -1651,6 +1895,23 @@ final class PayoutService
     /** {@see approve()} — its body, run while the sweep lock is held. */
     private function approveLocked(PayoutBatch $batch, int $approvedByUserId): PayoutBatch
     {
+        // Re-read under the lock before anything else. The status check in
+        // approve() runs OUTSIDE it, so an approval that queued behind a rebuild
+        // reaches here holding a copy of a batch that has since been un-built or
+        // approved. No money moves either way — the line items are gone and
+        // DispatchRazorpayPayoutsJob returns on a missing batch — but the audit
+        // log would gain a `payout.batch.approved` row for a batch that no
+        // longer exists, which is a false record of a finance decision.
+        if (! PayoutBatch::query()->whereKey($batch->id)->exists()) {
+            return $batch;
+        }
+
+        $batch->refresh();
+
+        if ($batch->status !== PayoutBatch::STATUS_PENDING) {
+            return $batch;
+        }
+
         // Last chance to make the recorded state true. A distributor whose KYC
         // was approved or whose bank details arrived after the batch was built
         // is paid by THIS batch instead of waiting for the next one, and a hold

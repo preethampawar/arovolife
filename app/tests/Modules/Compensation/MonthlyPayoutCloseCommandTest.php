@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
@@ -76,6 +78,26 @@ function seedSucceededCrediting(Carbon $month, array $except = []): void
 }
 
 /**
+ * One product sale in the month, which is what makes the completion gate
+ * applicable at all: a month with no sales owes no crediting and is waved
+ * through (hard rule 2 — no credit without a product sale).
+ *
+ * Called from the arrange step of every test that exercises the gate, never
+ * from a global `beforeEach`: the two tests that prove the wave-through need a
+ * month with no sales at all.
+ */
+function seedMonthSales(Carbon $month): void
+{
+    BvLedgerEntry::create([
+        'distributor_id' => 1,
+        'order_id' => 950_000 + (int) $month->format('Ym'),
+        'bv_paise' => 300_000,
+        'type' => BvLedgerEntry::TYPE_ACCRUAL,
+        'effective_at' => $month->copy()->startOfMonth()->addDays(3),
+    ]);
+}
+
+/**
  * @param  array<string, mixed>|null  $summary
  */
 function seedEngineRun(string $key, Carbon $month, string $status, Carbon $startedAt, ?array $summary = null): EngineRun
@@ -114,6 +136,7 @@ beforeEach(function (): void {
 });
 
 it('pays out when every crediting engine has succeeded, dating the batch the following month', function (): void {
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'));
 
     $exitCode = Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']);
@@ -129,6 +152,7 @@ it('lifts the batch command\'s open-month refusal, because the batch month is in
     // closed — which is EVERY batch, on the 8th of its own month. The close is
     // the one caller allowed to say so; a hand-typed run is not.
     Carbon::setTestNow(Carbon::parse('2026-09-08 04:00:00'));
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'));
 
     Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']);
@@ -140,6 +164,7 @@ it('lifts the batch command\'s open-month refusal, because the batch month is in
 });
 
 it('refuses when a crediting engine failed, naming it and the command that re-runs it', function (): void {
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'), except: ['rank.bonus']);
     seedEngineRun('rank.bonus', Carbon::parse('2026-08-01'), EngineRun::STATUS_FAILED, Carbon::parse('2026-09-01 00:30'));
 
@@ -158,6 +183,7 @@ it('refuses when a crediting engine failed, naming it and the command that re-ru
 });
 
 it('refuses when a crediting engine never ran for the month', function (): void {
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'), except: ['fortune.payout']);
 
     $exitCode = Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']);
@@ -171,6 +197,7 @@ it('refuses when a crediting engine never ran for the month', function (): void 
 it('is not blocked by an engine whose feature flag is off', function (): void {
     Feature::for(null)->deactivate(PurchaseOffersFeature::class);
 
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'), except: ['offers.monthly']);
     // A flag-off engine no-ops and is recorded SKIPPED, never SUCCEEDED.
     $skipped = seedEngineRun(
@@ -192,6 +219,7 @@ it('is not blocked by an engine whose feature flag is off', function (): void {
 it('refuses, then proceeds once the failed engine has been re-run successfully', function (): void {
     // This sequence is the whole point of splitting crediting from payment: the
     // refusal has to be recoverable, not just loud.
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'), except: ['gbb.monthly']);
     seedEngineRun('gbb.monthly', Carbon::parse('2026-08-01'), EngineRun::STATUS_FAILED, Carbon::parse('2026-09-01 00:45'));
 
@@ -206,6 +234,7 @@ it('refuses, then proceeds once the failed engine has been re-run successfully',
 });
 
 it('keeps refusing when the re-run failed again', function (): void {
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'), except: ['adc.bonus']);
     seedEngineRun('adc.bonus', Carbon::parse('2026-08-01'), EngineRun::STATUS_SUCCEEDED, Carbon::parse('2026-09-01 01:15'));
     // A later failure for the same period is unresolved again.
@@ -216,6 +245,7 @@ it('keeps refusing when the re-run failed again', function (): void {
 });
 
 it('--force pays out over an incomplete month', function (): void {
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'), except: ['rank.check']);
 
     $exitCode = Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08', '--force' => true]);
@@ -228,6 +258,7 @@ it('refuses when every run for an engine started while the month was still in fl
     // F05 at the payout gate: the crediting rows exist and say succeeded, but
     // they were written on the 14th out of half a month's BV. Paying on them
     // settles a month nobody has computed in full.
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'), except: ['gbb.monthly']);
     seedEngineRun('gbb.monthly', Carbon::parse('2026-08-01'), EngineRun::STATUS_SUCCEEDED, Carbon::parse('2026-08-14 14:03'));
 
@@ -243,6 +274,7 @@ it('refuses when the monthly close itself failed and has not succeeded since', f
     // F40: the close can abort before step 1 — a stale worker, a daily cut-off
     // that never finished — leaving every engine carrying an OLDER succeeded
     // run. The seven engine keys alone read that month as ready to pay.
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'));
     seedEngineRun('compensation.monthly-close', Carbon::parse('2026-08-01'), EngineRun::STATUS_FAILED, Carbon::parse('2026-09-01 00:20'));
 
@@ -257,6 +289,7 @@ it('refuses when the monthly close itself failed and has not succeeded since', f
 });
 
 it('pays once the failed close has been re-run successfully', function (): void {
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'));
     seedEngineRun('compensation.monthly-close', Carbon::parse('2026-08-01'), EngineRun::STATUS_FAILED, Carbon::parse('2026-09-01 00:20'));
 
@@ -284,6 +317,7 @@ it('records the refusal as a skipped run carrying its reason', function (): void
     // F50: the refusal recorded `failed` with `error NULL`. The engine that is
     // actually at fault is already reported as a failure in its own right; the
     // close is reporting a decision, and it must say what that decision was.
+    seedMonthSales(Carbon::parse('2026-08-01'));
     seedSucceededCrediting(Carbon::parse('2026-08-01'), except: ['rank.bonus']);
     seedEngineRun('rank.bonus', Carbon::parse('2026-08-01'), EngineRun::STATUS_FAILED, Carbon::parse('2026-09-01 00:30'));
 
@@ -294,4 +328,67 @@ it('records the refusal as a skipped run carrying its reason', function (): void
     expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
     expect($run->error)->toContain('Rank Bonus');
     expect($run->summary['reason'])->toContain('Rank Bonus');
+});
+
+it('pays a month in which nothing was sold, because no commission can exist without a sale', function (): void {
+    // T1. Hard rule 2 (DSR 2021 Rule 5(1)(c)) makes the inference exact: no
+    // product sale, no credit, nothing for this gate to protect. Without it a
+    // pre-trading month is refused every night from the 8th and no operator
+    // action can ever clear it (staging, 8–18 Sep 2026: August had 0 orders).
+    //
+    // The batch must still be BUILT rather than skipped: the monthly sweep
+    // takes every unpaid credit earned in that month or before, so it is also
+    // what pays an older credit whose hold (KYC, bank, below 3,000 BV) has
+    // since cleared.
+    expect(MonthlyEngineCompletionGate::blockingFailure(Carbon::parse('2026-08-01')))->toBeNull();
+
+    expect(Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']))->toBe(0);
+    expect(StubMonthlyPayoutCommand::$calls)->toBe(['2026-09']);
+});
+
+it('still refuses a month that had a sale and a failed engine', function (): void {
+    // T2 exists to fail if the wave-through ever swallows a month that traded.
+    seedMonthSales(Carbon::parse('2026-08-01'));
+    seedSucceededCrediting(Carbon::parse('2026-08-01'), except: ['rank.bonus']);
+    seedEngineRun('rank.bonus', Carbon::parse('2026-08-01'), EngineRun::STATUS_FAILED, Carbon::parse('2026-09-01 00:30'));
+
+    expect(Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']))->toBe(Command::FAILURE);
+    expect(StubMonthlyPayoutCommand::$calls)->toBe([]);
+});
+
+it('still refuses a month with no sales that somehow holds a credit', function (): void {
+    // T3, the belt. A credit stamped to a month with no sales should be
+    // impossible; if one exists, something upstream is wrong and this is
+    // precisely the month the gate must keep guarding.
+    WalletLedgerEntry::create([
+        'distributor_id' => 1,
+        'type' => 'gbb_credit',
+        'amount_paise' => 125_000,
+        'bonus_month' => '2026-08-01',
+        'earned_on' => '2026-08-20',
+        'memo' => 'Stray credit with no product sale behind it',
+    ]);
+
+    expect(MonthlyEngineCompletionGate::blockingFailure(Carbon::parse('2026-08-01')))->not->toBeNull();
+
+    expect(Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']))->toBe(Command::FAILURE);
+    expect(StubMonthlyPayoutCommand::$calls)->toBe([]);
+});
+
+it('refuses a month that traded and whose engines all failed', function (): void {
+    // T4: "no credits" must never be mistaken for "no sales". A month in which
+    // every engine crashed also holds no credits — and is exactly the month
+    // that must not be paid.
+    seedMonthSales(Carbon::parse('2026-08-01'));
+
+    foreach (MonthlyEngineCompletionGate::ENGINE_KEYS as $key) {
+        seedEngineRun($key, Carbon::parse('2026-08-01'), EngineRun::STATUS_FAILED, Carbon::parse('2026-09-01 00:30'));
+    }
+
+    expect(WalletLedgerEntry::query()->count())->toBe(0);
+
+    expect(Artisan::call('compensation:monthly-payout-close', ['--month' => '2026-08']))->toBe(Command::FAILURE);
+    expect(StubMonthlyPayoutCommand::$calls)->toBe([]);
+    expect(AuditLog::where('action', 'compensation.monthly_payout_close.refused')->sole()->details['reason'])
+        ->toBe('failed');
 });

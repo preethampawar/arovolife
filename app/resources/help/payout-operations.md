@@ -38,9 +38,10 @@ Nobody creates a payout batch by hand.
 1. The bonus engines credit distributors' wallets as product sales are made.
    Every credit carries a `product_sale_id` — there is no such thing as a
    payout without a sale behind it (hard rule 2).
-2. The **weekly payout** runs on Tuesdays as part of the nightly chain that
-   starts at 00:05 IST, and pays ONE earning week: Wednesday to Tuesday, the
-   week that closed the *previous* Tuesday. The batch dated Tuesday 18 August pays the GSB and Mentorship
+2. The **weekly payout** is built by its own Weekly Run, at 03:00 IST every
+   night, once that night's Nightly Run has succeeded (ADR-0016), and pays
+   ONE earning week: Wednesday to Tuesday, the week that closed the
+   *previous* Tuesday. The batch dated Tuesday 18 August pays the GSB and Mentorship
    income earned from Wednesday 5 August to Tuesday 11 August; income earned on
    12 August waits for the 25 August batch. The week is keyed on the day the
    income was earned — the GSB cut-off date — not on when the credit landed in
@@ -50,14 +51,16 @@ Nobody creates a payout batch by hand.
    each batch records it when it is created, so it reads "—" for batches
    written before the rule was deployed and for legacy `gsb_weekly` batches,
    which swept the whole wallet balance rather than a bounded week.
-   **If a Tuesday's batch is never built** — the chain was skipped, the night
-   aborted, the server was down — the next night builds it, still dated that
-   Tuesday, so the week it pays is unchanged and distributors do not wait an
-   extra week for an outage that had nothing to do with them.
+   **If a Tuesday's batch is never built** — the Weekly Run was deferred
+   because that night's Nightly Run had not succeeded, the night aborted, the
+   server was down — the next night builds it, still dated that Tuesday, so
+   the week it pays is unchanged and distributors do not wait an extra week
+   for an outage that had nothing to do with them.
    The **monthly payout** runs on the 8th for Growth Booster, Rank, Fortune,
-   Awards and ADC — a week after
-   the crediting engines close the month on the 1st, and only if every one of
-   them succeeded (see § Monthly close below). It pays ONE month, the one it is
+   Awards and ADC — as the Monthly Run's payout phase, independent of that
+   night's Nightly or Weekly runs since it pays what the 1st already
+   credited — a week after the crediting engines close the month on the 1st,
+   and only if every one of them succeeded (see § Monthly close below). It pays ONE month, the one it is
    named for: income earned for a later month stays in the wallet for that
    month's own batch. The month a credit belongs to is the month it was earned
    FOR, not the day it was written — the engines close a month on the 1st of the
@@ -76,10 +79,13 @@ distributors who failed are retried, and the batch returns to Pending.
 
 ## Monthly close: crediting on the 1st, payment on the 8th
 
-Two commands own the month, and they run a week apart on purpose. Neither has a
-cron entry of its own any more: both are steps of the nightly chain
-(`compensation:nightly-run`, 00:05 IST), which reaches each one the moment its
-inputs are ready.
+Two commands own the month, and they run a week apart on purpose. Neither has
+its own cron entry: both are phases of the same Monthly Run
+(`compensation:monthly-run`, 04:00 IST — ADR-0016), which reaches each one the
+moment its inputs are ready. The close phase waits for that night's Nightly Run
+to succeed, and for the Weekly Run too on a night a Tuesday batch is owed; the
+payout phase, from the 8th, has no such wait — it pays what the 1st already
+credited.
 
 **`compensation:monthly-close`** — the first night of a new month. Runs the
 seven crediting engines in one process, in dependency order: rank qualifications
@@ -87,8 +93,9 @@ seven crediting engines in one process, in dependency order: rank qualifications
 purchase offers. ADC and purchase offers come last because neither is on the
 crediting critical path, so the money is credited before the close spends its
 time on the work nobody is waiting for. It starts the instant the closed month's
-last daily cut-off has finished — that cut-off is the step immediately before it
-in the same chain — and it stops at the first step that fails rather than
+last daily cut-off has finished and that night's Nightly Run (and the Weekly
+Run, when a Tuesday batch is owed) has succeeded — and it stops at the first
+step that fails rather than
 letting the next engine run on half-written input. Re-running it **resumes**:
 every step already recorded as succeeded is skipped, so a failure at step 5
 never re-touches steps 1–3. `--restart` forces the whole sequence, and is only
@@ -97,7 +104,7 @@ for the rare case where an earlier step genuinely has to be recomputed.
 It will not close a month whose days are not all cut off. Every monthly engine
 prices the month from the cut-off results and then freezes what it computed, so
 a month closed three days short stays short — re-running the close reuses the
-frozen pool rather than repairing it. When that happens the chain says so, the
+frozen pool rather than repairing it. When that happens the Monthly Run says so, the
 month is reported in the next morning's engine-health email, and the missing
 days have to be cut off before the month can be closed.
 
@@ -106,8 +113,18 @@ batch, but **only if every crediting engine for that month actually succeeded**.
 If one failed, it refuses, names the engine and prints the exact command to
 re-run it; nothing is swept and no batch is created. An engine whose feature
 flag is off records a *skipped* run and does not block — it computes nothing
-either way. If the 8th itself is missed, the chain retries on the following
-nights while no batch exists, so the payment does not slip to the next month.
+either way. If the 8th itself is missed, the Monthly Run retries on the
+following nights while no batch exists, so the payment does not slip to the
+next month.
+
+**Approving a monthly batch freezes the month.** The moment finance approves
+it (or it moves to dispatched/completed/processing), no monthly engine, the
+close, or a rebuild may run for that crediting month again — the money has
+moved on its figures. The engines run again for the next month from its own
+1st, 00:00 IST. A **pending** batch that must be recomputed — a bad figure
+found before approval — is rebuilt by the platform team
+(`compensation:rebuild-payout`, developer only); an **approved** batch is
+corrected line by line instead, never rebuilt.
 
 A step that fails also reaches the monitored mailbox in the next morning's
 engine-health email (08:00 IST) with the steps that close it, so an incomplete

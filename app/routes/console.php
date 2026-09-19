@@ -4,9 +4,13 @@ use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
 use App\Modules\Compensation\Console\Commands\AutoRetryFailedPayoutsCommand;
 use App\Modules\Compensation\Console\Commands\CompensationRecomputeAllCommand;
 use App\Modules\Compensation\Console\Commands\EngineHealthDigestCommand;
+use App\Modules\Compensation\Console\Commands\MonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
+use App\Modules\Compensation\Console\Commands\WeeklyRunCommand;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeState;
+use App\Modules\Compensation\Support\MonthlyRunPlanner;
+use App\Modules\Compensation\Support\WeeklyRunPlanner;
 use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
 use App\Modules\Inventory\Console\Commands\InventoryAlertsCommand;
 use App\Modules\Inventory\Console\Commands\VerifyStockLedgerCommand;
@@ -15,6 +19,7 @@ use App\Modules\Payments\Console\Commands\ExpireUnpaidOrdersCommand;
 use App\Modules\Payments\Console\Commands\PaymentsReconcileCommand;
 use App\Modules\Payments\Console\Commands\PaymentsRedactEventsCommand;
 use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
@@ -42,36 +47,63 @@ Artisan::command('inspire', function () {
  */
 $compensationEnginesMayRun = static fn (): bool => app(RecomputeState::class)->schedulerEnginesAllowed();
 
-// ── The nightly chain ────────────────────────────────────────────────────────
-// One entry replaces five: repurchase evaluation, the GSB daily cut-off, the
-// monthly crediting close, the Tuesday weekly payout batch and the 8th's
-// monthly payout close.
+// ── The three compensation runs ──────────────────────────────────────────────
+// Three entries, three cadences, three run rows: the nightly run at 00:05, the
+// weekly run at 03:00 and the monthly run at 04:00 (ADR-0016).
 //
-// Those five were sequenced only by clock offsets — 00:05, 00:10, 00:20,
-// Tuesday 03:00, the 8th at 04:00 — and withoutOverlapping() is per-command: it
-// does NOT serialise across commands. Nothing held the order. An evaluation
-// that overran five minutes, failed, or never started still let the cut-off
-// proceed on yesterday's repurchase verdicts, and a day forfeited by mistake is
-// never corrected afterwards. The offsets also bought their safety with dead
-// time: the monthly close polled for up to ten minutes for a cut-off it had no
-// way to observe, because it was a separate process.
+// Until 2026-09-18 one entry ran all of it, and one `engine_runs` row carried
+// all three cadences: a monthly step that REFUSED — a month whose days were not
+// all cut off, a payout the completion gate held back — marked the night FAILED
+// although the daily work had finished perfectly. Splitting them gives each
+// cadence its own row, its own alerts and its own self-heal.
 //
-// Inside one process the ordering is real — a step runs only after the one
-// before it exited 0 — and each engine fires the moment its inputs are ready.
-// The engines themselves are unchanged and each still records its own
-// engine_runs row; only who invokes them has moved. Each remains individually
-// runnable from the CLI.
+// The ordering the client asked for (daily, then weekly, then monthly) is held
+// by the RUN LOG, not by these clocks: each run asks RunPrerequisites whether
+// tonight's earlier run actually succeeded, and defers itself as a `skipped`
+// row plus an alert when it has not. A shared cache lock was rejected — the
+// default store is a Redis shared with eight other apps under `allkeys-lfu`,
+// which may evict a lock key silently (ADR-0011).
 //
 // 00:05 rather than 23:59: the cut-off prices the day that has just ended, and
 // an order paid at 23:58 whose PropagateGroupBvJob lands a moment later must
-// still count. The chain starts five minutes into the new day so queued
-// propagation can land; results are still recorded against the day the BV
-// belongs to.
+// still count. The night starts five minutes in so queued propagation can land;
+// results are still recorded against the day the BV belongs to.
 Schedule::command(NightlyRunCommand::class)
     ->dailyAt('00:05')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->when($compensationEnginesMayRun)
+    ->runInBackground();
+
+// Weekly run — 03:00 every night, but it STARTS only when a Tuesday batch is
+// owed: on Tuesdays, and on any other night only when a Tuesday was never
+// built. The predicate is evaluated once, at 03:00, in the scheduler process; a
+// false answer starts no process and writes no row. The prerequisite on
+// tonight's nightly run is checked INSIDE the command, so a deferral is
+// recorded rather than silently skipped.
+//
+// 03:00 is the position gsb.weekly-payout has always declared, and it owes
+// nothing to tonight's cut-off: the batch dated Tuesday T sweeps only entries
+// earned on or before T−7.
+Schedule::command(WeeklyRunCommand::class)
+    ->dailyAt('03:00')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->when(static fn (): bool => $compensationEnginesMayRun()
+        && app(WeeklyRunPlanner::class)->isDue(Carbon::today('Asia/Kolkata')))
+    ->runInBackground();
+
+// Monthly run — 04:00: the 1st, any night a closable month is still open, and
+// from the 8th while the month's payout batch is missing. See
+// MonthlyRunPlanner::isDue(). An hour after the weekly run so that on the 8th
+// the two sweeps keep today's order; they share PayoutService's blocking sweep
+// lock, which serialises them against the ₹50L income cap.
+Schedule::command(MonthlyRunCommand::class)
+    ->dailyAt('04:00')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->when(static fn (): bool => $compensationEnginesMayRun()
+        && app(MonthlyRunPlanner::class)->isDue(Carbon::today('Asia/Kolkata')))
     ->runInBackground();
 
 // ── The nightly reset (dev and staging only) ─────────────────────────────────
@@ -104,10 +136,10 @@ Schedule::command(CompensationRecomputeAllCommand::class, [
         && app(RecomputeGuard::class)->isPermitted())
     ->runInBackground();
 
-// Daily engine-health digest at 08:00 IST — after every overnight engine
-// (monthly payout close is the last, 04:00 on the 8th). Emails the admin
-// mailbox only when a run failed, a scheduled period never ran, or a run is
-// stuck; a healthy day sends nothing. Recipient: notifications.engine_health_email.
+// Daily engine-health digest at 08:00 IST — after every overnight run (the
+// monthly run is the last, 04:00). Emails the admin mailbox only when a run
+// failed, a scheduled period never ran, or a run is stuck; a healthy day
+// sends nothing. Recipient: notifications.engine_health_email.
 Schedule::command(EngineHealthDigestCommand::class)
     ->dailyAt('08:00')
     ->timezone('Asia/Kolkata')
@@ -118,10 +150,9 @@ Schedule::command(EngineHealthDigestCommand::class)
     ->when($compensationEnginesMayRun)
     ->runInBackground();
 
-// Failed payouts are re-sent daily at 11:00 IST — after both the Tuesday
-// weekly batch (03:00) and the monthly payout batch (8th 04:00), so a transfer
-// that failed on this morning's dispatch gets its first automatic second chance
-// the next day. Only line items past the configured staleness window and under
+// Failed payouts are re-sent daily at 11:00 IST — after both the weekly run
+// (03:00) and the monthly run (04:00), so a transfer that failed on this
+// morning's dispatch gets its first automatic second chance the next day. Only line items past the configured staleness window and under
 // the retry limit are picked up; the command is a no-op in Manual NEFT mode.
 Schedule::command(AutoRetryFailedPayoutsCommand::class)
     ->dailyAt('11:00')
