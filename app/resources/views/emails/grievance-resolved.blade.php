@@ -34,7 +34,7 @@
             <p style="margin: 0 0 14px 0; font-size: 14px; line-height: 22px; color: #374151;">
                 <strong>If this does not settle the matter for you</strong>, you may escalate to the
                 {{ $escalationLabel }} at
-                <a href="mailto:{{ $escalationContact }}" style="color: #047857;">{{ $escalationContact }}</a>,
+                <a href="mailto:{{ $escalationContact }}" style="color: #047857; word-break: break-word;">{{ $escalationContact }}</a>,
                 quoting your complaint number.
             </p>
 

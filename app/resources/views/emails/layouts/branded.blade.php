@@ -20,10 +20,17 @@
     </style>
     <![endif]-->
     <style type="text/css">
-        /* Mobile-only overrides — wrapped in a media query so they don't affect
+        /* A long unbreakable value — an ADN, an order number, an email address —
+           is the one thing that can push a mail past the shell. Break the value,
+           not the layout: this only ever breaks a word that cannot fit alone. */
+        td, p, a { word-break: break-word; overflow-wrap: break-word; }
+
+        /* Mobile overrides — wrapped in a media query so they don't affect
            desktop / Outlook (Outlook ignores @media). Bulletproof column-stack
-           pattern for &lt;640px viewports. */
-        @media screen and (max-width: 600px) {
+           pattern. The breakpoint is the shell's TOTAL width — the 600px shell
+           plus the 12px outer padding each side. Below that the fixed shell no
+           longer fits, and every mail scrolls sideways. */
+        @media screen and (max-width: 624px) {
             .ar-shell        { width: 100% !important; }
             .ar-pad-x        { padding-left: 20px !important; padding-right: 20px !important; }
             .ar-h1           { font-size: 22px !important; line-height: 30px !important; }
