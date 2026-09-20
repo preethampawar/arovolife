@@ -358,6 +358,93 @@ holds a payout id is skipped outright.
 `bank_decrypt_failed` lines are deliberately never auto-retried — the stored
 bank details cannot be read at all, and only re-capturing them fixes it.
 
+## Where the deductions end up: the Company snapshot
+
+Everything this page takes off a payout — the repurchase deduction, the admin
+charge, TDS — reappears on one company-wide statement:
+**Commerce → Profit on sales → Company snapshot**
+(`/admin/reports/profit/company-snapshot`). It needs `profit.report.view`, the
+same permission as the rest of the profit reports, so admin-finance can open it
+and admin-compliance cannot.
+
+Of the three deductions, only the **admin charge** stays with the company, and
+the snapshot adds it back for that reason. **TDS** is withheld from the
+distributor and remitted to the Income Tax Department in their name — it is a
+liability on the statement, never income. The **repurchase deduction** is money
+the distributor still has, held in their repurchase wallet and spendable only on
+arovolife products, so it is shown as owed. Alongside them the page lists
+everything else the company is holding for somebody else: unpaid wallet
+balances, outstanding repurchase wallets, payouts in flight, and net GST
+payable. Bonus held at the latest batch is listed too, but as a **memo** and
+not as another liability — a held line never debits the wallet, so that money is
+already inside the unpaid wallet balances above. It is broken out only so you
+can see how much of the unpaid total is blocked on KYC or bank details.
+
+Read the timing carefully before reconciling the page against a batch. A bonus
+is counted when it is **credited** to the wallet, and the admin charge and TDS
+when the **batch is built** (that is when the ledger debits are written). The
+payout block covers the lines **built** in the date range — there is no
+settlement date on a line — and splits them by what the bank says about each
+line **as of today**, not as at the To date. A line built inside the range and
+confirmed a fortnight later therefore counts as transferred here. Those are
+different weeks, so the blocks of the statement will not tie to each other
+inside a short date range — that is the design, not a fault. Admin charge and
+TDS are read from the wallet-ledger debits rather than summed off line items,
+because a `below_minimum` line carries computed deductions that were never
+debited and a held line is rewritten by every batch.
+
+There is a second view of the same figures at
+**Company cash snapshot** (`/admin/reports/profit/company-cash-snapshot`), on a
+cash footing: it deducts only the lines the bank has confirmed — counted by the
+batch's build date, with the transferred / pending / failed split reflecting the
+bank's answer as of today — so it answers "what has actually left arovolife",
+and lists everything credited but unpaid — TDS to remit, payouts in flight,
+wallet balances, repurchase wallets — as commitments still to go. Use the
+accrual page to judge what the plan costs on a period's sales, and the cash page
+to judge the bank balance.
+
+## Where TDS is reported: the TDS report
+
+The tax this page withholds is summarised on
+**Commerce → Profit on sales → TDS report** (`/admin/reports/profit/tds`), with
+the deductee-wise detail behind it on the **TDS register**
+(`/admin/reports/profit/tds-register`). Both need `profit.report.view`, the same
+permission as the rest of the profit reports, so admin-finance can open them and
+admin-compliance cannot. Pick a calendar month or an Indian financial-year
+quarter — Q1 is April–June, Q4 January–March of the following calendar year, so
+the quarter picker maps straight onto a Form 26Q filing period.
+
+**The figures are read from the wallet-ledger debits, never from the payout
+line column.** A `below_minimum` line carries a TDS figure that was computed and
+then discarded because the payout never went out, and a held line — `kyc_pending`,
+`no_bank_account`, `web_only`, `bank_decrypt_failed` — is written afresh by every
+batch over the same unswept credits. Summing the column would report tax that was
+never withheld, several times over. Both appear in the memo block instead, as
+figures that exist but were not deducted.
+
+**A line belongs to the period its batch is dated in.** That is the deduction
+date a 26Q return is built around. The Company snapshot dates the same rupees by
+when the ledger debit was written, so the two pages will not agree inside a short
+window; neither is wrong.
+
+**TDS can be less than the plan's TDS rate (a Plan setting) applied to the
+payable shown.** Payable is *gross − repurchase deduction − admin charge*. On a
+monthly batch the tax is computed on a narrower base that excludes Lifetime
+Award cash already taxed when it was delivered, and that base is not stored, so
+the register shows payable and TDS and never a "TDS base".
+
+**PAN is masked and only masked** — the last four digits, read from the
+distributor record. The full number for a filing comes from the KYC documents in
+Admin → KYC, through the audited route, by someone who holds that permission.
+
+**A rebuilt batch takes its TDS with it.** Rebuilding a period deletes that
+batch's lines and their ledger debits together and writes both again, so a figure
+read before a rebuild and one read after can differ — but the two stay in step.
+The report's last memo line — lines where the stored figure and the ledger debit
+disagree — should read zero; a non-zero means a line or ledger row was edited
+outside the payout engine, so tell the platform team. Every export is audited
+(`tax.report.exported`).
+
 ## Status reference
 
 ### Line item statuses

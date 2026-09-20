@@ -1437,13 +1437,13 @@ parameters:
 		-
 			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
 			identifier: property.notFound
-			count: 8
+			count: 10
 			path: tests/Feature/ActionCenter/GrievanceSlaDueOrBreachedProviderTest.php
 
 		-
 			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
 			identifier: property.notFound
-			count: 7
+			count: 9
 			path: tests/Feature/ActionCenter/GrievanceThirdPartyOverdueProviderTest.php
 
 		-
@@ -1559,6 +1559,12 @@ parameters:
 			identifier: property.notFound
 			count: 7
 			path: tests/Feature/ActionCenter/RefundsPastPromiseProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\Mixins\\Expectation\<array\<int, string\>\|null\>\:\:\$not\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/ActionCenter/RegistryPermissionScopingTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
@@ -1711,6 +1717,12 @@ parameters:
 			path: tests/Feature/Compensation/FortuneBonusVerificationTest.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$distributor_id\.$#'
+			identifier: property.notFound
+			count: 2
+			path: tests/Feature/Compensation/PayoutAdminPagesTest.php
+
+		-
 			message: '#^Access to an undefined property Pest\\Mixins\\Expectation\<mixed\>\:\:\$not\.$#'
 			identifier: property.notFound
 			count: 1
@@ -1719,7 +1731,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 20
+			count: 26
 			path: tests/Feature/Compensation/PayoutAdminPagesTest.php
 
 		-
@@ -1999,6 +2011,18 @@ parameters:
 			path: tests/Feature/Inventory/CheckoutAvailabilityTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 7
+			path: tests/Feature/Inventory/GrnPurchaseOrderLinesTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Inventory/GrnPurchaseOrderLinesTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
 			identifier: method.notFound
 			count: 1
@@ -2107,9 +2131,15 @@ parameters:
 			path: tests/Feature/Inventory/StockIndexScreenTest.php
 
 		-
+			message: '#^Access to an undefined property Pest\\Mixins\\Expectation\<mixed\>\:\:\$not\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Reports/ProfitReportTest.php
+
+		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 12
 			path: tests/Feature/Reports/ProfitReportTest.php
 
 		-
@@ -2117,6 +2147,30 @@ parameters:
 			identifier: method.notFound
 			count: 1
 			path: tests/Feature/Reports/ProfitReportTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$app\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/Reports/TaxReportTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 17
+			path: tests/Feature/Reports/TaxReportTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Feature/Reports/TaxReportTest.php
+
+		-
+			message: '#^Called ''Model\:\:make\(\)'' which performs unnecessary work, use ''new Model\(\)''\.$#'
+			identifier: larastan.noModelMake
+			count: 1
+			path: tests/Feature/RunClockTest.php
 
 		-
 			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$app\.$#'
@@ -2341,6 +2395,24 @@ parameters:
 			path: tests/Modules/Admin/AdminCouponTest.php
 
 		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 18
+			path: tests/Modules/Admin/AdminDashboardPanelTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:markTestSkipped\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminDashboardPanelTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:seed\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Admin/AdminDashboardPanelTest.php
+
+		-
 			message: '#^Access to an undefined property Pest\\Mixins\\Expectation\<mixed\>\:\:\$not\.$#'
 			identifier: property.notFound
 			count: 1
@@ -2481,7 +2553,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 10
+			count: 12
 			path: tests/Modules/Admin/AdminRoleSeparationTest.php
 
 		-
@@ -2717,6 +2789,12 @@ parameters:
 			identifier: method.notFound
 			count: 9
 			path: tests/Modules/Commerce/AdminBvLedgerTest.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: tests/Modules/Commerce/AdminOrderListSummaryTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
@@ -3387,7 +3465,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 1
+			count: 2
 			path: tests/Modules/Compensation/AdminManualControlsRetryTest.php
 
 		-
@@ -4515,7 +4593,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 27
+			count: 30
 			path: tests/Modules/Payments/AdminPaymentsTest.php
 
 		-
@@ -4751,6 +4829,30 @@ parameters:
 			identifier: method.notFound
 			count: 7
 			path: tests/Modules/Shared/DistributorFilterScopeTest.php
+
+		-
+			message: '#^Function brandedLayout\(\) should return string but returns string\|false\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Modules/Shared/EmailLayoutWidthTest.php
+
+		-
+			message: '#^Offset 1 might not exist on array\{\}\|array\{non\-falsy\-string, numeric\-string\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 3
+			path: tests/Modules/Shared/EmailLayoutWidthTest.php
+
+		-
+			message: '#^Parameter \#1 \$array of function array_filter expects array, list\<string\>\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Modules/Shared/EmailLayoutWidthTest.php
+
+		-
+			message: '#^Parameter \#1 \$haystack of function str_contains expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Modules/Shared/EmailLayoutWidthTest.php
 
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'

@@ -19,7 +19,11 @@ use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Commerce\Services\ProfitReportService;
 use App\Modules\Commerce\Services\SalesReportService;
 use App\Modules\Commerce\Support\SalesScope;
+use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Inventory\Models\StockBatch;
 use App\Modules\Inventory\Models\StockMovement;
@@ -390,6 +394,183 @@ it('refuses to compute a trading account for one distributor', function (): void
     expect($all)->toHaveKeys(['purchases_paise', 'opening_stock_paise', 'closing_stock_paise', 'commission_paise']);
 });
 
+it('computes money left from contribution plus what the company took back', function (): void {
+    $variant = prVariant();
+    $order = prShippedOrder([['variant' => $variant, 'qty' => 10, 'inclusive_paise' => 499_000]]);
+    prPackAtCost($order, 19_900);
+    // Net sales 422,881 - COGS 199,000 = gross profit 223,881.
+
+    $distributor = Distributor::factory()->create();
+    $wallet = app(WalletService::class);
+
+    // Every (type, reference_type, reference_id) tuple below is distinct:
+    // wallet_ledger_entries carries uniq_wallet_ledger_source over the three.
+    $wallet->credit($distributor->id, 100_000, 'gsb_credit', referenceId: 1, referenceType: 'gsb_cutoff_result', earnedOn: now());
+    // A reversal is two rows, exactly as WalletService::reverseBonusCredit()
+    // writes them: the `reversal` debit carries the NET (gross less the
+    // repurchase share) and the repurchase share comes back as a NEGATIVE
+    // `repurchase_deduction`. A report that counted only the first would
+    // under-state every reversal by its repurchase share.
+    $wallet->debit($distributor->id, 9_000, 'reversal', 2, 'gsb_cutoff_result');
+    $wallet->debit($distributor->id, 1_000, 'repurchase_deduction', 2, 'gsb_cutoff_result_reversal');
+    $wallet->debit($distributor->id, 5_000, 'income_cap_forfeit', 3, 'payout_line_item_2026-01-01');
+    $wallet->debit($distributor->id, 2_400, 'admin_charge_debit', 4, 'payout_line_item');
+    $wallet->debit($distributor->id, 4_000, 'tds_debit', 4, 'payout_line_item');
+    $wallet->debit($distributor->id, 10_000, 'repurchase_transfer', 1, 'gsb_cutoff_result');
+    $wallet->credit($distributor->id, 10_000, 'repurchase_deduction', 1, 'gsb_cutoff_result');
+
+    $data = prReport()->companySnapshot(SalesScope::all(), null, null, SalesReportService::BASIS_SHIPPED);
+
+    expect($data['commission_paise'])->toBe(100_000)
+        // 9,000 net reversal + 1,000 repurchase share taken back = 10,000.
+        ->and($data['reversed_paise'])->toBe(10_000)
+        ->and($data['forfeited_paise'])->toBe(5_000)
+        ->and($data['net_commission_paise'])->toBe(85_000)
+        ->and($data['admin_charge_paise'])->toBe(2_400)
+        ->and($data['tds_paise'])->toBe(4_000)
+        ->and($data['repurchase_withheld_paise'])->toBe(10_000)
+        // 223,881 gross profit - 100,000 credited + 10,000 reversed
+        //   + 5,000 forfeited + 2,400 admin charge = 141,281.
+        ->and($data['money_left_paise'])->toBe(141_281)
+        // 10,000 withheld - 1,000 taken back by the reversal = 9,000.
+        ->and($data['repurchase_balances_paise'])->toBe(9_000)
+        // 100,000 - 9,000 - 5,000 - 2,400 - 4,000 - 10,000 = 69,600. The
+        // repurchase_deduction rows are excluded: they are the other wallet.
+        ->and($data['wallet_balances_paise'])->toBe(69_600)
+        // Cash footing: nothing has been transferred, so nothing has left.
+        ->and($data['cash_money_left_paise'])->toBe(223_881)
+        // 223,881 - 4,000 TDS - 0 in flight - 69,600 wallets - 9,000 repurchase
+        //   = 141,281. It equals the accrual money-left here because every
+        //   credited rupee is still unpaid — a tie-out, not a coincidence.
+        ->and($data['cash_free_after_commitments_paise'])->toBe(141_281);
+
+    $finance = User::factory()->create();
+    $finance->assignRole('admin-finance');
+
+    $this->actingAs($finance)
+        ->get(route('admin.reports.profit.company-snapshot'))
+        ->assertOk()
+        ->assertSee('Money left with arovolife');
+
+    $this->actingAs($finance)
+        ->get(route('admin.reports.profit.company-cash-snapshot'))
+        ->assertOk()
+        ->assertSee('Money actually left with arovolife');
+});
+
+it('ignores admin charge and TDS on lines that were never debited', function (): void {
+    $variant = prVariant();
+    $order = prShippedOrder([['variant' => $variant, 'qty' => 10, 'inclusive_paise' => 499_000]]);
+    prPackAtCost($order, 19_900);
+
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_PENDING,
+    ]);
+
+    // below_minimum carries a computed admin charge and TDS that were never
+    // debited to any wallet. Summing them off the line items — the obvious
+    // implementation — would invent 800 paise of company income out of nothing.
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => Distributor::factory()->create()->id,
+        'gross_paise' => 1_000, 'repurchase_deduction_paise' => 0,
+        'admin_charge_paise' => 300, 'tds_paise' => 500,
+        'wallet_balance_paise' => 1_000, 'net_transferred_paise' => 50,
+        'status' => PayoutLineItem::STATUS_BELOW_MINIMUM,
+    ]);
+
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => Distributor::factory()->create()->id,
+        // A paid line with real deductions on it, and no wallet debits behind
+        // them: summing the deductions off the PAID lines — the other obvious
+        // implementation — would invent 1,600 paise just as surely.
+        'gross_paise' => 10_000, 'repurchase_deduction_paise' => 0,
+        'admin_charge_paise' => 700, 'tds_paise' => 900,
+        'wallet_balance_paise' => 10_000, 'net_transferred_paise' => 9_000,
+        'status' => PayoutLineItem::STATUS_TRANSFERRED,
+    ]);
+
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => Distributor::factory()->create()->id,
+        'gross_paise' => 1_200, 'repurchase_deduction_paise' => 0,
+        'admin_charge_paise' => 0, 'tds_paise' => 0,
+        'wallet_balance_paise' => 1_200, 'net_transferred_paise' => 1_000,
+        'status' => PayoutLineItem::STATUS_FAILED,
+    ]);
+
+    $data = prReport()->companySnapshot(SalesScope::all(), null, null, SalesReportService::BASIS_SHIPPED);
+
+    expect($data['admin_charge_paise'])->toBe(0)
+        ->and($data['tds_paise'])->toBe(0)
+        ->and($data['net_transferred_paise'])->toBe(9_000)
+        ->and($data['net_in_flight_paise'])->toBe(1_000)
+        ->and($data['payout_lines'])->toBe(2)
+        ->and($data['transferred_lines'])->toBe(1)
+        // Only the bank-confirmed 9,000 leaves on a cash footing.
+        ->and($data['cash_money_left_paise'])->toBe(223_881 - 9_000);
+});
+
+it('reports held income from the latest batch only, not summed across batches', function (): void {
+    $distributor = Distributor::factory()->create();
+
+    foreach ([now()->subWeek()->toDateString(), now()->toDateString()] as $date) {
+        $batch = PayoutBatch::create([
+            'batch_type' => PayoutBatch::TYPE_WEEKLY,
+            'batch_date' => $date,
+            'status' => PayoutBatch::STATUS_PENDING,
+        ]);
+
+        // Each batch re-writes the same held income over the same unswept
+        // credits. Summing the two would report 14,000 of held money where
+        // only 7,000 exists.
+        PayoutLineItem::create([
+            'payout_batch_id' => $batch->id,
+            'distributor_id' => $distributor->id,
+            'gross_paise' => 7_000, 'repurchase_deduction_paise' => 0,
+            'admin_charge_paise' => 0, 'tds_paise' => 0,
+            'wallet_balance_paise' => 7_000, 'net_transferred_paise' => 0,
+            'status' => PayoutLineItem::STATUS_KYC_PENDING,
+        ]);
+    }
+
+    $data = prReport()->companySnapshot(SalesScope::all(), null, null, SalesReportService::BASIS_SHIPPED);
+
+    expect($data['held_paise'])->toBe(7_000)
+        ->and($data['held_distributors'])->toBe(1);
+});
+
+it('never divides by zero with an empty ledger', function (): void {
+    $data = prReport()->companySnapshot(SalesScope::all(), null, null, SalesReportService::BASIS_SHIPPED);
+
+    expect($data['money_left_pct'])->toBeNull()
+        ->and($data['cash_money_left_pct'])->toBeNull()
+        ->and($data['money_left_paise'])->toBe(0)
+        ->and($data['reversed_paise'])->toBe(0)
+        ->and($data['forfeited_paise'])->toBe(0)
+        ->and($data['net_commission_paise'])->toBe(0)
+        ->and($data['repurchase_withheld_paise'])->toBe(0)
+        ->and($data['admin_charge_paise'])->toBe(0)
+        ->and($data['tds_paise'])->toBe(0)
+        ->and($data['gross_swept_paise'])->toBe(0)
+        ->and($data['repurchase_swept_paise'])->toBe(0)
+        ->and($data['net_transferred_paise'])->toBe(0)
+        ->and($data['net_in_flight_paise'])->toBe(0)
+        ->and($data['transferred_lines'])->toBe(0)
+        ->and($data['payout_lines'])->toBe(0)
+        ->and($data['held_paise'])->toBe(0)
+        ->and($data['held_distributors'])->toBe(0)
+        ->and($data['wallet_balances_paise'])->toBe(0)
+        ->and($data['repurchase_balances_paise'])->toBe(0)
+        ->and($data['gst_net_payable_paise'])->toBe(0)
+        ->and($data['repurchase_spent_on_orders_paise'])->toBe(0)
+        ->and($data['cash_money_left_paise'])->toBe(0)
+        ->and($data['cash_free_after_commitments_paise'])->toBe(0);
+});
+
 it('lets finance in and keeps compliance out of every profit view', function (): void {
     $finance = User::factory()->create();
     $finance->assignRole('admin-finance');
@@ -397,7 +578,7 @@ it('lets finance in and keeps compliance out of every profit view', function ():
     $compliance = User::factory()->create();
     $compliance->assignRole('admin-compliance');
 
-    foreach (['index', 'summary', 'by-product', 'by-category', 'register'] as $view) {
+    foreach (['index', 'summary', 'company-snapshot', 'company-cash-snapshot', 'by-product', 'by-category', 'register'] as $view) {
         $this->actingAs($finance)->get(route("admin.reports.profit.{$view}"))->assertOk();
         $this->actingAs($compliance)->get(route("admin.reports.profit.{$view}"))->assertForbidden();
     }
@@ -501,7 +682,7 @@ it('exports every view as a real workbook, and as CSV', function (): void {
     $finance = User::factory()->create();
     $finance->assignRole('admin-finance');
 
-    foreach (['summary', 'by-product', 'by-category', 'register'] as $view) {
+    foreach (['summary', 'company-snapshot', 'company-cash-snapshot', 'by-product', 'by-category', 'register'] as $view) {
         $xlsx = $this->actingAs($finance)
             ->get(route("admin.reports.profit.{$view}", ['format' => 'xlsx']))
             ->assertOk()
@@ -547,4 +728,85 @@ it('exports money ungrouped so a spreadsheet reads it as a number', function ():
 
     // 4228.81 as a bare number, never "₹4,228.81".
     expect(XlsxReader::anyCellContains($rows, '4228.81'))->toBeTrue();
+});
+
+/**
+ * D5 — a company-wide wallet balance below zero cannot happen in normal
+ * operation. On a test environment it is the trace of a recompute run under
+ * live traffic: the spend survives the wipe while the credit behind it is
+ * re-derived smaller. Subtracting such a balance from free cash would ADD it,
+ * so a liability would inflate the money the company appears to have.
+ */
+it('never lets a negative wallet balance inflate free cash, and says so', function (): void {
+    $variant = prVariant();
+    $order = prShippedOrder([['variant' => $variant, 'qty' => 10, 'inclusive_paise' => 499_000]]);
+    prPackAtCost($order, 19_900);
+    // Net sales 422,881 - COGS 199,000 = gross profit 223,881.
+
+    $distributor = Distributor::factory()->create();
+    $wallet = app(WalletService::class);
+
+    // Credited 20,000 and swept 50,000: the ledger nets to -30,000, exactly
+    // the shape a recompute leaves behind.
+    $wallet->credit($distributor->id, 20_000, 'gsb_credit', referenceId: walletRef(), referenceType: 'gsb_cutoff_result', earnedOn: now());
+    $wallet->debit($distributor->id, 50_000, 'payout_debit', walletRef(), 'payout_line_item');
+
+    $data = prReport()->companySnapshot(SalesScope::all(), null, null, SalesReportService::BASIS_SHIPPED);
+
+    expect($data['wallet_balances_paise'])->toBe(-30_000)
+        ->and($data['negative_balances_notice'])->toBeTrue()
+        // Floored at nothing owed: 223,881 gross profit, nothing transferred,
+        // no TDS and nothing in flight. Subtracting the raw -30,000 would have
+        // reported 253,881 of free cash that does not exist.
+        ->and($data['cash_free_after_commitments_paise'])->toBe(223_881);
+
+    $finance = User::factory()->create();
+    $finance->assignRole('admin-finance');
+
+    foreach (['company-snapshot', 'company-cash-snapshot'] as $view) {
+        $this->actingAs($finance)
+            ->get(route("admin.reports.profit.{$view}"))
+            ->assertOk()
+            ->assertSee('Wallet balances are negative for this date', false);
+    }
+});
+
+it('clears the negative-balance notice when every balance is sound', function (): void {
+    $data = prReport()->companySnapshot(SalesScope::all(), null, null, SalesReportService::BASIS_SHIPPED);
+
+    expect($data['negative_balances_notice'])->toBeFalse();
+});
+
+/**
+ * D2 — the formula-injection guard used to quote every cell starting with a
+ * minus, so a loss reached the sheet as the text `'-5761.19` and no column
+ * that contained one would total. Only strings are guarded now.
+ */
+it('exports a negative figure as a bare number, not as quoted text', function (): void {
+    $variant = prVariant();
+    $order = prShippedOrder([['variant' => $variant, 'qty' => 10, 'inclusive_paise' => 499_000]]);
+    prPackAtCost($order, 19_900);
+
+    // 800,000 of bonus against 223,881 of gross profit: money left is
+    // -576,119 paise, i.e. -5761.19 in the export.
+    $wallet = app(WalletService::class);
+    $wallet->credit(
+        Distributor::factory()->create()->id,
+        800_000,
+        'gsb_credit',
+        referenceId: walletRef(),
+        referenceType: 'gsb_cutoff_result',
+        earnedOn: now(),
+    );
+
+    $finance = User::factory()->create();
+    $finance->assignRole('admin-finance');
+
+    $csv = $this->actingAs($finance)
+        ->get(route('admin.reports.profit.company-snapshot', ['format' => 'csv']))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($csv)->toContain('-5761.19')
+        ->not->toContain("'-5761.19");
 });

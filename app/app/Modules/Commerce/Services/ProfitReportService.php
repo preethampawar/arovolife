@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Commerce\Services;
 
 use App\Modules\Commerce\Support\SalesScope;
+use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Inventory\Models\PurchaseInvoice;
 use App\Modules\Inventory\Services\CogsResolver;
@@ -143,6 +145,313 @@ final class ProfitReportService
 
             'estimated_lines' => $cogs['estimated_lines'],
             'total_lines' => $cogs['total_lines'],
+        ];
+    }
+
+    /**
+     * The trading account extended past contribution into what the company
+     * actually keeps: bonus taken back (reversals, cap forfeits, the admin
+     * charge), what it merely holds for other people (TDS, repurchase wallets,
+     * unpaid wallet balances), and what has reached distributors' banks.
+     *
+     * Sales, purchases and stock honour $basis and $warehouseCode exactly as
+     * {@see tradingAccount()} does. Every ledger and payout figure below is
+     * company-wide, keyed on `created_at` (the same clock tradingAccount()
+     * already uses for commission) and ignores both the basis and the
+     * warehouse — there is no warehouse of a wallet.
+     *
+     * Admin charge and TDS are read from the wallet-ledger DEBITS, never
+     * summed off `payout_line_items`: a `below_minimum` line carries a computed
+     * admin charge and TDS that were never debited, and a held line is
+     * re-created by every batch with the same unswept gross. The net figures
+     * come from the three line statuses whose debits do exist.
+     *
+     * @return array<string, mixed> every tradingAccount() key, plus:
+     *                              reversed_paise, forfeited_paise, net_commission_paise,
+     *                              repurchase_withheld_paise, admin_charge_paise, tds_paise,
+     *                              money_left_paise, money_left_pct,
+     *                              gross_swept_paise, repurchase_swept_paise,
+     *                              net_transferred_paise, net_in_flight_paise,
+     *                              transferred_lines, payout_lines,
+     *                              held_paise, held_distributors,
+     *                              wallet_balances_paise, repurchase_balances_paise,
+     *                              negative_balances_notice,
+     *                              gst_net_payable_paise, repurchase_spent_on_orders_paise,
+     *                              cash_money_left_paise, cash_money_left_pct,
+     *                              cash_free_after_commitments_paise
+     *
+     * @throws \InvalidArgumentException when the scope is not the whole book
+     */
+    public function companySnapshot(
+        SalesScope $scope,
+        ?CarbonInterface $from,
+        ?CarbonInterface $to,
+        string $basis,
+        ?string $warehouseCode = null,
+    ): array {
+        $trading = $this->tradingAccount($scope, $from, $to, $basis, $warehouseCode);
+
+        $ledger = $this->ledgerTotals($from, $to);
+        $payouts = $this->payoutTotals($from, $to);
+        $held = $this->heldTotals($to);
+        $balances = $this->balancesAsOf($to);
+
+        $grossProfit = (int) $trading['gross_profit_paise'];
+        $netSales = (int) $trading['net_sales_paise'];
+
+        // What the company is left holding: contribution, plus every rupee of
+        // bonus it took back again. A reversal and a cap forfeit both undo a
+        // credit that contribution already deducted, and the admin charge is
+        // deducted from the distributor but never leaves the company.
+        $moneyLeft = (int) $trading['contribution_paise']
+            + $ledger['reversed_paise']
+            + $ledger['forfeited_paise']
+            + $ledger['admin_charge_paise'];
+
+        // The same question on a cash footing: only bank-confirmed transfers
+        // are treated as gone, and everything credited but unpaid is listed
+        // below as a commitment instead.
+        $cashMoneyLeft = $grossProfit - $payouts['net_transferred_paise'];
+
+        // A company-wide wallet balance below zero cannot happen in normal
+        // operation; on a test environment it is the trace of a recompute run
+        // under live traffic, where a spend survives the wipe while the credit
+        // behind it is re-derived smaller. Subtracting such a figure would
+        // ADD it to free cash — a liability inflating the money available.
+        // The raw balance is still reported on its own row; only the
+        // commitment arithmetic floors it.
+        $negativeBalances = $balances['wallet_balances_paise'] < 0
+            || $balances['repurchase_balances_paise'] < 0;
+
+        $cashFree = $cashMoneyLeft
+            - $ledger['tds_paise']
+            - $payouts['net_in_flight_paise']
+            - max(0, $balances['wallet_balances_paise'])
+            - max(0, $balances['repurchase_balances_paise']);
+
+        return $trading + [
+            'reversed_paise' => $ledger['reversed_paise'],
+            'forfeited_paise' => $ledger['forfeited_paise'],
+            'net_commission_paise' => (int) $trading['commission_paise'] - $ledger['reversed_paise'] - $ledger['forfeited_paise'],
+
+            'repurchase_withheld_paise' => $ledger['repurchase_withheld_paise'],
+            'admin_charge_paise' => $ledger['admin_charge_paise'],
+            'tds_paise' => $ledger['tds_paise'],
+
+            'money_left_paise' => $moneyLeft,
+            'money_left_pct' => $this->pct($moneyLeft, $netSales),
+
+            'gross_swept_paise' => $payouts['gross_swept_paise'],
+            'repurchase_swept_paise' => $payouts['repurchase_swept_paise'],
+            'net_transferred_paise' => $payouts['net_transferred_paise'],
+            'net_in_flight_paise' => $payouts['net_in_flight_paise'],
+            'transferred_lines' => $payouts['transferred_lines'],
+            'payout_lines' => $payouts['lines'],
+
+            'held_paise' => $held['held_paise'],
+            'held_distributors' => $held['held_distributors'],
+
+            'wallet_balances_paise' => $balances['wallet_balances_paise'],
+            'repurchase_balances_paise' => $balances['repurchase_balances_paise'],
+            'negative_balances_notice' => $negativeBalances,
+
+            'gst_net_payable_paise' => (int) $trading['gst_output_paise'] - (int) $trading['gst_input_paise'],
+            'repurchase_spent_on_orders_paise' => $this->sales->repurchaseWalletAppliedPaise($scope, $from, $to, $basis),
+
+            'cash_money_left_paise' => $cashMoneyLeft,
+            'cash_money_left_pct' => $this->pct($cashMoneyLeft, $netSales),
+            'cash_free_after_commitments_paise' => $cashFree,
+        ];
+    }
+
+    /**
+     * Company-wide wallet-ledger movements in the window, by entry type.
+     *
+     * Every figure is an absolute amount: these are all debits except the
+     * reversal's mirror rows, and a statement reads better with the direction
+     * in the label than with a minus sign in the number.
+     *
+     * ## A reversal is two rows, not one
+     *
+     * {@see WalletService::reverseBonusCredit()} debits the `reversal` row for
+     * the NET amount only — its one caller passes gross minus the repurchase
+     * share — and takes the repurchase share back with a NEGATIVE
+     * `repurchase_deduction` row instead. Counting only the `reversal` rows
+     * would therefore under-report every reversal by its repurchase share and
+     * leave that share sitting in "money left" as a cost the company never
+     * bore. Negative `repurchase_deduction` rows are written by that method
+     * alone: {@see WalletService::restoreRepurchaseCreditForOrder()} always
+     * credits a positive amount.
+     *
+     * The forfeit path needs no such mirror: `writeIncomeCapForfeits()` debits
+     * gross minus the repurchase share and the distributor keeps that share by
+     * design, so the forfeit row is already the whole of what was taken back.
+     *
+     * @return array{reversed_paise: int, forfeited_paise: int, repurchase_withheld_paise: int, admin_charge_paise: int, tds_paise: int}
+     */
+    private function ledgerTotals(?CarbonInterface $from, ?CarbonInterface $to): array
+    {
+        $row = DB::table('wallet_ledger_entries')
+            ->when($from !== null, fn ($q) => $q->where('created_at', '>=', $from))
+            ->when($to !== null, fn ($q) => $q->where('created_at', '<=', $to))
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN type = ? THEN ABS(amount_paise) '.
+                'WHEN type = ? AND amount_paise < 0 THEN ABS(amount_paise) ELSE 0 END), 0) as reversed_paise, '.
+                'COALESCE(SUM(CASE WHEN type IN (?, ?) THEN ABS(amount_paise) ELSE 0 END), 0) as forfeited_paise, '.
+                'COALESCE(SUM(CASE WHEN type = ? THEN ABS(amount_paise) ELSE 0 END), 0) as repurchase_withheld_paise, '.
+                'COALESCE(SUM(CASE WHEN type = ? THEN ABS(amount_paise) ELSE 0 END), 0) as admin_charge_paise, '.
+                'COALESCE(SUM(CASE WHEN type = ? THEN ABS(amount_paise) ELSE 0 END), 0) as tds_paise',
+                [
+                    'reversal', 'repurchase_deduction',
+                    'rank_cap_forfeit', 'income_cap_forfeit',
+                    'repurchase_transfer',
+                    'admin_charge_debit',
+                    'tds_debit',
+                ],
+            )
+            ->first();
+
+        return [
+            'reversed_paise' => (int) ($row->reversed_paise ?? 0),
+            'forfeited_paise' => (int) ($row->forfeited_paise ?? 0),
+            'repurchase_withheld_paise' => (int) ($row->repurchase_withheld_paise ?? 0),
+            'admin_charge_paise' => (int) ($row->admin_charge_paise ?? 0),
+            'tds_paise' => (int) ($row->tds_paise ?? 0),
+        ];
+    }
+
+    /**
+     * Payout lines built in the window, restricted to the three statuses whose
+     * wallet debits actually exist. A held line never moved a rupee and a
+     * below-minimum line carries deductions that were computed and discarded —
+     * counting either would invent money.
+     *
+     * ## The window is the build date; the status is as of now
+     *
+     * There is no `transferred_at` column, so a line can only be placed in time
+     * by `created_at` — the moment the batch was built. The transferred /
+     * pending / failed split is therefore the bank's answer as it stands when
+     * the report runs, not as it stood on the To date: a line built inside the
+     * window and confirmed by the bank a week later counts as transferred here.
+     * Every figure this returns is read the same way, and the copy on both
+     * snapshot pages says so rather than promising a settlement date.
+     *
+     * @return array{gross_swept_paise: int, repurchase_swept_paise: int, net_transferred_paise: int, net_in_flight_paise: int, transferred_lines: int, lines: int}
+     */
+    private function payoutTotals(?CarbonInterface $from, ?CarbonInterface $to): array
+    {
+        $row = DB::table('payout_line_items')
+            ->whereIn('status', [
+                PayoutLineItem::STATUS_PENDING,
+                PayoutLineItem::STATUS_TRANSFERRED,
+                PayoutLineItem::STATUS_FAILED,
+            ])
+            ->when($from !== null, fn ($q) => $q->where('created_at', '>=', $from))
+            ->when($to !== null, fn ($q) => $q->where('created_at', '<=', $to))
+            ->selectRaw(
+                'COALESCE(SUM(gross_paise), 0) as gross_swept_paise, '.
+                'COALESCE(SUM(repurchase_deduction_paise), 0) as repurchase_swept_paise, '.
+                'COALESCE(SUM(CASE WHEN status = ? THEN net_transferred_paise ELSE 0 END), 0) as net_transferred_paise, '.
+                'COALESCE(SUM(CASE WHEN status IN (?, ?) THEN net_transferred_paise ELSE 0 END), 0) as net_in_flight_paise, '.
+                'COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0) as transferred_lines, '.
+                'COUNT(*) as line_count',
+                [
+                    PayoutLineItem::STATUS_TRANSFERRED,
+                    PayoutLineItem::STATUS_PENDING, PayoutLineItem::STATUS_FAILED,
+                    PayoutLineItem::STATUS_TRANSFERRED,
+                ],
+            )
+            ->first();
+
+        return [
+            'gross_swept_paise' => (int) ($row->gross_swept_paise ?? 0),
+            'repurchase_swept_paise' => (int) ($row->repurchase_swept_paise ?? 0),
+            'net_transferred_paise' => (int) ($row->net_transferred_paise ?? 0),
+            'net_in_flight_paise' => (int) ($row->net_in_flight_paise ?? 0),
+            'transferred_lines' => (int) ($row->transferred_lines ?? 0),
+            'lines' => (int) ($row->line_count ?? 0),
+        ];
+    }
+
+    /**
+     * Income the latest weekly and monthly batches could not pay — KYC
+     * pending, no bank account, web-only, or bank details that would not
+     * decrypt. Read from the LATEST batch of each type only: a held line is
+     * written afresh by every batch over the same unswept credits, so summing
+     * them across batches would report the same rupee several times.
+     *
+     * @return array{held_paise: int, held_distributors: int}
+     */
+    private function heldTotals(?CarbonInterface $to): array
+    {
+        $batchIds = [];
+
+        foreach ([PayoutBatch::TYPE_WEEKLY, PayoutBatch::TYPE_MONTHLY] as $type) {
+            $id = DB::table('payout_batches')
+                ->where('batch_type', $type)
+                ->when($to !== null, fn ($q) => $q->where('created_at', '<=', $to))
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->value('id');
+
+            if ($id !== null) {
+                $batchIds[] = (int) $id;
+            }
+        }
+
+        if ($batchIds === []) {
+            return ['held_paise' => 0, 'held_distributors' => 0];
+        }
+
+        $row = DB::table('payout_line_items')
+            ->whereIn('payout_batch_id', $batchIds)
+            ->whereIn('status', PayoutLineItem::HELD_STATUSES)
+            ->selectRaw('COALESCE(SUM(wallet_balance_paise), 0) as held_paise, COUNT(DISTINCT distributor_id) as held_distributors')
+            ->first();
+
+        return [
+            'held_paise' => (int) ($row->held_paise ?? 0),
+            'held_distributors' => (int) ($row->held_distributors ?? 0),
+        ];
+    }
+
+    /**
+     * What the company still owes distributors as at the end of the period —
+     * a balance, not a movement, so there is no lower bound on the date.
+     *
+     * The repurchase side floors each distributor at zero before summing, the
+     * same way {@see WalletService::repurchaseWalletBalancesAsOfPaise()} does:
+     * one distributor's negative position is a data fault, not a credit
+     * against everybody else's balance.
+     *
+     * @return array{wallet_balances_paise: int, repurchase_balances_paise: int}
+     */
+    private function balancesAsOf(?CarbonInterface $to): array
+    {
+        $wallet = (int) DB::table('wallet_ledger_entries')
+            ->whereNotIn('type', WalletService::REPURCHASE_TYPES)
+            ->when($to !== null, fn ($q) => $q->where('created_at', '<=', $to))
+            ->sum('amount_paise');
+
+        $perDistributor = DB::table('wallet_ledger_entries')
+            ->whereIn('type', WalletService::REPURCHASE_TYPES)
+            ->when($to !== null, fn ($q) => $q->where('created_at', '<=', $to))
+            ->groupBy('distributor_id')
+            ->selectRaw(
+                'distributor_id, '.
+                'COALESCE(SUM(CASE WHEN type = ? THEN amount_paise ELSE 0 END), 0) as credits, '.
+                'COALESCE(SUM(CASE WHEN type = ? THEN ABS(amount_paise) ELSE 0 END), 0) as debits',
+                ['repurchase_deduction', 'repurchase_wallet_used'],
+            );
+
+        $repurchase = (int) DB::query()
+            ->fromSub($perDistributor, 'per_distributor')
+            ->selectRaw('COALESCE(SUM(CASE WHEN credits > debits THEN credits - debits ELSE 0 END), 0) as total')
+            ->value('total');
+
+        return [
+            'wallet_balances_paise' => $wallet,
+            'repurchase_balances_paise' => $repurchase,
         ];
     }
 

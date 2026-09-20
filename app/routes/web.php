@@ -128,6 +128,7 @@ use App\Modules\Public\Http\Controllers\ContactController;
 use App\Modules\Public\Http\Controllers\FindMyIdController;
 use App\Modules\Returns\Http\Controllers\Admin\AdminReturnController;
 use App\Modules\Returns\Http\Controllers\Storefront\ReturnController;
+use App\Modules\Tax\Http\Controllers\Admin\AdminTaxReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('landing.index'))->name('home');
@@ -451,9 +452,19 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::prefix('reports/profit')->name('reports.profit.')->middleware('can:profit.report.view')->group(function (): void {
         Route::get('/', [AdminProfitReportController::class, 'index'])->name('index');
         Route::get('/summary', [AdminProfitReportController::class, 'summary'])->name('summary');
+        Route::get('/company-snapshot', [AdminProfitReportController::class, 'companySnapshot'])->name('company-snapshot');
+        Route::get('/company-cash-snapshot', [AdminProfitReportController::class, 'companyCashSnapshot'])->name('company-cash-snapshot');
         Route::get('/by-product', [AdminProfitReportController::class, 'byProduct'])->name('by-product');
         Route::get('/by-category', [AdminProfitReportController::class, 'byCategory'])->name('by-category');
         Route::get('/register', [AdminProfitReportController::class, 'register'])->name('register');
+
+        // The statutory reports live behind the same door: they are the same
+        // company-wide finance data cut for a return rather than for a margin.
+        Route::get('/tds', [AdminTaxReportController::class, 'tdsSummary'])->name('tds');
+        Route::get('/tds-register', [AdminTaxReportController::class, 'tdsRegister'])->name('tds-register');
+        Route::get('/gst', [AdminTaxReportController::class, 'gstSummary'])->name('gst');
+        Route::get('/gst-outward', [AdminTaxReportController::class, 'gstOutward'])->name('gst-outward');
+        Route::get('/gst-inward', [AdminTaxReportController::class, 'gstInward'])->name('gst-inward');
     });
 
     // Inventory — suppliers, purchase orders, goods receipts (GRNs), warehouses,

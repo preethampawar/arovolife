@@ -7,9 +7,21 @@
     @php
         $cards = [
             [
+                'route' => 'company-snapshot',
+                'title' => 'Company snapshot',
+                'blurb' => 'One page for the owners: what the goods cost, what they sold for, what went to distributors, what was withheld for tax and GST, and what is left with arovolife. Start here.',
+                'icon' => 'lucide-landmark',
+            ],
+            [
+                'route' => 'company-cash-snapshot',
+                'title' => 'Company cash snapshot',
+                'blurb' => 'The same page on a cash footing: bonuses count only once the bank has confirmed the transfer, so this is what has actually left arovolife — and what is still committed to others.',
+                'icon' => 'lucide-banknote',
+            ],
+            [
                 'route' => 'summary',
                 'title' => 'Profit summary',
-                'blurb' => 'Purchases, stock and sales reconciled into cost of goods sold, gross profit and contribution. Start here.',
+                'blurb' => 'Purchases, stock and sales reconciled into cost of goods sold, gross profit and contribution.',
                 'icon' => 'lucide-scale',
             ],
             [
@@ -27,8 +39,20 @@
             [
                 'route' => 'register',
                 'title' => 'Profit register',
-                'blurb' => 'One row per sold line, with its cost and margin. The drill-down behind every total on the other three.',
+                'blurb' => 'One row per sold line, with its cost and margin. The drill-down behind every total on the summary pages.',
                 'icon' => 'lucide-list',
+            ],
+            [
+                'route' => 'tds',
+                'title' => 'TDS report',
+                'blurb' => 'TDS withheld from bonus payouts, by month or financial-year quarter, with the deductee-wise register behind Form 26Q.',
+                'icon' => 'lucide-receipt-indian-rupee',
+            ],
+            [
+                'route' => 'gst',
+                'title' => 'GST report',
+                'blurb' => 'Output tax on invoices, credit notes on refunds and input credit on goods receipts, by head and by rate — the GSTR-3B summary with the GSTR-1 and inward registers behind it.',
+                'icon' => 'lucide-file-text',
             ],
         ];
     @endphp

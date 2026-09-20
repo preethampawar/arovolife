@@ -28,3 +28,17 @@ it('coerces ints and null safely', function (): void {
 it('coerces a float safely (F122: grievance median_resolution_days is a float)', function (): void {
     expect(Csv::safe(3.5))->toBe('3.5');
 });
+
+/**
+ * D2 — the guard is for STRINGS only. A number cannot carry a formula, and
+ * quoting one exports a legitimate negative amount (a loss, a refund, a credit
+ * balance) as text the spreadsheet will neither sum nor right-align.
+ */
+it('leaves negative numbers bare but still guards a negative-looking string', function (): void {
+    expect(Csv::safe(-480318.94))->toBe('-480318.94')
+        ->and(Csv::safe(-5))->toBe('-5')
+        // A string stays a string: nothing distinguishes a crafted cell from a
+        // number somebody typed into one, so the guard keeps quoting it.
+        ->and(Csv::safe('-480318.94'))->toBe("'-480318.94")
+        ->and(Csv::safe('=cmd|x'))->toBe("'=cmd|x");
+});

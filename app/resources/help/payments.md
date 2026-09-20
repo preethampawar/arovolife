@@ -163,6 +163,46 @@ message names which state, and what you can do about it differs:
 The last case should not arise for orders placed after 2026-09-18, when every
 state field became a fixed list rather than something typed.
 
+## GST reports
+
+The tax on these invoices is summarised on three screens under
+**Commerce → Profit on sales**, behind `profit.report.view` — the same
+permission as the rest of the finance reporting, so admin-finance can open them
+and admin-compliance cannot:
+
+- **GST report** (`/admin/reports/profit/gst`) — output tax, credit notes and
+  input credit, by head and by rate, with what is left payable per head. The
+  GSTR-3B-shaped page. Pick a calendar month or an Indian financial-year
+  quarter; with neither set it reports the last completed month.
+- **GST outward register** (`/admin/reports/profit/gst-outward`) — one row per
+  invoice line, then the credit notes. The GSTR-1 drill-down.
+- **GST inward register** (`/admin/reports/profit/gst-inward`) — one row per
+  goods receipt and rate.
+
+Four things decide whether a figure lands where you expect:
+
+- **Outward is dated by the tax invoice**, not by the shipped date the Profit
+  summary uses, so the two pages will not tie. The GST page carries the
+  order-book GST for the same window as a memo so the size of the gap is
+  visible rather than a mystery.
+- **A credit note is only a refund that actually reversed GST.** A cooling-off
+  cancellation returns the tax; a buyback outside that window does not. The
+  report reads the reversal from the accounting entry, so a refund that kept
+  the tax cannot reduce the output figure. Refunds with no tax credit are
+  counted in the memo block, and a partial reversal is flagged
+  *Partial — check* rather than split line by line.
+- **No numbered credit-note document is issued yet.** Nothing on the platform
+  raises a credit note with its own consecutive number; the register identifies
+  each one by the invoice and order it reverses.
+- **Inward heads come from the supplier's state as recorded today**, because a
+  goods receipt stores no head of its own. A supplier with no state, or one we
+  cannot read, lands in **Unclassified** — never allocated to a head to make a
+  total look complete, and never included in the net payable. Set the state in
+  Inventory → Suppliers and it moves into a head. Inward is dated by the
+  supplier's invoice date, not the date the receipt was posted.
+
+Every export from these screens is audited (`tax.report.exported`).
+
 ## When something looks wrong
 
 - *Order says placed, buyer says paid.* Open the payment and press **Sync

@@ -23,9 +23,17 @@ final class Csv
      * `=HYPERLINK(...)` or `=cmd|...` would execute when an operator opens the
      * export. Prefixing such a cell with a single quote forces it to render as
      * plain text. Empty and safe values pass through unchanged.
+     *
+     * Only strings are guarded. An int or a float cannot carry a formula, and
+     * quoting one turns a legitimate negative amount — a loss, a refund, a
+     * credit balance — into text the sheet will neither sum nor right-align.
      */
     public static function safe(int|float|string|null $value): string
     {
+        if (is_int($value) || is_float($value)) {
+            return (string) $value;
+        }
+
         $string = (string) ($value ?? '');
 
         if ($string !== '' && in_array($string[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
@@ -63,7 +71,10 @@ final class Csv
                     } elseif (is_bool($value)) {
                         $value = $value ? '1' : '0';
                     } elseif (is_float($value)) {
-                        $value = number_format($value, 2, '.', '');
+                        // Returned rather than passed on: number_format() hands
+                        // back a string, and a negative amount would then be
+                        // quoted as a formula by the guard below.
+                        return number_format($value, 2, '.', '');
                     } elseif (! is_scalar($value)) {
                         $value = (string) $value;
                     }

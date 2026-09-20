@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Commerce\Services\ProfitReportService;
 use App\Modules\Commerce\Services\SalesReportService;
 use App\Modules\Commerce\Support\SalesScope;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Inventory\Models\Warehouse;
@@ -17,6 +18,7 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -34,7 +36,10 @@ final class AdminProfitReportController extends Controller
 
     private const REGISTER_EXPORT_LIMIT = 50000;
 
-    public function __construct(private readonly ProfitReportService $profit) {}
+    public function __construct(
+        private readonly ProfitReportService $profit,
+        private readonly CompensationPlanSettingsService $plan,
+    ) {}
 
     public function index(): View
     {
@@ -57,6 +62,57 @@ final class AdminProfitReportController extends Controller
         return view('admin.reports.profit.summary', $this->viewData($request, $data) + [
             'title' => 'Profit summary',
             'slug' => 'summary',
+        ]);
+    }
+
+    /**
+     * The owners' page: the trading account carried all the way through to
+     * what is left with the company, on an accrual footing — a bonus counts
+     * the moment it is credited to a wallet, whether it has been paid or not.
+     */
+    public function companySnapshot(Request $request): View|StreamedResponse
+    {
+        [$from, $to, $basis, $warehouse] = $this->filters($request);
+
+        $data = $this->profit->companySnapshot(SalesScope::all(), $from, $to, $basis, $warehouse);
+
+        if ($this->wantsExport($request)) {
+            return $this->export($request, 'profit-company-snapshot', [
+                ['key' => 'line', 'label' => 'Line'],
+                ['key' => 'amount', 'label' => 'Amount', 'align' => 'right'],
+            ], $this->snapshotExportRows($data));
+        }
+
+        return view('admin.reports.profit.company-snapshot', $this->viewData($request, $data) + [
+            'title' => 'Company snapshot',
+            'slug' => 'company-snapshot',
+            'rates' => $this->planRates(),
+        ]);
+    }
+
+    /**
+     * The same page on a cash footing: only a bank-confirmed transfer counts
+     * as money gone, and everything credited but unpaid is listed below as a
+     * commitment instead. Same service call — the two pages differ in which of
+     * its figures they subtract, never in what they read.
+     */
+    public function companyCashSnapshot(Request $request): View|StreamedResponse
+    {
+        [$from, $to, $basis, $warehouse] = $this->filters($request);
+
+        $data = $this->profit->companySnapshot(SalesScope::all(), $from, $to, $basis, $warehouse);
+
+        if ($this->wantsExport($request)) {
+            return $this->export($request, 'profit-company-cash-snapshot', [
+                ['key' => 'line', 'label' => 'Line'],
+                ['key' => 'amount', 'label' => 'Amount', 'align' => 'right'],
+            ], $this->cashSnapshotExportRows($data));
+        }
+
+        return view('admin.reports.profit.company-cash-snapshot', $this->viewData($request, $data) + [
+            'title' => 'Company cash snapshot',
+            'slug' => 'company-cash-snapshot',
+            'rates' => $this->planRates(),
         ]);
     }
 
@@ -262,6 +318,204 @@ final class AdminProfitReportController extends Controller
         $rows[] = ['line' => 'Memo: BV released', 'amount' => $money($data['bv_paise'])];
 
         return $rows;
+    }
+
+    /**
+     * The accrual snapshot, one row per statement line, in the order the page
+     * shows them — so a finance user reading the workbook is reading the same
+     * document they exported.
+     *
+     * @param  array<string, mixed>  $data
+     * @return list<array<string, mixed>>
+     */
+    private function snapshotExportRows(array $data): array
+    {
+        $money = static fn (int $p): float => $p / 100;
+
+        $rows = $this->goodsAndSalesExportRows($data);
+
+        $rows[] = ['line' => 'Paid to distributors', 'amount' => null];
+        $rows[] = ['line' => 'Gross swept into payout batches', 'amount' => $money($data['gross_swept_paise'])];
+        $rows[] = ['line' => 'Less: Repurchase deduction (held for goods)', 'amount' => $money($data['repurchase_swept_paise'])];
+        $rows[] = ['line' => 'Less: Admin charge retained by arovolife', 'amount' => $money($data['admin_charge_paise'])];
+        $rows[] = ['line' => 'Less: TDS deducted, to be remitted', 'amount' => $money($data['tds_paise'])];
+        $rows[] = ['line' => 'Net paid to distributors', 'amount' => $money($data['net_transferred_paise'])];
+        $rows[] = ['line' => 'Built, not yet in the bank — pending / failed', 'amount' => $money($data['net_in_flight_paise'])];
+        $rows[] = ['line' => 'Memo: Repurchase share withheld at credit time this period', 'amount' => $money($data['repurchase_withheld_paise'])];
+
+        $rows[] = ['line' => 'What arovolife keeps', 'amount' => null];
+        $rows[] = ['line' => 'Gross profit', 'amount' => $money($data['gross_profit_paise'])];
+        $rows[] = ['line' => 'Less: Bonus credited under the plan', 'amount' => $money($data['commission_paise'])];
+
+        foreach ($data['commission_by_type'] as $type => $paise) {
+            $rows[] = ['line' => '  Memo: '.Str::headline(str_replace('_credit', '', (string) $type)), 'amount' => $money((int) $paise)];
+        }
+
+        $rows[] = ['line' => 'Add back: Reversed by admin', 'amount' => $money($data['reversed_paise'])];
+        $rows[] = ['line' => 'Add back: Forfeited under income caps', 'amount' => $money($data['forfeited_paise'])];
+        $rows[] = ['line' => 'Add: Admin charge retained', 'amount' => $money($data['admin_charge_paise'])];
+        $rows[] = ['line' => 'Money left with arovolife', 'amount' => $money($data['money_left_paise'])];
+        $rows[] = ['line' => 'Memo: Money left as % of net sales', 'amount' => $data['money_left_pct']];
+
+        $rows = array_merge($rows, $this->owedToOthersExportRows($data), $this->snapshotMemoExportRows($data));
+
+        return $rows;
+    }
+
+    /**
+     * The cash snapshot. Same goods and sales rows, then the cash chain.
+     *
+     * @param  array<string, mixed>  $data
+     * @return list<array<string, mixed>>
+     */
+    private function cashSnapshotExportRows(array $data): array
+    {
+        $money = static fn (int $p): float => $p / 100;
+
+        $rows = $this->goodsAndSalesExportRows($data);
+
+        $rows[] = ['line' => 'Paid to distributors (bank-confirmed)', 'amount' => null];
+        $rows[] = ['line' => 'Net paid to distributors', 'amount' => $money($data['net_transferred_paise'])];
+        $rows[] = ['line' => 'Memo: Gross swept into those batches', 'amount' => $money($data['gross_swept_paise'])];
+        $rows[] = ['line' => 'Memo: Repurchase deduction held for goods', 'amount' => $money($data['repurchase_swept_paise'])];
+        $rows[] = ['line' => 'Memo: Admin charge retained by arovolife', 'amount' => $money($data['admin_charge_paise'])];
+        $rows[] = ['line' => 'Memo: TDS deducted on those batches', 'amount' => $money($data['tds_paise'])];
+
+        $rows[] = ['line' => 'What actually left arovolife', 'amount' => null];
+        $rows[] = ['line' => 'Gross profit', 'amount' => $money($data['gross_profit_paise'])];
+        $rows[] = ['line' => "Less: Net paid to distributors' banks", 'amount' => $money($data['net_transferred_paise'])];
+        $rows[] = ['line' => 'Money actually left with arovolife', 'amount' => $money($data['cash_money_left_paise'])];
+        $rows[] = ['line' => 'Memo: Money actually left as % of net sales', 'amount' => $data['cash_money_left_pct']];
+
+        $rows[] = ['line' => 'Still committed to others (will leave)', 'amount' => null];
+        $rows[] = ['line' => 'Less: TDS to remit', 'amount' => $money($data['tds_paise'])];
+        $rows[] = ['line' => 'Less: Payouts in flight (pending / failed)', 'amount' => $money($data['net_in_flight_paise'])];
+        $rows[] = ['line' => 'Less: Bonus credited but not yet paid out', 'amount' => $money($data['wallet_balances_paise'])];
+        $rows[] = ['line' => 'Less: Repurchase-wallet balances outstanding', 'amount' => $money($data['repurchase_balances_paise'])];
+        $rows[] = ['line' => 'Free after commitments', 'amount' => $money($data['cash_free_after_commitments_paise'])];
+
+        $rows = array_merge($rows, $this->gstExportRows($data), $this->snapshotMemoExportRows($data));
+
+        return $rows;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return list<array<string, mixed>>
+     */
+    private function goodsAndSalesExportRows(array $data): array
+    {
+        $money = static fn (int $p): float => $p / 100;
+
+        return [
+            ['line' => 'Goods', 'amount' => null],
+            ['line' => 'Purchases (taxable, ex-GST)', 'amount' => $money($data['purchases_paise'])],
+            ['line' => 'Add: Freight & other charges', 'amount' => $money($data['purchase_charges_paise'])],
+            ['line' => 'Landed purchases', 'amount' => $money($data['landed_purchases_paise'])],
+            ['line' => 'Memo: Opening stock (at cost)', 'amount' => $money($data['opening_stock_paise'])],
+            ['line' => 'Memo: Closing stock (at cost)', 'amount' => $money($data['closing_stock_paise'])],
+            ['line' => 'Cost of goods sold', 'amount' => $money($data['cogs_paise'])],
+            ['line' => 'Memo: Stock that left other than by sale', 'amount' => $money($data['reconciling_difference_paise'])],
+
+            ['line' => 'Sales', 'amount' => null],
+            ['line' => 'Gross sales (ex-GST)', 'amount' => $money($data['gross_sales_paise'])],
+            ['line' => 'Less: Returns & refunds', 'amount' => $money($data['refunds_paise'])],
+            ['line' => 'Net sales', 'amount' => $money($data['net_sales_paise'])],
+            ['line' => 'Less: Cost of goods sold', 'amount' => $money($data['cogs_paise'])],
+            ['line' => 'Gross profit', 'amount' => $money($data['gross_profit_paise'])],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return list<array<string, mixed>>
+     */
+    private function owedToOthersExportRows(array $data): array
+    {
+        $money = static fn (int $p): float => $p / 100;
+
+        return array_merge(
+            [['line' => "Owed to others (not arovolife's money)", 'amount' => null]],
+            $this->gstExportRows($data, heading: false),
+            [
+                ['line' => 'TDS deducted, to be remitted', 'amount' => $money($data['tds_paise'])],
+                ['line' => 'Bonus credited but not yet paid out', 'amount' => $money($data['wallet_balances_paise'])],
+                ['line' => 'Repurchase-wallet balances outstanding', 'amount' => $money($data['repurchase_balances_paise'])],
+                ['line' => 'Payouts in flight (pending / failed)', 'amount' => $money($data['net_in_flight_paise'])],
+                ['line' => 'Memo: Bonus held at the latest payout', 'amount' => $money($data['held_paise'])],
+                ['line' => 'Distributors held at the latest payout', 'amount' => $data['held_distributors']],
+            ],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return list<array<string, mixed>>
+     */
+    private function gstExportRows(array $data, bool $heading = true): array
+    {
+        $money = static fn (int $p): float => $p / 100;
+
+        return array_merge(
+            $heading ? [['line' => 'GST', 'amount' => null]] : [],
+            [
+                ['line' => 'GST collected on sales', 'amount' => $money($data['gst_output_paise'])],
+                ['line' => 'Less: GST paid on purchases (input credit)', 'amount' => $money($data['gst_input_paise'])],
+                ['line' => 'Net GST payable', 'amount' => $money($data['gst_net_payable_paise'])],
+            ],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return list<array<string, mixed>>
+     */
+    private function snapshotMemoExportRows(array $data): array
+    {
+        $money = static fn (int $p): float => $p / 100;
+
+        return [
+            ['line' => 'Memo', 'amount' => null],
+            ['line' => 'Memo: Shipping collected', 'amount' => $money($data['shipping_collected_paise'])],
+            ['line' => 'Memo: Collection fees collected', 'amount' => $money($data['collection_fee_collected_paise'])],
+            ['line' => 'Memo: Discounts given', 'amount' => $money($data['discount_paise'])],
+            ['line' => 'Memo: Points redeemed', 'amount' => $money($data['points_paise'])],
+            ['line' => 'Memo: Sales settled with repurchase credit', 'amount' => $money($data['repurchase_spent_on_orders_paise'])],
+            ['line' => 'Memo: BV released', 'amount' => $money($data['bv_paise'])],
+            ['line' => 'Memo: Refunded orders', 'amount' => $data['refunded_orders']],
+        ];
+    }
+
+    /**
+     * The plan rates the snapshot row notes quote, rendered from the settings
+     * that actually drive them rather than typed into the copy. Every one of
+     * these is editable from Compensation → Plan settings, so a hard-coded
+     * "10%" in a note becomes a lie the day finance changes it.
+     *
+     * Resolved here and passed in, never resolved inside a Blade view.
+     *
+     * The admin charge has two ceilings — one for the weekly group and one for
+     * the monthly groups — and quoting only the weekly one would understate
+     * the cap the moment finance sets them apart, so the note is phrased from
+     * both and collapses to a single figure only while they agree.
+     *
+     * @return array{repurchase_rate: string, repurchase_cap: string, admin_rate: string, admin_cap_note: string, tds_rate: string}
+     */
+    private function planRates(): array
+    {
+        $weeklyCap = $this->plan->adminChargeWeeklyCapPaise();
+        $monthlyCap = $this->plan->adminChargeMonthlyCapPaise();
+
+        return [
+            'repurchase_rate' => IndianNumber::percentFromBp($this->plan->repurchaseRateBp()),
+            'repurchase_cap' => IndianNumber::rupees($this->plan->repurchaseCapPaise(), 0),
+            'admin_rate' => IndianNumber::percentFromBp($this->plan->adminChargeRateBp()),
+            'admin_cap_note' => $weeklyCap === $monthlyCap
+                ? 'capped '.IndianNumber::rupees($weeklyCap, 0).' per bonus group per cycle'
+                : 'capped '.IndianNumber::rupees($weeklyCap, 0).' per weekly group and '
+                    .IndianNumber::rupees($monthlyCap, 0).' per monthly group',
+            'tds_rate' => IndianNumber::percentFromBp($this->plan->tdsRateBp()),
+        ];
     }
 
     /**
