@@ -15,7 +15,7 @@
  * Notes:
  *   - Runs against the DEV database, so these assert structure and behaviour,
  *     never specific figures. The dev data's newest order is weeks old, which
- *     means the Sales panel's "Today" column legitimately reads zero.
+ *     means the Commerce card's "Today" column legitimately reads zero.
  *   - Which panels exist is NOT fixed. `attention` and `inventory` sit behind
  *     ActionCenterFeature and InventoryFeature, both of which resolve off by
  *     default, and a flag-off panel leaves no trace in the shell at all — that
@@ -84,7 +84,7 @@ test.describe('Admin dashboard: shell', () => {
         await page.setViewportSize({ width: 1280, height: 300 });
         await page.goto('/admin');
 
-        await expect(panel(page, 'sales')).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
+        await expect(panel(page, 'commerce')).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
 
         const lastPanel = page.locator('[data-panel-url]').last();
         const state = await lastPanel.getAttribute('data-panel-state');
@@ -109,7 +109,7 @@ test.describe('Admin dashboard: shell', () => {
 
     test('E2E-05: the removed feeds are gone', async ({ adminPage: page }) => {
         await page.goto('/admin');
-        await expect(panel(page, 'sales')).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
+        await expect(panel(page, 'commerce')).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
         await expect(panel(page, 'people')).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
 
         const body = await page.locator('body').innerText();
@@ -123,7 +123,7 @@ test.describe('Admin dashboard: shell', () => {
     test('E2E-06: the refresh control re-fetches just its own panel', async ({ adminPage: page }) => {
         await page.goto('/admin');
 
-        const target = panel(page, 'sales');
+        const target = panel(page, 'commerce');
         await expect(target).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
 
         const requests = [];
@@ -252,7 +252,7 @@ test.describe('Admin dashboard: shell', () => {
         });
 
         await page.goto('/admin');
-        await expect(panel(page, 'sales')).toHaveAttribute('data-panel-state', 'done', { timeout: 20_000 });
+        await expect(panel(page, 'commerce')).toHaveAttribute('data-panel-state', 'done', { timeout: 20_000 });
 
         // Chromium exposes no way to background a tab from the page, so the
         // visibility API is stubbed directly: this asserts the branch the

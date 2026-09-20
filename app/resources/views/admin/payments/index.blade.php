@@ -61,6 +61,14 @@
     ];
     $activeStatus = $filters->value('status') ?? '';
 @endphp
+@if($defaultedToMonth)
+<p class="mb-4 text-xs text-gray-600">
+    Showing payments created this month.
+    <a href="{{ request()->fullUrlWithQuery(['created_from' => '', 'created_to' => '', 'page' => null]) }}"
+       class="font-medium text-brand-700 hover:text-brand-800 hover:underline">Show all dates</a>
+</p>
+@endif
+
 <div class="mb-4 flex flex-wrap items-center gap-2">
     @foreach($statusFacets as $value => $label)
         <a href="{{ request()->fullUrlWithQuery(['status' => $value === '' ? null : $value, 'page' => null]) }}"
@@ -71,6 +79,30 @@
 </div>
 
 <x-filter-bar :filters="$filters" />
+
+{{-- Where the money in the filtered set stands. Captured, awaiting and failed
+     are the whole of what was attempted, split by what the gateway has
+     actually said; refunds are money going back out, so they are counted
+     beside that total and never netted off it. --}}
+<x-ui.card flush class="mb-6">
+    <x-ui.stat-row :columns="5">
+        <x-ui.stat flush :label-lines="2" label="Payments"
+                   :value="\App\Modules\Shared\Support\IndianNumber::format($summary['payments'])"
+                   :hint="$defaultedToMonth ? 'Attempts created this month' : 'Attempts matching these filters'" />
+        <x-ui.stat flush :label-lines="2" label="Captured"
+                   :value="\App\Modules\Shared\Support\IndianNumber::rupees($summary['captured_paise'])"
+                   hint="Confirmed by the gateway" />
+        <x-ui.stat flush :label-lines="2" label="Awaiting payment"
+                   :value="\App\Modules\Shared\Support\IndianNumber::rupees($summary['awaiting_paise'])"
+                   hint="Created or authorised, not captured" />
+        <x-ui.stat flush :label-lines="2" label="Failed / expired"
+                   :value="\App\Modules\Shared\Support\IndianNumber::rupees($summary['failed_paise'])"
+                   hint="Money that never arrived" />
+        <x-ui.stat flush :label-lines="2" label="Refunded"
+                   :value="\App\Modules\Shared\Support\IndianNumber::rupees($summary['refunded_paise'])"
+                   hint="Processed refunds on these payments" />
+    </x-ui.stat-row>
+</x-ui.card>
 
 <x-ui.card flush>
     <div class="overflow-x-auto">

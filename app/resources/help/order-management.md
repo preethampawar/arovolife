@@ -25,6 +25,29 @@ does to stock and money.
 | `cancelled` | Cancelled before or after packing — see below for what happens to stock. |
 | `refund_requested` / `refund_inspection` / `refund_approved` / `refunded` | The return and refund path — see [Payments & Refunds](payments). |
 
+## The orders list
+
+The list opens on **today's orders** — the date range is pre-set to today, and
+a line above the status chips says so. To look further back, either widen the
+**Placed from / Placed to** dates and press **Filter**, or use **Show all
+dates** to drop the window entirely.
+
+Above the table sits a row of figures for the set you are currently looking
+at, not for the page of 25 and not for all time:
+
+| Tile | What it counts |
+|---|---|
+| Orders | How many orders match the window, the status chip and the search. |
+| Order value | The sum of the Total column — money payable, *after* any repurchase-wallet credit. |
+| GST | The tax already included in the value beside it. |
+| Repurchase wallet | The part of those orders settled with wallet credit rather than money. |
+| BV | Business Volume carried by those orders. |
+
+Every filter moves the figures with the rows: pick the **Cancelled** chip and
+the tiles show cancelled orders only. The counts in brackets on the status
+chips are likewise counted inside the date window, so they change when you
+change the dates.
+
 ## Packing an order
 
 **Pack order**, on the order's detail page, is available once an order is

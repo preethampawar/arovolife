@@ -10,7 +10,10 @@
 </div>
 @enddeveloper
 
-<x-filter-bar :filters="$filters" />
+<x-filter-bar :filters="$filters" :exports="[
+    ['label' => 'Download Excel', 'url' => route('admin.compensation.monthly-payouts.export', $filters->toQuery() + ['format' => 'xlsx'])],
+    ['label' => 'CSV', 'url' => route('admin.compensation.monthly-payouts.export', $filters->toQuery() + ['format' => 'csv'])],
+]" />
 
 <x-ui.card flush>
     @if($batches->isEmpty())

@@ -2167,6 +2167,62 @@ final class PayoutService
     }
 
     /**
+     * The full account numbers behind a page of payout line items, keyed by
+     * distributor id, for the admin batch screen's bank column (client
+     * decision 2026-09-20: finance verifies the digits against the bank on
+     * screen, not only in the exported file).
+     *
+     * Unlike {@see bankInstructionForDistributor()} this never throws. Nothing
+     * is being paid here, so one unopenable ciphertext must not blank a whole
+     * page of other people's rows — that distributor is simply absent from the
+     * map and the screen falls back to the last-4 stored on the line. The
+     * failures are counted into one log line rather than one per row, and the
+     * ciphertext itself is never logged.
+     *
+     * @param  list<int>  $distributorIds
+     * @return array<int, string>
+     */
+    public function bankAccountNumbersForDistributors(array $distributorIds): array
+    {
+        $distributorIds = array_values(array_unique(array_filter($distributorIds)));
+
+        if ($distributorIds === []) {
+            return [];
+        }
+
+        $numbers = [];
+        $failed = 0;
+
+        $rows = DB::table('distributors')
+            ->whereIn('id', $distributorIds)
+            ->select('id', 'bank_account_enc')
+            ->get();
+
+        foreach ($rows as $row) {
+            $raw = $row->bank_account_enc;
+
+            if ($raw === null || $raw === '' || $raw === 'stub') {
+                continue;
+            }
+
+            try {
+                $numbers[(int) $row->id] = PiiCrypter::decryptString((string) $raw);
+            } catch (Throwable) {
+                $failed++;
+            }
+        }
+
+        if ($failed > 0) {
+            Log::warning('Bank account decryption failed while rendering a payout batch', [
+                'context' => 'bank_decryption_failure',
+                'failed_count' => $failed,
+            ]);
+        }
+
+        return $numbers;
+    }
+
+    /**
      * The three fields a bank needs to execute one line of the NEFT file
      * (QA F44/F95): the account number, the IFSC, and the beneficiary name as
      * the bank itself holds it.

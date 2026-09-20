@@ -648,6 +648,9 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         // approving, settling and pulling the bank file are finance's alone.
         Route::prefix('monthly-payouts')->name('monthly-payouts.')->group(function (): void {
             Route::get('/', [AdminMonthlyPayoutController::class, 'index'])->name('index');
+            // The batch list as a spreadsheet: batch-level figures only, no
+            // payee and no bank detail, so it needs no gate beyond the page's.
+            Route::get('/export', [AdminMonthlyPayoutController::class, 'export'])->name('export');
             Route::get('/{batch}', [AdminMonthlyPayoutController::class, 'show'])->name('show')->whereNumber('batch');
             Route::post('/{batch}/approve', [AdminMonthlyPayoutController::class, 'approve'])
                 ->middleware('can:finance.approve')->name('approve')->whereNumber('batch');
@@ -664,6 +667,9 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
 
         Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function (): void {
             Route::get('/', [AdminWeeklyPayoutController::class, 'index'])->name('index');
+            // The batch list as a spreadsheet: batch-level figures only, no
+            // payee and no bank detail, so it needs no gate beyond the page's.
+            Route::get('/export', [AdminWeeklyPayoutController::class, 'export'])->name('export');
             Route::get('/{batch}', [AdminWeeklyPayoutController::class, 'show'])->name('show')->whereNumber('batch');
             // Separation of duties, maker-checker half (QA F94): approving is
             // `finance.approve`, which `admin-finance` deliberately does NOT

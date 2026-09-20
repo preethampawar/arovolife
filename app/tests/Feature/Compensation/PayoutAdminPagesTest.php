@@ -546,3 +546,144 @@ it('refuses to build a bank file while the environment holds projected figures',
     // And no export was recorded, because none happened.
     expect(DB::table('audit_log')->where('action', 'payout.batch.bank_file_exported')->count())->toBe(0);
 });
+
+/**
+ * A batch whose deductions are made of all three parts, so a test can assert
+ * each one separately instead of one figure that could be any of them.
+ */
+function payoutBatchWithDeductions(): PayoutBatch
+{
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => '2026-09-15',
+        'earnings_through' => '2026-09-08',
+        'status' => PayoutBatch::STATUS_PENDING,
+        'total_gross_paise' => 1_000_000,
+        'total_deductions_paise' => 175_000,
+        'total_net_paise' => 825_000,
+        'distributor_count' => 1,
+    ]);
+
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => Distributor::factory()->create()->id,
+        'wallet_balance_paise' => 900_000,
+        'gross_paise' => 1_000_000,
+        'repurchase_deduction_paise' => 100_000,
+        'admin_charge_paise' => 30_000,
+        'tds_paise' => 45_000,
+        'net_transferred_paise' => 825_000,
+        'bank_account_last4' => '4321',
+        'status' => PayoutLineItem::STATUS_PENDING,
+        'transfer_mode' => 'neft',
+    ]);
+
+    return $batch;
+}
+
+it('breaks the deductions card into repurchase, admin charge and TDS', function (): void {
+    $batch = payoutBatchWithDeductions();
+
+    $this->actingAs(smokeAdmin())
+        ->get(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertOk()
+        // The total on the card, then the three parts that add up to it.
+        ->assertSeeInOrder(['₹1,750.00', 'Repurchase', '₹1,000.00', 'Admin charge', '₹300.00', 'TDS', '₹450.00']);
+});
+
+it('shows finance the full bank account number and writes an audit row for the look', function (): void {
+    $batch = payoutBatchWithDeductions();
+    $line = $batch->lineItems()->firstOrFail();
+    DB::table('distributors')->where('id', $line->distributor_id)->update([
+        'bank_account_enc' => PiiCrypter::encryptString('918273644321'),
+    ]);
+
+    $finance = User::factory()->create(['status' => 'active']);
+    $finance->assignRole('admin-finance');
+
+    $this->actingAs($finance)
+        ->get(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertOk()
+        ->assertSee('918273644321');
+
+    $audit = DB::table('audit_log')->where('action', 'payout.batch.bank_accounts_viewed')->first();
+    expect($audit)->not->toBeNull()
+        ->and($audit->actor_id)->toBe($finance->id)
+        // The row proves who looked and at how many accounts — never at which.
+        ->and(json_decode((string) $audit->details, true)['revealed_count'])->toBe(1)
+        ->and((string) $audit->details)->not->toContain('918273644321');
+});
+
+it('keeps the account number at last-4 for a role that may not pull the bank file', function (): void {
+    $batch = payoutBatchWithDeductions();
+    $line = $batch->lineItems()->firstOrFail();
+    DB::table('distributors')->where('id', $line->distributor_id)->update([
+        'bank_account_enc' => PiiCrypter::encryptString('918273644321'),
+    ]);
+
+    // admin-compliance may read the batch page but deliberately may not export
+    // the bank file (QA F95) — the column must not hand back that disclosure.
+    $compliance = User::factory()->create(['status' => 'active']);
+    $compliance->assignRole('admin-compliance');
+
+    $this->actingAs($compliance)
+        ->get(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertOk()
+        ->assertDontSee('918273644321')
+        ->assertSee('4321');
+
+    expect(DB::table('audit_log')->where('action', 'payout.batch.bank_accounts_viewed')->count())->toBe(0);
+});
+
+it('downloads the payout batch list with its deduction parts, under the filters in force', function (): void {
+    $wanted = payoutBatchWithDeductions();
+
+    // A batch outside the status filter must not be in the file either.
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => '2026-08-25',
+        'status' => PayoutBatch::STATUS_COMPLETED,
+        'total_gross_paise' => 500_000,
+    ]);
+
+    $response = $this->actingAs(smokeAdmin())
+        ->get(route('admin.compensation.weekly-payouts.export', [
+            'status' => PayoutBatch::STATUS_PENDING,
+            'format' => 'csv',
+        ]))
+        ->assertOk();
+
+    $csv = $response->streamedContent();
+
+    expect($csv)->toContain('Repurchase Deduction (Rs)')
+        ->and($csv)->toContain('Admin Charge (Rs)')
+        ->and($csv)->toContain('TDS (Rs)')
+        ->and($csv)->toContain($wanted->batch_date->toDateString())
+        // Ungrouped figures: a spreadsheet parses 1000, never "1,000".
+        ->and($csv)->toContain('1000')
+        ->and($csv)->not->toContain('2026-08-25');
+});
+
+it('offers the same download on the monthly batch list', function (): void {
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_MONTHLY,
+        'batch_date' => '2026-09-08',
+        'status' => PayoutBatch::STATUS_COMPLETED,
+        'total_gross_paise' => 500_000,
+        'total_deductions_paise' => 50_000,
+        'total_net_paise' => 450_000,
+        'distributor_count' => 1,
+    ]);
+
+    $this->actingAs(smokeAdmin())
+        ->get(route('admin.compensation.monthly-payouts.index'))
+        ->assertOk()
+        ->assertSee(route('admin.compensation.monthly-payouts.export', ['format' => 'csv']), false);
+
+    $csv = $this->actingAs(smokeAdmin())
+        ->get(route('admin.compensation.monthly-payouts.export', ['format' => 'csv']))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($csv)->toContain('2026-09-08')->toContain('Total Deductions (Rs)');
+});

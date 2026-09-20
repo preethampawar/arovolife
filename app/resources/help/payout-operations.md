@@ -151,7 +151,16 @@ failed runs and clears itself once the engine has been re-run successfully.
 On **Compensation → Payouts → (a batch)**:
 
 - **Distributors / Total gross / Deductions / Net to transfer** — the four
-  summary cards. Net is what will actually leave the company.
+  summary cards. Net is what will actually leave the company. The Deductions
+  card breaks its figure into the three parts it is made of — repurchase
+  deduction, admin charge and TDS — summed over every line item in the batch,
+  held lines included, exactly as the total itself is.
+- The **Bank account** column shows the beneficiary's account number in full,
+  so the digits can be checked against the bank while the batch is reviewed.
+  Only finance roles see the whole number — the same authority that may pull
+  the bank file; everyone else sees the last four digits. Each page that
+  reveals the numbers writes a `payout.batch.bank_accounts_viewed` audit row
+  recording who looked and at how many accounts, never the numbers themselves.
 - The status strip under them counts every line item by status. Lines that are
   `web_only`, `kyc_pending`, `no_bank_account` or `bank_decrypt_failed` are
   *holds*: their money stayed in the wallet, was never debited, and will be

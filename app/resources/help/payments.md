@@ -42,6 +42,30 @@ and webhook we received, with the gateway's response. Payloads are stored
 already scrubbed — no contact, email, VPA or cardholder name is ever kept —
 and dropped after 180 days; the transactional record stays.
 
+## The payments list
+
+The list opens on **payments created this month** — from the 1st to today,
+the date range is pre-set, and a line above the status facets says so. Widen
+**Created from / Created to** and press **Filter** to look further back, or
+use **Show all dates** to drop the window. A link that already names a status (the facets themselves, or one
+from elsewhere in the console) is left unwindowed, so it shows the whole set it
+was pointed at.
+
+Above the table sits a row of figures for the set you are currently looking at:
+
+| Tile | What it counts |
+|---|---|
+| Payments | How many gateway attempts match the window, the status, the gateway and the search. |
+| Captured | Money the gateway has confirmed. |
+| Awaiting payment | Created or authorised, not yet captured — promised, not arrived. |
+| Failed / expired | Attempts that failed, were cancelled or expired. |
+| Refunded | Refunds already processed against these payments. |
+
+The first three amounts add up to everything attempted in the set. **Refunds
+are counted beside that, never netted off it** — a refund does not un-capture
+the payment it reverses, and the two are separate movements of money. The
+counts in brackets on the facets are likewise counted inside the date window.
+
 ## Refunds
 
 A refund is owed the moment a return is approved or a paid order is

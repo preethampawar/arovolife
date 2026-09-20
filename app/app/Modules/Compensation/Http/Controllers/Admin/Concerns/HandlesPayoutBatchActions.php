@@ -14,9 +14,15 @@ use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Support\Csv;
+use App\Modules\Shared\Support\ListFilters;
+use App\Modules\Shared\Support\ReportExport;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
@@ -36,6 +42,194 @@ trait HandlesPayoutBatchActions
 
     /** The route name for `$action` within the section this controller serves. */
     abstract protected function payoutRouteName(string $action): string;
+
+    /**
+     * The filter set of this section's batch list. Defined once per controller
+     * and used by both the page and its download, so a filter the operator set
+     * on screen means the same thing in the file they take away from it.
+     */
+    abstract protected function payoutBatchFilters(Request $request): ListFilters;
+
+    /**
+     * This section's batch list before any filter: which batch types it lists,
+     * plus the held-line count the page and the download both report.
+     *
+     * @return Builder<PayoutBatch>
+     */
+    abstract protected function payoutBatchQuery(): Builder;
+
+    /**
+     * The batch list as a spreadsheet — the same rows, in the same order, under
+     * the filters in force, with the deduction total broken into the three
+     * parts finance reconciles against (repurchase, admin charge, TDS).
+     *
+     * Unpaginated by design: the point of the download is the whole filtered
+     * list. It carries no bank details and no distributor names — it is a list
+     * of batches, not of payees; the payees are the bank file's business, which
+     * stays gated on `finance.record`.
+     */
+    protected function exportBatchList(Request $request, string $filename): StreamedResponse
+    {
+        /** @var EloquentCollection<int, PayoutBatch> $batches */
+        $batches = $this->payoutBatchFilters($request)
+            ->apply($this->payoutBatchQuery())
+            ->orderByDesc('batch_date')
+            ->get();
+
+        $parts = $this->deductionTotalsFor(
+            array_values(array_map(static fn (PayoutBatch $b): int => (int) $b->id, $batches->all()))
+        );
+
+        $columns = [
+            ['key' => 'sno', 'label' => 'S.No.'],
+            ['key' => 'batch_date', 'label' => 'Batch Date'],
+            ['key' => 'batch_type', 'label' => 'Type'],
+            ['key' => 'earnings_through', 'label' => 'Earnings Through'],
+            ['key' => 'distributors', 'label' => 'Distributors Paid'],
+            ['key' => 'held', 'label' => 'Distributors Held'],
+            ['key' => 'gross', 'label' => 'Total Gross (Rs)'],
+            ['key' => 'repurchase', 'label' => 'Repurchase Deduction (Rs)'],
+            ['key' => 'admin_charge', 'label' => 'Admin Charge (Rs)'],
+            ['key' => 'tds', 'label' => 'TDS (Rs)'],
+            ['key' => 'deductions', 'label' => 'Total Deductions (Rs)'],
+            ['key' => 'net', 'label' => 'Net Transferred (Rs)'],
+            ['key' => 'status', 'label' => 'Status'],
+            ['key' => 'approved_at', 'label' => 'Approved At'],
+            ['key' => 'processed_at', 'label' => 'Processed At'],
+        ];
+
+        $rows = $batches->values()->map(function (PayoutBatch $batch, int $i) use ($parts): array {
+            $part = $parts[(int) $batch->id] ?? ['repurchase' => 0, 'admin_charge' => 0, 'tds' => 0];
+
+            return [
+                'sno' => $i + 1,
+                'batch_date' => $batch->batch_date->toDateString(),
+                'batch_type' => str_replace('_', ' ', $batch->batch_type),
+                // Null on monthly, legacy and pre-column batches: they swept
+                // the whole wallet balance instead of one earning week.
+                'earnings_through' => $batch->earnings_through?->toDateString() ?? '',
+                'distributors' => $batch->distributor_count,
+                'held' => (int) ($batch->getAttribute('held_count') ?? 0),
+                'gross' => $batch->total_gross_paise / 100,
+                'repurchase' => $part['repurchase'] / 100,
+                'admin_charge' => $part['admin_charge'] / 100,
+                'tds' => $part['tds'] / 100,
+                'deductions' => $batch->total_deductions_paise / 100,
+                'net' => $batch->total_net_paise / 100,
+                'status' => str_replace('_', ' ', $batch->status),
+                'approved_at' => $batch->approved_at?->format('Y-m-d H:i') ?? '',
+                'processed_at' => $batch->processed_at?->format('Y-m-d H:i') ?? '',
+            ];
+        })->all();
+
+        return ReportExport::respond($request, $filename.'-'.now()->toDateString(), $columns, $rows);
+    }
+
+    /**
+     * The bank column of the batch's line-item table: the full account number
+     * per distributor id, so finance can read the digits off the screen while
+     * verifying them against the bank (client decision 2026-09-20), instead of
+     * a last-4 that no beneficiary can be confirmed from.
+     *
+     * Gated on `finance.record`, the same authority that may pull the NEFT
+     * file. The batch page itself is visible to admin-operations and
+     * admin-compliance, who deliberately may not export that file — showing
+     * them every payee's account number here would hand back exactly the
+     * disclosure QA F95 closed. They keep the stored last-4.
+     *
+     * A reveal is a disclosure of the whole batch's bank details, so it writes
+     * the same kind of audit row the export does — counts and the page only,
+     * never a number.
+     *
+     * @param  LengthAwarePaginator<int, Model>  $lines
+     * @return array{full: bool, numbers: array<int, string>}
+     */
+    protected function bankAccountColumn(
+        Request $request,
+        PayoutBatch $batch,
+        LengthAwarePaginator $lines,
+        PayoutService $payoutService,
+    ): array {
+        if (! Gate::allows('finance.record')) {
+            return ['full' => false, 'numbers' => []];
+        }
+
+        $numbers = $payoutService->bankAccountNumbersForDistributors(
+            array_values(array_map(
+                static fn ($id): int => (int) $id,
+                $lines->getCollection()->pluck('distributor_id')->all()
+            ))
+        );
+
+        if ($numbers !== []) {
+            AuditLog::create([
+                'actor_id' => $request->user()?->id,
+                'action' => 'payout.batch.bank_accounts_viewed',
+                'subject_type' => 'payout_batch',
+                'subject_id' => (int) $batch->id,
+                // Nothing moves on a read, so there is no before-state.
+                'before_hash' => null,
+                'after_hash' => null,
+                'details' => [
+                    'batch_type' => $batch->batch_type,
+                    'batch_date' => $batch->batch_date->toDateString(),
+                    'page' => $lines->currentPage(),
+                    'revealed_count' => count($numbers),
+                    // Deliberately no account numbers and no names.
+                ],
+                'ip' => $request->ip(),
+            ]);
+        }
+
+        return ['full' => true, 'numbers' => $numbers];
+    }
+
+    /**
+     * The three parts the batch's `total_deductions_paise` is made of, summed
+     * over every line item — held ones included, exactly as
+     * PayoutService::finalizeBatchTotals() sums the stored total, so the
+     * breakdown always adds back up to the figure on the card.
+     *
+     * @return array{repurchase: int, admin_charge: int, tds: int}
+     */
+    protected function deductionTotals(PayoutBatch $batch): array
+    {
+        return $this->deductionTotalsFor([(int) $batch->id])[(int) $batch->id]
+            ?? ['repurchase' => 0, 'admin_charge' => 0, 'tds' => 0];
+    }
+
+    /**
+     * {@see deductionTotals()} for a list of batches at once, keyed by batch
+     * id — one grouped query, so the batch-list download does not run three
+     * sums per row.
+     *
+     * @param  list<int>  $batchIds
+     * @return array<int, array{repurchase: int, admin_charge: int, tds: int}>
+     */
+    protected function deductionTotalsFor(array $batchIds): array
+    {
+        if ($batchIds === []) {
+            return [];
+        }
+
+        return PayoutLineItem::whereIn('payout_batch_id', $batchIds)
+            ->groupBy('payout_batch_id')
+            ->selectRaw(
+                'payout_batch_id, '
+                .'COALESCE(SUM(repurchase_deduction_paise), 0) AS repurchase, '
+                .'COALESCE(SUM(admin_charge_paise), 0) AS admin_charge, '
+                .'COALESCE(SUM(tds_paise), 0) AS tds'
+            )
+            ->get()
+            ->mapWithKeys(static fn (PayoutLineItem $row): array => [
+                (int) $row->getAttribute('payout_batch_id') => [
+                    'repurchase' => (int) $row->getAttribute('repurchase'),
+                    'admin_charge' => (int) $row->getAttribute('admin_charge'),
+                    'tds' => (int) $row->getAttribute('tds'),
+                ],
+            ])
+            ->all();
+    }
 
     /**
      * The income this batch looked at and did NOT move: web-only, KYC-pending,

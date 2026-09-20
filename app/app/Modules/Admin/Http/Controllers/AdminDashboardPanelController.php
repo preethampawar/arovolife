@@ -9,6 +9,7 @@ use App\Modules\Admin\Support\DashboardPanels;
 use App\Modules\Identity\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
 
@@ -65,13 +66,79 @@ final class AdminDashboardPanelController extends Controller
         // falling through.
         return match ($panel) {
             'attention' => view('admin.dashboard.panels.attention', [...$data->attention($user), ...$common]),
-            'sales' => view('admin.dashboard.panels.sales', [...$data->sales(), ...$common]),
-            'orders' => view('admin.dashboard.panels.orders', [...$data->orders(), ...$common]),
+            'commerce' => view('admin.dashboard.panels.commerce', [...$this->commerce($user, $data), ...$common]),
             'inventory' => view('admin.dashboard.panels.inventory', [...$data->inventory(), ...$common]),
-            'money' => view('admin.dashboard.panels.money', [...$data->money(), ...$common]),
-            'engines' => view('admin.dashboard.panels.engines', [...$data->engines(), ...$common]),
+            'compensation' => view('admin.dashboard.panels.compensation', [...$this->compensation($data), ...$common]),
             'people' => view('admin.dashboard.panels.people', [...$data->people(), ...$common]),
             default => abort(404),
         };
+    }
+
+    /**
+     * Revenue and the order pipeline, on one card.
+     *
+     * The card itself is open to every admin, because the pipeline always was.
+     * Revenue is not: `sales.report.view` gates the sales report, so it gates
+     * the same numbers here. A viewer without it is handed `null` rather than
+     * figures the view hides — nothing is computed, and nothing reaches their
+     * browser to be un-hidden.
+     *
+     * @return array<string, mixed>
+     */
+    private function commerce(User $user, DashboardPanelData $data): array
+    {
+        $sales = $user->can('sales.report.view') ? $data->sales() : null;
+        $orders = $data->orders();
+
+        return [
+            'sales' => $sales,
+            'orders' => $orders,
+            'generated_at' => $this->oldest($sales, $orders),
+        ];
+    }
+
+    /**
+     * Payouts, held money, what the plan cost this month, and whether the
+     * engines that produced all three actually ran. One gate — `finance.record`
+     * — covers every part, which is what lets them share a card.
+     *
+     * @return array<string, mixed>
+     */
+    private function compensation(DashboardPanelData $data): array
+    {
+        $money = $data->money();
+        $engines = $data->engines();
+
+        return [
+            'money' => $money,
+            'engines' => $engines,
+            // Promoted out of the money payload: it is the only Carbon the
+            // view needs by name, and reaching two levels in for it reads
+            // worse than the one variable it becomes.
+            'stuck_since' => $money['stuck_since'],
+            'generated_at' => $this->oldest($money, $engines),
+        ];
+    }
+
+    /**
+     * The "as of" stamp for a card built from more than one payload.
+     *
+     * The oldest of them, never the newest: each is cached on its own clock,
+     * and a card is only as fresh as its stalest number.
+     *
+     * @param  array<string, mixed>|null  ...$payloads
+     */
+    private function oldest(?array ...$payloads): Carbon
+    {
+        /** @var list<Carbon> $stamps */
+        $stamps = [];
+
+        foreach ($payloads as $payload) {
+            if ($payload !== null && $payload['generated_at'] instanceof Carbon) {
+                $stamps[] = $payload['generated_at'];
+            }
+        }
+
+        return $stamps === [] ? Carbon::now() : min($stamps);
     }
 }

@@ -31,12 +31,19 @@ use Laravel\Pennant\Feature;
  * `lazy` false means the panel is fetched on DOMContentLoaded (it is above the
  * fold); true means it waits for the viewer to scroll near it. The const's own
  * order is render order.
+ *
+ * One card per console section, every one full width. Two panels may share a
+ * card only when they share a gate, or when the narrower half can be gated
+ * again inside the card: `commerce` carries revenue (`sales.report.view`) over
+ * a pipeline every admin may read, and the view asks a second time before it
+ * prints a rupee. Half-width cards are gone — their bottoms never lined up,
+ * and an odd panel count left a hole beside the last one.
  */
 final class DashboardPanels
 {
     /**
      * @var array<string, array{title: string, permission: string|null,
-     *                          feature: class-string|null, lazy: bool, span: string}>
+     *                          feature: class-string|null, lazy: bool}>
      */
     public const PANELS = [
         'attention' => [
@@ -44,49 +51,30 @@ final class DashboardPanels
             'permission' => 'action.center.view',
             'feature' => ActionCenterFeature::class,
             'lazy' => false,
-            'span' => 'full',
         ],
-        'sales' => [
-            'title' => 'Sales',
-            'permission' => 'sales.report.view',
-            'feature' => null,
-            'lazy' => false,
-            'span' => 'full',
-        ],
-        'orders' => [
-            'title' => 'Order pipeline',
+        'commerce' => [
+            'title' => 'Commerce',
             'permission' => null,
             'feature' => null,
-            'lazy' => true,
-            'span' => 'half',
+            'lazy' => false,
         ],
         'inventory' => [
-            'title' => 'Stock & warehouses',
+            'title' => 'Inventory',
             'permission' => 'inventory.view',
             'feature' => InventoryFeature::class,
             'lazy' => true,
-            'span' => 'half',
         ],
-        'money' => [
-            'title' => 'Payouts & commission',
+        'compensation' => [
+            'title' => 'Compensation',
             'permission' => 'finance.record',
             'feature' => null,
             'lazy' => true,
-            'span' => 'half',
-        ],
-        'engines' => [
-            'title' => 'Engine health',
-            'permission' => 'finance.record',
-            'feature' => null,
-            'lazy' => true,
-            'span' => 'half',
         ],
         'people' => [
             'title' => 'Network',
             'permission' => null,
             'feature' => null,
             'lazy' => true,
-            'span' => 'full',
         ],
     ];
 
@@ -99,7 +87,7 @@ final class DashboardPanels
      * meant to keep it from.
      *
      * @return array<string, array{title: string, permission: string|null,
-     *                             feature: class-string|null, lazy: bool, span: string}>
+     *                             feature: class-string|null, lazy: bool}>
      */
     public static function visibleTo(?User $user): array
     {

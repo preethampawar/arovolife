@@ -20,9 +20,11 @@ use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
@@ -46,7 +48,24 @@ final class AdminPaymentController extends Controller
 
     public function index(Request $request): View
     {
-        $filters = ListFilters::make($request, [
+        // The page opens on the current month rather than on every intent ever
+        // created: a day's window is too narrow to be useful — on a quiet
+        // morning it opens empty and says nothing about how payments are
+        // going — while the month is the period finance actually reconciles
+        // in. The window is injected into the query bag so the toolbar, the
+        // facets and the paginator all carry it. An emptied date pair — what
+        // pressing Filter with both inputs cleared submits — is how a viewer
+        // asks for all time, and a link that already names a status, a
+        // gateway or a search is left alone so it lands on the set it was
+        // pointed at.
+        $defaultedToMonth = ! $request->hasAny(['created_from', 'created_to', 'status', 'gateway', 'q']);
+
+        if ($defaultedToMonth) {
+            $request->query->set('created_from', Carbon::today()->startOfMonth()->toDateString());
+            $request->query->set('created_to', Carbon::today()->toDateString());
+        }
+
+        $fields = [
             FilterField::select('status', 'Status', [
                 PaymentIntent::STATUS_CREATED => 'Awaiting payment',
                 PaymentIntent::STATUS_AUTHORISED => 'Authorised',
@@ -60,21 +79,13 @@ final class AdminPaymentController extends Controller
             ], column: 'payment_intents.gateway', placeholder: 'Any gateway'),
             FilterField::text('q', 'Search', 'Order no, order_… or pay_…'),
             FilterField::dateRange('created', 'Created', dateColumn: 'payment_intents.created_at'),
-        ]);
+        ];
 
+        $filters = ListFilters::make($request, $fields);
         $q = $filters->value('q');
 
-        $intents = $filters->apply(
-            PaymentIntent::query()
-                ->with(['order.customer'])
-                ->when($q !== null, function ($query) use ($q): void {
-                    $query->where(function ($inner) use ($q): void {
-                        $inner->where('gateway_order_id', $q)
-                            ->orWhere('gateway_payment_id', $q)
-                            ->orWhereHas('order', fn ($o) => $o->where('order_no', $q));
-                    });
-                })
-        )
+        $intents = $this->scopedIntents($filters, $q)
+            ->with(['order.customer'])
             ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
@@ -82,16 +93,95 @@ final class AdminPaymentController extends Controller
         // Restored alongside the toolbar: the status facets are how this page
         // is actually used day to day — one click to "what is stuck awaiting
         // payment", with the size of the queue visible before you click.
-        $statusCounts = PaymentIntent::selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status')->all();
+        //
+        // Counted without the status clause and with every other filter kept:
+        // a facet is how you pick a status, so each must count what it would
+        // show, inside the window and the gateway the viewer is already in.
+        $withoutStatus = ListFilters::make(
+            $request,
+            array_values(array_filter($fields, fn (FilterField $field): bool => $field->key !== 'status')),
+        );
+
+        $statusCounts = $this->scopedIntents($withoutStatus, $q)
+            ->selectRaw('status, COUNT(*) as c')
+            ->groupBy('status')
+            ->pluck('c', 'status')
+            ->all();
 
         return view('admin.payments.index', [
             'intents' => $intents,
             'statusCounts' => $statusCounts,
             'filters' => $filters,
+            'summary' => $this->summary($filters, $q),
+            'defaultedToMonth' => $defaultedToMonth,
             'attention' => $this->worklist->attentionCount(),
             'invoiceGaps' => $this->invoiceGaps->orders(),
             'invoiceGapCount' => $this->invoiceGaps->count(),
         ]);
+    }
+
+    /**
+     * The intents this page is showing, as a query.
+     *
+     * The search spans the intent's own gateway ids and the order number on a
+     * relation, which {@see ListFilters} cannot express as a column list — so
+     * `q` is declared as a field (for the control and the chip) and applied
+     * here, and every count on the page is built through this method rather
+     * than re-deriving the clause.
+     *
+     * @return EloquentBuilder<PaymentIntent>
+     */
+    private function scopedIntents(ListFilters $filters, ?string $q): EloquentBuilder
+    {
+        /** @var EloquentBuilder<PaymentIntent> $query */
+        $query = $filters->apply(PaymentIntent::query());
+
+        return $query->when($q !== null, function (EloquentBuilder $outer) use ($q): void {
+            $outer->where(function (EloquentBuilder $inner) use ($q): void {
+                $inner->where('gateway_order_id', $q)
+                    ->orWhere('gateway_payment_id', $q)
+                    ->orWhereHas('order', fn ($o) => $o->where('order_no', $q));
+            });
+        });
+    }
+
+    /**
+     * Where the money in the filtered set stands, in one grouped query plus
+     * the refunds raised against it.
+     *
+     * Split by what the gateway has actually said, not by what was asked for:
+     * captured is money in, open is money still promised, and failed or
+     * expired is money that never arrived. The three sum to the amount
+     * attempted. Refunds are money on its way back out and are therefore
+     * counted separately rather than netted off — a refund does not un-capture
+     * the payment it reverses.
+     *
+     * @return array{payments: int, captured_paise: int, awaiting_paise: int, failed_paise: int, refunded_paise: int}
+     */
+    private function summary(ListFilters $filters, ?string $q): array
+    {
+        $byStatus = $this->scopedIntents($filters, $q)
+            ->toBase()
+            ->selectRaw('status, COUNT(*) as intent_count, COALESCE(SUM(amount_paise), 0) as amount_paise')
+            ->groupBy('status')
+            ->get()
+            ->keyBy('status');
+
+        $amountIn = fn (string ...$statuses): int => array_sum(array_map(
+            fn (string $status): int => (int) ($byStatus->get($status)->amount_paise ?? 0),
+            $statuses,
+        ));
+
+        return [
+            'payments' => (int) $byStatus->sum(fn (object $row): int => (int) $row->intent_count),
+            'captured_paise' => $amountIn(PaymentIntent::STATUS_CAPTURED),
+            'awaiting_paise' => $amountIn(PaymentIntent::STATUS_CREATED, PaymentIntent::STATUS_AUTHORISED),
+            'failed_paise' => $amountIn(PaymentIntent::STATUS_FAILED, PaymentIntent::STATUS_CANCELLED),
+            'refunded_paise' => (int) RefundIntent::query()
+                ->where('status', RefundIntent::STATUS_PROCESSED)
+                ->whereIn('payment_intent_id', $this->scopedIntents($filters, $q)->select('payment_intents.id'))
+                ->sum('amount_paise'),
+        ];
     }
 
     /**

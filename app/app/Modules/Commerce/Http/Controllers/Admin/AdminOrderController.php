@@ -19,9 +19,12 @@ use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Tax\Models\Invoice;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 final class AdminOrderController extends Controller
@@ -37,6 +40,27 @@ final class AdminOrderController extends Controller
     {
         $status = $request->query('status');
 
+        // The page opens on today's order book, not on every order ever
+        // placed. The default is injected into the query bag rather than
+        // applied behind the toolbar's back, so the date inputs, the chips,
+        // the status chip links and the paginator all carry the window that is
+        // actually in force. `has()` and not `query()` decides: pressing
+        // Filter with both dates emptied submits them as empty keys, and that
+        // — an explicitly cleared range — is how a viewer asks for all time.
+        //
+        // A request that already asks for something specific is left alone: a
+        // dashboard tile linking here with `?status=paid` counts every paid
+        // order, and must land on the list it counted rather than on today's
+        // slice of it. Chip links from this page carry the dates, so choosing
+        // a status here keeps the window.
+        $defaultedToToday = ! $request->hasAny(['placed_from', 'placed_to', 'status', 'q']);
+
+        if ($defaultedToToday) {
+            $today = Carbon::today()->toDateString();
+            $request->query->set('placed_from', $today);
+            $request->query->set('placed_to', $today);
+        }
+
         // `status` stays a chip, not a ListFilters field (A6): the existing
         // OrderStatusBadge::FILTERABLE chip row is kept and rebuilt to
         // preserve the toolbar's own filters.
@@ -45,17 +69,31 @@ final class AdminOrderController extends Controller
             FilterField::dateRange('placed', 'Placed', dateColumn: 'orders.placed_at'),
         ]);
 
+        // One definition of "the rows this page is showing", re-derived per
+        // query: ListFilters applies its clauses to the builder it is handed,
+        // so the page of rows and each summary figure need their own.
+        $scoped = function () use ($filters, $status): EloquentBuilder {
+            /** @var EloquentBuilder<Order> $query */
+            $query = $filters->apply(
+                Order::query()->when($status, fn ($q) => $q->where('status', $status))
+            );
+
+            return $query;
+        };
+
         // `items` is eager-loaded so the BV column can call Order::bvTotalPaise()
         // (sum of line BV) without an N+1 across the page of orders.
-        $orders = $filters->apply(
-            Order::with(['customer.distributor', 'distributor', 'items'])
-                ->when($status, fn ($q) => $q->where('status', $status))
-        )
+        $orders = $scoped()
+            ->with(['customer.distributor', 'distributor', 'items'])
             ->orderByDesc('placed_at')
             ->paginate(25)
             ->withQueryString();
 
-        $statusCounts = Order::selectRaw('status, COUNT(*) as c')
+        // Chip counts drop the status clause and keep every other filter: the
+        // chips are how you switch status, so each must count what it would
+        // show, inside the window the viewer is already in.
+        $statusCounts = $filters->apply(Order::query())
+            ->selectRaw('status, COUNT(*) as c')
             ->groupBy('status')
             ->pluck('c', 'status')
             ->all();
@@ -74,7 +112,49 @@ final class AdminOrderController extends Controller
             'filters' => $filters,
             'statusCounts' => $statusCounts,
             'repurchaseWalletByOrder' => $repurchaseWalletByOrder,
+            'summary' => $this->summary($scoped),
+            'defaultedToToday' => $defaultedToToday,
         ]);
+    }
+
+    /**
+     * The figures over the whole filtered set — not over the page of 25, which
+     * is what a footer row would give. Three aggregate queries against the
+     * same clauses the list is built from, so narrowing the filters (or the
+     * status chip) moves the tiles with the rows.
+     *
+     * `total_paise` is the money still payable after repurchase-wallet credit,
+     * which is why the wallet figure is its own tile rather than folded in:
+     * the two settle the same sale and only one of them is cash.
+     *
+     * @param  callable(): EloquentBuilder<Order>  $scoped
+     * @return array{orders: int, total_paise: int, gst_paise: int, repurchase_wallet_paise: int, bv_paise: int}
+     */
+    private function summary(callable $scoped): array
+    {
+        /** @var object{order_count: int|string, total_paise: int|string|null, gst_paise: int|string|null}|null $totals */
+        $totals = $scoped()
+            ->toBase()
+            ->selectRaw('COUNT(*) as order_count, COALESCE(SUM(total_paise), 0) as total_paise, COALESCE(SUM(gst_paise), 0) as gst_paise')
+            ->first();
+
+        return [
+            'orders' => (int) ($totals->order_count ?? 0),
+            'total_paise' => (int) ($totals->total_paise ?? 0),
+            'gst_paise' => (int) ($totals->gst_paise ?? 0),
+            // Negative in the ledger (it is a debit); shown as the amount settled.
+            'repurchase_wallet_paise' => abs((int) WalletLedgerEntry::query()
+                ->where('reference_type', 'order')
+                ->where('type', 'repurchase_wallet_used')
+                ->whereIn('reference_id', $scoped()->select('orders.id'))
+                ->sum('amount_paise')),
+            // Line BV is qty × the snapshot BV, the same arithmetic as
+            // OrderItem::lineBvPaise(); summed in SQL because the filtered set
+            // is not the page and must not be hydrated to be added up.
+            'bv_paise' => (int) DB::table('order_items')
+                ->whereIn('order_id', $scoped()->select('orders.id'))
+                ->sum(DB::raw('qty * bv_paise')),
+        ];
     }
 
     public function show(Order $order): View

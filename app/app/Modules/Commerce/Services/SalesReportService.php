@@ -156,6 +156,44 @@ final class SalesReportService
             );
     }
 
+    /**
+     * Repurchase-wallet credit applied at checkout across the counted set.
+     *
+     * The credit is not stored on the order: it lives only as a
+     * `repurchase_wallet_used` debit in the wallet ledger, keyed to the order
+     * it was spent on. That is why `total_paise` can be far below the order's
+     * own subtotal with nothing on the order explaining the gap.
+     *
+     * Joined off `countedOrders()` for the same reason `soldLines()` is — so
+     * the figure can never cover a different set of orders than the totals
+     * beside it. There is at most one usage row per order, so the join cannot
+     * fan out.
+     *
+     * Reported as a positive magnitude. Restorations (a refund putting the
+     * credit back, {@see WalletService::restoreRepurchaseCreditForOrder()})
+     * are `repurchase_deduction` rows and are deliberately not netted here:
+     * they belong to the period the refund was granted in, exactly like the
+     * refund totals.
+     */
+    public function repurchaseWalletAppliedPaise(
+        SalesScope $scope,
+        ?CarbonInterface $from = null,
+        ?CarbonInterface $to = null,
+        string $basis = self::BASIS_SHIPPED,
+    ): int {
+        return abs((int) DB::table('wallet_ledger_entries')
+            ->joinSub(
+                $this->countedOrders($scope, $from, $to, $basis)->select('orders.id'),
+                'counted',
+                'counted.id',
+                '=',
+                'wallet_ledger_entries.reference_id',
+            )
+            ->where('wallet_ledger_entries.reference_type', 'order')
+            ->where('wallet_ledger_entries.type', 'repurchase_wallet_used')
+            ->sum('wallet_ledger_entries.amount_paise'));
+    }
+
     /** The same, for lines whose revenue was reversed in the period. */
     public function refundedLines(
         SalesScope $scope,

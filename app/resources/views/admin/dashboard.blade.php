@@ -7,51 +7,18 @@
 @php
     // The shell issues zero data queries. $panels is already permission- and
     // feature-flag-filtered by DashboardPanels::visibleTo() — every entry here
-    // is one this viewer may see. Group consecutive 'half' spans into their own
-    // grid row so the layout still pairs correctly if the registry changes;
-    // 'full' spans render on their own row.
-    $rows = [];
-    $halfRow = [];
-
-    foreach ($panels as $key => $meta) {
-        if ($meta['span'] === 'half') {
-            $halfRow[$key] = $meta;
-
-            continue;
-        }
-
-        if ($halfRow) {
-            $rows[] = ['span' => 'half', 'panels' => $halfRow];
-            $halfRow = [];
-        }
-
-        $rows[] = ['span' => 'full', 'panels' => [$key => $meta]];
-    }
-
-    if ($halfRow) {
-        $rows[] = ['span' => 'half', 'panels' => $halfRow];
-    }
+    // is one this viewer may see, in the registry's own order.
 @endphp
 
+{{-- One full-width card per console section, stacked. There is no half-width
+     column any more: two cards side by side only ever agreed on height by
+     accident, and an odd number of them left a hole beside the last one. --}}
 <div class="space-y-5" id="dashboardPanels">
-    @foreach($rows as $row)
-        @if($row['span'] === 'half')
-        <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            @foreach($row['panels'] as $key => $meta)
-            <div data-panel-url="{{ route('admin.dashboard.panel', $key) }}"
-                 data-panel-lazy="{{ $meta['lazy'] ? '1' : '0' }}">
-                <x-ui.panel-skeleton :title="$meta['title']" />
-            </div>
-            @endforeach
-        </div>
-        @else
-            @foreach($row['panels'] as $key => $meta)
-            <div data-panel-url="{{ route('admin.dashboard.panel', $key) }}"
-                 data-panel-lazy="{{ $meta['lazy'] ? '1' : '0' }}">
-                <x-ui.panel-skeleton :title="$meta['title']" />
-            </div>
-            @endforeach
-        @endif
+    @foreach($panels as $key => $meta)
+    <div data-panel-url="{{ route('admin.dashboard.panel', $key) }}"
+         data-panel-lazy="{{ $meta['lazy'] ? '1' : '0' }}">
+        <x-ui.panel-skeleton :title="$meta['title']" />
+    </div>
     @endforeach
 </div>
 

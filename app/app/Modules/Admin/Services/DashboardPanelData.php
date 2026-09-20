@@ -146,8 +146,14 @@ final class DashboardPanelData
      * Refunds are reported as their own line and never netted silently into
      * the figures above them.
      *
+     * `repurchase_wallet_paise` is how much of the window was settled with
+     * repurchase-wallet credit rather than money. It is the largest reason
+     * `cash_paise` reads low against revenue, and it is nowhere on the order
+     * itself, so the panel would otherwise show a shortfall it cannot explain.
+     *
      * Shape: `windows` keyed `today` / `week` / `month`, each with `label`,
-     * `totals`, `refunds` and `bv_paise`; plus `generated_at`. Declared as the
+     * `totals`, `refunds`, `repurchase_wallet_paise` and `bv_paise`; plus
+     * `generated_at`. Declared as the
      * open array the six panels share rather than a literal shape, because
      * `remember()` is generic over all of them and swaps `generated_at` from
      * the timestamp it cached to the Carbon the view renders.
@@ -175,6 +181,12 @@ final class DashboardPanelData
 
                 $windows[$key]['totals'] = $totals;
                 $windows[$key]['refunds'] = $refunds;
+                $windows[$key]['repurchase_wallet_paise'] = $this->sales->repurchaseWalletAppliedPaise(
+                    $scope,
+                    $from,
+                    $now,
+                    SalesReportService::BASIS_ORDERED,
+                );
                 $windows[$key]['bv_paise'] = (int) BvLedgerEntry::query()
                     ->where('type', BvLedgerEntry::TYPE_ACCRUAL)
                     ->whereBetween('effective_at', [$from, $now])

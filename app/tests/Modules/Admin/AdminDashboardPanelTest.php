@@ -7,13 +7,18 @@ use App\Modules\Admin\Services\DashboardPanelData;
 use App\Modules\Admin\Support\DashboardPanels;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\DTOs\EngineHealthReport;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\ActionCenterFeature;
 use App\Modules\Shared\Features\InventoryFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
@@ -73,34 +78,48 @@ it('DSH-01: a super admin can open every panel', function (): void {
     }
 });
 
-it('DSH-02: admin-compliance is refused the four panels it holds no permission for', function (): void {
+it('DSH-02: admin-compliance is refused the section cards it holds no permission for', function (): void {
     $user = dashUser('admin-compliance');
 
-    foreach (['sales', 'inventory', 'money', 'engines'] as $panel) {
+    foreach (['inventory', 'compensation'] as $panel) {
         $this->actingAs($user)->get(panelUrl($panel))->assertForbidden();
     }
 });
 
-it('DSH-03: admin-operations is refused the finance panels', function (): void {
-    $user = dashUser('admin-operations');
+it('DSH-02b: the commerce card opens without sales.report.view, but carries no revenue', function (): void {
+    // The pipeline was always open to every admin and stays open. Revenue is
+    // the half that is gated, and the gate is inside the card now, so this is
+    // the test that the merge did not widen who can read money.
+    $user = dashUser('admin-compliance');
 
-    foreach (['money', 'engines'] as $panel) {
-        $this->actingAs($user)->get(panelUrl($panel))->assertForbidden();
-    }
+    expect($user->can('sales.report.view'))->toBeFalse();
+
+    $body = $this->actingAs($user)->get(panelUrl('commerce'))->assertOk()->getContent();
+
+    expect($body)->toContain('Order pipeline')
+        ->and($body)->not->toContain('Revenue ex GST')
+        ->and($body)->not->toContain('Repurchase wallet')
+        ->and($body)->not->toMatch('/₹\s?[0-9]/');
 });
 
-it('DSH-04: admin-operations can open the five panels it does hold', function (): void {
+it('DSH-03: admin-operations is refused the compensation card', function (): void {
     $user = dashUser('admin-operations');
 
-    foreach (['attention', 'sales', 'inventory', 'orders', 'people'] as $panel) {
+    $this->actingAs($user)->get(panelUrl('compensation'))->assertForbidden();
+});
+
+it('DSH-04: admin-operations can open the cards it does hold', function (): void {
+    $user = dashUser('admin-operations');
+
+    foreach (['attention', 'commerce', 'inventory', 'people'] as $panel) {
         $this->actingAs($user)->get(panelUrl($panel))->assertOk();
     }
 });
 
-it('DSH-05: admin-finance can open the money, engine, sales and inventory panels', function (): void {
+it('DSH-05: admin-finance can open the compensation, commerce and inventory cards', function (): void {
     $user = dashUser('admin-finance');
 
-    foreach (['money', 'engines', 'sales', 'inventory'] as $panel) {
+    foreach (['compensation', 'commerce', 'inventory'] as $panel) {
         $this->actingAs($user)->get(panelUrl($panel))->assertOk();
     }
 });
@@ -250,7 +269,7 @@ it('DSH-14: the attention panel renders the service\'s own order, criticals firs
 it('DSH-10: admin-compliance sees exactly the three ungated panels', function (): void {
     $visible = DashboardPanels::visibleTo(dashUser('admin-compliance'));
 
-    expect(array_keys($visible))->toBe(['attention', 'orders', 'people']);
+    expect(array_keys($visible))->toBe(['attention', 'commerce', 'people']);
 });
 
 it('DSH-11: the pending count joins distributors, so an orphan user never inflates it', function (): void {
@@ -319,6 +338,127 @@ it('DSH-12: sales counts on the order date, so an unshipped order still counts t
     expect($data['windows']['today']['totals']['orders'])->toBe(1);
 });
 
+it('DSH-19: each sales window reports the GST charged and the total including it', function (): void {
+    $admin = dashUser('admin');
+
+    $customer = Customer::create([
+        'display_name' => 'Gst Customer',
+        'email_hash' => hash('sha256', 'gst-'.uniqid()),
+        'email_enc' => 'gst-'.uniqid().'@test.com',
+    ]);
+
+    // Ex-GST revenue is subtotal − GST = ₹1,000.00, the GST is ₹180.00, and the
+    // two add back to the ₹1,180.00 subtotal. total_paise is deliberately
+    // smaller than the subtotal here: "Collected" is net of the discount, so a
+    // test where every figure coincided would prove nothing about which cell
+    // reads which column.
+    DB::table('orders')->insert([
+        'order_no' => 'ORD-GST-'.rand(10000, 99999),
+        'customer_id' => $customer->id,
+        'payment_method' => 'online',
+        'status' => Order::STATUS_PAID,
+        'self_consumption' => false,
+        'subtotal_paise' => 118000,
+        'gst_paise' => 18000,
+        'discount_paise' => 18000,
+        'shipping_paise' => 0,
+        'total_paise' => 100000,
+        'ship_name' => 'Gst', 'ship_phone_e164' => '+919000000000',
+        'ship_line1' => '1 St', 'ship_city' => 'Hyd', 'ship_state' => 'TS', 'ship_pincode' => '500001',
+        'placed_at' => now(), 'paid_at' => now(), 'shipped_at' => null,
+        'idempotency_key' => 'test-gst-'.uniqid(),
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $body = $this->actingAs($admin)->get(panelUrl('commerce'))->assertOk()->getContent();
+
+    expect($body)->toContain('₹1,000.00')
+        ->and($body)->toContain('₹180.00')
+        ->and($body)->toContain('₹1,180.00');
+
+    // The headline stays ex-GST. If that label ever moves onto the inclusive
+    // figure the profit screens stop agreeing with the dashboard.
+    expect($body)->toContain('Revenue ex GST');
+});
+
+it('DSH-20: each sales window reports the credit settled from the repurchase wallet', function (): void {
+    $admin = dashUser('admin');
+    // The factory leaves sponsor_id / placement_parent_id at 0, which the
+    // self-referencing FK rejects on MySQL. Only the id matters here — the
+    // wallet entry needs an owner, not a placed one.
+    disableTestForeignKeys();
+    try {
+        $distributor = Distributor::factory()->create();
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    $order = function (string $status, int $cashPaise): int {
+        $customer = Customer::create([
+            'display_name' => 'Rpw Customer',
+            'email_hash' => hash('sha256', 'rpw-'.uniqid()),
+            'email_enc' => 'rpw-'.uniqid().'@test.com',
+        ]);
+
+        return (int) DB::table('orders')->insertGetId([
+            'order_no' => 'ORD-RPW-'.rand(10000, 99999),
+            'customer_id' => $customer->id,
+            'payment_method' => 'online',
+            'status' => $status,
+            'self_consumption' => false,
+            'subtotal_paise' => 118000,
+            'gst_paise' => 18000,
+            'discount_paise' => 0,
+            'shipping_paise' => 0,
+            'total_paise' => $cashPaise,
+            'ship_name' => 'Rpw', 'ship_phone_e164' => '+919000000000',
+            'ship_line1' => '1 St', 'ship_city' => 'Hyd', 'ship_state' => 'TS', 'ship_pincode' => '500001',
+            'placed_at' => now(), 'paid_at' => now(), 'shipped_at' => null,
+            'idempotency_key' => 'test-rpw-'.uniqid(),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    };
+
+    // ₹430.00 in cash and ₹750.00 off the repurchase wallet settle the same
+    // ₹1,180.00 order. The credit is nowhere on the order row, which is the
+    // whole reason the panel has to read the wallet ledger for it.
+    $paid = $order(Order::STATUS_PAID, 43000);
+
+    WalletLedgerEntry::create([
+        'distributor_id' => $distributor->id,
+        'type' => 'repurchase_wallet_used',
+        'amount_paise' => -75000,
+        'reference_id' => $paid,
+        'reference_type' => 'order',
+        'memo' => 'Applied at checkout',
+    ]);
+
+    // Cancelled, so it is outside COUNTED_STATUSES. Its credit must not reach
+    // the panel: the figure is joined off the same counted set as the totals
+    // beside it, and this is what proves the two cannot drift apart.
+    $cancelled = $order(Order::STATUS_CANCELLED, 0);
+
+    WalletLedgerEntry::create([
+        'distributor_id' => $distributor->id,
+        'type' => 'repurchase_wallet_used',
+        'amount_paise' => -60000,
+        'reference_id' => $cancelled,
+        'reference_type' => 'order',
+        'memo' => 'Applied at checkout',
+    ]);
+
+    $data = app(DashboardPanelData::class)->sales();
+
+    expect($data['windows']['today']['repurchase_wallet_paise'])->toBe(75000)
+        ->and($data['windows']['week']['repurchase_wallet_paise'])->toBe(75000)
+        ->and($data['windows']['month']['repurchase_wallet_paise'])->toBe(75000);
+
+    $body = $this->actingAs($admin)->get(panelUrl('commerce'))->assertOk()->getContent();
+
+    expect($body)->toContain('Repurchase wallet')
+        ->and($body)->toContain('₹750.00');
+});
+
 /**
  * DSH-15 — the panels' cached payloads must contain no objects.
  *
@@ -371,18 +511,65 @@ it('DSH-16: the panels still hand the views real Carbon instants', function (): 
     expect($data->engines()['report'])->toBeInstanceOf(EngineHealthReport::class);
 });
 
+it('DSH-21: the compensation card carries the batch, the held breakdown and engine health', function (): void {
+    // One card now answers what used to be two panels, and the parts that only
+    // render when there is something to render — the status badge, the held
+    // breakdown — are the ones no other test reaches.
+    $admin = dashUser('admin');
+
+    disableTestForeignKeys();
+    try {
+        $distributor = Distributor::factory()->create();
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_COMPLETED,
+        'distributor_count' => 1,
+        'total_net_paise' => 250000,
+    ]);
+
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => $distributor->id,
+        'wallet_balance_paise' => 60000,
+        'gross_paise' => 60000,
+        'repurchase_deduction_paise' => 0,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_transferred_paise' => 0,
+        'status' => PayoutLineItem::STATUS_KYC_PENDING,
+        'transfer_mode' => 'neft',
+    ]);
+
+    $body = $this->actingAs($admin)->get(panelUrl('compensation'))->assertOk()->getContent();
+
+    expect($body)->toContain('Latest batch')
+        ->and($body)->toContain('₹2,500.00')
+        ->and($body)->toContain('Completed')
+        ->and($body)->toContain('Awaiting approval')
+        // Held money, and the one status holding it.
+        ->and($body)->toContain('₹600.00')
+        ->and($body)->toContain('KYC pending')
+        ->and($body)->toContain('Engine health');
+});
+
 it('DSH-17: a panel title containing an ampersand is escaped once, not twice', function (): void {
     // `<x-ui.card title="{{ $panelTitle }}">` escapes into the attribute and the
     // component escapes again on echo, so "Stock & warehouses" reached the page
     // as "Stock &amp;amp; warehouses" and rendered literally as "Stock &amp;".
-    // `:title` passes the value through instead. Asserted on both surfaces: the
-    // skeleton in the shell and the fragment that replaces it.
-    $admin = dashUser('admin');
+    // `:title` passes the value through instead.
+    //
+    // Asserted against the two components rather than a live panel: no section
+    // title carries an ampersand today, and a regression this quiet must not
+    // depend on one continuing to.
+    $skeleton = Blade::render('<x-ui.panel-skeleton :title="$t" />', ['t' => 'Stock & warehouses']);
+    $card = Blade::render('<x-ui.card :title="$t">body</x-ui.card>', ['t' => 'Stock & warehouses']);
 
-    $shell = $this->actingAs($admin)->get(route('admin.dashboard'))->assertOk()->getContent();
-    $fragment = $this->actingAs($admin)->get(panelUrl('inventory'))->assertOk()->getContent();
-
-    foreach ([$shell, $fragment] as $body) {
+    foreach ([$skeleton, $card] as $body) {
         expect($body)->toContain('Stock &amp; warehouses')
             ->and($body)->not->toContain('&amp;amp;');
     }

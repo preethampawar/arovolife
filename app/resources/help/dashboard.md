@@ -45,22 +45,26 @@ tries again on the next turn.
 
 ## What you can see
 
-Each panel is gated on the permission that already gates the screen it
+The dashboard is one full-width card per console section, in the order they
+appear here. Each is gated on the permission that already gates the screen it
 summarises — you see a summary exactly when you could open the page behind it.
-A panel you may not see is never sent to your browser at all.
+A card you may not see is never sent to your browser at all.
 
-| Panel | What it shows | Permission |
+| Card | What it shows | Permission |
 |---|---|---|
 | **Needs attention** | The Action Center summary, grouped. Same counts, same snooze rules, same 60-second cache as the Action Center screen itself. | `action.center.view` |
-| **Sales** | Orders, revenue, amount collected and BV for today, the last 7 days and the month so far. | `sales.report.view` |
-| **Order pipeline** | How many orders sit at each stage from placed through to confirmed, plus cancellations and refunds. | admin console access |
-| **Stock & warehouses** | Low stock, expiring and expired batches and what the stock is worth. Active warehouses, open purchase orders and transfers in transit appear only for staff who hold `inventory.manage`, because those are the screens they link to. | `inventory.view` |
-| **Payouts & commission** | The latest payout batch, batches awaiting approval, money held in wallets that nothing can pay out, and what each bonus has cost this month. | `finance.record` |
-| **Engine health** | Whether the compensation engines ran: failures, missed periods, stuck runs, premature freezes and nightly-chain alerts. | `finance.record` |
+| **Commerce** | Revenue, GST, amount collected, repurchase-wallet credit and BV for today, the last 7 days and the month so far, over how many orders sit at each stage of the pipeline plus any cancellations and refunds. | admin console access for the pipeline; the revenue row additionally needs `sales.report.view` |
+| **Inventory** | Low stock, expiring and expired batches and what the stock is worth. Active warehouses, open purchase orders and transfers in transit appear only for staff who hold `inventory.manage`, because those are the screens they link to. | `inventory.view` |
+| **Compensation** | The latest payout batch, batches awaiting approval, money held in wallets that nothing can pay out, whether the engines that produced all three actually ran, and what each bonus has cost this month. | `finance.record` |
 | **Network** | Active, pending and blocked distributors, cooling-off windows, and who joined this month. | admin console access |
 
-Stock & warehouses disappears entirely when `InventoryFeature` is off, and Needs
+Inventory disappears entirely when `InventoryFeature` is off, and Needs
 attention when `ActionCenterFeature` is off — not greyed out, absent.
+
+**Commerce is the one card with a gate inside it.** The order pipeline is open
+to every admin; the revenue figures above it are not. Without
+`sales.report.view` the card opens on the pipeline alone — the revenue is never
+computed for you, not merely hidden.
 
 ---
 
@@ -72,10 +76,24 @@ instead, because cost is stamped when an order is packed — so the two will not
 agree, and neither is wrong. Use this panel for "what came in", the Profit
 report for "what we earned on it".
 
-**Revenue is net of GST. "Collected" is not.** Revenue excludes the tax you are
-holding on the government's behalf. Collected is the full amount the buyer
-handed over, GST, shipping and any collection fee included. They are different
-numbers on purpose.
+**Revenue is net of GST. "Collected" is not.** The headline figure excludes the
+tax you are holding on the government's behalf, because that is the number the
+revenue ledger recognises and the one the Profit report compares cost against.
+Below it, **GST** is the tax charged over the window and **Incl. GST** is the
+two added back together — the invoice value of the goods.
+
+**"Incl. GST" and "Collected" are not the same number.** Incl. GST covers the
+goods only. Collected is what the buyer actually handed over: shipping and any
+collection fee on top, and net of every discount, points redemption and
+repurchase-wallet credit. On a window with discounts, Collected is the smaller
+of the two.
+
+**"Repurchase wallet" is the part that was not paid in money.** Distributors
+may settle a purchase with repurchase-wallet credit, and that credit is held
+nowhere on the order — only in the wallet ledger. It is the usual reason
+Collected sits below revenue. Credit given back by a refund is not subtracted
+here: like the refunds line, it belongs to the period the refund was granted
+in, not the period of the original sale.
 
 **Refunds are never netted into the figures above them.** They appear on their
 own line. A month with strong sales and heavy refunds should look like exactly

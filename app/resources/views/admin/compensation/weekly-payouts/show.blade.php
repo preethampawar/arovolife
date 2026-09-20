@@ -188,6 +188,20 @@
             Deductions <x-help-tip text="Repurchase deduction + admin charge + TDS across all line items." />
         </p>
         <p class="mt-1 text-lg font-bold text-red-600">{{ $rupees($batch->total_deductions_paise) }}</p>
+        <dl class="mt-2 space-y-0.5 text-[11px] text-gray-600">
+            <div class="flex items-baseline justify-between gap-2">
+                <dt>Repurchase</dt>
+                <dd class="font-medium tabular-nums text-gray-800">{{ $rupees($deductions['repurchase']) }}</dd>
+            </div>
+            <div class="flex items-baseline justify-between gap-2">
+                <dt>Admin charge</dt>
+                <dd class="font-medium tabular-nums text-gray-800">{{ $rupees($deductions['admin_charge']) }}</dd>
+            </div>
+            <div class="flex items-baseline justify-between gap-2">
+                <dt>TDS</dt>
+                <dd class="font-medium tabular-nums text-gray-800">{{ $rupees($deductions['tds']) }}</dd>
+            </div>
+        </dl>
     </x-ui.card>
     <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider">Net to transfer</p>
@@ -239,7 +253,9 @@
                         TDS <x-help-tip text="5% of payable (gross − repurchase − admin charge)." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">Net to transfer</th>
-                    <th class="px-3 py-2 text-left text-gray-600">Bank (last 4)</th>
+                    <th class="px-3 py-2 text-left text-gray-600">
+                        Bank account <x-help-tip text="{{ $bank['full'] ? 'The beneficiary account the transfer goes to, in full, so it can be checked against the bank. Only finance roles see the whole number.' : 'The last four digits of the beneficiary account. The full number is visible to finance roles only.' }}" />
+                    </th>
                     <th class="px-3 py-2 text-left text-gray-600">
                         UTR / Payout ID <x-help-tip text="The bank's Unique Transaction Reference once the transfer settles. The payout ID is Razorpay's own reference while it is in flight." />
                     </th>
@@ -281,7 +297,9 @@
                     <td class="px-3 py-2 text-right font-semibold {{ $line->net_transferred_paise > 0 ? 'text-green-700' : 'text-gray-600' }}">
                         {{ $rupees($line->net_transferred_paise) }}
                     </td>
-                    <td class="px-3 py-2 font-mono text-gray-600">{{ $line->bank_account_last4 ?? '—' }}</td>
+                    <td class="px-3 py-2 font-mono text-gray-600 whitespace-nowrap">
+                        {{ $bank['numbers'][$line->distributor_id] ?? $line->bank_account_last4 ?? '—' }}
+                    </td>
                     <td class="px-3 py-2 font-mono text-gray-600">
                         @if($line->utr_number)
                             {{ $line->utr_number }}

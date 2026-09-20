@@ -4,6 +4,19 @@
 
 @section('content')
 
+@php
+    use App\Modules\Commerce\Support\Bv;
+    use App\Modules\Shared\Support\IndianNumber;
+@endphp
+
+@if($defaultedToToday)
+<p class="mb-4 text-xs text-gray-600">
+    Showing orders placed today.
+    <a href="{{ request()->fullUrlWithQuery(['placed_from' => '', 'placed_to' => '', 'page' => null]) }}"
+       class="font-medium text-brand-700 hover:text-brand-800 hover:underline">Show all dates</a>
+</p>
+@endif
+
 <div class="flex items-center gap-3 mb-6 flex-wrap">
     <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}"
        class="px-3 py-1 rounded-full text-xs font-medium border {{ !request()->query('status') ? 'bg-brand-700 text-white border-brand-500' : 'bg-white text-gray-700 border-gray-200 hover:border-brand-500' }}">
@@ -18,6 +31,29 @@
 </div>
 
 <x-filter-bar :filters="$filters" />
+
+{{-- The figures cover the whole filtered set, not the page of 25: every tile
+     is built from the same clauses as the rows, so the status chip and the
+     date window move the numbers with them. --}}
+<x-ui.card flush class="mb-6">
+    <x-ui.stat-row :columns="5">
+        <x-ui.stat flush :label-lines="2" label="Orders"
+                   :value="IndianNumber::format($summary['orders'])"
+                   :hint="$defaultedToToday ? 'Placed today' : 'Matching these filters'" />
+        <x-ui.stat flush :label-lines="2" label="Order value"
+                   :value="IndianNumber::rupees($summary['total_paise'])"
+                   hint="Payable in money, after wallet" />
+        <x-ui.stat flush :label-lines="2" label="GST"
+                   :value="IndianNumber::rupees($summary['gst_paise'])"
+                   hint="Included in the value beside it" />
+        <x-ui.stat flush :label-lines="2" label="Repurchase wallet"
+                   :value="IndianNumber::rupees($summary['repurchase_wallet_paise'])"
+                   hint="Settled with credit, not money" />
+        <x-ui.stat flush :label-lines="2" label="BV"
+                   :value="Bv::format($summary['bv_paise'])"
+                   hint="Business Volume on these orders" />
+    </x-ui.stat-row>
+</x-ui.card>
 
 <x-ui.card flush>
     <div class="overflow-x-auto">
@@ -78,7 +114,8 @@
                     </td>
                 </tr>
                 @empty
-                <x-ui.empty-state colspan="10" title="No orders yet." />
+                <x-ui.empty-state colspan="10"
+                                  :title="$defaultedToToday ? 'No orders placed today.' : 'No orders match these filters.'" />
                 @endforelse
             </tbody>
         </table>

@@ -16,6 +16,7 @@ declare(strict_types=1);
  * APT-09: a forfeited refund is off the worklist and can be neither retried nor settled
  * APT-10: a paid order without an invoice is listed; finance issues it, operations cannot
  * APT-11: a refund owed outside the gateway is listed; finance settles it against the order
+ * APT-12: the list opens on today, and the money tiles follow the filters
  */
 
 use App\Modules\Commerce\Models\Customer;
@@ -329,4 +330,39 @@ it('APT-11: a refund owed outside the gateway is listed; finance settles it agai
     expect($order->fresh()->status)->toBe(Order::STATUS_REFUNDED)
         ->and(app(RefundWorklist::class)->manualRefunds())->toHaveCount(0)
         ->and(AuditLog::where('action', 'refund.manual_settlement')->where('subject_type', 'order')->where('subject_id', $order->id)->sole()->actor_id)->toBe($finance->id);
+});
+
+it('APT-12: the list opens on this month, and the money tiles follow the filters', function () {
+    // The orders stay unpaid on purpose: a paid order with no invoice is
+    // listed by the invoice-gap panel further up this same page, which would
+    // put its order number on screen whatever the payments list is showing.
+    $captured = aptIntent(aptOrder(Order::STATUS_PLACED, 118000), PaymentIntent::STATUS_CAPTURED);
+    aptIntent(aptOrder(Order::STATUS_PLACED, 50000));
+
+    // Older than the default window, and captured: the tile must exclude it
+    // until the range is widened, then include it. Dated to the last day of
+    // the previous month, so it sits outside the month window on every date
+    // the suite can run on.
+    $older = aptIntent(aptOrder(Order::STATUS_PLACED, 900000), PaymentIntent::STATUS_CAPTURED);
+    $older->forceFill(['created_at' => now()->startOfMonth()->subDay()])->save();
+
+    $compliance = aptUser('admin-compliance');
+
+    $this->actingAs($compliance)->get(route('admin.payments.index'))->assertOk()
+        ->assertSee('Showing payments created this month.')
+        ->assertSee($captured->order->order_no)
+        ->assertDontSee($older->order->order_no)
+        ->assertSee('₹500.00')      // awaiting
+        ->assertDontSee('₹10,180.00');
+
+    // An emptied date pair is what pressing Filter with both inputs cleared
+    // submits, and it is how a viewer asks for all time.
+    $this->actingAs($compliance)->get(route('admin.payments.index', ['created_from' => '', 'created_to' => '']))->assertOk()
+        ->assertSee($older->order->order_no)
+        ->assertSee('₹10,180.00');  // captured across both months, a figure no row shows
+
+    // The status facet is a filter like any other: pick failed and nothing is captured.
+    $this->actingAs($compliance)->get(route('admin.payments.index', ['status' => PaymentIntent::STATUS_FAILED]))->assertOk()
+        ->assertDontSee('₹1,180.00')
+        ->assertDontSee('Showing payments created this month.');
 });

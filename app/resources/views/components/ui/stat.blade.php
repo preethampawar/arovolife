@@ -6,6 +6,7 @@
     'tone' => 'neutral',           // neutral|brand|green|amber|sky|red|slate|violet
     'href' => null,                // when set the whole tile is the link
     'labelLines' => 1,             // 2 = let a long label wrap instead of truncating
+    'flush' => false,              // a cell in an x-ui.stat-row, not a free-standing tile
 ])
 
 @php
@@ -21,8 +22,16 @@
         'slate'   => 'text-slate-500', 'violet' => 'text-violet-600',
     ][$tone] ?? 'text-gray-400';
 
-    $shell = 'group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all'
-        .($href ? ' hover:border-gray-300 hover:shadow-md' : '');
+    // Two shells, one set of contents. `flush` is the dashboard's section-card
+    // cell: no rounding, no shadow and no outer border of its own, because the
+    // card already supplies all three and its neighbours draw the grid. The
+    // hairlines belong to the cell rather than to the row so that a row which
+    // wraps still rules correctly — see x-ui.stat-row.
+    $shell = $flush
+        ? 'group flex flex-col border-l border-t border-gray-100 bg-white p-5 transition-colors'
+            .($href ? ' hover:bg-gray-50' : '')
+        : 'group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all'
+            .($href ? ' hover:border-gray-300 hover:shadow-md' : '');
 @endphp
 
 @if($href)<a href="{{ $href }}" {{ $attributes->class([$shell]) }}>@else<div {{ $attributes->class([$shell]) }}>@endif

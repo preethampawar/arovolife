@@ -184,6 +184,12 @@ dataset('converted exports', [
     'comp daily-cutoffs' => ['admin.compensation.daily-cutoffs.export', [], 'developer', 'distributor', ''],
     'comp personal-bv-topups' => ['admin.compensation.personal-bv-topups.export', [], 'developer', 'distributor', ''],
 
+    // The two payout batch LISTS (2026-09-20). Batch-level figures only — no
+    // payee, no bank detail — so they sit on the page's own gate, unlike the
+    // NEFT bank files below, which stay `can:finance.record`.
+    'comp weekly payout batches' => ['admin.compensation.weekly-payouts.export', [], 'developer', 'distributor', ''],
+    'comp monthly payout batches' => ['admin.compensation.monthly-payouts.export', [], 'developer', 'distributor', ''],
+
     // P2 — the statutory DSR register. Admin-family only, no extra `can:`.
     'distributors register' => ['admin.distributors.export', [], 'developer', 'distributor', ''],
 
