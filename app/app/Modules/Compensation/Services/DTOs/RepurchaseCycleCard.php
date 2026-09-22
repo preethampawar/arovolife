@@ -72,7 +72,13 @@ final readonly class RepurchaseCycleCard
         );
     }
 
-    public static function fromCycle(RepurchaseCycle $cycle, Carbon $today, int $personalBvPaise, int $qualifyBvPaise): self
+    /**
+     * @param int|null $liveWalletBalancePaise The repurchase wallet as it stands
+     *        now, for a window that has not resolved yet. The frozen column is
+     *        NULL until the window's last day, so without this the card would
+     *        report "now ₹0.00" to a distributor who is still holding money.
+     */
+    public static function fromCycle(RepurchaseCycle $cycle, Carbon $today, int $personalBvPaise, int $qualifyBvPaise, ?int $liveWalletBalancePaise = null): self
     {
         $start = $cycle->cycle_start_date->copy()->startOfDay();
         $end = $cycle->due_date->copy()->startOfDay();
@@ -95,7 +101,7 @@ final readonly class RepurchaseCycleCard
             daysTotal: max(1, $daysTotal),
             requiredBvPaise: (int) $cycle->required_bv_paise,
             completedBvPaise: (int) $cycle->completed_bv_paise,
-            walletBalancePaise: (int) ($cycle->wallet_balance_paise ?? 0),
+            walletBalancePaise: (int) ($cycle->wallet_balance_paise ?? $liveWalletBalancePaise ?? 0),
             walletZeroed: (bool) ($cycle->wallet_zeroed ?? false),
             failureReason: $cycle->failure_reason,
             personalBvPaise: $personalBvPaise,

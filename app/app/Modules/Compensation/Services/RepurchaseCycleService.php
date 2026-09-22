@@ -517,7 +517,13 @@ final class RepurchaseCycleService
             return RepurchaseCycleCard::notQualified($personalBvPaise, $qualifyBvPaise);
         }
 
-        return RepurchaseCycleCard::fromCycle($cycle, $today, $personalBvPaise, $qualifyBvPaise);
+        // An unresolved window has no frozen wallet figure yet, so show the
+        // live balance — the same number the repurchase alert tile reports.
+        $liveWalletPaise = $cycle->wallet_balance_paise === null
+            ? $this->walletBalanceAt($distributorId, $today->copy()->endOfDay())
+            : null;
+
+        return RepurchaseCycleCard::fromCycle($cycle, $today, $personalBvPaise, $qualifyBvPaise, $liveWalletPaise);
     }
 
     /**

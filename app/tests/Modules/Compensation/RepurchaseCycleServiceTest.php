@@ -1194,3 +1194,21 @@ it('does not serve a second evaluation from the first one’s warmed cycle', fun
 
     expect($starts)->toBe(array_values(array_unique($starts)));
 });
+
+it('shows the live repurchase wallet balance while the window is still open', function (): void {
+    // The frozen column is only written at the window's last day, so an open
+    // cycle carries NULL there. The card must fall back to the live balance —
+    // reading NULL as ₹0 told a distributor holding ₹200 that they were clear.
+    $dist = Distributor::factory()->create();
+    seedSelfPurchase($dist->id, 60_000, '2026-01-05');
+    seedRepurchaseWalletCredit($dist->id, 20_000, '2026-01-10 10:00:00');
+
+    $cycle = svc()->evaluate($dist->id, Carbon::parse('2026-01-20'));
+    expect($cycle->status)->toBe(RepurchaseCycle::STATUS_ACTIVE);
+    expect($cycle->wallet_balance_paise)->toBeNull();
+
+    $card = svc()->cardFor($dist->id, Carbon::parse('2026-01-20'));
+
+    expect($card->walletBalancePaise)->toBe(20_000);
+    expect($card->walletZeroed)->toBeFalse();
+});
