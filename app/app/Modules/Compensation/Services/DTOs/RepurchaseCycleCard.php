@@ -73,10 +73,10 @@ final readonly class RepurchaseCycleCard
     }
 
     /**
-     * @param int|null $liveWalletBalancePaise The repurchase wallet as it stands
-     *        now, for a window that has not resolved yet. The frozen column is
-     *        NULL until the window's last day, so without this the card would
-     *        report "now ₹0.00" to a distributor who is still holding money.
+     * @param  int|null  $liveWalletBalancePaise  The repurchase wallet as it stands
+     *                                            now, for a window that has not resolved yet. The frozen column is
+     *                                            NULL until the window's last day, so without this the card would
+     *                                            report "now ₹0.00" to a distributor who is still holding money.
      */
     public static function fromCycle(RepurchaseCycle $cycle, Carbon $today, int $personalBvPaise, int $qualifyBvPaise, ?int $liveWalletBalancePaise = null): self
     {
@@ -168,6 +168,26 @@ final readonly class RepurchaseCycleCard
     public function urgent(): bool
     {
         return $this->state === self::STATE_ACTIVE && $this->daysLeft <= 7;
+    }
+
+    /**
+     * How far into the window the distributor is, as a traffic light.
+     *
+     * Thirds of the window rather than hardcoded day counts, because the
+     * window length is the DB-driven comp.repurchase.cycle_days: on the
+     * default 30-day window that is green to day 10, amber to day 20, red
+     * from day 21 — and it still reads correctly if the setting changes.
+     */
+    public function urgencyTier(): string
+    {
+        $window = max(1, $this->daysTotal - 1);
+        $elapsed = max(0, $this->daysTotal - $this->daysLeft);
+
+        return match (true) {
+            $elapsed <= $window / 3 => 'ok',
+            $elapsed <= $window * 2 / 3 => 'warn',
+            default => 'late',
+        };
     }
 
     /** Plain-language reason a closed window was not met. */

@@ -36,7 +36,13 @@
         $accent = match (true) {
             $card->state === RepurchaseCycleCard::STATE_SUSPENDED => ['ring' => '#b91c1c', 'chip' => 'bg-red-50 text-red-800 border-red-200'],
             $card->state === RepurchaseCycleCard::STATE_COMPLETED => ['ring' => '#166534', 'chip' => 'bg-green-50 text-green-800 border-green-200'],
-            $card->urgent() => ['ring' => '#b91c1c', 'chip' => 'bg-red-50 text-red-800 border-red-200'],
+            // The ring is a clock, so it reads as one: green early in the
+            // window, amber through the middle third, red once the window is
+            // running out.
+            // Only the ring varies here: the chip is rendered for the three
+            // closed/not-started states above, never for a running window.
+            $card->urgencyTier() === 'late' => ['ring' => '#b91c1c', 'chip' => 'bg-red-50 text-red-800 border-red-200'],
+            $card->urgencyTier() === 'warn' => ['ring' => '#b45309', 'chip' => 'bg-green-50 text-green-800 border-green-200'],
             default => ['ring' => '#166534', 'chip' => 'bg-green-50 text-green-800 border-green-200'],
         };
 

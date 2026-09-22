@@ -169,3 +169,19 @@ it('RCC-11: a zero-length gate never divides by zero', function (): void {
     expect($card->qualifyFraction())->toBe(1.0)
         ->and($card->qualifyRemainingPaise())->toBe(0);
 });
+
+it('RCC-13: the ring reads green early, amber mid-window and red near the end', function (): void {
+    $tier = fn (string $today): string => RepurchaseCycleCard::fromCycle(
+        rccCycle(),
+        Carbon::parse($today),
+        0,
+        60000,
+    )->urgencyTier();
+
+    expect($tier('2026-09-01'))->toBe('ok')
+        ->and($tier('2026-09-10'))->toBe('ok')
+        ->and($tier('2026-09-11'))->toBe('warn')
+        ->and($tier('2026-09-20'))->toBe('warn')
+        ->and($tier('2026-09-21'))->toBe('late')
+        ->and($tier('2026-09-30'))->toBe('late');
+});
