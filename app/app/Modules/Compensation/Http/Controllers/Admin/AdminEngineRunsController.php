@@ -14,6 +14,7 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\EngineChainResolver;
+use App\Modules\Compensation\Services\EngineHealthService;
 use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Services\Rebuild\RebuildKind;
 use App\Modules\Compensation\Services\Rebuild\RebuildPlan;
@@ -63,6 +64,7 @@ final class AdminEngineRunsController extends Controller
         private readonly RecomputeProgress $recomputeProgress,
         private readonly RecomputeState $recomputeState,
         private readonly RunClockService $clocks,
+        private readonly EngineHealthService $health,
     ) {}
 
     public function index(Request $request): View
@@ -161,6 +163,12 @@ final class AdminEngineRunsController extends Controller
             'rebuildPanel' => $this->rebuildPanel($request),
             // A night can only be rebuilt until the next nightly run, so the
             // panel quotes that instant rather than the bare clock time.
+            // The same report the dashboard tile counts and the 08:00 digest
+            // mails. Until now it had no surface on the page the tile links to,
+            // so a missing run — which leaves no `engine_runs` row at all, and
+            // so no card and no banner — was visible only to whoever reads the
+            // email.
+            'healthGroups' => $this->healthGroups($manualTriggersDisabled),
             'nightlyClock' => $this->clocks->from(
                 EngineRegistry::get(EngineStatusService::CHAIN_KEY),
                 $lastRuns[EngineStatusService::CHAIN_KEY] ?? null,
@@ -226,6 +234,123 @@ final class AdminEngineRunsController extends Controller
         }
 
         return $payloads;
+    }
+
+    /**
+     * The engine-health report as the page renders it: the five groups, each
+     * item reduced to one line, an optional detail block and its steps.
+     *
+     * Assembled here rather than in the view for the two adjustments a view
+     * could not make honestly:
+     *
+     * - A flag-off engine is dropped. Its cards are already skipped in
+     *   `index()`, and a disabled feature must leave no trace on any admin
+     *   surface — a health item naming the engine would be that trace.
+     * - Where the page hides the per-engine triggers (a recompute environment,
+     *   see `$manualTriggersDisabled`), the steps that say to press one are
+     *   replaced by the instruction that IS true there. The email can say
+     *   "click Preview & Confirm" because it does not know which environment
+     *   its reader will open; this page does know.
+     *
+     * @return list<array{anchor: string, title: string, items: list<array{line: string, detail: string|null, steps: list<string>}>}>
+     */
+    private function healthGroups(bool $manualTriggersDisabled): array
+    {
+        $report = $this->health->report(Carbon::now());
+
+        // A root run that already has its own red banner above is not repeated
+        // here: the banner says more about it (per-step outcome) than this list
+        // could, and one failure stated twice on one page reads as two.
+        $bannered = EngineRegistry::rootOrchestratorKeys();
+
+        $recomputeSteps = [
+            'Engines are not run one at a time on this environment. Use Recompute (all engines) further down this page, which replays every engine at the instant the scheduler would have fired it.',
+            'If the item is still listed after the recompute finishes, send it to the platform team with the period shown above.',
+        ];
+
+        $groups = [
+            ['failed-runs', 'Failed runs', array_map(
+                fn (array $item): ?array => $this->healthItem(
+                    $item,
+                    "{$item['engine']} — {$item['period']} (failed {$item['started_at']})",
+                    $manualTriggersDisabled ? $recomputeSteps : $item['steps'],
+                    $item['error'],
+                ),
+                array_values(array_filter(
+                    $report->failures,
+                    static fn (array $item): bool => ! in_array($item['key'], $bannered, true),
+                )),
+            )],
+            ['missing-runs', 'Scheduled runs that did not happen', array_map(
+                fn (array $item): ?array => $this->healthItem(
+                    $item,
+                    "{$item['engine']} — {$item['period']} (was due {$item['due_at']}, no run recorded)",
+                    $manualTriggersDisabled ? $recomputeSteps : $item['steps'],
+                ),
+                $report->missing,
+            )],
+            ['premature-freezes', 'Periods priced against a pool frozen too early', array_map(
+                fn (array $item): ?array => $this->healthItem(
+                    $item,
+                    "{$item['engine']} — {$item['period']} (pool frozen {$item['frozen_at']}, kept because money had already moved on it)",
+                    $item['steps'],
+                ),
+                $report->prematureFreezes,
+            )],
+            // Chain alerts carry no engine key — they are what a whole
+            // scheduled run could not do — so there is no flag to check and no
+            // trigger to send anybody to.
+            ['chain-alerts', 'What the scheduled runs could not do', array_map(
+                static fn (array $item): array => [
+                    'line' => "{$item['headline']} — {$item['date']} (recorded {$item['recorded_at']})",
+                    'detail' => null,
+                    'steps' => $item['steps'],
+                ],
+                $report->chainAlerts,
+            )],
+            ['stuck-runs', 'Runs that appear stuck', array_map(
+                fn (array $item): ?array => $this->healthItem(
+                    $item,
+                    "{$item['engine']} — {$item['period']} (running since {$item['started_at']})",
+                    $item['steps'],
+                ),
+                $report->stuck,
+            )],
+        ];
+
+        $payload = [];
+
+        foreach ($groups as [$anchor, $title, $items]) {
+            // `healthItem()` returns null for a flag-off engine.
+            $items = array_values(array_filter($items));
+
+            if ($items === []) {
+                continue;
+            }
+
+            $payload[] = ['anchor' => $anchor, 'title' => $title, 'items' => $items];
+        }
+
+        return $payload;
+    }
+
+    /**
+     * One rendered health item, or null when its engine is behind a flag that
+     * is off and must leave no trace on the page.
+     *
+     * @param  array{key: string, steps: list<string>}  $item
+     * @param  list<string>  $steps
+     * @return array{line: string, detail: string|null, steps: list<string>}|null
+     */
+    private function healthItem(array $item, string $line, array $steps, ?string $detail = null): ?array
+    {
+        $flagClass = EngineRegistry::get($item['key'])->featureFlagClass;
+
+        if ($flagClass !== null && ! Feature::for(null)->active($flagClass)) {
+            return null;
+        }
+
+        return ['line' => $line, 'detail' => $detail, 'steps' => $steps];
     }
 
     /**

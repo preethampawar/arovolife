@@ -82,6 +82,8 @@
 </div>
 @endforeach
 
+@include('admin.compensation.engine-runs._health')
+
 {{-- The period rebuilds (ADR-0016, D4). DEVELOPER ONLY, and doubly so: the
      controller hands `$rebuildPanel` as null to every other reader, and
      @developer keeps the markup out of the response even if it ever stopped

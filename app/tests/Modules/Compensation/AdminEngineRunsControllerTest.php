@@ -89,6 +89,47 @@ it('renders the engine runs index with every engine, its schedule and dependenci
         ->assertSee(route('admin.compensation.engine-runs.events', ['engine' => 'gbb.monthly']), false);
 });
 
+it('shows the engine-health items the dashboard tile counts, with their steps', function (): void {
+    // The dashboard Engine health tile links here. Until the health section
+    // existed the tile counted items this page could not show at all: a missing
+    // run leaves no `engine_runs` row, so it has no card, and the red banners
+    // above cover only the three root scheduled runs.
+    Feature::activate(GenosSalesBonusFeature::class);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('needing attention')
+        ->assertSee('Scheduled runs that did not happen')
+        ->assertSee('GSB Daily Cut-off (incl. MSB)')
+        ->assertSee('What to do:');
+});
+
+it('leaves no trace of a flag-off engine in the health section', function (): void {
+    // Same rule as the cards: every flag is off here, so no health item may
+    // name an engine the reader is not supposed to know exists.
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertDontSee('GSB Daily Cut-off (incl. MSB)')
+        ->assertDontSee('Fortune Bonus Payout');
+});
+
+it('sends the health steps to the recompute where the per-engine triggers are hidden', function (): void {
+    // On a recompute environment the triggers are not rendered at all, so the
+    // digest's "click Preview & Confirm" would send the reader looking for a
+    // button that is not there.
+    config(['arovolife.recompute.enabled' => true]);
+    Feature::activate(GenosSalesBonusFeature::class);
+
+    $this->actingAs(engineRunsUser('admin'))
+        ->get(route('admin.compensation.engine-runs.index'))
+        ->assertOk()
+        ->assertSee('Scheduled runs that did not happen')
+        ->assertSee('Engines are not run one at a time on this environment')
+        ->assertDontSee('Click Preview &amp; Confirm', false);
+});
+
 it('never shows a rebuild engine card, whatever the role', function (): void {
     // The four rebuilds are registry entries so their runs are recorded, not
     // engines anyone starts from this page — the developer's rebuild panel is
