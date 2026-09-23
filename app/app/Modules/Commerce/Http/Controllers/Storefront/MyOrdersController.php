@@ -6,6 +6,7 @@ namespace App\Modules\Commerce\Http\Controllers\Storefront;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Payments\Support\BuyerRefundStatus;
 use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Tax\Models\Invoice;
@@ -150,6 +151,7 @@ final class MyOrdersController extends Controller
         return view('shop.orders.show', [
             'order' => $order,
             'showBv' => $request->user()?->distributor !== null,
+            'refundStatus' => BuyerRefundStatus::for($order),
         ]);
     }
 

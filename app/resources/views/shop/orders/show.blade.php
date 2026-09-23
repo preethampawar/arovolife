@@ -171,6 +171,22 @@
     </div>
     @endif
 
+    {{-- Refund status for a paid order cancelled before it shipped, or a
+         return closed without refund (the order goes back to delivered) --}}
+    @if($refundStatus !== null && ($order->status === 'cancelled' || ($order->status === 'delivered' && $refundStatus['tone'] === 'closed')))
+    @php
+        $refundBox = match ($refundStatus['tone']) {
+            'done' => ['border-green-200 bg-green-50', 'text-green-900', 'text-green-800'],
+            'closed' => ['border-gray-200 bg-gray-50', 'text-gray-900', 'text-gray-700'],
+            default => ['border-amber-200 bg-amber-50', 'text-amber-900', 'text-amber-800'],
+        };
+    @endphp
+    <div class="mt-6 rounded-2xl border p-5 {{ $refundBox[0] }}">
+        <h2 class="font-semibold mb-1 {{ $refundBox[1] }}">Refund status</h2>
+        <p class="text-sm font-medium {{ $refundBox[2] }}">{{ $refundStatus['text'] }}</p>
+    </div>
+    @endif
+
     {{-- Refund status (after a return has been opened or processed) --}}
     @if(in_array($order->status, ['refund_requested', 'refund_inspection', 'refund_approved', 'refunded'], true))
     <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
@@ -179,6 +195,8 @@
         <p class="text-sm text-amber-800">Your return request has been received and is awaiting review by our team. We'll update you within 5 working days.</p>
         @elseif($order->status === 'refund_inspection')
         <p class="text-sm text-amber-800">Your return is being inspected. A decision will be communicated shortly.</p>
+        @elseif($refundStatus !== null && in_array($order->status, ['refund_approved', 'refunded'], true))
+        <p class="text-sm font-medium {{ $refundStatus['tone'] === 'done' ? 'text-green-800' : ($refundStatus['tone'] === 'closed' ? 'text-gray-700' : 'text-amber-800') }}">{{ $refundStatus['text'] }}</p>
         @elseif($order->status === 'refund_approved')
         @php $awaitingReceipt = $order->returnRequests()->whereNotNull('entitlements_held_at')->whereNull('received_at')->whereNull('receipt_outcome')->exists(); @endphp
         @if($awaitingReceipt)
