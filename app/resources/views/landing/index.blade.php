@@ -36,7 +36,7 @@
                     'eyebrow' => 'Direct Selling, Done Right',
                     'title_plain' => 'Start Your Direct Selling Journey with',
                     'title_accent' => 'arovolife',
-                    'body' => 'Begin your journey with arovolife through a simple, transparent and responsible direct-selling platform designed around product knowledge, genuine customer service and long-term personal growth. Free to register. 30-day cooling-off with one-click cancellation. Fully compliant with India\'s Consumer Protection (Direct Selling) Rules, 2021.',
+                    'body' => 'Begin your journey with arovolife through a simple, transparent and responsible direct-selling platform designed around product knowledge, genuine customer service and long-term personal growth. Free to register. 30-day cooling-off with one-click cancellation. Built to comply with India\'s Consumer Protection (Direct Selling) Rules, 2021.',
                     'cta_primary' => ['label' => 'Become an arovolife Direct Seller →', 'url' => route('contact.show')],
                     'cta_secondary' => ['label' => 'How It Works', 'url' => '#how-it-works'],
                     'note' => 'Registration is free. No payment is required to sign up. Eligibility and participation are subject to applicable company policies and direct-selling guidelines.',
@@ -466,7 +466,7 @@
             <div class="text-center mb-12">
                 <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-2">How to register</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Five quick steps. <span class="text-leaf-600">Fifteen minutes</span> start to finish.</h2>
-                <p class="text-lg text-gray-700 font-semibold mb-3">Simple to Start. Clear at Every Step. Ready in Minutes.</p>
+                <p class="text-lg text-gray-700 font-semibold mb-3">Simple to Start. Clear at Every Step.</p>
                 <p class="text-gray-800 max-w-3xl mx-auto mb-3">Joining arovolife is designed to be easy, transparent and convenient. With a simple referral-based registration process, new applicants can complete the essential steps, verify their details and begin their arovolife journey with confidence.</p>
                 <p class="text-gray-800">From referral link to live ADN — no surprises along the way.</p>
             </div>
