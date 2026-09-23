@@ -36,10 +36,10 @@
                     'eyebrow' => 'Direct Selling, Done Right',
                     'title_plain' => 'Start Your Direct Selling Journey with',
                     'title_accent' => 'arovolife',
-                    'body' => 'Free to register. 30-day cooling-off with one-click cancellation. Fully compliant with India\'s Consumer Protection (Direct Selling) Rules, 2021.',
-                    'cta_primary' => ['label' => 'Become a Direct Seller →', 'url' => route('contact.show')],
+                    'body' => 'Begin your journey with arovolife through a simple, transparent and responsible direct-selling platform designed around product knowledge, genuine customer service and long-term personal growth. Free to register. 30-day cooling-off with one-click cancellation. Fully compliant with India\'s Consumer Protection (Direct Selling) Rules, 2021.',
+                    'cta_primary' => ['label' => 'Become an arovolife Direct Seller →', 'url' => route('contact.show')],
                     'cta_secondary' => ['label' => 'How It Works', 'url' => '#how-it-works'],
-                    'note' => 'Registration is free. No payment required to sign up.',
+                    'note' => 'Registration is free. No payment is required to sign up. Eligibility and participation are subject to applicable company policies and direct-selling guidelines.',
                 ],
                 [
                     'eyebrow' => 'arovolife',
@@ -57,7 +57,7 @@
                     'body' => 'DSR 2021 compliant. DPDP 2023 data protection. Audit-logged transactions. Raw Aadhaar never stored. Every commission tied to a real product sale.',
                     'cta_primary' => ['label' => 'Read Our Commitment →', 'url' => route('content.show', 'ethics')],
                     'cta_secondary' => ['label' => 'Privacy Policy', 'url' => route('content.show', 'privacy')],
-                    'note' => 'Complaint SLA: 24h acknowledgement, 7-day resolution.',
+                    'note' => 'Complaints acknowledged within 48 hours, with root-cause analysis within 14 days.',
                 ],
             ];
         @endphp
@@ -412,7 +412,12 @@
             <div class="text-center mb-10">
                 <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-2">Why arovolife</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Compliant by design — <span class="text-brand-700">customer-first</span> by belief.</h2>
-                <p class="text-gray-800">Four promises, every transaction, every day.</p>
+                <p class="text-lg text-gray-700 font-semibold mb-3">Purpose at Heart. People at the Centre. Progress with Integrity.</p>
+                <div class="max-w-3xl mx-auto space-y-3 mb-3">
+                    <p class="text-gray-800">arovolife was created with a simple belief: when people receive quality products, genuine value and the right opportunity to grow, better lives can be built step by step.</p>
+                    <p class="text-gray-800">We bring together wellness, responsible entrepreneurship and personal development through a transparent, customer-focused platform designed for long-term relationships—not short-term promises.</p>
+                </div>
+                <p class="text-gray-800">Six promises, every transaction, every day.</p>
             </div>
 
             @php
@@ -422,15 +427,19 @@
                 $iconShield   = 'shield-check';
                 $iconClock    = 'clock';
                 $iconRupee    = 'indian-rupee';
+                $iconHandHeart = 'hand-heart';
+                $iconGradCap  = 'graduation-cap';
 
                 $whyCards = [
-                    ['title' => 'Free Registration',    'body' => 'Zero joining fee. No payment required at signup — ever.',                      'icon' => $iconGift,   'bg' => 'bg-brand-50',   'border' => 'border-brand-200',   'iconBg' => 'bg-brand-100 text-brand-700',     'titleClr' => 'text-brand-700'],
+                    ['title' => 'Free Registration',    'body' => 'Zero joining fee. No payment required at signup — ever. We believe opportunity should start with accessibility, clarity and informed choice.', 'icon' => $iconGift,   'bg' => 'bg-brand-50',   'border' => 'border-brand-200',   'iconBg' => 'bg-brand-100 text-brand-700',     'titleClr' => 'text-brand-700'],
                     ['title' => 'Your Data, Protected', 'body' => 'PAN stored as hash. Raw Aadhaar never touches our database. Full audit log.', 'icon' => $iconShield, 'bg' => 'bg-violet-50',  'border' => 'border-violet-200',  'iconBg' => 'bg-violet-100 text-violet-700',   'titleClr' => 'text-violet-700'],
-                    ['title' => '30-Day Cooling-Off',   'body' => 'One-click cancellation with full refund during the cooling-off period.',      'icon' => $iconClock,  'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'iconBg' => 'bg-sunrise-100 text-sunrise-700', 'titleClr' => 'text-sunrise-800'],
-                    ['title' => 'Real Sales Earnings',  'body' => 'Commissions are paid on actual product sales, never on recruiting alone.',    'icon' => $iconRupee,  'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'iconBg' => 'bg-leaf-100 text-leaf-700',       'titleClr' => 'text-leaf-700'],
+                    ['title' => '30-Day Cooling-Off',   'body' => 'One-click cancellation with full refund during the cooling-off period. A defined cooling-off period gives new direct sellers time to understand the opportunity and make an informed decision.', 'icon' => $iconClock,  'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'iconBg' => 'bg-sunrise-100 text-sunrise-700', 'titleClr' => 'text-sunrise-800'],
+                    ['title' => 'Real Sales Earnings',  'body' => 'Commissions are paid on actual product sales, never on recruiting. Business rewards are connected to genuine product sales under the published compensation plan—never to recruitment.', 'icon' => $iconRupee,  'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'iconBg' => 'bg-leaf-100 text-leaf-700',       'titleClr' => 'text-leaf-700'],
+                    ['title' => 'Customer-First Approach', 'body' => 'Every relationship begins with genuine product value, responsible recommendations and dependable service.', 'icon' => $iconHandHeart, 'bg' => 'bg-sky-50', 'border' => 'border-sky-200', 'iconBg' => 'bg-sky-100 text-sky-700', 'titleClr' => 'text-sky-700'],
+                    ['title' => 'Learning & Leadership', 'body' => 'Product knowledge, business skills, mentoring and continuous development help individuals progress with greater confidence.', 'icon' => $iconGradCap, 'bg' => 'bg-amber-50', 'border' => 'border-amber-200', 'iconBg' => 'bg-amber-100 text-amber-700', 'titleClr' => 'text-amber-700'],
                 ];
             @endphp
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach($whyCards as $card)
                 <div class="rounded-2xl border-2 {{ $card['border'] }} {{ $card['bg'] }} p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                     <div class="w-12 h-12 rounded-xl flex items-center justify-center {{ $card['iconBg'] }} mb-4 shadow-sm">
@@ -440,6 +449,11 @@
                     <p class="text-sm text-gray-700 leading-relaxed">{{ $card['body'] }}</p>
                 </div>
                 @endforeach
+            </div>
+
+            <div class="text-center mt-10 max-w-3xl mx-auto">
+                <p class="text-lg text-gray-700 font-semibold mb-2">The arovolife Promise</p>
+                <p class="text-gray-800">To create meaningful value for customers, responsible opportunities for direct sellers, and a culture where health, integrity and shared progress come together.</p>
             </div>
         </div>
     </section>
@@ -452,6 +466,8 @@
             <div class="text-center mb-12">
                 <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-2">How to register</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Five quick steps. <span class="text-leaf-600">Fifteen minutes</span> start to finish.</h2>
+                <p class="text-lg text-gray-700 font-semibold mb-3">Simple to Start. Clear at Every Step. Ready in Minutes.</p>
+                <p class="text-gray-800 max-w-3xl mx-auto mb-3">Joining arovolife is designed to be easy, transparent and convenient. With a simple referral-based registration process, new applicants can complete the essential steps, verify their details and begin their arovolife journey with confidence.</p>
                 <p class="text-gray-800">From referral link to live ADN — no surprises along the way.</p>
             </div>
 
@@ -465,11 +481,11 @@
                 $iconBadge    = 'badge-check';
 
                 $steps = [
-                    ['n' => '1', 'title' => 'Placement',      'body' => 'Confirm your sponsor + group.',        'bg' => 'bg-brand-700',   'shadow' => 'shadow-brand-500/30',   'icon' => $iconUsers],
-                    ['n' => '2', 'title' => 'Create Account', 'body' => 'Name, email, phone, password.',        'bg' => 'bg-leaf-500',    'shadow' => 'shadow-leaf-500/30',    'icon' => $iconUserPlus],
-                    ['n' => '3', 'title' => 'Orientation',    'body' => 'Watch the video, pass the quiz.',      'bg' => 'bg-sunrise-500', 'shadow' => 'shadow-sunrise-500/30', 'icon' => $iconPlay],
-                    ['n' => '4', 'title' => 'KYC',            'body' => 'PAN + Aadhaar (verified gateway).',    'bg' => 'bg-violet-500',  'shadow' => 'shadow-violet-500/30',  'icon' => $iconId],
-                    ['n' => '5', 'title' => 'Get Your ADN',   'body' => 'Distributor Number issued instantly.', 'bg' => 'bg-brand-700',   'shadow' => 'shadow-brand-700/30',   'icon' => $iconBadge],
+                    ['n' => '1', 'title' => 'Placement',      'body' => 'Confirm your sponsor + group. Begin through an authorised arovolife referral link and confirm your sponsor and placement details before proceeding.', 'bg' => 'bg-brand-700',   'shadow' => 'shadow-brand-500/30',   'icon' => $iconUsers],
+                    ['n' => '2', 'title' => 'Create Account', 'body' => 'Name, email, phone, password. Enter your basic information such as name, mobile number, email address and secure password to create your account.', 'bg' => 'bg-leaf-500',    'shadow' => 'shadow-leaf-500/30',    'icon' => $iconUserPlus],
+                    ['n' => '3', 'title' => 'Orientation',    'body' => 'Watch the video, pass the quiz. Review the company information, products, policies and business model so you can make an informed and confident decision before continuing.',      'bg' => 'bg-sunrise-500', 'shadow' => 'shadow-sunrise-500/30', 'icon' => $iconPlay],
+                    ['n' => '4', 'title' => 'KYC',            'body' => 'PAN + Aadhaar (verified gateway). Submit the required KYC information, including PAN and Aadhaar details, through the approved verification process.', 'bg' => 'bg-violet-500',  'shadow' => 'shadow-violet-500/30',  'icon' => $iconId],
+                    ['n' => '5', 'title' => 'Get Your ADN',   'body' => 'After successful registration and applicable verification, your arovolife Direct Seller ID/ADN is issued, giving you access to your account and business platform.', 'bg' => 'bg-brand-700',   'shadow' => 'shadow-brand-700/30',   'icon' => $iconBadge],
                 ];
             @endphp
             <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -488,6 +504,11 @@
             </div>
 
             <div class="text-center mt-10">
+                <div class="max-w-3xl mx-auto mb-6">
+                    <p class="text-lg text-gray-700 font-semibold mb-2">Your Journey Begins with Clarity</p>
+                    <p class="text-gray-800 mb-2">Registration is the first step—not the finish line. Take time to understand the products, learn the system, follow responsible selling practices and build your business through genuine customer value.</p>
+                    <p class="text-sm text-gray-700">Free Registration • Simple Process • Secure Verification • Transparent Onboarding</p>
+                </div>
                 <a href="{{ route('contact.show') }}"
                    class="inline-flex items-center gap-2 px-8 py-3 rounded-full bg-gradient-to-r from-brand-500 via-brand-600 to-brand-700 hover:from-brand-600 hover:to-brand-800 text-white text-sm font-semibold transition-all shadow-lg shadow-brand-500/40 hover:shadow-xl hover:shadow-brand-500/50">
                     Talk to our team →
@@ -506,7 +527,10 @@
             <div class="text-center mb-10 max-w-2xl mx-auto">
                 <p class="text-sm font-medium text-leaf-600 uppercase tracking-wider mb-2">Our products</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2"><span class="text-brand-700">Best-in-class.</span> <span class="text-leaf-600">Best for life.</span></h2>
-                <p class="text-gray-800">A small range, deeply considered — wellness essentials and personal care that stand on their own quality.</p>
+                <p class="text-gray-800 mb-3">A small range, deeply considered — wellness essentials and personal care that stand on their own quality.</p>
+                <p class="text-gray-800 mb-3">At arovolife, our products are created with one clear purpose: to bring meaningful value to everyday life. We focus on categories that support health, self-care, cleaner living and better lifestyles—with quality, responsibility and trust at the centre of everything we offer.</p>
+                <p class="text-gray-800 mb-3">Our approach is simple: develop and deliver products that are useful, reliable and thoughtfully chosen for modern families and everyday needs.</p>
+                <p class="text-lg text-gray-700 font-semibold">A Thoughtful Product Range for Better Living</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -532,7 +556,7 @@
                         [
                             'title' => 'Health Care',
                             'subtitle' => 'Evidence-led wellness',
-                            'body' => 'Daily supplements, immunity blends, and Ayurveda-inspired formulations. Every milligram declared on the label, every batch independently tested.',
+                            'body' => 'Wellness that begins from within. Our health care range is designed to support everyday well-being through carefully selected wellness and nutritional solutions. With a focus on quality, consistency and trust, these products are created to help people take a more confident step toward healthier living. Daily supplements, immunity blends, and Ayurveda-inspired formulations. Every milligram declared on the label, every batch independently tested.',
                             'card' => 'bg-leaf-50 border-leaf-100 hover:border-leaf-200',
                             'iconChip' => 'bg-leaf-100 text-leaf-600',
                             'accent' => 'text-leaf-700',
@@ -541,7 +565,7 @@
                         [
                             'title' => 'Skin and Beauty',
                             'subtitle' => 'Radiance, responsibly made',
-                            'body' => 'Cleansers, serums, and treatments formulated for Indian skin. Paraben-free, cruelty-free, dermatologically reviewed before launch.',
+                            'body' => 'Care that reflects confidence and comfort. Our skin and beauty range is designed to support personal care with products that promote freshness, care and daily confidence. We believe beauty begins with well-cared-for skin and a routine built on quality and consistency. Cleansers, serums, and treatments formulated for Indian skin. Paraben-free, cruelty-free, dermatologically reviewed before launch.',
                             'card' => 'bg-rose-50 border-rose-100 hover:border-rose-200',
                             'iconChip' => 'bg-rose-100 text-rose-600',
                             'accent' => 'text-rose-700',
@@ -550,7 +574,7 @@
                         [
                             'title' => 'Personal Care',
                             'subtitle' => 'Daily essentials, done honestly',
-                            'body' => 'Toothpaste, soaps, deodorants, and body wash — clean ingredient lists, no hidden fragrances, no surprise SLS.',
+                            'body' => 'Daily essentials made with purpose. From everyday hygiene to self-care basics, our personal care products are chosen to support comfort, cleanliness and confidence in daily life. Practical, dependable and thoughtfully developed, they are made to become part of a healthy lifestyle. Toothpaste, soaps, deodorants, and body wash — clean ingredient lists, no hidden fragrances, no surprise SLS.',
                             'card' => 'bg-brand-50 border-brand-100 hover:border-brand-200',
                             'iconChip' => 'bg-brand-100 text-brand-700',
                             'accent' => 'text-brand-700',
@@ -559,7 +583,7 @@
                         [
                             'title' => 'Home Care',
                             'subtitle' => 'A home that breathes clean',
-                            'body' => 'Plant-based dishwash, laundry, and surface cleaners. Tough on grime, gentle on hands, biodegradable at the drain.',
+                            'body' => 'Clean living starts at home. A healthy lifestyle also depends on a clean and cared-for environment. Our home care range is intended to support everyday cleanliness and convenience, helping families maintain spaces that feel fresh, safe and comfortable. Plant-based dishwash, laundry, and surface cleaners. Tough on grime, gentle on hands, biodegradable at the drain.',
                             'card' => 'bg-teal-50 border-teal-100 hover:border-teal-200',
                             'iconChip' => 'bg-teal-100 text-teal-600',
                             'accent' => 'text-teal-700',
@@ -568,7 +592,7 @@
                         [
                             'title' => 'Agri Care',
                             'subtitle' => 'Rooted in healthier soil',
-                            'body' => 'Organic fertilisers, bio-pesticides, and soil conditioners for stronger crops. Plant nutrition that works with the land, not against it.',
+                            'body' => 'Supporting better growth from the ground up. Our agri care range reflects our broader vision of well-being by recognising the importance of healthy cultivation and sustainable support systems. These products are aimed at contributing to better agricultural care and long-term value. Organic fertilisers, bio-pesticides, and soil conditioners for stronger crops. Plant nutrition that works with the land, not against it.',
                             'card' => 'bg-amber-50 border-amber-100 hover:border-amber-200',
                             'iconChip' => 'bg-amber-100 text-amber-700',
                             'accent' => 'text-amber-700',
@@ -577,7 +601,7 @@
                         [
                             'title' => 'Lifestyle',
                             'subtitle' => 'Wellness, beyond the bottle',
-                            'body' => 'Curated bundles, wellness journals, and lifestyle accessories — the everyday companions that turn a routine into a habit.',
+                            'body' => 'Products that fit the way people live today. Our lifestyle range is built around everyday practicality, usefulness and enhancement of daily routines. It reflects our belief that better living is created not only through health care, but also through smart, purposeful lifestyle choices. Curated bundles, wellness journals, and lifestyle accessories — the everyday companions that turn a routine into a habit.',
                             'card' => 'bg-violet-50 border-violet-100 hover:border-violet-200',
                             'iconChip' => 'bg-violet-100 text-violet-600',
                             'accent' => 'text-violet-700',
@@ -602,6 +626,48 @@
                 </a>
                 @endforeach
             </div>
+
+            <div class="grid md:grid-cols-2 gap-10 mt-12 max-w-5xl mx-auto">
+                <div>
+                    <p class="text-lg text-gray-700 font-semibold mb-4">What makes arovolife products different?</p>
+                    <ul class="space-y-3">
+                        @foreach([
+                            'Quality-Focused'  => 'Developed with attention to usefulness, consistency and trust.',
+                            'People-Centred'   => 'Chosen to meet real everyday needs.',
+                            'Wellness-Oriented' => 'Designed to support a better, healthier and more balanced life.',
+                            'Value-Driven'     => 'Built around long-term satisfaction, not short-term appeal.',
+                            'Purposeful Range' => 'A thoughtful mix of products across essential life categories.',
+                        ] as $title => $body)
+                        <li class="flex gap-3">
+                            <span class="shrink-0 w-6 h-6 rounded-full bg-leaf-100 text-leaf-700 flex items-center justify-center text-xs font-bold">✓</span>
+                            <div>
+                                <p class="text-sm font-semibold text-gray-900">{{ $title }}</p>
+                                <p class="text-sm text-gray-600">{{ $body }}</p>
+                            </div>
+                        </li>
+                        @endforeach
+                    </ul>
+                </div>
+                <div>
+                    <p class="text-lg text-gray-700 font-semibold mb-4">Our product philosophy</p>
+                    <p class="text-sm text-gray-600 mb-3">At arovolife, we believe products should do more than fill shelves—they should add value to lives. That is why our product philosophy is rooted in:</p>
+                    <ul class="space-y-3">
+                        @foreach(['Usefulness', 'Quality', 'Trust', 'Everyday relevance', 'Long-term customer value'] as $title)
+                        <li class="flex gap-3">
+                            <span class="shrink-0 w-6 h-6 rounded-full bg-leaf-100 text-leaf-700 flex items-center justify-center text-xs font-bold">✓</span>
+                            <div>
+                                <p class="text-sm font-semibold text-gray-900">{{ $title }}</p>
+                            </div>
+                        </li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+
+            <div class="text-center mt-12 max-w-3xl mx-auto">
+                <p class="text-gray-800 mb-2">arovolife products are created to support healthier choices, better living and everyday progress—because true quality is not just about what a product is, but how meaningfully it serves people.</p>
+                <p class="text-lg text-gray-700 font-semibold">arovolife — Best in Class. Best for Life.</p>
+            </div>
         </div>
     </section>
 
@@ -613,7 +679,12 @@
         <div class="relative max-w-7xl mx-auto px-6 py-16 md:py-20">
             <div class="text-center mb-10">
                 <h2 class="text-3xl md:text-4xl font-bold mb-2">Our Compliance Commitment</h2>
-                <p class="text-brand-50">Every promise is backed by code and audit.</p>
+                <p class="text-lg text-white font-semibold mb-3">Integrity in Every Action. Transparency in Every Relationship.</p>
+                <p class="text-brand-50 mb-3">Every promise is backed by code and audit.</p>
+                <div class="max-w-3xl mx-auto space-y-3">
+                    <p class="text-brand-50">At arovolife, compliance is more than a legal requirement—it is a fundamental part of how we build trust, protect people and create a responsible direct selling ecosystem.</p>
+                    <p class="text-brand-50">We are committed to conducting our business with clarity, accountability and respect for applicable laws, regulations and ethical standards. From registration and product communication to data protection, contracts and business practices, our goal is to ensure that every interaction is responsible and transparent.</p>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
@@ -629,6 +700,30 @@
                     <p class="text-sm text-brand-50 mt-1">{{ $item[1] }}</p>
                 </div>
                 @endforeach
+            </div>
+
+            <p class="text-lg text-white font-semibold text-center mt-12 mb-5">Our Commitment to Responsible Business</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                @foreach([
+                    ['Direct Selling Rules',              'We strive to operate in alignment with the applicable Direct Selling framework, with a clear focus on genuine product sales, fair practices and responsible representation.'],
+                    ['Data & Privacy Protection',         'We respect personal information and aim to handle customer and direct seller data responsibly, securely and in accordance with applicable privacy requirements.'],
+                    ['Clear Agreements & Policies',       'Our direct seller relationship is supported by documented terms, policies and procedures designed to create clarity around rights, responsibilities and business conduct.'],
+                    ['Transparent Records & Audit Trail', 'We maintain structured records and processes to support accountability, traceability and responsible administration across our business operations.'],
+                    ['Ethical Product Communication',     'We encourage accurate, responsible and compliant product communication without misleading claims, exaggerated promises or inappropriate representations.'],
+                    ['Continuous Review',                 'Compliance is an ongoing responsibility. We aim to review and strengthen our processes as laws, standards and business requirements evolve.'],
+                ] as $item)
+                <div class="bg-white/10 backdrop-blur rounded-xl border border-white/20 p-5">
+                    <p class="text-sm uppercase tracking-wider text-brand-100 mb-1 font-medium">Commitment</p>
+                    <p class="font-bold text-lg">{{ $item[0] }}</p>
+                    <p class="text-sm text-brand-50 mt-1">{{ $item[1] }}</p>
+                </div>
+                @endforeach
+            </div>
+
+            <div class="text-center mt-10 max-w-3xl mx-auto">
+                <p class="text-lg text-white font-semibold mb-2">Our Promise</p>
+                <p class="text-brand-50 mb-4">To build arovolife on a foundation of trust—where customers are respected, direct sellers are informed, business practices are transparent and every relationship is guided by integrity.</p>
+                <p class="font-semibold text-white">arovolife — Trust Built by Principle. Progress Built with Responsibility.</p>
             </div>
 
             <div class="text-center mt-10">
@@ -677,11 +772,24 @@
                         <li><a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Direct Seller Agreement</a></li>
                         <li><a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy Policy</a></li>
                         <li><a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance Redressal</a></li>
-                        {{-- Rendered only once the page is published: the seeder
-                             holds it as a draft for the client's review, and a
-                             footer link to an unpublished page is a link to a 404. --}}
+                        {{-- Guarded on publication status: a footer link to an
+                             unpublished page is a link to a 404. The guard
+                             stays even though these are published, so a page
+                             taken offline never becomes a dead link. --}}
                         @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('returns'))
-                        <li><a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Refunds, returns &amp; shipping</a></li>
+                        <li><a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Returns &amp; warranty</a></li>
+                        @endif
+                        @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('shipping'))
+                        <li><a href="{{ route('content.show', 'shipping') }}" class="hover:text-white">Shipping &amp; delivery</a></li>
+                        @endif
+                        @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('disclaimer'))
+                        <li><a href="{{ route('content.show', 'disclaimer') }}" class="hover:text-white">Disclaimer</a></li>
+                        @endif
+                        @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('social-media'))
+                        <li><a href="{{ route('content.show', 'social-media') }}" class="hover:text-white">Social media policy</a></li>
+                        @endif
+                        @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('policies'))
+                        <li><a href="{{ route('content.show', 'policies') }}" class="hover:text-white">Website terms of use</a></li>
                         @endif
                         <li><a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a></li>
                     </ul>

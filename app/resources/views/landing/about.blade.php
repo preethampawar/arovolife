@@ -47,11 +47,26 @@
                 <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.05] mb-6">
                     A new chapter in <span class="text-brand-700">Indian direct selling industry</span>.
                 </h1>
-                <p class="text-lg text-gray-600 mb-8 max-w-xl leading-relaxed">
+                <p class="text-lg text-gray-700 font-semibold mb-4">Wellness with Purpose. Opportunity with Possibility.</p>
+                <p class="text-lg text-gray-600 mb-4 max-w-xl leading-relaxed">
                     arovolife is an India-incorporated direct-selling company, born in the first half of 2026
                     with one resolute belief — that doing right by the customer and doing right by the
                     distributor are the same job, every single day.
                 </p>
+                <p class="text-base text-gray-600 mb-4 max-w-xl leading-relaxed">
+                    Arovolife Private Limited is an Indian wellness and direct-selling company built with a clear
+                    purpose—to make quality nutraceuticals, food supplements and wellness products part of everyday
+                    life while creating meaningful opportunities for people to grow.
+                </p>
+                <p class="text-base text-gray-600 mb-4 max-w-xl leading-relaxed">
+                    We bring together wellness, entrepreneurship and personal development through a product-focused
+                    business platform founded on quality, integrity, transparency and responsible growth.
+                </p>
+                <p class="text-base text-gray-600 mb-6 max-w-xl leading-relaxed">
+                    Our vision is simple: healthier people, empowered individuals and stronger communities—growing
+                    together toward a better tomorrow.
+                </p>
+                <p class="text-base text-gray-900 font-semibold mb-8">arovolife — Best in Class. Best for Life.</p>
                 <div class="flex flex-wrap items-center gap-3">
                     <a href="{{ route('contact.show') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold shadow-lg shadow-brand-500/30 transition-colors">
                         Become a Direct Seller →
@@ -75,9 +90,9 @@
                     </div>
                 </div>
                 <div class="ar-float-slow absolute -bottom-6 -right-2 bg-white rounded-2xl shadow-xl border border-gray-100 px-4 py-3 flex items-center gap-3" style="animation-delay: -3s;">
-                    <span class="w-9 h-9 rounded-full bg-sunrise-50 flex items-center justify-center text-sunrise-600 font-bold text-sm">24h</span>
+                    <span class="h-9 px-2.5 rounded-full bg-sunrise-50 flex items-center justify-center text-sunrise-600 font-bold text-sm whitespace-nowrap">48h</span>
                     <div class="text-left">
-                        <p class="text-[11px] uppercase tracking-wider text-gray-600 font-semibold">Grievance SLA</p>
+                        <p class="text-[11px] uppercase tracking-wider text-gray-600 font-semibold">Grievance acknowledgement</p>
                         <p class="text-sm text-gray-800 font-semibold">we respond fast</p>
                     </div>
                 </div>
@@ -96,6 +111,7 @@
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
                     Built from day one for the decade ahead.
                 </h2>
+                <p class="text-lg text-gray-700 font-semibold mb-4">Together, we are building healthier people, empowered lives and a brighter tomorrow.</p>
                 <p class="text-base text-gray-600 mb-4 leading-relaxed">
                     arovolife was founded in the first half of 2026 — at a moment when Indian direct selling
                     is finally on solid statutory ground. We didn't bolt compliance on as an afterthought; we
@@ -104,10 +120,29 @@
                     <strong class="text-gray-900 font-semibold">Consumer Protection (Direct Selling) Rules, 2021</strong>
                     and the <strong class="text-gray-900 font-semibold">DPDP Act, 2023</strong>.
                 </p>
-                <p class="text-base text-gray-600 leading-relaxed">
+                <p class="text-base text-gray-600 mb-4 leading-relaxed">
                     Our promise is simple: customers receive products they would buy on quality alone, and
-                    distributors earn from real product sales — never from recruiting alone. In a market full
+                    distributors earn from real product sales — never from recruiting. In a market full
                     of shortcuts, we chose the long road. We're here for the decade ahead, not the next quarter.
+                </p>
+                <p class="text-base text-gray-600 mb-4 leading-relaxed">
+                    <strong class="text-gray-900 font-semibold">A Purposeful Beginning. A Vision for Better Lives.</strong>
+                    arovolife was founded in 2026 with a simple yet powerful idea: better health can inspire better
+                    lives, and meaningful opportunities can help people build better futures. Our journey began with
+                    the vision of creating a modern wellness company where quality nutraceuticals, food supplements
+                    and wellness products come together with a responsible, product-focused direct-selling platform.
+                </p>
+                <p class="text-base text-gray-600 mb-4 leading-relaxed">
+                    At arovolife, we believe lasting success is built on more than business growth. It is built on
+                    customer trust, product value, integrity, transparency and the development of people. Every step
+                    of our journey is guided by the ambition to create genuine value for customers while enabling
+                    independent direct sellers to learn, develop their capabilities and grow through product sales
+                    and leadership.
+                </p>
+                <p class="text-base text-gray-600 leading-relaxed">
+                    As we move forward, our purpose remains clear: to continually strengthen our products, our people
+                    and our community while building an organization designed for responsible and sustainable
+                    long-term growth.
                 </p>
             </div>
         </div>
@@ -121,17 +156,26 @@
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 leading-tight">
                     Customer first. Always.
                 </h2>
+                <p class="text-lg text-gray-700 font-semibold">Wellness First. People Always.</p>
+                <p class="text-lg text-gray-700 font-semibold mb-3">Better Products. Better Experiences. Better Opportunities. Better Lives.</p>
+                <p class="text-base text-gray-600 mb-3">
+                    At arovolife, our philosophy is simple: create genuine value for customers, build trust through
+                    quality, and create meaningful opportunities for people. Every product, partnership and decision
+                    is guided by these principles.
+                </p>
                 <p class="text-base text-gray-600">
-                    Three commitments we make on every product, every interaction, every transaction.
+                    Five commitments we make on every product, every interaction, every transaction.
                 </p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 @php
                     $pillars = [
-                        ['icon' => 'leaf', 'title' => 'Quality you can trust',     'body' => 'Products formulated by qualified scientists, manufactured in FSSAI-licensed and ISO-certified facilities. Every batch carries a Certificate of Analysis on request.', 'accent' => 'border-leaf-500',  'tile' => 'bg-leaf-50 text-leaf-700'],
+                        ['icon' => 'leaf', 'title' => 'Quality you can trust',     'body' => 'Thoughtfully developed nutraceuticals, food supplements and wellness products focused on quality, safety and customer value. Products formulated by qualified scientists, manufactured in FSSAI-licensed and ISO-certified facilities. Every batch carries a Certificate of Analysis on request.', 'accent' => 'border-leaf-500',  'tile' => 'bg-leaf-50 text-leaf-700'],
                         ['icon' => 'gem', 'title' => 'Value that returns daily', 'body' => 'Honest pricing — no MRP-padding, no markup-laundering. The price you pay is the price the product is worth, audited and visible inside your account.',                  'accent' => 'border-amber-500', 'tile' => 'bg-amber-50 text-amber-700'],
-                        ['icon' => 'handshake', 'title' => 'Service that listens',     'body' => '24-hour grievance acknowledgement, 7-day resolution SLA, and a dedicated compliance team that takes consumer concerns as seriously as the law requires us to.',           'accent' => 'border-brand-500', 'tile' => 'bg-brand-50 text-brand-700'],
+                        ['icon' => 'handshake', 'title' => 'Service that listens',     'body' => 'We believe business grows when customers are respected, direct sellers are supported and relationships are built on trust. grievance acknowledgement within 48 hours, a root-cause analysis within 14 days, and a dedicated compliance team that takes consumer concerns as seriously as the law requires us to.',           'accent' => 'border-brand-500', 'tile' => 'bg-brand-50 text-brand-700'],
+                        ['icon' => 'shield-check', 'title' => 'Integrity in Every Action', 'body' => 'We value transparency, responsible direct selling and ethical business practices in every interaction.', 'accent' => 'border-violet-500', 'tile' => 'bg-violet-50 text-violet-700'],
+                        ['icon' => 'sprout', 'title' => 'Growth with Meaning', 'body' => 'We encourage learning, leadership and entrepreneurship, creating opportunities for people to progress together over the long term.', 'accent' => 'border-teal-500', 'tile' => 'bg-teal-50 text-teal-700'],
                     ];
                 @endphp
                 @foreach($pillars as $i => $p)
@@ -154,9 +198,20 @@
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 leading-tight">
                     Best-in-class across every category.
                 </h2>
-                <p class="text-base text-gray-600">
+                <p class="text-lg text-gray-700 font-semibold">Wellness Designed for Everyday Life.</p>
+                <p class="text-lg text-gray-700 font-semibold mb-3">Quality Products. Everyday Wellness. Trusted Value.</p>
+                <p class="text-base text-gray-600 mb-3">
                     Six considered categories — from wellness and beauty to home and lifestyle — each chosen for
                     quality over catalogue size.
+                </p>
+                <p class="text-base text-gray-600 mb-3">
+                    At arovolife, we believe great products begin with a clear purpose — to deliver quality, value
+                    and a better everyday wellness experience. Our growing portfolio brings together nutraceuticals,
+                    food supplements, personal care and wellness solutions developed to complement modern lifestyles.
+                </p>
+                <p class="text-base text-gray-600">
+                    Every product category is approached with an emphasis on thoughtful formulation, ingredient
+                    quality, responsible sourcing, regulatory compliance and customer value.
                 </p>
             </div>
 
@@ -231,9 +286,16 @@
                 <h2 class="text-3xl md:text-4xl font-bold mb-4 leading-tight">
                     The fairest direct selling company in India.
                 </h2>
-                <p class="text-base text-brand-50 leading-relaxed">
+                <p class="text-lg text-white font-semibold">Your Ambition. Your Journey. Your Opportunity.</p>
+                <p class="text-lg text-white font-semibold mb-4">Learn with Purpose. Share with Confidence. Grow with Integrity.</p>
+                <p class="text-base text-brand-50 leading-relaxed mb-3">
                     No registration fee. No minimum stocking. No pressure. Build at your pace, on terms that
                     are written down — and protected by law.
+                </p>
+                <p class="text-base text-brand-50 leading-relaxed">
+                    At arovolife, aspiring direct sellers can begin with purpose, learn with confidence and grow at
+                    their own pace. By understanding our products, serving customers responsibly and building
+                    relationships with integrity, every partner can work toward meaningful progress built on genuine product sales.
                 </p>
             </div>
 
@@ -271,10 +333,16 @@
                     <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
                         From your first step to leadership — we walk it with you.
                     </h2>
-                    <p class="text-base text-gray-600 mb-6 leading-relaxed">
+                    <p class="text-lg text-gray-700 font-semibold mb-4">Learn with Confidence. Serve with Purpose. Lead with Integrity.</p>
+                    <p class="text-base text-gray-600 mb-4 leading-relaxed">
                         Our compensation plan rewards what's measurable: your team's product sales. The pathway
                         is published, the math is transparent, and your progress is visible to you alone in your
                         secure dashboard.
+                    </p>
+                    <p class="text-base text-gray-600 mb-6 leading-relaxed">
+                        At arovolife, growth begins with learning and becomes meaningful through customer service,
+                        consistent effort and responsible leadership. Our pathway helps partners develop their skills,
+                        create genuine value and progress at their own pace while earning the trust of consumers.
                     </p>
                     <div class="space-y-4">
                         @foreach([
@@ -304,19 +372,28 @@
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 leading-tight">
                     What we won't compromise on.
                 </h2>
+                <p class="text-lg text-gray-700 font-semibold">The Principles That Define Who We Are.</p>
+                <p class="text-lg text-gray-700 font-semibold">Our Values. Our Culture. Our Commitment.</p>
+                <p class="text-lg text-gray-700 font-semibold mb-3">Integrity • Quality • Transparency • People • Service • Togetherness</p>
+                <p class="text-base text-gray-600 mb-3">
+                    At arovolife, our values are more than words. They guide how we develop products, serve customers,
+                    support our direct sellers, make decisions and build relationships. As we grow, these principles
+                    remain at the heart of everything we do.
+                </p>
                 <p class="text-base text-gray-600">
-                    Six lines we draw and honour — every quarter, every conversation, every contract.
+                    Seven lines we draw and honour — every quarter, every conversation, every contract.
                 </p>
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-3 gap-5">
                 @foreach([
-                    ['icon' => 'scale', 'title' => 'Ethics',       'body' => 'Right is right, even when nobody is watching. Especially then.',          'card' => 'bg-brand-50/70 border-brand-100 hover:border-brand-300',   'tile' => 'border-brand-100 text-brand-700'],
-                    ['icon' => 'search', 'title' => 'Transparency', 'body' => 'Costs published. Commissions auditable. No fine print that bites later.',  'card' => 'bg-sky-50/70 border-sky-100 hover:border-sky-300',         'tile' => 'border-sky-100 text-sky-700'],
+                    ['icon' => 'scale', 'title' => 'Integrity — Do What Is Right.', 'body' => 'We believe strong businesses are built on honesty, responsibility and ethical conduct. We choose what is right—not simply what is easy. Right is right, even when nobody is watching. Especially then.',          'card' => 'bg-brand-50/70 border-brand-100 hover:border-brand-300',   'tile' => 'border-brand-100 text-brand-700'],
+                    ['icon' => 'search', 'title' => 'Transparency — Build Trust Through Clarity.', 'body' => 'We communicate products, policies, opportunities and rewards clearly so customers and direct sellers can make informed decisions with confidence. Costs published. Commissions auditable. No fine print that bites later.',  'card' => 'bg-sky-50/70 border-sky-100 hover:border-sky-300',         'tile' => 'border-sky-100 text-sky-700'],
                     ['icon' => 'hand-heart', 'title' => 'Trust',        'body' => 'We earn it once, then we work every day to keep it.',                     'card' => 'bg-amber-50/70 border-amber-100 hover:border-amber-300',   'tile' => 'border-amber-100 text-amber-700'],
-                    ['icon' => 'heart', 'title' => 'Service',      'body' => 'Customers and distributors are family. We treat them like it.',           'card' => 'bg-leaf-50/70 border-leaf-100 hover:border-leaf-300',      'tile' => 'border-leaf-100 text-leaf-700'],
-                    ['icon' => 'microscope', 'title' => 'Excellence',   'body' => 'Best-in-class isn\'t a slogan — it\'s a manufacturing standard.',          'card' => 'bg-violet-50/70 border-violet-100 hover:border-violet-300','tile' => 'border-violet-100 text-violet-700'],
-                    ['icon' => 'globe', 'title' => 'Community',     'body' => 'Indian roots, international standards, decade-long horizon.',              'card' => 'bg-rose-50/70 border-rose-100 hover:border-rose-300',      'tile' => 'border-rose-100 text-rose-700'],
+                    ['icon' => 'heart', 'title' => 'Service — Put People at the Heart of Every Experience.', 'body' => 'We listen, respond and continuously work to create better experiences for our customers, direct sellers and business partners. Customers and distributors are family. We treat them like it.',           'card' => 'bg-leaf-50/70 border-leaf-100 hover:border-leaf-300',      'tile' => 'border-leaf-100 text-leaf-700'],
+                    ['icon' => 'microscope', 'title' => 'Quality — Never Compromise on What Matters.', 'body' => 'From product development to customer experience, we pursue consistent quality and responsible standards that strengthen confidence in our brand. Best-in-class isn\'t a slogan — it\'s a manufacturing standard.',          'card' => 'bg-violet-50/70 border-violet-100 hover:border-violet-300','tile' => 'border-violet-100 text-violet-700'],
+                    ['icon' => 'globe', 'title' => 'Togetherness — Stronger Together.', 'body' => 'We believe sustainable success is built through collaboration, shared learning and long-term relationships—creating a community where progress is shared. Indian roots, international standards, decade-long horizon.',              'card' => 'bg-rose-50/70 border-rose-100 hover:border-rose-300',      'tile' => 'border-rose-100 text-rose-700'],
+                    ['icon' => 'users', 'title' => 'People — Grow by Helping People Grow.', 'body' => 'We respect every individual and believe meaningful progress happens when people are encouraged to learn, develop, lead and succeed through their own efforts.', 'card' => 'bg-teal-50/70 border-teal-100 hover:border-teal-300', 'tile' => 'border-teal-100 text-teal-700'],
                 ] as $i => $v)
                 <div class="{{ $v['card'] }} border rounded-2xl p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300" data-reveal data-reveal-delay="{{ (($i % 3) + 1) * 100 }}">
                     <div class="w-10 h-10 rounded-lg bg-white border {{ $v['tile'] }} flex items-center justify-center mb-3 shadow-sm">{{ svg('lucide-'.$v['icon'], 'w-5 h-5') }}</div>
@@ -337,27 +414,53 @@
                     <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
                         India's direct selling market is just getting started.
                     </h2>
+                    <p class="text-lg text-gray-700 font-semibold">A New Generation of Wellness. A New World of Possibilities.</p>
+                    <p class="text-lg text-gray-700 font-semibold mb-4">The Future of Wellness Is Personal. The Future of Growth Is Together.</p>
                     <p class="text-base text-gray-600 leading-relaxed mb-4">
                         India's wellness and personal-care market is among the fastest-growing in the world,
                         powered by a young population, rising disposable income, and a generation that asks
                         better questions about what's in the bottle.
                     </p>
-                    <p class="text-base text-gray-600 leading-relaxed">
+                    <p class="text-base text-gray-600 leading-relaxed mb-4">
                         We started in 2026 because the legal foundation, the consumer maturity, and the digital
                         rails — UPI, Aadhaar e-KYC, GST, ONDC — finally line up. There's never been a better
                         decade to build a direct selling company in India. We intend to lead it.
                     </p>
+                    <p class="text-base text-gray-600 leading-relaxed mb-4">
+                        India is witnessing a meaningful transformation in the way people think about health, nutrition,
+                        entrepreneurship and everyday well-being. Consumers are becoming more informed, wellness is
+                        becoming more personal, and digital connectivity is creating new ways for people to discover
+                        products and build businesses.
+                    </p>
+                    <p class="text-base text-gray-600 leading-relaxed mb-4">
+                        arovolife was created for this changing world.
+                    </p>
+                    <p class="text-base text-gray-600 leading-relaxed mb-4">
+                        Founded in 2026, we bring together quality nutraceuticals, food supplements and wellness solutions
+                        with a modern, product-focused direct-selling platform. Our purpose is to create genuine customer
+                        value while providing individuals with an opportunity to learn, develop entrepreneurial skills and
+                        build through responsible product sales.
+                    </p>
+                    <p class="text-base text-gray-600 leading-relaxed">
+                        We are building for the long term—with quality at our foundation, technology as an enabler,
+                        transparency in our practices and people at the heart of our growth.
+                    </p>
                 </div>
                 <div class="grid grid-cols-2 gap-4" data-reveal data-reveal-delay="200">
                     @foreach([
-                        ['stat' => '2026', 'label' => 'Founded in India', 'sub' => 'Q1 launch, decade-long vision'],
+                        ['stat' => '2026', 'label' => 'Our beginning', 'sub' => 'Founded in India with a long-term vision for wellness, entrepreneurship and responsible growth.'],
                         ['stat' => '100%', 'label' => 'DSR-2021 compliant', 'sub' => 'From the first user, every sale'],
                         ['stat' => '0₹',   'label' => 'Joining fee',      'sub' => 'Statutory, always'],
-                        ['stat' => '24h',  'label' => 'Grievance SLA',    'sub' => 'Acknowledged, never queued'],
+                        ['stat' => '48h', 'label' => 'Grievance acknowledgement', 'sub' => 'Acknowledged, never queued'],
+                        ['stat' => 'Products with purpose', 'label' => '', 'sub' => 'A growing wellness portfolio developed around quality, value and the evolving needs of modern lifestyles.'],
+                        ['stat' => 'People-powered growth', 'label' => '', 'sub' => 'Creating opportunities for individuals to learn, serve customers, develop leadership and grow through their own efforts.'],
+                        ['stat' => 'Built for tomorrow',    'label' => '', 'sub' => 'Combining responsible business practices, digital capabilities and a long-term commitment to building a trusted wellness community.'],
                     ] as $s)
                     <div class="rounded-2xl bg-gradient-to-br from-brand-50 to-white border border-brand-100 p-5">
                         <p class="ar-stat-num text-3xl md:text-4xl font-bold text-brand-700 leading-none mb-2">{{ $s['stat'] }}</p>
+                        @if($s['label'] !== '')
                         <p class="text-sm font-semibold text-gray-900">{{ $s['label'] }}</p>
+                        @endif
                         <p class="text-xs text-gray-600 mt-0.5">{{ $s['sub'] }}</p>
                     </div>
                     @endforeach
@@ -377,26 +480,41 @@
             <h2 class="text-4xl md:text-5xl font-bold text-gray-900 leading-[1.1] mb-5">
                 Two paths in. <br class="hidden sm:inline">One promise of <span class="text-brand-700">trust</span>.
             </h2>
-            <p class="text-lg text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+            <p class="text-lg text-gray-700 font-semibold mb-5">Two Ways to Begin. One Trusted arovolife Experience.</p>
+            <p class="text-lg text-gray-600 mb-4 max-w-2xl mx-auto leading-relaxed">
                 Whether you come for the products or stay to build a business —
                 you'll find a partner that takes the long view, the legal view, and the human view, every time.
+            </p>
+            <p class="text-base text-gray-600 mb-4 max-w-2xl mx-auto leading-relaxed">
+                Whether you are here to discover quality wellness products or explore an independent direct-selling
+                opportunity, arovolife gives you a clear and simple way to get started.
+            </p>
+            <p class="text-base text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+                Choose the path that matches your goals today. As your needs evolve, arovolife is here to support your
+                journey with quality products, transparent processes and a people-first experience.
             </p>
 
             <div class="grid sm:grid-cols-2 gap-5 max-w-2xl mx-auto">
                 <a href="{{ route('shop.index') }}" class="group rounded-2xl bg-white border-2 border-gray-200 hover:border-brand-500 p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1">
                     <p class="text-[11px] uppercase tracking-wider text-brand-700 font-semibold mb-1">For customers</p>
-                    <p class="text-xl font-bold text-gray-900 mb-2">Shop the range</p>
-                    <p class="text-sm text-gray-600 mb-3">Quality nutraceutical and personal-care products, delivered honestly.</p>
-                    <p class="text-sm text-brand-700 font-semibold group-hover:translate-x-1 transition-transform">Browse products →</p>
+                    <p class="text-xl font-bold text-gray-900 mb-2">Discover Wellness for Everyday Life</p>
+                    <p class="text-sm text-gray-600 mb-3">Explore arovolife’s growing range of nutraceuticals, food supplements and wellness products created to complement modern lifestyles.</p>
+                    <p class="text-xs text-gray-600 mb-3">Shop with confidence • Explore products • Enjoy customer-focused service</p>
+                    <p class="text-sm text-brand-700 font-semibold group-hover:translate-x-1 transition-transform">Explore Products →</p>
                 </a>
 
                 <a href="{{ route('contact.show') }}" class="group rounded-2xl bg-brand-700 hover:bg-brand-800 text-white p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1 shadow-lg shadow-brand-500/30">
                     <p class="text-[11px] uppercase tracking-wider text-brand-100 font-semibold mb-1">For aspiring distributors</p>
-                    <p class="text-xl font-bold mb-2">Become a Direct Seller</p>
-                    <p class="text-sm text-brand-50 mb-3">Free to register. Industry-leading support. Earn from real product sales.</p>
-                    <p class="text-sm font-semibold group-hover:translate-x-1 transition-transform">Talk to our team →</p>
+                    <p class="text-xl font-bold mb-2">Turn Your Ambition into Opportunity</p>
+                    <p class="text-sm text-brand-50 mb-3">Become an independent arovolife Direct Seller and begin a product-focused entrepreneurial journey. Develop your product knowledge, customer-service skills and leadership capabilities while building at your own pace.</p>
+                    <p class="text-xs text-brand-100 mb-3">Free registration • Product-focused opportunity • Training &amp; support • Commissions on product sales only</p>
+                    <p class="text-sm font-semibold group-hover:translate-x-1 transition-transform">Become a Direct Seller →</p>
                 </a>
             </div>
+
+            <p class="mt-10 text-base text-gray-700 font-semibold max-w-2xl mx-auto">
+                Choose Your Path. Begin with Confidence. Grow with arovolife. The Future of Wellness Is Personal. The Future of Growth Is Together.
+            </p>
 
             <p class="mt-10 text-xs text-gray-600">
                 Arovolife Private Limited — CIN U46909TS2026PTC210896 — Registered in India.
@@ -413,6 +531,15 @@
                 <a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy</a>
                 <a href="{{ route('content.show', 'ethics') }}" class="hover:text-white">Code of Ethics</a>
                 <a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance Redressal</a>
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('returns'))
+                <a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Returns &amp; warranty</a>
+                @endif
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('shipping'))
+                <a href="{{ route('content.show', 'shipping') }}" class="hover:text-white">Shipping &amp; delivery</a>
+                @endif
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('disclaimer'))
+                <a href="{{ route('content.show', 'disclaimer') }}" class="hover:text-white">Disclaimer</a>
+                @endif
                 <a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a>
             </div>
             <p class="text-xs text-gray-400 mb-3 leading-relaxed">
