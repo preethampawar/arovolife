@@ -71,3 +71,8 @@ app/test-results/
 # Local DB backups/dumps — may contain PII, never commit
 /backups/
 *.sql.gz
+
+# Local AI agent config
+/.agents/
+/.codex/
+/AGENTS.md
