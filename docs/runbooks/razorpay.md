@@ -105,6 +105,6 @@ Logs: `storage/logs/payments-YYYY-MM-DD.log` (180 days), every call/callback/web
 ## Not built (next increments)
 
 - Dispute / chargeback webhooks.
-- Buyer notifications on refund settled and on a held return (the order page shows the state).
+- Buyer notification on a held return (the order page shows the state).
 - COD refunds are settled by hand from the worklist (R-68 mitigated); no automatic payout exists for them.
 - Coupon value on a non-cooling-off refund is not returned in any form (see R-69).

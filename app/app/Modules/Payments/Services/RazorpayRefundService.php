@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Payments\Services;
 
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Notifications\RefundSettledNotification;
+use App\Modules\Commerce\Support\OrderBuyerNotifier;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Ledger\Models\LedgerEntry;
 use App\Modules\Ledger\Models\LedgerTx;
@@ -21,6 +23,7 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 /**
  * Sending refunds to Razorpay, and settling the ledger on the gateway's word.
@@ -45,6 +48,7 @@ final class RazorpayRefundService
         private readonly RazorpayClient $client,
         private readonly PaymentSettings $settings,
         private readonly LedgerPoster $ledger,
+        private readonly OrderBuyerNotifier $buyerNotifier,
     ) {}
 
     // ── Creating ───────────────────────────────────────────────────────
@@ -327,6 +331,8 @@ final class RazorpayRefundService
 
             $refund->setRawAttributes($locked->fresh()->getAttributes(), true);
 
+            $this->notifyBuyerAfterCommit($locked->order_id, $locked->amount_paise, RefundSettledNotification::METHOD_GATEWAY, $locked->gateway_refund_id);
+
             return true;
         });
     }
@@ -396,6 +402,8 @@ final class RazorpayRefundService
             ]);
 
             $refund->setRawAttributes($locked->fresh()->getAttributes(), true);
+
+            $this->notifyBuyerAfterCommit($locked->order_id, $locked->amount_paise, RefundSettledNotification::METHOD_BANK_TRANSFER, $reference);
         });
     }
 
@@ -562,6 +570,47 @@ final class RazorpayRefundService
             ]);
 
             $order->setRawAttributes($locked->fresh()->getAttributes(), true);
+
+            if ($owed > 0) {
+                $this->notifyBuyerAfterCommit($locked->id, $owed, RefundSettledNotification::METHOD_BANK_TRANSFER, $reference);
+            }
+        });
+    }
+
+    /**
+     * Tell the buyer their refund was paid — but only once the settlement has
+     * committed. Registered inside the settling transaction, so a rolled-back
+     * settlement never produces an email. Not gated by any setting: this is
+     * money the buyer is owed.
+     */
+    private function notifyBuyerAfterCommit(int $orderId, int $amountPaise, string $method, ?string $reference): void
+    {
+        $settledAt = Carbon::now()->format('d M Y');
+
+        $this->db->afterCommit(function () use ($orderId, $amountPaise, $method, $reference, $settledAt): void {
+            $order = Order::find($orderId);
+            if ($order === null) {
+                return;
+            }
+
+            // The settlement is already committed: a failure to queue the
+            // notice must not surface to the webhook or admin caller, whose
+            // retry would find the refund settled and never tell the buyer.
+            try {
+                $this->buyerNotifier->send($order, new RefundSettledNotification(
+                    orderNo: (string) $order->order_no,
+                    buyerName: (string) ($order->ship_name ?: 'there'),
+                    amountPaise: $amountPaise,
+                    method: $method,
+                    reference: $reference,
+                    settledAt: $settledAt,
+                ));
+            } catch (Throwable $e) {
+                Log::channel('payments')->error('refund settled notice not sent', [
+                    'order_no' => $order->order_no,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         });
     }
 
