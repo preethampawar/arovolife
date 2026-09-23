@@ -52,7 +52,7 @@ return [
     | reach a person. Every footer now reads this key; the wording matches the
     | policy text verbatim so the two cannot disagree again.
     */
-    'support_hours' => '10:00 – 18:00 IST, Monday to Saturday',
+    'support_hours' => '9am to 5pm from Monday to Saturday (Except National Holidays)',
 
     /*
     |--------------------------------------------------------------------------
