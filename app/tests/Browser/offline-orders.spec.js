@@ -79,7 +79,7 @@ test.describe('Offline orders (admin)', () => {
         await fillOfflineOrder(page, { amountOverride: '1.00' });
         await submitAndConfirm(page, page.getByRole('button', { name: 'Create offline order' }));
 
-        await expect(page.getByRole('alert')).toContainText('must match exactly');
+        await expect(page.getByText(/must match exactly/)).toBeVisible();
     });
 
     test('PW-04: reject a second offline order', async ({ adminPage: page }) => {

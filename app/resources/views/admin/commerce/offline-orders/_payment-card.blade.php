@@ -57,7 +57,6 @@
     <p class="mt-3 text-xs text-gray-600">Proof deleted {{ $offlinePayment->proof_purged_at->format('d M Y') }} (retention period ended).</p>
     @endif
 
-    @error('offline')<p class="mt-3 text-sm text-red-700">{{ $message }}</p>@enderror
 
     @if($canDecide)
     @can('finance.record')
@@ -70,7 +69,6 @@
             <input type="checkbox" name="verified" value="1" class="mt-0.5 rounded border-gray-300 text-brand-700 focus:ring-brand-500">
             <span>I have checked this money has been received ({{ IndianNumber::rupees($offlinePayment->amount_paise) }}, {{ $offlinePayment->channelLabel() }}).</span>
         </label>
-        @error('verified')<p class="text-xs text-red-700">{{ $message }}</p>@enderror
         <label for="confirm-note" class="sr-only">Confirmation note</label>
         <input id="confirm-note" name="note" maxlength="500" placeholder="Note (optional), e.g. matched on 23 Sep statement"
                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
@@ -87,11 +85,9 @@
             <input type="checkbox" name="money_not_received" value="1" class="mt-0.5 rounded border-gray-300 text-red-600 focus:ring-red-500">
             <span>No money was received for this order (the deposit did not arrive, or the entry was a mistake).</span>
         </label>
-        @error('money_not_received')<p class="text-xs text-red-700">{{ $message }}</p>@enderror
         <label for="reject-reason" class="sr-only">Reason</label>
         <textarea id="reject-reason" name="reason" rows="2" maxlength="500" placeholder="Reason (required)"
                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
-        @error('reason')<p class="text-xs text-red-700">{{ $message }}</p>@enderror
         <button type="submit" class="w-full py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 text-sm font-medium">Reject payment</button>
     </form>
     @endcan

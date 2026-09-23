@@ -23,9 +23,6 @@
         A purchase is never required to join or to stay a distributor.
     </p>
 
-    @error('offline')
-    <div role="alert" class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ $message }}</div>
-    @enderror
 
     {{-- Step 1: the buyer --}}
     <x-ui.card padding="p-6">
@@ -40,7 +37,6 @@
 
         @if($adn !== '' && $distributor === null)
         <p class="mt-3 text-sm text-red-700">No active distributor with that ADN. Blocked, terminated and rejected accounts cannot be ordered for.</p>
-        @error('adn')<p class="mt-2 text-sm text-red-700">{{ $message }}</p>@enderror
         @elseif($distributor)
         <p class="mt-3 text-sm text-gray-700">
             <span class="font-medium text-gray-900">{{ $distributor->user->full_name }}</span>
@@ -63,7 +59,6 @@
         <x-ui.card padding="p-6">
             <h3 class="font-semibold text-gray-900 mb-1">2. Products</h3>
             <p class="text-xs text-gray-600 mb-4">Prices are the ones this distributor pays in the shop. Enter a quantity for each product they bought.</p>
-            @error('qty')<p class="mb-3 text-sm text-red-700">{{ $message }}</p>@enderror
             <div class="overflow-x-auto max-h-96 overflow-y-auto border border-gray-100 rounded-lg">
                 <table class="w-full text-sm">
                     <thead class="sticky top-0 bg-gray-50">
@@ -114,12 +109,10 @@
                 <div>
                     <label for="buyer_name" class="{{ $label }}">Receiver's name</label>
                     <input id="buyer_name" name="buyer_name" value="{{ $val('buyer_name') }}" maxlength="150" class="{{ $input }}">
-                    @error('buyer_name')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="buyer_phone" class="{{ $label }}">Receiver's mobile</label>
                     <input id="buyer_phone" name="buyer_phone" value="{{ $val('buyer_phone') }}" inputmode="numeric" maxlength="10" placeholder="10-digit mobile" class="{{ $input }}">
-                    @error('buyer_phone')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
 
                 @if($centres->isNotEmpty())
@@ -131,14 +124,12 @@
                         <option value="{{ $centre->id }}" @selected((string) $val('arete_center_id') === (string) $centre->id)>{{ $centre->name }} — {{ $centre->displayLocation() }}</option>
                         @endforeach
                     </select>
-                    @error('arete_center_id')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 @endif
 
                 <div class="sm:col-span-2">
                     <label for="ship_line1" class="{{ $label }}">Address line 1 <span class="text-gray-500">(delivery only)</span></label>
                     <input id="ship_line1" name="ship_line1" value="{{ $val('ship_line1') }}" maxlength="255" class="{{ $input }}">
-                    @error('ship_line1')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div class="sm:col-span-2">
                     <label for="ship_line2" class="{{ $label }}">Address line 2</label>
@@ -147,7 +138,6 @@
                 <div>
                     <label for="ship_city" class="{{ $label }}">City</label>
                     <input id="ship_city" name="ship_city" value="{{ $val('ship_city') }}" maxlength="100" class="{{ $input }}">
-                    @error('ship_city')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="ship_state" class="{{ $label }}">State</label>
@@ -157,12 +147,10 @@
                         <option value="{{ $state }}" @selected($val('ship_state') === $state)>{{ $state }}</option>
                         @endforeach
                     </select>
-                    @error('ship_state')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="ship_pincode" class="{{ $label }}">Pincode</label>
                     <input id="ship_pincode" name="ship_pincode" value="{{ $val('ship_pincode') }}" inputmode="numeric" maxlength="6" class="{{ $input }}">
-                    @error('ship_pincode')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
             </div>
         </x-ui.card>
@@ -197,27 +185,22 @@
                         <option value="{{ $value }}" @selected($val('channel', 'bank_deposit') === $value)>{{ $text }}</option>
                         @endforeach
                     </select>
-                    @error('channel')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="channel_other" class="{{ $label }}">If "Other", which channel</label>
                     <input id="channel_other" name="channel_other" value="{{ $val('channel_other') }}" maxlength="60" class="{{ $input }}">
-                    @error('channel_other')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="amount" class="{{ $label }}">Amount received (₹)</label>
                     <input id="amount" name="amount" type="number" step="0.01" min="1" value="{{ $val('amount') }}" class="{{ $input }} tabular-nums">
-                    @error('amount')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="received_on" class="{{ $label }}">Date received</label>
                     <input id="received_on" name="received_on" type="date" max="{{ now()->toDateString() }}" value="{{ $val('received_on', now()->toDateString()) }}" class="{{ $input }}">
-                    @error('received_on')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="reference_no" class="{{ $label }}">Reference no. <x-help-tip text="UTR for a bank transfer, the UPI transaction ID, the cheque number, or the receipt number. Needed for every channel except cash. One reference can back only one order." /></label>
                     <input id="reference_no" name="reference_no" value="{{ $val('reference_no') }}" maxlength="64" class="{{ $input }} font-mono">
-                    @error('reference_no')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div>
                     <label for="payer_name" class="{{ $label }}">Paid by (name) <span class="text-gray-500">(optional)</span></label>
@@ -230,14 +213,12 @@
                 <div class="sm:col-span-2">
                     <label for="proof" class="{{ $label }}">Proof of payment <span class="text-gray-500">(optional — JPG, PNG or PDF, up to 5 MB)</span> <x-help-tip text="A deposit slip, UPI screenshot or cash receipt. Stored encrypted; only finance and operations can open it, and every view is logged." /></label>
                     <input id="proof" name="proof" type="file" accept="image/jpeg,image/png,application/pdf" class="block text-sm text-gray-700">
-                    @error('proof')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
                 <div class="sm:col-span-2">
                     <label class="inline-flex items-start gap-2 text-sm text-gray-800">
                         <input type="checkbox" name="terms_acknowledged" value="1" @checked($val('terms_acknowledged')) class="mt-0.5 rounded border-gray-300 text-brand-700 focus:ring-brand-500">
                         <span>The buyer has agreed to the terms of sale.</span>
                     </label>
-                    @error('terms_acknowledged')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                 </div>
             </div>
         </x-ui.card>
