@@ -129,11 +129,11 @@ stay true:
 - **Narrow.** Only a message someone reported, plus three either side. There is
   no bulk scanning of unreported messages anywhere in this platform and none is
   planned — scanning everything would be a proportionality problem of its own.
-- **Disclosed.** Privacy Notice §4.5b names this purpose and the three-message
+- **Disclosed.** Privacy Policy, Part B §4.5b names this purpose and the three-message
   window; the sender is told on the compose screen, before typing, that a
   message they send can be reported and read. If you change what staff can see
   here, §4.5b has to change with it.
-- **Bounded.** Privacy Notice §5 gives every table an end: messages 24 months,
+- **Bounded.** Privacy Policy, Part B §5 gives every table an end: messages 24 months,
   reports and the moderation record 7 years, blocks for the life of the block,
   announcement reads 24 months. `messages:purge` runs weekly (Sunday 03:20 IST)
   and enforces the 24-month rows. A **reported** message is held back from the

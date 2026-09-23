@@ -10,12 +10,12 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Seeds the six public content pages: ethics, terms, grievance, compensation,
- * privacy, returns.
+ * Seeds the ten public content pages: ethics, terms, grievance, compensation,
+ * privacy, returns, shipping, disclaimer, social-media, policies.
  *
- * Four of them are published. `compensation` and `returns` are seeded as
- * drafts and left unpublished — see {@see ContentPageSeeder::HELD_SLUGS} for
- * why, and for the one command that publishes them.
+ * Nine of them are published. `compensation` is seeded as a draft and left
+ * unpublished — see {@see ContentPageSeeder::HELD_SLUGS} for why, and for the
+ * one command that publishes it.
  *
  * Source of truth for each page is a Markdown file under
  * `database/seeders/content/<slug>.md`. The seeder reads each file, strips
@@ -44,18 +44,18 @@ final class ContentPageSeeder extends Seeder
     private const PAGES = [
         [
             'slug' => 'ethics',
-            'title' => 'Code of Ethics',
-            'meta_description' => 'Ethical standards every arovolife Distributor and administrator agrees to uphold — recruitment ethics, customer-facing conduct, tree-placement integrity, and sanctions for breach.',
+            'title' => 'Code of Ethics and Principles',
+            'meta_description' => 'The principles every arovolife Direct Seller follows — fair recruitment, honest product and earnings representation, customer duties and the company\'s obligations.',
         ],
         [
             'slug' => 'terms',
-            'title' => 'Direct Seller Agreement & Terms of Service',
-            'meta_description' => 'The master agreement between Arovolife Private Limited and its Direct Sellers, covering registration, cooling-off, compensation framework, KYC, tax and termination.',
+            'title' => 'Direct Seller Agreement & Terms and Conditions',
+            'meta_description' => 'The agreement between Arovolife Private Limited and its Direct Sellers — eligibility, free joining, the 30-day cooling-off period, duties, buy-back, sales-channel restrictions, grievance redressal and termination.',
         ],
         [
             'slug' => 'grievance',
-            'title' => 'Grievance Redressal',
-            'meta_description' => 'How to file a complaint with arovolife, the SLA we commit to, and the escalation matrix up to the Central Consumer Protection Authority and the Data Protection Board of India.',
+            'title' => 'Grievance Redressal Policy',
+            'meta_description' => 'How to register a complaint with arovolife, the Grievance Redressal Committee and the timelines for acknowledgement, root-cause analysis and redressal.',
         ],
         [
             'slug' => 'compensation',
@@ -65,12 +65,32 @@ final class ContentPageSeeder extends Seeder
         [
             'slug' => 'privacy',
             'title' => 'Privacy Policy',
-            'meta_description' => 'How arovolife collects, uses, stores, shares and protects personal data under the DPDP Act 2023 — including PAN, Aadhaar and KYC handling.',
+            'meta_description' => 'How arovolife collects, uses, stores, shares and protects personal data, including the DPDP Act 2023 notice, KYC and Aadhaar handling, and retention periods.',
         ],
         [
             'slug' => 'returns',
-            'title' => 'Refunds, returns & shipping',
-            'meta_description' => 'How arovolife handles cancellations, returns, refunds, buy-back and delivery — the 30-day cooling-off window, what each return reason refunds, refund timelines, and where we deliver.',
+            'title' => 'Product Return, Warranty & Guarantee Policy',
+            'meta_description' => 'When and how products can be returned to arovolife, the buy-back conditions, refund timelines and the impact on BV.',
+        ],
+        [
+            'slug' => 'shipping',
+            'title' => 'Shipping & Delivery',
+            'meta_description' => 'Where arovolife delivers, shipping charges, dispatch and delivery times, and who pays for return shipping.',
+        ],
+        [
+            'slug' => 'disclaimer',
+            'title' => 'Disclaimer',
+            'meta_description' => 'Health, product-information and availability disclaimers for the arovolife website.',
+        ],
+        [
+            'slug' => 'social-media',
+            'title' => 'Social Media Policy',
+            'meta_description' => 'How arovolife Direct Sellers may use social media to talk about arovolife products and the business, with examples of good practice and breaches.',
+        ],
+        [
+            'slug' => 'policies',
+            'title' => 'Policies & Procedures — Website Terms of Use',
+            'meta_description' => 'The terms governing use of the arovolife website — eligibility, registration, intellectual property, payments, cookies, liability and governing law.',
         ],
     ];
 
@@ -85,16 +105,12 @@ final class ContentPageSeeder extends Seeder
      * draft, so the copy is in the environment and one named command publishes
      * it: `php artisan content:publish compensation`.
      *
-     * `returns` is held for a different reason: DSR 2021 Rule 5 requires the
-     * return, refund and cancellation policy to be displayed, and the page is
-     * written — but its windows follow the buy-back matrix the platform
-     * actually applies, which is not what DSA §5.4 currently says (15-day
-     * customer return window). The client reviews and reconciles the two
-     * before it goes public (QA F35).
+     * returns was held for QA F35 until 2026-09-23, when the client supplied
+     * the Product Return, Warranty & Guarantee Policy.
      *
      * @var list<string>
      */
-    public const HELD_SLUGS = ['compensation', 'returns'];
+    public const HELD_SLUGS = ['compensation'];
 
     public function run(): void
     {
@@ -184,6 +200,42 @@ final class ContentPageSeeder extends Seeder
                 'body' => $this->renderBody($meta['slug']),
                 'status' => ContentPage::STATUS_DRAFT,
                 'published_at' => null,
+            ]);
+
+            $created++;
+        }
+
+        return $created;
+    }
+
+    /**
+     * Create every page that does not exist yet — published, except the held
+     * slugs, which are created as drafts — and never touch one that does.
+     *
+     * The production path (ProductionSeeder): a fresh environment gets the
+     * real documents rather than placeholders, and a re-run can never
+     * overwrite a page somebody has since edited or published by name.
+     *
+     * @return int the number of pages created
+     */
+    public function createMissing(): int
+    {
+        $created = $this->seedAsDraft(self::HELD_SLUGS);
+        $now = now();
+
+        foreach (self::PAGES as $meta) {
+            if (in_array($meta['slug'], self::HELD_SLUGS, true)
+                || ContentPage::query()->where('slug', $meta['slug'])->exists()) {
+                continue;
+            }
+
+            ContentPage::create([
+                'slug' => $meta['slug'],
+                'title' => $meta['title'],
+                'meta_description' => $meta['meta_description'],
+                'body' => $this->renderBody($meta['slug']),
+                'status' => ContentPage::STATUS_PUBLISHED,
+                'published_at' => $now,
             ]);
 
             $created++;

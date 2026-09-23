@@ -1,91 +1,98 @@
-<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. It is seeded UNPUBLISHED. Note for review: the return windows below are the ones the platform actually applies (BuybackMatrix v1 / ADR-0009); DSA §5.4 currently states a 15-day customer return window, which the platform does not implement. The two must be reconciled before this page is published. Version: v2026-09-11. -->
+## 1. Product Return Policy
 
-This Returns, Refunds & Shipping Policy explains how Arovolife Private Limited (CIN U46909TS2026PTC210896) ("arovolife", "the Company") handles cancellations, returns, refunds, buy-back and delivery. It is published under Rule 5 of the Consumer Protection (Direct Selling) Rules 2021 ("DSR 2021"), which requires a direct selling entity to display its return, refund, exchange, warranty and cancellation policy on its website.
+Arovolife Private Limited has adopted the following policy, in respect of handling product return and refund. The purpose of this policy is to establish a clear understanding between arovolife private limited and its direct sellers, defining the conditions under which goods may be returned for replacement or refund credit.
 
-It sits alongside, and is supplemented by, the [Direct Seller Agreement](/p/terms) — the cooling-off right in §4 and the buy-back guarantee in §5.4 — and the [Grievance Redressal Policy](/p/grievance).
+## 2. Objectives of Product Return Policy
 
-## 1. Your 30-day cooling-off right
+- Meet guidelines of Direct Selling framework
+- Documents Required
+  - Product Return Form
+  - Reason for return
+  - Copy of Invoice
+  - Products to be returned
 
-### 1.1 On your registration
+## 3. Definitions
 
-Every Direct Seller may cancel their registration at any time within **30 calendar days** of their Effective Date, with or without cause and without stating a reason, from the dashboard or by writing to `cooling-off@arovolife.com` from the registered email address. This right cannot be waived in advance. See §4 of the Direct Seller Agreement for the full effect of cancellation.
+### a. Return (Buyback/repurchase)
 
-### 1.2 On an order
+Is the process of a Direct Seller taking previously purchased products back to arovolife, and in turn receive refund by online money transfer through NEFT/RTGS, exchange for another item (identical or different).
 
-Every order opens its own **30-day cooling-off window on the day it is delivered**. Inside that window you may cancel the order and return the goods for a full refund — the price you paid, the GST on it and the shipping you were charged.
+### b. Refund
 
-The days remaining on your window, and the date it closes, are shown on the order in **My Orders**.
+Pay back of money.
 
-An order that has not yet been dispatched can simply be cancelled from the order page; nothing is charged and nothing needs to be returned.
+### c. Saleable
 
-## 2. Returning an order
+Saleable mean, with respect to goods and/or services, unopened, unused, marketable, which has not expired, and which is not seasonal, discontinued or special promotion goods and/or services.
 
-Start a return from **My Orders → the order → Return this order**. Choose the reason that fits, and the form will tell you, before you submit, exactly what that reason refunds on that order.
+### d. Non saleable
 
-Returns are accepted for the whole order. If you need to return part of an order, please contact customer care and we will arrange it manually.
+Non saleable are products which have been used less than 30%.
 
-| Reason | When you can use it | What you receive |
+### e. "Cooling-off Period"
+
+Means a period of 30 days commencing from the date when the Direct Seller and arovolife enter into an agreement within which the Direct Seller may repudiate the agreement without being subject to penalty for breach of contract.
+
+### f. Direct Seller Price
+
+Direct Seller price is a price including applicable tax on which direct seller purchases product from arovolife.
+
+## 4. Conditions for return
+
+| Category | Condition of product | Period | Invoice | Payment |
+|---|---|---|---|---|
+| a. During cooling-off period; b. General buyback / repurchase (during routine business transactions); c. Upon termination of agreement / contract | Saleable | 30 days | Yes | Direct Seller Price |
+| a. During cooling-off period; b. General buyback / repurchase (during routine business transactions); c. Upon termination of agreement / contract | Saleable | 30 days | No | Direct Seller Price less GST (GST will be deducted from Direct Seller Price) |
+| Received in damaged condition | Saleable / Non-saleable | 10 days | Yes | Direct Seller Price |
+| Received in damaged condition | Saleable / Non-saleable | 10 days | No | Direct Seller Price less GST (GST will be deducted from Direct Seller Price) |
+| Not completely satisfied with product quality | Saleable / Non-saleable | 30 days | Yes | Direct Seller Price |
+| Not completely satisfied with product quality | Saleable / Non-saleable | 30 days | No | Direct Seller Price less GST (GST will be deducted from Direct Seller Price) |
+
+arovolife, going beyond Customer Satisfaction and bringing about Customer Success. arovolife pursues simple Philosophy, selling quality products at affordable prices, and allowing its Customer/Direct Sellers to purchase the right amount at the right time. Masstige is arovolife's product Philosophy to provide Best-in-class. Best for life.
+
+The Refund policy is applicable only for products in saleable conditions, and partially used products (i.e. less than 30%). This policy is not applicable to products that have been intentionally damaged or misused.
+
+Direct Seller may return the products as per below guidelines.
+
+### Buyback/Repurchase conditions
+
+- Total products returned can't exceed the quantity mentioned in invoice.
+- Period for products is calculated as the number of days from the invoice date, to till the date of receipt of filled form.
+- The product is Saleable/Non-Saleable depends on the condition of the returned product as assessed by the inspector at the arovolife warehouse.
+- Same product can't be returned two times.
+- The product Return Policy does not apply for Product Catalogues, Shopping bags and any other marketing materials.
+
+### Steps involved for return
+
+- a. Return form can be downloaded from MY PROGRASSION under the tab resources if you need any assistance you can call or email Customer Support Centre, details are as under:
+
+| Modes | Timings | Details of Call Centre |
 |---|---|---|
-| Cooling-off cancellation | Within 30 days of delivery | The full amount paid — price, GST and shipping — provided the goods are unused and re-saleable |
-| Damaged on arrival | Within 10 days of delivery | The price of the goods including GST if they are re-saleable; the price **less GST**, as a buy-back voucher, if they are not |
-| Dissatisfied with the product | Within 30 days of delivery | The price of the goods including GST if they are re-saleable; the price **less GST**, as a buy-back voucher, if they are not |
-| General buy-back | No time limit | The price of the goods **less GST**, as a buy-back voucher. Unused, re-saleable goods only |
-| Termination / account-closure buy-back | On termination, per §5 below | The price of the goods **less GST**, as a buy-back voucher. Unused, re-saleable goods only |
+| Email | 24*7 | support@arovolife.com |
+| Customer Support Centre | Between 9am to 5pm from Monday to Saturday (Except National Holidays) | +91 88866 62949 |
 
-Shipping is refunded **only** on a cooling-off cancellation. Any promotional discount you received is not refunded as cash; redeemed points and repurchase-wallet credit are returned in the same form they were used.
+- b. Fill details and send scan copy back to arovolife mail id support@arovolife.com
+- c. Customer Support Officers will compile data for the day & they will send data to logistic department.
+- d. Logistic department will arrange pickup from members address through end-mile delivery partners.
+- e. Logistic end-mile delivery partner will call Direct seller and fix appointment for pickup of return product.
+- f. Once product received, inspection will be done and request will be sent to Finance for refund.
 
-## 3. Condition of the goods
+## 5. Warranty & Guarantee
 
-Goods must be returned unused, in their original packaging, with all seals, tags, free items and documentation intact, and with unexpired shelf life.
+Up to 30% used product can be return as per above mention criteria.
 
-We cannot accept a return of goods that have been opened or used, except where they were damaged on arrival or are defective; goods whose seal is broken, where the seal is a hygiene or safety measure; goods past their expiry or best-before date when returned; or goods damaged after delivery by misuse or improper storage.
+## 6. Impact due to return
 
-If goods arrive damaged, please tell us within **10 days of delivery** and keep the packaging — photographs of the box and the item help us settle the claim quickly.
+Due to return of product following impact will be reflected in:
 
-## 4. Refund timelines
+- a. Personal BV
+- b. Upline Group BV
 
-| Stage | Commitment |
-|---|---|
-| Acknowledgement of your return request | Immediately, with a return reference number |
-| Inspection after we receive the goods | Within 3 working days of receipt |
-| Cooling-off refund | Within **7 working days** of our receiving the returned goods (or of cancellation, where nothing has been dispatched) |
-| Other refunds | Within **7 working days** of the return being approved |
-| Buy-back of stock after termination | Within **15 business days** of our receiving the returned stock |
+## 7. Refund of money
 
-Refunds are credited to the original payment method. Where that is not possible, they are credited to your registered bank account. We will tell you which route was used.
+Once we receive you item, we will inspect it and notify you that we have received your returned item. We will initiate a refund by online money transfer through NEFT/RTGS.
 
-## 5. Buy-back for Direct Sellers
+## 8. Timelines
 
-Under Rule 7 of DSR 2021, a Direct Seller whose agreement ends for any reason may return unused, re-saleable, unexpired stock bought in the preceding period. arovolife will repurchase it at not less than **ninety per cent (90%)** of the price paid, less reasonable handling costs.
-
-Stock must be in saleable condition and returned within **90 days** of termination. The refund is made net of GST, which is issued as a buy-back voucher rather than a tax credit note.
-
-## 6. Shipping
-
-### 6.1 Where we deliver
-
-arovolife delivers across **mainland India** only. We are not able to deliver to the Andaman & Nicobar Islands or to Lakshadweep. Checkout will tell you if the delivery pincode you have entered is one we cannot serve.
-
-### 6.2 Charges
-
-A flat shipping charge applies to orders below the free-shipping threshold, and shipping is free at or above it. Both figures are shown on your cart and again at checkout, before you pay. Nothing is added after that point.
-
-### 6.3 Dispatch and delivery
-
-Orders are dispatched within 2 working days of payment. Delivery normally takes a further 3 to 7 working days depending on the destination. The courier and the tracking number appear on the order as soon as it is dispatched, and we email them to you.
-
-### 6.4 Return shipping
-
-Where the return is a cooling-off cancellation, or the goods were damaged on arrival or defective, arovolife bears the cost of return shipping. For other returns the cost of returning the goods to us is yours.
-
-## 7. If something goes wrong
-
-Talk to us first — most problems are settled the same day.
-
-| Route | Contact |
-|---|---|
-| Customer care | `support@arovolife.com` · +91 88866 62949, 10:00 – 18:00 IST, Monday to Saturday |
-| Formal complaint | [Grievance Redressal](/p/grievance) — the Grievance Officer acknowledges within 48 hours and resolves ordinary matters within 30 days |
-| Escalation | The escalation matrix in the Grievance Redressal Policy, up to the National Consumer Helpline (1915) and the Central Consumer Protection Authority |
-
-Nothing in this policy limits any right you have under the Consumer Protection Act 2019 or DSR 2021.
+- a. Inspection – Within 7 days after receipt of material in warehouse.
+- b. Refund – Within 7 days after inspection of material.

@@ -31,9 +31,10 @@ use Spatie\Permission\Models\Role;
  *      PROD_ADMIN_PASSWORD) so credentials never live in version control.
  *      If the env vars are missing, admin creation is skipped — bring one
  *      up manually via tinker after the first deploy.
- *   4. Phase-1 content pages are placeholder copy. Once compliance signs
- *      off the final docs, edit them through the admin Content Pages UI;
- *      this seeder will not overwrite them on subsequent runs.
+ *   4. Policy pages are seeded from the Markdown sources (the client's
+ *      documents, 2026-09-23). The About-menu nav pages are placeholders —
+ *      edit them through the admin Content Pages UI; this seeder will not
+ *      overwrite either on subsequent runs.
  *
  * Run with:
  *
@@ -230,20 +231,20 @@ final class ProductionSeeder extends Seeder
     }
 
     /**
-     * Phase-1 placeholder copy. Final docs replace these via the admin UI;
-     * once a slug exists, this seeder leaves it alone forever.
+     * Statutory policy pages come from `database/seeders/content/*.md` via
+     * ContentPageSeeder::createMissing(); nav pages still get placeholder
+     * copy. Once a slug exists this seeder leaves it alone forever.
      */
     private function seedContentPages(): void
     {
-        // Statutory documents plus every page the public top-nav links to
-        // (the About dropdown). A nav link without its row is a 404
-        // on a fresh install — staging 2026-08-29. Bodies are placeholders;
-        // none may carry income projections (Hard Rule 3, DSR 5(1)(d)).
+        $created = (new ContentPageSeeder)->createMissing();
+        $this->command?->info("Policy pages created from markdown: {$created}.");
+
+        // The About-menu nav pages the public top-nav links to. A nav link
+        // without its row is a 404 on a fresh install — staging 2026-08-29.
+        // Bodies are placeholders; none may carry income projections (Hard
+        // Rule 3, DSR 5(1)(d)).
         $pages = [
-            ['slug' => 'terms',     'title' => 'Direct Seller Agreement & Terms of Service'],
-            ['slug' => 'privacy',   'title' => 'Privacy Policy'],
-            ['slug' => 'ethics',    'title' => 'Code of Ethics'],
-            ['slug' => 'grievance', 'title' => 'Grievance Redressal'],
             ['slug' => 'management-team',        'title' => 'Management Team'],
             ['slug' => 'business-opportunities', 'title' => 'Business Opportunities'],
             ['slug' => 'success-story',          'title' => 'Success Story'],

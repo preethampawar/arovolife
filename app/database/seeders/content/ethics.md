@@ -1,110 +1,350 @@
-<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-05-21. -->
+## Introduction
 
-## 1. Purpose & Scope
+arovolife Code of Ethics and Principles define and establish certain principles to be followed in the development and maintenance of arovolife Direct Seller and the rights, duties, and responsibilities of each arovolife Direct Seller. The Rules are designed to preserve the benefits available to all the Direct Sellers under arovolife Compensation Plan. arovolife and its Direct Sellers have a binding contractual relationship. The terms and conditions of this relationship are set forth in the arovolife Direct Seller Application Form & arovolife Code of Ethics and Principles as amended by arovolife from time-to-time. (Herein after referred to as the "Official Documents") is available on website for further reference. arovolife may notify all such amendments to the Direct Sellers by publication on its website and other places wherever possible.
 
-This Code of Ethics ("Code") establishes the conduct expected of every person who participates in the arovolife direct-selling network. It applies to:
+- In order to establish a respectful business culture and to ensure fair and honest business activities among Direct Sellers, arovolife private limited. hereinafter referred to as "arovolife, sets forth the arovolife Code of Ethics and principles, and hereby requests all Direct Sellers to follow through accordingly.
+- All Direct Sellers are subject to compliance of the arovolife's Code of Ethics and Principles. This is an inevitable process to prevent any unwanted disadvantages, and to encourage long-term growth of business based on mutual trust and respect between Direct Sellers. Hence, there will be strict enforcement of various penalties in violation of the following arovolife's Code of Ethics and Principles, depending on severity of breach.
 
-- every individual who registers as a Direct Seller (an "arovolife Distributor", identified by an arovolife Distributor Number or "ADN");
-- every Couple Distributorship (primary + secondary holder) under the single ADN;
-- every employee, contractor and administrator of Arovolife Private Limited (CIN U46909TS2026PTC210896) ("arovolife" or the "Company"); and
-- every third-party service provider acting in arovolife's name (e.g. customer-care vendors, logistics partners, training centres).
+## 2. Definitions
 
-Acceptance of this Code is recorded electronically at registration and again at every annual renewal. The Code is published under the Consumer Protection (Direct Selling) Rules, 2021 ("DSR 2021") and is binding from the moment the Direct Seller's ADN is issued.
+### I. "Direct Seller"
 
-## 2. Prohibited Practices
+means a person appointed or authorized, directly or indirectly, by a Direct Selling Entity through a legally enforceable written contract to undertake Direct Selling Business on principal to principal basis.
 
-A Distributor or administrator MUST NOT, directly or indirectly:
+### II. "Direct Selling Entity"
 
-1. **Misrepresent the compensation plan.** No statement, image, video, calculator, screenshot or testimonial may suggest a guaranteed, projected, average or "potential" income. Historical earnings may only be discussed in respect of the speaker's own ADN and only with full disclosure of the time, effort and capital required.
-2. **Project future earnings.** Phrases such as "earn ₹X per month", "become a crorepati", "passive income", "financial freedom in N months", "quit your job" or any equivalent are prohibited in every medium (in-person, WhatsApp, Telegram, Instagram, YouTube, Facebook, X, print, radio, TV, podcasts, email and SMS).
-3. **Make unauthorised product claims.** Only claims approved in writing by arovolife's product team may be repeated. Therapeutic, medicinal, curative, preventive, weight-loss or disease-related claims are forbidden unless the product label and the AYUSH/FSSAI/CDSCO licence expressly permit them.
-4. **Use pressure-selling tactics.** No artificial urgency ("today only"), no scarcity invented for sales purposes, no exploiting personal relationships or vulnerable persons (elderly, students, persons in financial distress), no door-to-door sales without prior appointment.
-5. **Use the network for non-arovolife business.** A Distributor may not market other MLM opportunities, financial products, unregistered investment schemes, cryptocurrency offerings, or any product/service competitive to arovolife's catalogue, to their downline or to arovolife customers acquired through the network.
-6. **Bundle arovolife products with non-approved items.** No combos, no bonus offers, no "free" gifts that have not been authorised by the Company.
-7. **Sell below or above the published consumer price.** Discounting, premium pricing, or markup above MRP is prohibited.
-8. **List on third-party e-commerce marketplaces** (Amazon, Flipkart, Meesho, Myntra, JioMart, etc.), online classifieds (OLX, Quikr), social-commerce platforms (Instagram Shop, Facebook Marketplace), or any platform that allows purchase without the customer being attributed to a Distributor's ADN. This is a violation of arovolife's direct-selling model and of clause §9 of the Direct Seller Agreement.
-9. **Operate a physical retail store** stocking arovolife product, or place arovolife product in someone else's retail store on consignment or otherwise.
-10. **Make false claims about arovolife's regulatory status, affiliations, government endorsements, awards, or media coverage.**
-11. **Publish or misuse another Distributor's figures.** The rank and accumulated personal BV of your downline are shown to you inside your genealogy view solely so you can mentor them. Screenshotting, forwarding, publishing or quoting another Distributor's rank or BV outside the platform, using them in any recruitment or sales representation, or using a downline member's distance from a BV threshold to pressure them into purchasing ("inventory loading") is prohibited and is treated under ¶4 as pressure-selling.
+refers to Arovolife Private Limited (hereinafter referred to as arovolife), a company registered under Companies Act 2013, CIN No U46909TS2026PTC210896, which is not engaged in a pyramid scheme and which sells or offers to sell goods or services through a direct seller. Provided that "Direct Selling Entity" does not include any entity or business notified otherwise by the Government for the said purpose from time to time.
 
-## 3. Recruitment Ethics
+### III. "Goods"
 
-Recruitment of new Distributors is permitted only on the following terms:
+means goods as defined in the Sale of Goods Act, 1930 and "Service" means service as defined in the Consumer Protection Act, 1986;
 
-1. **No joining-fee compensation.** A Distributor earns nothing — no bonus, override, pool, ranking points, BV, slot allocation or in-kind reward — for the mere act of introducing a new Distributor. All earnings flow exclusively from the documented retail sale of arovolife products. (DSR 2021 Rule 5(1)(c); hard rule #2.)
-2. **No paid placement.** Slots in the Genos (binary placement tree) are not for sale. No Distributor or admin may take money, gifts, services or favours in exchange for placement, line change, sponsor change, group switch, or "carrying" downline.
-3. **No misrepresentation of placement.** A prospective recruit must be told before joining that placement may differ from sponsorship, that the chosen group is permanent except in the limited 5-working-day Line Change window, and that no business volume earned by anyone else accrues to them merely by virtue of Genos position.
-4. **No minors.** Recruitment of any person under 18 years (or under 21 years in the State of Maharashtra) is prohibited. Identity must be verified through PAN and Aadhaar at registration.
-5. **Free choice of sponsor.** A prospect must be allowed to choose their sponsor freely. Forcing, switching, or hiding a referrer is a breach.
-6. **Truthful representation of the company.** All recruitment material must accurately describe the registered name, address, CIN, GST number and the nature of arovolife's business as a direct-selling entity registered under DSR 2021.
-7. **No headcount targets disguised as sales targets.** Rank progression and bonuses are tied to qualifying product sales (BV), not to the number of recruits.
+### IV. "Saleable"
 
-## 4. Customer-Facing Conduct
+shall mean, with respect to goods and / or services, unopened, unused, marketable, which has not expired, and which is not seasonal, discontinued or special promotion goods and / or services
 
-A Distributor selling to an end-consumer (whether a customer or a new Distributor's first purchase) must:
+### V. "Cooling-off Period"
 
-1. **Identify themselves.** Provide the ADN, full name, registered mobile number, and a copy of the arovolife-issued identity card (digital or physical).
-2. **Disclose the price clearly** before order placement, including GST, shipping, return-shipping and any handling fees. No hidden charges.
-3. **Provide an invoice** generated by the arovolife platform within 24 hours of payment. Cash sales without a system-generated invoice are not permitted.
-4. **Explain the cooling-off and return policy** orally and provide a written copy (printed receipt or digital link) before the customer authorises payment.
-5. **Honour every return request that is within the published return window** without argument, irrespective of whether the Distributor's BV will be reversed.
-6. **Maintain courtesy.** Abusive, threatening, discriminatory or harassing language to a customer, prospect or downline is a breach. This applies in private chats as well as in public.
-7. **Protect customer data.** Customer mobile numbers, email addresses, PAN, Aadhaar references, bank details and order history obtained through arovolife may be used only for fulfilling that customer's order and for arovolife's lawful purposes — never for personal marketing lists, never resold, never shared with third parties.
-8. **No surrogate selling.** A Distributor cannot place an order in the name of someone who has not consented; cannot use a customer's PAN to "build volume"; cannot register a customer as a Distributor without that person's documented consent.
+means a period of 30 days commencing from the date when the Direct Seller and arovolife enter into an agreement within which the Direct Seller may repudiate the agreement without being subject to penalty for breach of contract;
 
-## 5. Tree Placement Conduct
+### VI. Commissions
 
-Placement in the Genos (binary placement tree) carries specific ethical duties because it determines downstream economic outcomes:
+means monetary and non-monetary benefits paid in cash or kind as per the scheme of compensation formulated by the company and as displayed on the website time to time and includes bonus, incentives and such other similar benefits by whatever name called.
 
-1. **No slot squatting.** A Distributor may not register fake, dormant, or non-consenting individuals to occupy positions ("ghost legs" / "ghost groups", "padding", "burner ADNs"). Every active ADN must correspond to a real, KYC-verified human who knowingly accepted the Direct Seller Agreement.
-2. **No multi-account abuse.** One PAN = one ADN. Family members, friends, employees or shell entities may not be registered to circumvent this rule.
-3. **Line-change discipline.** A Direct Seller may request a one-time change of their sponsor or placement within five (5) working days of registration, **only if** they have no downline and have made no qualifying product purchases. After that window, the Genos position is final.
-4. **No "spillover trading".** Promising, selling, transferring or auctioning spillover positions, or representing that a particular placement will guarantee future spillover, is prohibited. The placement engine assigns positions automatically per the Company-wide Placement Strategy setting; no Distributor controls another Distributor's placement.
-5. **Truthful upline disclosure.** A Distributor must, when asked by a downline member, accurately disclose their own ADN, sponsor and placement parent. Concealment or falsification is a breach.
-6. **No tampering.** Attempting to manipulate the platform — directly, via scripts, via a friendly insider, or by exploiting bugs — to gain or lose a placement, or to inflate BV, is treated as fraud.
+### VII. A Dealership
 
-## 6. Sanctions for Breach
+means Direct Seller who has achieved Dealership title at least six times in a period of Calendar Year. (Jan to Jun)
 
-Suspected breaches are reviewed by the arovolife Compliance Committee following a documented, three-step graduated process. The standard of proof is "balance of probabilities"; written notice and an opportunity to respond are mandatory at every step.
+### VIII. Sales Partner
 
-| Step | Trigger | Outcome | Notice |
-|---|---|---|---|
-| 1. **Warning** | First minor breach (e.g. one social post with non-compliant phrasing). | Written warning, mandatory re-training, public post taken down within 24 hours. | Email + in-app notification. |
-| 2. **Suspension** | Repeat minor breach, or first major breach (e.g. unauthorised product claim, placement manipulation, hidden customer pricing). | Account frozen for 30 – 90 days. No commissions paid out during the suspension. Downline events continue to accrue but are not credited until the suspension ends. | Email + SMS + 7-day right of reply. |
-| 3. **Termination** | Repeat major breach, fraud, identity misrepresentation, breach of hard rule #1/#2/#6/#7/#8, or any breach that triggers a regulatory complaint. | ADN permanently de-activated. Unpaid earnings forfeited to a customer-protection fund if attributable to the breach. Existing downline is preserved and may continue under the next compliant upline. Buyback obligation under Section 7 of the Direct Seller Agreement is honoured. | Written notice 14 days in advance, hearing within that window, written reasoned order. |
+means Direct Seller who has achieved a sales Partnership level as per the criteria specified in the arovolife Compensation plan as amended from time to time and as displayed on the website of arovolife
 
-Distributors retain the right to appeal any sanction to the Grievance Officer within 30 days. The appeal is heard by an officer who was not part of the original decision.
+### IX. Termination
 
-## 7. Reporting & Whistle-Blower Channel
+means discontinuation of Direct Seller Agreement which is system generated and occurs upon non fulfilment of Purchase Criterion for a period of Six Months since the contract was entered or since the date of last purchase made by Direct Seller
 
-If a Distributor, customer, employee or member of the public observes conduct that they believe breaches this Code, they may report it through any of the following channels:
+### X. Couple
 
-- **Email:** `ethics@arovolife.com` (monitored daily)
-- **Web form:** `/contact-us` with reason "Ethics / Compliance"
-- **Post:** Compliance Officer, Arovolife Private Limited, H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India
-- **Phone:** Grievance helpline
+means legally married spouses as per applicable laws in force.
 
-Reports may be made anonymously. arovolife guarantees:
+## 3. Conditions to become an arovolife Direct Seller
 
-1. **No retaliation.** Suspension, termination, withholding of commissions, denial of promotion, or any other adverse action against a whistle-blower for a good-faith report is itself a terminable breach by the retaliator.
-2. **Confidentiality.** The reporter's identity is shared only on a need-to-know basis with the Compliance Committee. Disclosure is required only where statute or court order compels it.
-3. **Acknowledgement** within 48 hours of receipt.
-4. **Investigation outcome** communicated within 30 days, subject to extensions for complex cases (notified to the reporter in writing).
+### I. Registration procedure
 
-## 8. Annual Ethics Affirmation
+In order to be considered as an arovolife Direct seller, an individual must, in his/her/its own name, submit application and agreement copy through website after PAN verification has been completed online. The complete set of documents including supporting documents can be submitted online or offline depending upon the type and nature of Direct Seller. Detailed procedure for becoming arovolife Direct Seller in the case of individuals has been provided below:
 
-Every Distributor must, at each annual renewal of their ADN, re-read this Code in its then-current version and click to re-accept. The platform records the version, timestamp, IP address, device fingerprint and the Distributor's typed full name. A Distributor who declines to re-affirm is suspended until they do; if 60 days pass with no affirmation, the ADN is terminated for cause.
+- Step 1: Login with Guest Credentials of the Sponsor
+- Step 2: View arovolife Orientation Videos
+- Step 3: Read Direct Seller Agreement, Code of Ethics and Principles, arovolife's Policies and Procedures and arovolife Compensation Plan. Provide consent abiding by the contents, terms and conditions
+- Step 4: Fill personal information
+- Step 5: Upload Address proof document (Both Front & Back Page)
+- Step 6: Auto PAN verification is done; Direct Seller name gets populated per PAN
+- Step 7: Partner to provide Spouse Information
+- Step 8: Sponsor details to be filled
+- Step 9: After filling all the details in the direct seller application, electronic record will be generated which doesn't require digital/physical signature and it binds both the parties as per applicable law
+- Step 10: arovolife Distributor Number (ADN) & Password is generated and registration gets completed.
 
-*(Annual ethics affirmation becomes operational from Phase 4. During Phase 1 the initial registration-time acceptance is sufficient.)*
+### II. arovolife Direct Seller must,
 
-## 9. Governing Law & Dispute Resolution
+- a. be at least 18 years of age (Except the State of Maharashtra where the minimum age requirement is 21 years)
+- b. be a citizen and resident of India. arovolife shall consider applications from non-resident Indian (NRI), person of Indian Origin (PIO) or overseas citizen of India (OCI) in case such persons conduct their business activities through valid legal entities.
+- c. not have been suspended from his or her current profession or business by any professional association, society, or institution
+- d. be in good standing and must not be in jail
+- e. be of sound mind and must be able to carry out his business in proper and legitimate manner
+- f. Is not a declared insolvent/convicted/bankrupt during the last five years prior to his association with the business of direct selling
+- g. is able and competent, as has been defined under the provisions of the Indian Contract Act, 1872, to understand and agree the terms, conditions, obligations, affirmations, representations and warranties set forth in this arovolife's Code of Ethics and Principles.
+- h. agree to abide by and comply with the Direct Seller Agreement, arovolife's Code of Ethics and Principles, Compensation Plan, Policies and Procedures as amended from time to time and displayed on the Website of arovolife.
 
-1. **Governing Law.** This Code, the Direct Seller Agreement and the Privacy Policy are governed by, and construed in accordance with, the laws of India, including without limitation the Consumer Protection Act 2019 and the rules made under it (notably DSR 2021), the Digital Personal Data Protection Act 2023, the Information Technology Act 2000, the Indian Contract Act 1872, the Income Tax Act 1961, and the Central Goods and Services Tax Act 2017.
-2. **Internal Grievance First.** A dispute must first be raised through arovolife's Grievance Redressal mechanism (see `/p/grievance`). The internal SLA is acknowledgement within 48 hours and resolution within 30 days.
-3. **Mediation.** If the internal process does not resolve the dispute, the parties shall, within a further 30 days, attempt resolution through a single mediator appointed by arovolife and acceptable to the Distributor, conducted online or in Hyderabad.
-4. **Arbitration.** Any unresolved dispute shall be referred to arbitration by a sole arbitrator appointed by arovolife, in accordance with the Arbitration and Conciliation Act 1996. The seat of arbitration shall be **Hyderabad, Telangana**, and the language shall be English. The arbitral award is final and binding subject only to the limited grounds of challenge available under that Act.
-5. **Courts.** Subject to the arbitration clause above and to the consumer's statutory right under the Consumer Protection Act 2019 to approach a Consumer Forum, the courts at **Hyderabad, Telangana** shall have exclusive jurisdiction.
+### III. Acceptance or rejection of application
 
----
+arovolife reserves the right to accept or reject any Direct Seller application to become a Direct Seller without assigning any reasons or explanations whatsoever
 
-*Code of Ethics version: v2026-05-21. Maintained by the arovolife Compliance Committee. The current published version is always available at `/p/ethics`.*
+### IV. Order of products
+
+Once application is accepted, a Direct Seller is entitled to order product(s) from arovolife's website under the tab "Shop". It is to be noted that no purchase of goods is required to become a Direct Seller or Distributor
+
+### V. arovolife Direct Seller shall not misrepresent actual or potential sales, earnings or advantages of Direct Selling to any prospective direct seller and shall not ask for
+
+- a. Joining fee
+- b. Purchasing goods in an unreasonably large amount
+- c. Purchase any specified amount of products
+- d. Purchase brochures/catalogues and any other training material
+- e. Purchase tickets for Seminars/trips/other meetings
+
+### VI. Continuation as a Direct Seller
+
+A Direct Seller shall continue to remain a Direct Seller for arovolife unless terminated as per Clause number 20 of this Code of Ethics and Principles
+
+## 4. Duties of Direct Seller
+
+### I.
+
+Direct Seller engaged in Direct Selling should carry their identity card and not visit the customers premises without prior appointment/approval;
+
+### II.
+
+At the initiation of a sales representation, without request, truthfully and clearly identify themselves, the identity of the arovolife, the nature of the goods or services sold and the purpose of the solicitation to the prospective consumer,
+
+### III.
+
+Offer a prospective consumer accurate and complete explanations and demonstrations of goods and services, prices, credit terms, terms of payment, return policies, terms of guarantee, after-sales service;
+
+### IV.
+
+Provide the following information to the prospect / consumers at the time of sale, namely: Name, address, registration number or enrolment number, identity proof and telephone number of the direct seller and details of arovolife;
+
+### V.
+
+A description of the goods or services to be supplied,
+
+### VI.
+
+Explain to the consumer about the goods Return Policy of arovolife in the details before the transaction,
+
+### VII.
+
+The Order date, the total amount to be paid by the consumer along with the bill and receipt,
+
+### VIII.
+
+Time and place for inspection of the sample and delivery of good,
+
+### IX.
+
+Information of his/her rights to cancel the order and / or to return the product in saleable condition and avail full refund on sums paid.
+
+### X.
+
+Details regarding the complaint redressal mechanism,
+
+### XI.
+
+A direct seller shall keep proper book of accounts stating the details of the products, price, tax and the quantity and such other details in respect of the goods sold by him/her, in such form as per applicable law,
+
+### XII. A Direct Seller shall not:
+
+- a. Use misleading, false, deceptive, and / or unfair recruiting practices, including misrepresentation of actual or potential sales or earnings and advantages of Direct Selling to any prospective direct seller, in their interaction with prospective direct sellers,
+- b. Make any factual representation to a prospective direct seller that cannot be verified or make any promise that cannot be fulfilled,
+- c. Present any advantages of Direct Selling to any prospective direct seller in a false and / or a deceptive manner,
+- d. Knowingly make, omit, engage, manipulate, or cause, or permit to be made, any representation relating to the Direct Selling operation, including remuneration system and agreement between the arovolife and the Direct Seller, or the goods and / or services being sold by such direct seller which is false and / or misleading,
+- e. Require or encourage direct sellers recruited by the first mentioned direct seller to purchase goods and / or services in unreasonably large amounts,
+- f. Provide any literature and / or training material not restricted to collateral issued by arovolife, to a prospective and / or existing direct seller both within and outside the parent Direct Selling entity, which has not been approved by the parent Direct Selling entity,
+- g. Require prospective or existing direct sellers to purchase any literature or training materials or sales demonstration equipment,
+
+### XIII.
+
+A Direct Seller is required to provide correct, complete and accurate details to arovolife so that his activities can be monitored and supervised in such a way so as to ensure compliance of the guidelines for direct selling and also to enable arovolife to share the said details with the central or/and state government, local authorities, government department as an when required.
+
+### XIV.
+
+It shall be the duty of Direct Seller to comply with direct selling guidelines and such other applicable laws as may be notified from time to time. Further the direct seller gives his/her/its explicit consent to arovolife that the details of its activities, business details and such other details shall be provided to central or/and state government, local authorities, government department as an when required.
+
+### XV.
+
+Direct Seller must abide by the Direct Seller Agreement, arovolife's Code of Ethics and Principles, Compensation Plan, Policies and Procedures as amended from time to time and displayed on the Website of arovolife.
+
+## 5. Rights and duties of arovolife
+
+arovolife is/shall be:
+
+- the owner, holder, licensee of the trademark, service mark or any other identification mark which identifies arovolife with the goods to be sold or supplied or services to be rendered; This clause is to be read in conjunction with the clause on Intellectual Property under Website-Terms of Use.
+- issue proper identity document(s) to its Direct Sellers which can be downloaded from the website by following the link www.arovolife.com and shall contain details such as arovolife distributor number (ADN), Name, Date of Issue of ID card and such other details as may be decided by arovolife from time to time
+- maintain proper records either manual or electronic of its business dealings, with complete details of their goods, services, terms of contract, price, income plan, details of direct sellers, including but not limited to enrolment, termination, active status, earning etc;
+- maintain a "Register of Direct Sellers" wherein relevant details of each enrolled Direct Seller shall be updated and maintained. The details of Direct Sellers shall include and not be limited to proof of address, proof of identity and PAN.
+- maintain proper and updated website with all relevant details of arovolife, contact information, its management, products, product information, product quality certificate, price, complete income plan, terms of contract with direct seller and complaint redressal mechanism for direct sellers and consumers. The website has space for registering consumer complaints and the grievances shall be addressed as per arovolife Policies and Procedures formulated and updated from time to time on the Website in this regard by arovolife.
+- provide to all direct sellers their periodic account / information concerning, as applicable, sales, purchases, details of earnings, commissions, bonus and other relevant data, in accordance with agreement with arovolife. Such details can be accessed any time by the direct sellers by visiting website under the tab "MY BUSINESS WORLD". All financial dues shall be paid and any withholding made as per the prescribed laws in force in a commercially reasonable manner.
+- monitor the value of the purchases of all its Direct Sellers on a monthly basis and once the purchase value crosses the GST threshold, it shall intimate the Direct Seller to pay the GST. It shall be the duty of Direct Seller to ensure that compliance with relevant GST laws takes place upon receipt of such intimation from arovolife. arovolife reserves the right to terminate the Agreement of Direct Seller in case it is found that the Direct Seller is carrying out its business activities in violation of the relevant GST laws.
+- be responsible for compliance of the direct sales guidelines by any Direct Seller of its network of direct selling, whether such Direct Seller is appointed directly or indirectly by arovolife.
+- be required to provide correct, complete and accurate details, including those of the Direct Sellers to central or/and state government, local authorities, government department as an when required so that its activities can be monitored and supervised in such a way so as to ensure compliance of the guidelines for direct selling and/or applicable laws of the country.
+- comply with direct selling guidelines and such other applicable laws as may be notified from time to time. Further, arovolife shall also provide the details of its activities, business details and such other details to central or/and state government, local authorities, government department as an when required.
+- monitor and control the practices/methods adopted by the Direct Sellers
+
+## 6. Relationship between arovolife & direct seller
+
+- The relationship between arovolife and Direct Seller shall be determined as per the written agreement between parties, arovolife's Code of Ethics and Principles, arovolife Compensation Plan, arovolife Policies and Procedures which shall contain the rights and obligations that are expressly provided as conditions for the conduct of Direct Selling business as well as provide for the obligation of the direct selling entity and the direct seller in terms of said documents.
+- All other rights and obligations shall be determined as per the express terms of written agreement, arovolife's Code of Ethics and Principles, arovolife Compensation Plan, arovolife Policies and Procedures between arovolife and direct seller.
+- arovolife will be liable for grievances arising out of sale of products, services or business opportunities by its Direct Sellers.
+- It will be the responsibility of the arovolife to monitor and control the practices/methods adopted by the Direct Sellers.
+- The Direct Seller agrees that he/she/it shall act as an independent contractor and shall not be an employee, partner, legal representative, franchisee or Joint Venture of arovolife.
+- Direct Seller has no power or authority to incur any debt, obligation or liability on behalf of arovolife.
+- The Direct Seller shall act as a self-employed independent contractor and will be operating his / her own business, making individual decisions, buying and selling products available through arovolife in his / her own account. arovolife shall bear no legal responsibility for the actions taken by Direct Sellers. Furthermore, arovolife and Direct Seller acknowledge that the Direct Seller is not an employee of arovolife and will not be treated as an employee with respect to his / her/its Agreement for any purpose whatsoever.
+- Direct Seller will be responsible for payment of any self-employment, business and distributorship expenses and applicable income taxes, GST or any other taxes, levies, surcharges. Direct Seller shall be able to view his/her/its commission totals reflecting the amount of income paid during the Financial year by arovolife under the tab "MY PERSONAL WORLD". It will be Direct Seller's sole responsibility to account for such income in his / her/its income tax returns.
+
+## 7. Change of Direct Seller Name
+
+Changing the Direct Seller name is not possible in principle, except in the following cases.
+
+- Inheritance from death: In case of inheritance, follow the inheritance procedure described in arovolife's Code of Ethics and Principles. The Direct Seller hereby accepts and agrees to abide by the related laws applicable to inheritance. Requests shall be made by downloading an application form in this regard which is available under the tab "MY PERSONAL WORLD" or can be obtained from Customer Support Centre by calling. The said application form to be completed in all respects along with proof of change shall be sent through registered email to arovolife support@arovolife.com or by post to arovolife at the following address Arovolife Private Limited. H.No:6-51/2, Bank Colony, Pothireddy Pally, Sangareddy, Sangareddy Dist, Telangana State India
+- In case such name has been changed by following the due process of law in force, requests shall be made by downloading an application form in this regard which is available under the tab "MY PERSONAL WORLD" or can be obtained from Customer Support Centre by calling. The said application form completed in all respects along with proof of change shall be sent through registered email to arovolife support@arovolife.com or by post to arovolife at the following address Arovolife Private Limited., H.No:6-51/2, Bank Colony, Pothireddy Pally, Sangareddy, Sangareddy Dist, Telangana State India
+
+In all the above circumstances, in case it comes to arovolife's notice that such change of name in arovolife's database has been obtained by wilful, wrongful, fraudulent, unfair means, arovolife shall immediately terminate Direct Seller agreement without any prior intimation.
+
+Upon receipt of application for change of name, arovolife shall scrutinize the same and shall request for additional documents if required to establish such change of name of the Direct Seller. It is in the interest of the Direct Seller that at the time of submission of request application such equivalent supporting documents evidencing change of name are submitted as had been submitted at the time of original registration application.
+
+## 8. Line Change rules
+
+### I.
+
+Line change request can only be placed within 5 working days of registration.
+
+### II.
+
+Line change under the new Placement shall be accepted only if new sponsor is registered prior to Distributor requesting such line change.
+
+### III.
+
+From the date of registration till the date of approval for such line change has been granted, there should not be any purchases by the requesting distributor from his/her/its ADN.
+
+### IV.
+
+There should not be any downline Direct Seller of such requesting distributor till the date of approval of such application
+
+### V.
+
+It will take minimum 5 working days to complete Line Change procedure.
+
+### VI.
+
+No Direct Sellers should be added until the Line change procedure is completed.
+
+## 9. Changes in Price, other charges, etc
+
+arovolife may change suggested prices, discounts, commissions, transportation/courier charges, and active status requirements at any time. arovolife will give Direct Seller prior notice by displaying changes on the website of arovolife.
+
+## 10. Changes in the Ownership of Distributorship
+
+### I. Inheritance
+
+Upon the death of a Direct Seller, the Direct Seller's rights and interests may be passed on to their legal heirs, subject to fulfilment of criteria specified to become a Distributor and by giving consent to the terms and conditions of written agreement, arovolife's Code of Ethics and Principles, arovolife Compensation Plan, arovolife Policies and Procedures. Any requests shall be made by downloading an application form in this regard which is available under tab resources or can be obtained from Customer Support Centre by calling. The said application form complete in all respects shall be sent through registered email to support@arovolife.com or by post to arovolife at the following address Arovolife Private Limited., H.No:6-51/2, Bank Colony, Pothireddy Pally, Sangareddy, Sangareddy Dist, Telangana State India
+
+### II. Divorce of legal couple
+
+- a. In principle, in case of divorce, the distributorship shall be granted to the primary applicant as a registered. However, in case the distributorship is to be granted to registered secondary applicant, a mutual agreement must be prepared and company must be notified. In all cases arovolife reserves the rights to scrutinize the application intimating such change and refuse approval. Further, arovolife can in its sole and absolute discretion may terminate the distributorship.
+- b. During pendency of divorce mutual agreement must be prepared and company must be notified of the person in whose name the distributorship is to be carried out. The mutual agreement along with consent/NOC of the other person who is relinquishing his/her right in such distributorship must be sent to arovolife at the following address Arovolife Private Limited., H.No:6-51/2, Bank Colony, Pothireddy Pally, Sangareddy, Sangareddy Dist, Telangana State India
+
+### IV. Transfer or Sale of Distributorship
+
+Any transfer or Sale of Distributorship is strictly prohibited subject to terms and conditions and exceptions mentioned in this document. Any sale transfer or assignment of partial or complete interest, right, title strictly prohibited subject to terms and conditions and exceptions mentioned in this document.
+
+## 11. arovolife Compensation Plan
+
+### I. Eligibility
+
+Distributor is eligible to be paid Commissions and granted rewards pursuant to the currently published arovolife Compensation Plan and if he/she/it is not in breach of the Agreement, arovolife's Code of Ethics and Principles, arovolife Compensation Plan, arovolife Policies and Procedures and has otherwise complied with the requirements. Commissions and bonuses are paid ONLY on the sales of arovolife's Products. No bonuses are paid on the purchases of any sales and marketing material like brochure and catalogues, or the recruitment of Distributors.;
+
+### II. No Earning Guarantee
+
+It is hereby clarified that the Direct Sellers are neither guaranteed a specific income nor assured any level of profit or success. His/her/its profit and success can come only through the successful sales, use, and consumption of products and the activities of other Direct Sellers in their downline
+
+### III. Payment
+
+- arovolife shall make payment of commission, bonus and incentives to the bank account, details of which have been provided by the direct seller at the time of commission generation. Upon being found eligible for receipt of commission, arovolife shall send an intimation to the direct seller informing him/her/it of his/her/its entitlement to receive commission. Upon receipt of such information Direct Seller needs to update bank details on the website by filling in the requisite fields. arovolife will verify bank details through penny drop and same amount will be deducted from his first commission. It is to be noted that the bank details mentioned must be of the direct seller only. In case it is found that incorrect bank details have been furnished arovolife shall immediately terminate the Agreement of such Direct Sellers. Additionally, any commission that may have been received by the Direct Seller in another person's account as a result of provision of incorrect bank details shall be immediately refunded by him/her/it by way of an account Payee Cheque drawn in favour of Arovolife Private Limited.
+- arovolife pays Commissions as per the timelines mentioned in the arovolife Compensation Plan. Partnership Promotions, incentives and Education Commission will be paid within the period stated in the arovolife Compensation Plan subject to fulfilment of criteria mentioned therein and as updated from time to time.
+- Without prejudice to arovolife's right of termination, arovolife reserves right to suspend or revoke payment if a Distributor is in breach of any term or condition of the Agreement, arovolife's Code of Ethics and Principles, arovolife Compensation Plan, arovolife Policies and Procedures. arovolife may also debit the Distributor's account or withhold payable Commissions if money is owed.
+
+### IV. Adjustments of Commissions
+
+When a Product is returned to arovolife for a refund, the Commissions, Partnership Promotions, Incentives and Education Commission attributable to the returned Product(s) will be deducted from the next eligible commission, and thereafter from all such eligible subsequent commissions until the Commission and/or Bonus is recovered from the Direct Seller who received Commissions, Partnership Promotions, incentives and Education Commission on the sales of the refunded products.
+
+### V. Clarification regarding payment and calculations
+
+If a Direct Seller wishes to seek clarifications regarding payment and calculations of his Commissions, Partnership Promotions, Incentives and Education Commission, he/she/it must intimate arovolife by sending email at arovolife support@arovolife.com or in writing to arovolife's corporate office at H.No:6-51/2, Bank Colony, Pothireddy Pally, Sangareddy, Sangareddy Dist, Telangana State India within ten (10) days of the date of the purported error or incident in question. arovolife will not be responsible for any errors, omissions, or problems not reported within ten (10) days.
+
+### VI.
+
+arovolife may charge a processing fee for additional services requested if any by the Direct Seller. arovolife shall inform beforehand details of such processing fees.
+
+## 12. Use of arovolife Name, Trademark, Copy righted material and arovolife's Intellectual Property Rights
+
+Meaning of Intellectual Property: Intellectual Property means all copyright, trade mark rights, logo, patent rights, design rights or any other Intellectual Property Rights subsisting in or created during the development of the products, arovolife website, arovolife business, and the Trade Marks and any advertising and promotional materials provided to the Website user including software, confidential information, source and object codes, scripts, records, documents, advertising and promotional materials, media content, specifications, plans, program listings, calculations, drawings, technology, business names, commercial symbols, processes, developments, licenses, trade secrets, techniques, specifications, patterns, drawings, formulae, technical information, research data, concepts, methods, procedures, reports, recommendations and any other knowledge of any nature whatsoever including patents, copyrights, trademarks, trade names, design and any amendments/modifications, renewals thereto and all confidential information necessary for, or which may be used in connection with the administration, operation and marketing of the arovolife products and services. The Direct Seller agrees that all rights in and relating to the Intellectual Property are and remain the property or under the control of arovolife and that such user does not acquire any right, title or interest in any of the Intellectual Property. This shall distinguish arovolife products and services from those of other companies.
+
+### Prior consent and authorized use
+
+- No direct seller is allowed to use the trademark without prior permission of arovolife. arovolife will take appropriate legal action against any persons using its trade name, trademarks, designs, and symbols without its permission and will, if necessary, follow with appropriate court action for failure to comply with an injunction or other legal actions that may be initiated by arovolife.
+- To protect arovolife's rights, a Distributor may not obtain, through filing for a patent, trademark, Internet domain name, or copyright, any right, title, or interest in or to arovolife's names, trademarks, logos, or trade names and those of arovolife's Products.
+- The Direct Seller gives his/her explicit consent that license to use arovolife's trademark, trade name, logos shall be granted to him/her/it on a non-exclusive basis.
+- Direct Sellers shall be liable to arovolife for damages that may arise out of the misuse of arovolife's intellectual property rights except to the extent specifically permitted by arovolife.
+- The Direct Seller hereby acknowledges and agrees to present arovolife products in a truthful and sincere manner and shall keep arovolife unharmed from damages resulting from misrepresentations.
+- The Direct Seller shall protect arovolife trademarks and trade name and obtain arovolife's written permission prior to use in any advertising (including but not limited to, the internet, literatures other than company-published, logos, pictures, and other promotional materials.
+- Direct seller understands that display or sale of arovolife products in public, retail or service establishments of any kind is inconsistent with the terms of this Agreement.
+
+### The Direct Seller must:
+
+- a. not register or seek to register any of the Intellectual Property without the prior written consent of arovolife;
+- b. not cause any of the Intellectual Property to be prejudicially affected or contested;
+- c. not use the Intellectual Property without the prior express written authority of arovolife & in terms of the Agreement between the Distributor & arovolife;
+- d. not make any alterations to the Intellectual Property;
+- e. not use the arovolife brand name or any derivative of the words comprising the arovolife brand name, in the Distributor's business, or personal domain names;
+- f. stop using the Intellectual Property upon the termination of this Agreement or Distributorship or at the immediate request of arovolife;
+- g. not modify the design, appearance and attributed of any products or services, packaging, promotion or marketing materials;
+- h. Not register or attempt to register a business name or company name that contains the word arovolife or any combination of words that indicates a connection with or is similar to arovolife.
+- i. Not consent or oppose or assist any other person to contest or oppose any application for registration of the Intellectual Property as trademarks or as business or company names.
+- j. Not reproduce, in whole or in part, any printed material or audio or visual recordings that have been produced by arovolife unless given prior written authorization to do so by arovolife. These materials form part of the Intellectual Property whether registered or unregistered and are considered proprietary to arovolife.
+
+This clause is to be read in conjunction with the Website Terms of Use.
+
+## 13. Catalogue/brochure/any other supporting material
+
+- Purchasing catalogues/brochure is optional and voluntary
+- No Direct Seller is allowed to publish his/her/its own Catalogue /brochure/any training materials/videos in soft or hard format without taking approval from arovolife. Upon finding any such incident arovolife reserves rights to terminate Direct seller's agreement without prior notice.
+- No direct seller is allowed to prepare and publish arovolife related information on social networking sites without taking approval from arovolife.
+- arovolife printed material is sole property of arovolife and may not be reproduced in whole or in part by Direct Sellers or other persons except by prior written permission from arovolife.
+- arovolife products and/or brochures are restricted for display only inside the business premises and all care must be taken to ensure that such products and/or brochures are not visible from outside to the general public.
+- arovolife forbids sale of arovolife products through personal websites (bidding sites, blog, homepage, café, etc.) and/or internet shopping malls and other portal sites. It is also illegal to use arovolife logo and/or name on personal websites or business tools/materials without the arovolife's consent.
+
+## 14. Product Ordering and Delivery
+
+arovolife and The Distributor agree to be bound by the terms and conditions as mentioned in the Product Ordering and Delivery Policies and Procedures, as amended from time to time, issued in this behalf and which is available on the Website.
+
+## 15. Product Return
+
+arovolife and The Distributor agree to be bound by the terms and conditions as mentioned in the Product Return Policies and Procedures, as amended from time to time, issued in this behalf and which is available on the Website.
+
+## 16. Payments
+
+arovolife and The Distributor agree to be bound by the terms and conditions as mentioned in the Agreement, arovolife Compensation Plan, Policies and Procedures, Website-terms of use, as amended from time to time, issued in this behalf and which is available on the Website.
+
+## 17. Grievance Redressal Mechanism
+
+Pursuant to the Direct Selling guidelines, arovolife has prepared a step by step process for Complaint/Grievance redressal. Complaint/Grievance redressal is made available on Website and customer support centre will also guide direct sellers for any assistance
+
+- arovolife has in place an effective, efficient and efficacious Grievance redressal policy and which is maintained under arovolife Policies and Procedures
+- arovolife will be liable for grievances arising out of sale of products, services or business opportunity by its Direct Sellers;
+- All complaints received over phone, email, website, post and walk-in shall have a complaint number for tracing and tracking the complaint and record time taken for redressal;
+- Direct Sellers are advised to refer the detailed Grievance redressal policy under arovolife Policies and Procedures containing the method and process of registering, tracing, tracking, checking and resolution of all complaints
+- Attention of Direct Seller is also drawn towards the provision of state government portal and mediation centres in the district and the state that had been mentioned at the time of registration on arovolife Website.
+
+## 18. Termination
+
+arovolife reserves the right to terminate contract, with reasonable Notice, where no purchase of goods or services for the period of one year since the contract was entered or since the date of last purchase made by Direct Seller and in case of any violations of arovolife's Code of Ethics and Principles, arovolife Compensation Plan, arovolife Policies and Procedures and any other non-compliance.
+
+The Direct Seller may without assigning any reason, after giving written notice to arovolife terminate this Contract with immediate effect and this contract would be terminated automatically. A Direct Seller shall not be entitled to purchase arovolife's products or services upon serving the notice.
+
+In addition to the above:
+
+### arovolife may terminate this agreement forthwith in case:
+
+- i. For reasons specified elsewhere in this Code of Ethics and principles
+- ii. For the breach of Direct Selling guidelines published by the Government of India or any State Government;
+- iii. Due to misrepresentation by the Direct Seller to any consumer or prospective Direct Seller; or
+- iv. Due to legal, regulatory or other developments that require material operational changes within the Territory, in which case arovolife may, if regulatory conditions allow, endeavour to restructure the contractual

@@ -73,7 +73,7 @@ it('CR-01: the record lists every document accepted, under both version schemes'
         ->get(route('consent.record'))
         ->assertOk()
         // The title each document gives itself, taken from the published page.
-        ->assertSee('Direct Seller Agreement &amp; Terms of Service', false)
+        ->assertSee('Direct Seller Agreement &amp; Terms and Conditions', false)
         ->assertSee('Code of Ethics')
         ->assertSee('Compensation Plan Disclosure')
         ->assertSee('Privacy Policy')
@@ -137,7 +137,7 @@ it('CR-04: an account with no rows is told so, not shown an empty table', functi
         ->get(route('consent.record'))
         ->assertOk()
         ->assertSee('do not hold a dated acceptance record')
-        ->assertSee('Direct Seller Agreement &amp; Terms of Service', false)
+        ->assertSee('Direct Seller Agreement &amp; Terms and Conditions', false)
         // The withdrawal route stays open — a missing row is live consent.
         ->assertSee('Withdraw consent');
 });

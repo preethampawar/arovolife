@@ -48,9 +48,9 @@ it('renders the Code of Ethics page with the required statutory phrases', functi
     expect($body)
         ->toContain('income') // no income projections clause
         ->toContain('cooling-off')
-        ->toContain('grievance officer')
+        ->toContain('grievance')
         ->toContain('placement')
-        ->toContain('hyderabad'); // governing-law / arbitration seat
+        ->toContain('sangareddy'); // registered office — the client's 2026-09-23 text
 });
 
 it('renders the Direct Seller Agreement & Terms with the required statutory phrases', function (): void {
@@ -63,13 +63,15 @@ it('renders the Direct Seller Agreement & Terms with the required statutory phra
     expect($body)
         ->toContain('free of cost')         // hard rule #1
         ->toContain('cooling-off')           // hard rule #5
-        ->toContain('one pan')               // hard rule #6 ("one PAN = one ADN")
-        ->toContain('aadhaar')               // hard rule #8 (Aadhaar handling)
+        ->toContain('multiple ids')          // hard rule #6 (§1.4: one unique ID, never multiple)
         ->toContain('pan')
-        ->toContain('dpdp')                  // DPDP Act reference
-        ->toContain('dsr 2021')              // DSR 2021 reference
+        ->toContain('privacy notice')        // §15 data protection → the Privacy Policy
+        ->toContain('direct selling rules')  // DSR 2021 reference
         ->toContain('grievance')
-        ->toContain('hyderabad');            // jurisdictional seat
+        ->toContain('sanga reddy');          // §14 arbitration venue
+    // The client's 2026-09-23 agreement no longer states Aadhaar handling,
+    // DPDP or "one PAN = one ADN" in those words — those disclosures now live
+    // in the Privacy Policy, Part B. See docs/compliance/policy-docs-conflicts-2026-09-23.md.
 });
 
 it('renders the Grievance Redressal page with the required SLA, escalation and statutory references', function (): void {
@@ -79,12 +81,12 @@ it('renders the Grievance Redressal page with the required SLA, escalation and s
     $body = strtolower((string) $response->getContent());
 
     expect($body)
-        ->toContain('grievance officer')
-        ->toContain('48 hours')               // acknowledgement SLA
-        ->toContain('30 days')                // resolution SLA
-        ->toContain('escalation')
-        ->toContain('consumer protection')    // CCPA / Consumer Protection Act
-        ->toContain('data protection board'); // DPDP-act recourse
+        ->toContain('grievance redressal committee')
+        ->toContain('2 working days')         // acknowledgement SLA
+        ->toContain('within 14 days')         // root-cause analysis SLA
+        ->toContain('root cause analysis');  // RCA step
+    // The client's 2026-09-23 policy has no external escalation route
+    // (consumer commission, Data Protection Board) — conflicts doc item 10.
 });
 
 it('renders the Privacy Policy page with the DPDP-Act-mandated disclosures', function (): void {
@@ -117,7 +119,7 @@ it('returns 404 for a draft content page even when the slug exists', function ()
 
 it('is idempotent — re-seeding does not duplicate rows and refreshes the body content', function (): void {
     $before = ContentPage::query()->count();
-    expect($before)->toBe(6);
+    expect($before)->toBe(count(ContentPageSeeder::slugs()));
 
     $page = ContentPage::query()->where('slug', 'terms')->firstOrFail();
     $page->update(['body' => '<p>stale draft</p>']);
@@ -125,7 +127,7 @@ it('is idempotent — re-seeding does not duplicate rows and refreshes the body 
     $this->seed(ContentPageSeeder::class);
 
     $after = ContentPage::query()->count();
-    expect($after)->toBe(6);
+    expect($after)->toBe(count(ContentPageSeeder::slugs()));
 
     $page->refresh();
     expect($page->body)

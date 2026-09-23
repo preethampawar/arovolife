@@ -43,7 +43,13 @@
                 <a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy</a>
                 <a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance</a>
                 @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('returns'))
-                <a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Refunds &amp; returns</a>
+                <a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Returns &amp; warranty</a>
+                @endif
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('shipping'))
+                <a href="{{ route('content.show', 'shipping') }}" class="hover:text-white">Shipping</a>
+                @endif
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('disclaimer'))
+                <a href="{{ route('content.show', 'disclaimer') }}" class="hover:text-white">Disclaimer</a>
                 @endif
                 <a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a>
             </div>
