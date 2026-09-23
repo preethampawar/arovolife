@@ -15,6 +15,7 @@ use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\InventorySettings;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
 use App\Modules\Payments\Models\PaymentIntent;
+use App\Modules\Shared\Features\OfflineOrdersFeature;
 use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Tax\Models\Invoice;
@@ -26,6 +27,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Laravel\Pennant\Feature;
 
 final class AdminOrderController extends Controller
 {
@@ -53,7 +55,7 @@ final class AdminOrderController extends Controller
         // order, and must land on the list it counted rather than on today's
         // slice of it. Chip links from this page carry the dates, so choosing
         // a status here keeps the window.
-        $defaultedToToday = ! $request->hasAny(['placed_from', 'placed_to', 'status', 'q']);
+        $defaultedToToday = ! $request->hasAny(['placed_from', 'placed_to', 'status', 'q', 'payment_method']);
 
         if ($defaultedToToday) {
             $today = Carbon::today()->toDateString();
@@ -64,9 +66,17 @@ final class AdminOrderController extends Controller
         // `status` stays a chip, not a ListFilters field (A6): the existing
         // OrderStatusBadge::FILTERABLE chip row is kept and rebuilt to
         // preserve the toolbar's own filters.
+        $offlineOrdersOn = Feature::for(null)->active(OfflineOrdersFeature::class);
+
         $filters = ListFilters::make($request, [
             FilterField::text('q', 'Search', 'Order #', columns: ['orders.order_no']),
             FilterField::dateRange('placed', 'Placed', dateColumn: 'orders.placed_at'),
+            // Offline orders only exist while the feature is on; the filter
+            // follows the flag so an OFF platform shows no trace of it.
+            ...($offlineOrdersOn ? [FilterField::select('payment_method', 'Payment', [
+                Order::PAYMENT_ONLINE => 'Online',
+                Order::PAYMENT_OFFLINE => 'Offline',
+            ], column: 'orders.payment_method', placeholder: 'Any payment')] : []),
         ]);
 
         // One definition of "the rows this page is showing", re-derived per
@@ -114,6 +124,7 @@ final class AdminOrderController extends Controller
             'repurchaseWalletByOrder' => $repurchaseWalletByOrder,
             'summary' => $this->summary($scoped),
             'defaultedToToday' => $defaultedToToday,
+            'offlineOrdersOn' => $offlineOrdersOn,
         ]);
     }
 
@@ -159,7 +170,7 @@ final class AdminOrderController extends Controller
 
     public function show(Order $order): View
     {
-        $order->load(['customer', 'items.variant', 'coolingOff', 'distributor', 'areteCenter']);
+        $order->load(['customer', 'items.variant', 'coolingOff', 'distributor', 'areteCenter', 'offlinePayment.recordedBy', 'offlinePayment.confirmedBy', 'offlinePayment.rejectedBy']);
 
         // The tax invoice and the gateway intent are owned by other modules but
         // belong on this page: support could otherwise neither see a buyer's
@@ -179,6 +190,7 @@ final class AdminOrderController extends Controller
             'shipment' => Shipment::where('order_id', $order->id)->latest('id')->first(),
             'packWarehouses' => Warehouse::query()->fulfilling()->orderBy('name')->get(),
             'defaultWarehouseCode' => $this->inventorySettings->defaultWarehouseCode(),
+            'offlineOrdersOn' => Feature::for(null)->active(OfflineOrdersFeature::class),
         ]);
     }
 
@@ -310,6 +322,14 @@ final class AdminOrderController extends Controller
         $validated = $request->validate([
             'reason' => ['nullable', 'string', 'max:255'],
         ]);
+
+        // A pending offline order may hold money that is not on the books yet;
+        // only finance can decide it, from the payment card (confirm, then
+        // cancel — or reject when nothing was received).
+        if ($order->isAwaitingOfflineConfirmation()) {
+            return redirect()->route('admin.commerce.orders.show', $order)
+                ->withErrors(['cancel' => 'This offline order is awaiting payment confirmation. Finance confirms or rejects it from the payment card.']);
+        }
 
         try {
             $this->stateMachine->cancel($order, $validated['reason'] ?? 'Cancelled by admin', (int) auth()->id());

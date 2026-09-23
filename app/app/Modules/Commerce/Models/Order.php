@@ -89,6 +89,9 @@ final class Order extends Model
 
     public const PAYMENT_ONLINE = 'online';
 
+    /** Paid outside the gateway and recorded by staff; see OfflinePayment. */
+    public const PAYMENT_OFFLINE = 'offline';
+
     public const DELIVERY_SHIP = 'ship';
 
     public const DELIVERY_COLLECT = 'collect';
@@ -163,6 +166,23 @@ final class Order extends Model
     public function areteCenter(): BelongsTo
     {
         return $this->belongsTo(AreteCenter::class);
+    }
+
+    /** @return HasOne<OfflinePayment, $this> */
+    public function offlinePayment(): HasOne
+    {
+        return $this->hasOne(OfflinePayment::class);
+    }
+
+    public function isOffline(): bool
+    {
+        return $this->payment_method === self::PAYMENT_OFFLINE;
+    }
+
+    /** An offline order still waiting for finance to confirm the money. */
+    public function isAwaitingOfflineConfirmation(): bool
+    {
+        return $this->isOffline() && $this->status === self::STATUS_PLACED && $this->paid_at === null;
     }
 
     public function displayTotal(): string

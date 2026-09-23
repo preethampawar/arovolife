@@ -28,6 +28,7 @@ use App\Modules\Catalog\Http\Controllers\Admin\AdminProductController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminBvLedgerController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminCouponController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOfferController;
+use App\Modules\Commerce\Http\Controllers\Admin\AdminOfflineOrderController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminOrderController;
 use App\Modules\Commerce\Http\Controllers\Admin\AdminProfitReportController;
 use App\Modules\Commerce\Http\Controllers\Storefront\AddressController;
@@ -426,6 +427,21 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
         Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
     });
+
+    // Offline orders — money paid outside the gateway (flag commerce.offline_orders;
+    // the controller 404s while it is off). Creating one is operations'; confirming
+    // or rejecting the money is finance's, because confirmation creates BV (R-17).
+    Route::middleware('can:commerce.order.manage')->group(function (): void {
+        Route::get('/commerce/offline-orders/create', [AdminOfflineOrderController::class, 'create'])->name('commerce.offline-orders.create');
+        Route::get('/commerce/offline-orders/quote', [AdminOfflineOrderController::class, 'quote'])->name('commerce.offline-orders.quote');
+        Route::post('/commerce/offline-orders', [AdminOfflineOrderController::class, 'store'])->name('commerce.offline-orders.store');
+    });
+    Route::middleware('can:finance.record')->group(function (): void {
+        Route::post('/commerce/orders/{order}/offline/confirm', [AdminOfflineOrderController::class, 'confirm'])->name('commerce.offline-orders.confirm');
+        Route::post('/commerce/orders/{order}/offline/reject', [AdminOfflineOrderController::class, 'reject'])->name('commerce.offline-orders.reject');
+    });
+    // Proof view: finance or operations — checked in the controller (canAny).
+    Route::get('/commerce/orders/{order}/offline/proof', [AdminOfflineOrderController::class, 'proof'])->name('commerce.offline-orders.proof');
 
     // Inventory — stock on hand is read-only for anyone with `inventory.view`
     // (admin-operations and admin-finance, R-17); it moves nothing on its own.

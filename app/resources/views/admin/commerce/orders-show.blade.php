@@ -127,14 +127,19 @@
                 </form>
                 @endif
 
-                {{-- Cancel: only before shipment (placed / paid / packed). --}}
-                @if(in_array($order->status, ['placed', 'paid', 'ready_to_ship'], true))
+                {{-- Cancel: only before shipment (placed / paid / packed). A
+                     pending offline order is finance's to confirm or reject. --}}
+                @if(in_array($order->status, ['placed', 'paid', 'ready_to_ship'], true) && ! $order->isAwaitingOfflineConfirmation())
                 <form method="POST" action="{{ route('admin.commerce.orders.cancel', $order) }}"
                     data-confirm="Cancel this order?"
                     data-confirm-title="Cancel order"
                     data-confirm-impact="Impact: sets the order to CANCELLED and releases the reserved stock back to inventory. Allowed only before the order ships. Any refund of money already collected is handled separately (Phase 3). This cannot be undone.">@csrf
                     <button class="px-4 py-2 rounded-lg border border-red-300 text-red-700 hover:bg-red-50 text-sm font-medium">Cancel Order</button>
                 </form>
+                @endif
+
+                @if($order->isAwaitingOfflineConfirmation())
+                <p class="text-sm text-gray-600">Waiting for finance to confirm the offline payment. The order can be packed and shipped once it is paid.</p>
                 @endif
 
                 @if(! in_array($order->status, ['placed', 'paid', 'ready_to_ship', 'shipped'], true))
@@ -206,6 +211,9 @@
             </div>
         </x-ui.card>
 
+        @if($order->isOffline() && $order->offlinePayment)
+        @include('admin.commerce.offline-orders._payment-card', ['order' => $order, 'offlinePayment' => $order->offlinePayment, 'offlineOrdersOn' => $offlineOrdersOn])
+        @else
         <x-ui.card padding="p-5">
             <p class="text-xs uppercase tracking-wider text-gray-600 mb-2">Payment</p>
             <p class="text-sm font-medium text-gray-900">Online</p>
@@ -222,6 +230,7 @@
             <p class="text-xs text-gray-600 mt-2">No gateway payment recorded for this order.</p>
             @endif
         </x-ui.card>
+        @endif
 
         {{-- Invoice. Support needs to see the document the buyer was issued,
              and to re-issue it when generation failed at checkout (QA F101). --}}

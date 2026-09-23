@@ -15,6 +15,7 @@ final class LedgerAccountSeeder extends Seeder
             // Assets
             ['code' => 'asset.cash.gateway.razorpay', 'name' => 'Cash held at Razorpay',            'type' => 'asset'],
             ['code' => 'asset.cash.bank.settlement',  'name' => 'Settlement bank account',         'type' => 'asset'],
+            ['code' => 'asset.cash.office',           'name' => 'Cash at office (collected at reception)', 'type' => 'asset'],
             ['code' => 'asset.inventory',             'name' => 'Product inventory at cost',       'type' => 'asset'],
             ['code' => 'asset.gst_input_itc',         'name' => 'GST Input Tax Credit',            'type' => 'asset'],
 

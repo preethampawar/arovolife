@@ -8,6 +8,7 @@ use App\Console\Commands\DeployCommand;
 use App\Console\Commands\ResetAdnsCommand;
 use App\Modules\Admin\Console\Commands\CreateStaffUserCommand;
 use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
+use App\Modules\Commerce\Console\Commands\PurgeOfflinePaymentProofsCommand;
 use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Compensation\Console\Commands\AdcBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
@@ -181,6 +182,7 @@ class AppServiceProvider extends ServiceProvider
                 AdcBonusRunCommand::class,
                 AdcPurgeRejectedDocumentsCommand::class,
                 PurchaseOffersMonthlyRunCommand::class,
+                PurgeOfflinePaymentProofsCommand::class,
                 MonthlyPayoutCommand::class,
                 CompensationRecomputeAllCommand::class,
                 MonthlyCloseCommand::class,

@@ -132,7 +132,7 @@ final class MyOrdersController extends Controller
     {
         $order = Order::query()
             ->where('order_no', $orderNo)
-            ->with(['items.variant.product', 'coolingOff', 'bvLedgerEntries'])
+            ->with(['items.variant.product', 'coolingOff', 'bvLedgerEntries', 'offlinePayment'])
             ->first();
 
         if ($order === null) {
@@ -214,6 +214,13 @@ final class MyOrdersController extends Controller
         if (! in_array($order->status, [Order::STATUS_PLACED, Order::STATUS_PAID], true)) {
             return redirect()->route('orders.show', $order->order_no)
                 ->withErrors(['cancel' => 'This order can no longer be cancelled. Please contact support.']);
+        }
+
+        // The payment for an offline order is still being checked: cancelling
+        // now would leave money the company holds with nothing on the books.
+        if ($order->isAwaitingOfflineConfirmation()) {
+            return redirect()->route('orders.show', $order->order_no)
+                ->withErrors(['cancel' => 'Your payment for this order is still being confirmed by our team. Please contact support to cancel it.']);
         }
 
         app(OrderStateMachine::class)->cancel($order, 'Cancelled by customer', $request->user()->id);

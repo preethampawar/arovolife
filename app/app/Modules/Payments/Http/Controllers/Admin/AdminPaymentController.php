@@ -16,6 +16,7 @@ use App\Modules\Payments\Services\RazorpayRefundService;
 use App\Modules\Payments\Support\InvoiceGapWorklist;
 use App\Modules\Payments\Support\RefundPayable;
 use App\Modules\Payments\Support\RefundWorklist;
+use App\Modules\Shared\Features\OfflineOrdersFeature;
 use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Tax\Services\InvoiceGenerator;
@@ -26,6 +27,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Laravel\Pennant\Feature;
 use RuntimeException;
 use Throwable;
 
@@ -117,6 +119,12 @@ final class AdminPaymentController extends Controller
             'attention' => $this->worklist->attentionCount(),
             'invoiceGaps' => $this->invoiceGaps->orders(),
             'invoiceGapCount' => $this->invoiceGaps->count(),
+            // Offline payments are not gateway intents, so they never appear in
+            // the list below; finance is pointed at them from here instead.
+            'pendingOfflineCount' => Feature::for(null)->active(OfflineOrdersFeature::class)
+                ? Order::query()->where('payment_method', Order::PAYMENT_OFFLINE)
+                    ->where('status', Order::STATUS_PLACED)->whereNull('paid_at')->count()
+                : 0,
         ]);
     }
 

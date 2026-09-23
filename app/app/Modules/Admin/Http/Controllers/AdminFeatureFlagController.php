@@ -21,6 +21,7 @@ use App\Modules\Shared\Features\InventoryFeature;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\MessagingFeature;
+use App\Modules\Shared\Features\OfflineOrdersFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RegistrationKillswitch;
@@ -156,6 +157,14 @@ final class AdminFeatureFlagController extends Controller
                 'class' => DistributorRequestsFeature::class,
                 'label' => 'Distributor requests',
                 'description' => 'Lets a distributor file a formal request about their own record — name correction, name change, date-of-birth correction, membership transfer to an immediate blood relation, or ID cancellation — with supporting documents, and puts the review queue in the admin console. Name and DOB approvals update the record (audit-logged); transfer and cancellation approvals are acknowledgements that compliance then carries out with the existing account tools. OFF leaves no trace: no menu item, no routes, no queue.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
+
+            'commerce.offline_orders' => [
+                'class' => OfflineOrdersFeature::class,
+                'label' => 'Offline orders',
+                'description' => 'Lets operations create an order for a distributor who paid outside the gateway (cash at reception, bank deposit, UPI, NEFT, cheque), recording the payment details and an optional proof file. The order waits in Placed until finance confirms the money; confirmation then runs the same path as a paid shop order — BV, Genos BV up the upline, invoice, emails. OFF leaves no trace: no button, no routes, no filter. Offline orders already created still show their payment card.',
                 'owner' => 'developer',
                 'requires' => [],
             ],

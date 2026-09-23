@@ -102,6 +102,27 @@ final class AdminSettingsController extends Controller
                 'default' => '2920',
             ],
 
+            'commerce.offline_payment_proof_retention_days' => [
+                'group' => 'commerce',
+                'label' => 'Offline payment proof retention (days)',
+                'description' => 'How long the proof uploaded with a CONFIRMED offline payment (deposit slip, UPI screenshot, cash receipt) is kept, counted from confirmation. Proofs are stored encrypted and every admin view is logged. Once the period has passed the nightly sweep deletes the file; the payment record and the order are not affected. Default 2,920 days (eight years), the books-of-account period the proof supports.',
+                'impact' => 'Shortening this deletes older proofs on the next nightly run; they cannot be recovered.',
+                'type' => 'int',
+                'min' => 365,
+                'max' => 7300,
+                'default' => '2920',
+            ],
+            'commerce.offline_payment_rejected_proof_retention_days' => [
+                'group' => 'commerce',
+                'label' => 'Rejected offline payment proof retention (days)',
+                'description' => 'How long the proof of an offline payment that was REJECTED — or whose order was cancelled before it was confirmed — is kept, counted from the rejection or cancellation. Such a proof backs no sale, so it is kept only long enough to settle a query. Default 90 days.',
+                'impact' => 'Shortening this deletes those proofs on the next nightly run; they cannot be recovered.',
+                'type' => 'int',
+                'min' => 30,
+                'max' => 730,
+                'default' => '90',
+            ],
+
             // ── Security / rate-limiting ───────────────────────────────────
             'security.registration_throttle_requests' => [
                 'group' => 'security',

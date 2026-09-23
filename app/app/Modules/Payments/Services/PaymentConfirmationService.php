@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Payments\Services;
 
+use App\Modules\Commerce\Models\OfflinePayment;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Services\OfflineOrderService;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use App\Modules\Ledger\Services\LedgerPoster;
 use App\Modules\Payments\Data\ConfirmationResult;
 use App\Modules\Payments\Data\GatewayPayment;
@@ -17,17 +21,21 @@ use App\Modules\Payments\Jobs\SendRazorpayRefundJob;
 use App\Modules\Payments\Models\PaymentEvent;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Models\RefundIntent;
+use App\Modules\Shared\Features\OfflineOrdersFeature;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Laravel\Pennant\Feature;
 use RuntimeException;
 
 /**
  * The one place an order becomes paid.
  *
  * Every path in — the browser callback, the webhook, the reconciler, an
- * admin sync, the stub, a zero-cash order — ends in `settle()`, which is the
+ * admin sync, the stub, a zero-cash order, finance confirming an offline
+ * payment — ends in `settle()`, which is the
  * only caller of `OrderStateMachine::markPaid()` in the codebase (enforced
  * by `tests/Architecture/MarkPaidChokePointTest.php`). `markPaid()` accrues
  * BV and fires the compensation engines, so anything that reaches it without
@@ -268,6 +276,112 @@ final class PaymentConfirmationService
                 'repurchase_credit_paise' => $credit,
                 'discount_paise' => $discount,
                 'confirmed_via' => PaymentIntent::CONFIRMED_VIA_ZERO_CASH,
+                'confirming_event_id' => $event->id,
+            ]);
+
+            $order->setRawAttributes($locked->fresh()->getAttributes(), true);
+
+            return new ConfirmationResult(ConfirmationResult::CONFIRMED);
+        });
+    }
+
+    /**
+     * An order paid outside the gateway — cash at reception, a bank deposit,
+     * UPI, NEFT, a cheque. Staff recorded the payment when they created the
+     * order; finance confirms it here after checking it against the bank
+     * statement or the cash register. The consideration is the
+     * `offline_payments` row, re-read under lock, never the request.
+     *
+     * The prepayment the gateway path posts at placement is posted now that
+     * the money is verified — under the same `order.placed:{id}` key, so
+     * shipping, cancellation and refunds read it exactly as they read an
+     * online order's.
+     */
+    public function confirmOffline(Order $order, User $actor, ?string $note = null): ConfirmationResult
+    {
+        if (! Feature::for(null)->active(OfflineOrdersFeature::class)) {
+            throw new RuntimeException('Offline orders are not enabled.');
+        }
+        Gate::forUser($actor)->authorize('finance.record');
+
+        return $this->db->transaction(function () use ($order, $actor, $note): ConfirmationResult {
+            /** @var Order $locked */
+            $locked = Order::lockForUpdate()->findOrFail($order->id);
+            /** @var OfflinePayment|null $payment */
+            $payment = OfflinePayment::where('order_id', $locked->id)->lockForUpdate()->first();
+
+            if (! $locked->isOffline() || $payment === null) {
+                throw new RuntimeException("Order {$locked->order_no} is not an offline order.");
+            }
+            if ($locked->paid_at !== null || $payment->status === OfflinePayment::STATUS_CONFIRMED) {
+                return new ConfirmationResult(ConfirmationResult::ALREADY_CONFIRMED);
+            }
+            if ($payment->status !== OfflinePayment::STATUS_PENDING) {
+                throw new RuntimeException("The payment on {$locked->order_no} was rejected.");
+            }
+            if ($locked->status !== Order::STATUS_PLACED) {
+                throw new RuntimeException("Order {$locked->order_no} is {$locked->status}; only a placed order can be confirmed.");
+            }
+            $buyerUserId = $locked->attributed_distributor_id === null
+                ? null
+                : (int) Distributor::query()->whereKey($locked->attributed_distributor_id)->value('user_id');
+            if ($buyerUserId === $actor->id) {
+                throw new RuntimeException('You cannot record or confirm an offline order for your own distributor account.');
+            }
+            if ($locked->total_paise <= 0 || $payment->amount_paise !== $locked->total_paise) {
+                throw new RuntimeException(sprintf(
+                    'The recorded amount (%d paise) does not match the order payable (%d paise).',
+                    $payment->amount_paise, $locked->total_paise,
+                ));
+            }
+
+            // One deposit cannot fund two orders, re-checked under lock.
+            app(OfflineOrderService::class)->assertReferenceUnused($payment->channel, $payment->reference_no, $payment->id);
+
+            $this->ledger->transfer(
+                sourceModule: 'Payments',
+                sourceType: 'order.offline_payment',
+                sourceId: $locked->id,
+                idempotencyKey: "order.placed:{$locked->id}",
+                debitAccount: $payment->ledgerAccount(),
+                creditAccount: 'liability.customer_prepayment',
+                amountPaise: $payment->amount_paise,
+                memo: "Offline payment ({$payment->channelLabel()}) for {$locked->order_no}",
+                createdByUserId: $actor->id,
+            );
+
+            $event = PaymentEvent::create([
+                'order_id' => $locked->id,
+                'gateway' => 'offline',
+                'direction' => PaymentEvent::DIRECTION_SYSTEM,
+                'event_type' => 'offline.confirmed',
+                'signature_verified' => false,
+                'payload' => [
+                    'offline_payment_id' => $payment->id,
+                    'channel' => $payment->channel,
+                    'reference_no' => $payment->reference_no,
+                    'amount_paise' => $payment->amount_paise,
+                    'received_on' => $payment->received_on->toDateString(),
+                ],
+            ]);
+
+            $payment->update([
+                'status' => OfflinePayment::STATUS_CONFIRMED,
+                'confirmed_by_user_id' => $actor->id,
+                'confirmed_at' => Carbon::now(),
+                'confirmation_note' => $note,
+            ]);
+
+            $this->settle($locked, $actor->id, [
+                'settlement' => 'offline',
+                'confirmed_via' => PaymentIntent::CONFIRMED_VIA_OFFLINE,
+                'offline_payment_id' => $payment->id,
+                'channel' => $payment->channel,
+                'reference_no' => $payment->reference_no,
+                'received_on' => $payment->received_on->toDateString(),
+                'recorded_by_user_id' => $payment->recorded_by_user_id,
+                // D1-B permits one person to record and confirm; R-107 reviews it.
+                'same_actor' => $payment->recorded_by_user_id === $actor->id,
                 'confirming_event_id' => $event->id,
             ]);
 

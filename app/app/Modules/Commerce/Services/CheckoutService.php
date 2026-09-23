@@ -52,13 +52,13 @@ final class CheckoutService
      * @param  array<string, mixed>  $shipping
      * @param  array<string, mixed>  $billing
      */
-    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null, ?int $areteCenterId = null, int $redeemPoints = 0, ?string $buyerGstin = null, ?string $buyerLegalName = null): Order
+    public function place(Cart $cart, array $buyer, array $shipping, array $billing, ?int $attributedDistributorId, string $attributionSource, string $paymentMethod = Order::PAYMENT_ONLINE, ?int $consentId = null, ?int $authUserId = null, ?int $buyerDistributorId = null, bool $saveShippingAddress = true, ?string $shippingLabel = null, ?int $areteCenterId = null, int $redeemPoints = 0, ?string $buyerGstin = null, ?string $buyerLegalName = null, bool $applyRepurchaseCredit = true, ?int $actorUserId = null): Order
     {
         if ($cart->items->isEmpty()) {
             throw new RuntimeException('Cart is empty.');
         }
 
-        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel, $areteCenterId, $redeemPoints, $buyerGstin, $buyerLegalName) {
+        $order = $this->db->transaction(function () use ($cart, $buyer, $shipping, $billing, $attributedDistributorId, $attributionSource, $paymentMethod, $consentId, $authUserId, $buyerDistributorId, $saveShippingAddress, $shippingLabel, $areteCenterId, $redeemPoints, $buyerGstin, $buyerLegalName, $applyRepurchaseCredit, $actorUserId) {
             // 1. Resolve the customer — IDENTITY FIRST for a logged-in buyer.
             //
             // A logged-in buyer is always resolved to THEIR OWN customer row,
@@ -137,7 +137,7 @@ final class CheckoutService
                     // Trace the PII-linkage change (a customer row now points at
                     // a distributor account).
                     AuditLog::create([
-                        'actor_id' => $authUserId,
+                        'actor_id' => $actorUserId ?? $authUserId,
                         'action' => 'customer.distributor_backfilled',
                         'subject_type' => 'customer',
                         'subject_id' => $customer->id,
@@ -224,8 +224,11 @@ final class CheckoutService
             // so the read has to be serialised against a concurrent checkout by
             // the same distributor (two tabs, a double-submit). Without the lock
             // both orders see the full balance and both consume it.
+            // An offline order (staff-created, paid at the office or bank)
+            // passes $applyRepurchaseCredit = false: the deposit covers the
+            // whole order, so the amount to collect is known when it is made.
             $repurchaseCreditPaise = 0;
-            if ($buyerDistributorId !== null) {
+            if ($buyerDistributorId !== null && $applyRepurchaseCredit) {
                 $repurchaseCreditPaise = min(
                     $this->walletService->repurchaseWalletBalancePaise($buyerDistributorId, lockForUpdate: true),
                     $totalPaise,
@@ -391,7 +394,9 @@ final class CheckoutService
             // audit_log, so an auditor reading that trail alone saw credit and
             // points come back with no record of them ever going out.
             AuditLog::create([
-                'actor_id' => $authUserId,
+                // Staff placing an order for a buyer (offline orders) are the
+                // actor; the buyer is still the customer on the order.
+                'actor_id' => $actorUserId ?? $authUserId,
                 'action' => 'order.placed',
                 'subject_type' => 'order',
                 'subject_id' => $order->id,

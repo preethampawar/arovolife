@@ -89,6 +89,22 @@
     </div>
     @endif
 
+    {{-- Paid at our office or bank rather than online: say so, and say what
+         happens while the payment is being checked. --}}
+    @if($order->isOffline() && $order->offlinePayment)
+    <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+        <h2 class="font-semibold text-gray-900 mb-2">Payment</h2>
+        <p class="text-sm text-gray-700">
+            Paid offline — {{ $order->offlinePayment->channelLabel() }},
+            {{ \App\Modules\Shared\Support\IndianNumber::rupees($order->offlinePayment->amount_paise) }}
+            on {{ $order->offlinePayment->received_on->format('d M Y') }}.
+        </p>
+        @if($order->isAwaitingOfflineConfirmation())
+        <p class="text-xs text-gray-600 mt-2">We are confirming your payment. Your order is processed as soon as it is confirmed. To cancel it before then, please contact support.</p>
+        @endif
+    </div>
+    @endif
+
     {{-- Order timeline (derived from the order's own timestamps) --}}
     <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
         <h2 class="font-semibold text-gray-900 mb-3">Order progress</h2>
@@ -138,7 +154,7 @@
     </div>
 
     {{-- Cancel (only before the order ships) --}}
-    @if(in_array($order->status, ['placed', 'paid'], true))
+    @if(in_array($order->status, ['placed', 'paid'], true) && ! $order->isAwaitingOfflineConfirmation())
     <div class="mt-6 text-right">
         <form method="POST" action="{{ route('orders.cancel', $order->order_no) }}" class="inline"
             data-confirm="Cancel this order?"

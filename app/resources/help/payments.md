@@ -166,6 +166,24 @@ message names which state, and what you can do about it differs:
 The last case should not arise for orders placed after 2026-09-18, when every
 state field became a fixed list rather than something typed.
 
+## Offline payments
+
+Money taken outside the gateway for an [offline order](order-management#offline-orders)
+never appears in the payments list above — there is no gateway intent. It is
+recorded on the order and confirmed by finance from the order page. Confirmation
+posts the prepayment the gateway would have posted:
+
+| Channel | Debit | Credit |
+|---|---|---|
+| Cash at reception | `asset.cash.office` (Cash at office) | `liability.customer_prepayment` |
+| Bank deposit, UPI, NEFT/IMPS/RTGS, cheque, other | `asset.cash.bank.settlement` | `liability.customer_prepayment` |
+
+Everything after that is the ordinary order path. A refund on a confirmed
+offline order has no gateway payment to go back through, so it lands in the
+unsettled-refunds worklist for a manual settlement — recorded against the
+settlement bank account, because refunds are paid by bank transfer even when
+the sale was paid in cash.
+
 ## GST reports
 
 The tax on these invoices is summarised on three screens under

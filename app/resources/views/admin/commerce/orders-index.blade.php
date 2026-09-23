@@ -17,6 +17,14 @@
 </p>
 @endif
 
+@if($offlineOrdersOn)
+@can('commerce.order.manage')
+<div class="flex justify-end mb-4">
+    <x-ui.button icon="plus" :href="route('admin.commerce.offline-orders.create')">New offline order</x-ui.button>
+</div>
+@endcan
+@endif
+
 <div class="flex items-center gap-3 mb-6 flex-wrap">
     <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}"
        class="px-3 py-1 rounded-full text-xs font-medium border {{ !request()->query('status') ? 'bg-brand-700 text-white border-brand-500' : 'bg-white text-gray-700 border-gray-200 hover:border-brand-500' }}">
@@ -78,6 +86,9 @@
                     <td class="px-4 py-3 text-gray-600 tabular-nums">{{ ($orders->firstItem() ?? 1) + $loop->index }}</td>
                     <td class="px-4 py-3 font-mono text-brand-700 font-medium">
                         <a href="{{ route('admin.commerce.orders.show', $o) }}" class="hover:text-brand-800 hover:underline">{{ $o->order_no }}</a>
+                        @if($o->payment_method === \App\Modules\Commerce\Models\Order::PAYMENT_OFFLINE)
+                        <x-ui.badge tone="warning" class="ml-1 align-middle">Offline</x-ui.badge>
+                        @endif
                     </td>
                     <td class="px-4 py-3 text-gray-700">
                         @if($o->customer?->distributor_id)

@@ -66,6 +66,9 @@ final class PaymentIntent extends Model
 
     public const CONFIRMED_VIA_ZERO_CASH = 'zero_cash';
 
+    /** Evidence only: offline orders have no PaymentIntent, but settle()'s evidence names how the sale was confirmed. */
+    public const CONFIRMED_VIA_OFFLINE = 'offline';
+
     public const CONFIRMED_VIA_STUB = 'stub';
 
     protected $fillable = [

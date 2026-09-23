@@ -16,7 +16,7 @@ does to stock and money.
 
 | Status | What it means |
 |---|---|
-| `placed` | Buyer has checked out. Payment not yet confirmed. Stock is reserved (a counter), not yet deducted. |
+| `placed` | Buyer has checked out. Payment not yet confirmed. Stock is reserved (a counter), not yet deducted. For an **offline** order this means finance has not yet confirmed the money — see [Offline orders](#offline-orders). |
 | `paid` | Razorpay has confirmed the payment — see [Payments & Refunds](payments). GST invoice issued. |
 | `ready to ship` (shown as **Packed**) | The order has been packed: stock has actually left the warehouse for these items. |
 | `shipped` | Carrier and tracking number recorded. |
@@ -111,6 +111,46 @@ Restocking is a consequence of the inspection outcome; it is never a
 condition of the refund itself. See [Payments & Refunds](payments) for how
 the refund and the return-receipt gate interact, and for what happens if the
 returned goods never come back.
+
+## Offline orders
+
+**Admin → Commerce → Orders → New offline order.** For a distributor who paid
+outside the website — cash at the reception counter, a bank deposit, UPI,
+NEFT/IMPS/RTGS, a cheque, or another channel. Only shown while the *Offline
+orders* feature flag is on. A purchase is never required to join or to stay a
+distributor; never suggest one.
+
+| Step | Who | What happens |
+|---|---|---|
+| Create | Operations (`commerce.order.manage`) or an admin | Enter the ADN, the quantities and the delivery, press **Calculate total**, then record the payment: channel, amount, date received, reference number (UTR, UPI transaction ID, cheque or receipt no. — required for every channel except cash), optional payer name, notes and a proof file (JPG/PNG/PDF, up to 5 MB). The order is created in **Placed** with an **Offline** label. Stock is reserved. Nothing is counted: no BV, no invoice, nothing in the books. |
+| Confirm | Finance (`finance.record`) or an admin | On the order page, the Offline payment card → tick "I have checked this money has been received" → **Confirm payment**. The order becomes **Paid** through exactly the same path as a paid shop order: BV is recorded for the buyer, Genos BV goes up the upline, the compensation engines see the sale, the GST invoice is issued and the buyer is emailed. From here it is an ordinary order — pack, ship, deliver, cooling-off, cancel and refund all work as usual. |
+| Reject | Finance or an admin | Only when **no money was received** (the deposit never arrived, or the entry was a mistake). Tick the "No money was received" box and give a reason. The payment is marked Rejected and the order is cancelled; the stock is released. Nothing was counted, so nothing is reversed. |
+
+Rules the platform enforces:
+
+- **The amount must match the order total exactly.** Use **Calculate total**; the amount field is pre-filled with it.
+- **Cash under ₹2 lakh per person per day** (Income Tax Act s.269ST — the penalty is the whole amount). Take a bank transfer or UPI instead.
+- **One reference, one order.** A reference number already recorded on a live offline payment is refused.
+- **Not for your own account.** Staff cannot create or confirm an offline order for their own distributor account.
+- **Blocked, terminated and rejected accounts** cannot be ordered for.
+- **No coupons, redeem points or repurchase-wallet credit** on an offline order — the deposit covers the full order.
+- **Payments older than 90 days** cannot be recorded here.
+
+**Money received but the order must be undone?** Do not reject it. Confirm the
+payment first, then cancel the order: the refund is then owed on the books and
+appears in Payments → Refunds for a manual settlement. A pending offline order
+cannot be cancelled from the order page, and the buyer cannot cancel it
+themselves — both are sent to finance.
+
+**Where finance finds them:** Payments shows a banner with the number of offline
+payments awaiting confirmation; the orders list has a **Payment → Offline**
+filter.
+
+**Proof files** are stored encrypted, open only for finance and operations, and
+every view is logged. They are deleted automatically — eight years after
+confirmation, or 90 days after a rejection or cancellation (Settings →
+Commerce). One person recording and confirming the same order is allowed but
+flagged in the audit log for the monthly compliance review (R-107).
 
 ## Where to look when something looks wrong
 

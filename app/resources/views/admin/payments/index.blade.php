@@ -17,6 +17,15 @@
 <a href="{{ route('admin.payments.refunds') }}" class="inline-block mb-5 text-sm text-brand-700 hover:underline">Unsettled refunds worklist {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
 @endif
 
+@if($pendingOfflineCount > 0)
+@can('finance.record')
+<a href="{{ route('admin.commerce.orders.index', ['status' => 'placed', 'payment_method' => 'offline', 'placed_from' => '', 'placed_to' => '']) }}"
+   class="block mb-5 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 hover:bg-amber-100">
+    <strong>{{ $pendingOfflineCount }}</strong> offline payment{{ $pendingOfflineCount === 1 ? '' : 's' }} awaiting your confirmation — money taken at the office or the bank, recorded by staff, not yet on the books. Open them {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
+</a>
+@endcan
+@endif
+
 @if($invoiceGapCount > 0)
 <div class="mb-6 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-900">
     <p class="font-semibold mb-2"><strong>{{ $invoiceGapCount }}</strong> paid order{{ $invoiceGapCount === 1 ? '' : 's' }} without a GST invoice</p>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Commerce\Console\Commands\PurgeOfflinePaymentProofsCommand;
 use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
 use App\Modules\Compensation\Console\Commands\AutoRetryFailedPayoutsCommand;
 use App\Modules\Compensation\Console\Commands\CompensationRecomputeAllCommand;
@@ -189,6 +190,13 @@ Schedule::command(AdcPurgeRejectedDocumentsCommand::class)
 // (DPDP §8(7), R-31; client decision 2026-09-11). Daily, quiet hour.
 Schedule::command(PurgeExpiredDocumentsCommand::class)
     ->dailyAt('03:25')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping();
+
+// Offline-payment proof files (deposit slips, UPI screenshots) are kept for
+// their admin-owned retention periods, then erased (DPDP §8(7), R-107).
+Schedule::command(PurgeOfflinePaymentProofsCommand::class)
+    ->dailyAt('03:35')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping();
 
