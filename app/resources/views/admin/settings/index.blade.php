@@ -29,6 +29,21 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
     <p>These values affect the whole arovolife platform and all users. Every change is audit-logged. Monetary values marked <strong>edit in paise</strong> store 100 paise per ₹1 — the current ₹ equivalent is shown below each field.</p>
 </div>
 
+@if(auth()->user()?->hasRole('developer'))
+<div class="max-w-3xl mb-6">
+    <a href="{{ route('admin.logs.index') }}" class="flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-5 py-4 hover:bg-gray-50 transition-colors">
+        <span class="flex items-center gap-3">
+            <x-lucide-file-text class="w-5 h-5 text-gray-500" />
+            <span>
+                <span class="block text-base font-semibold text-gray-900">Logs</span>
+                <span class="block text-xs text-gray-500 mt-0.5">Download the application log, the Razorpay payments log and any worker logs.</span>
+            </span>
+        </span>
+        <x-lucide-chevron-right class="w-4 h-4 text-gray-400" />
+    </a>
+</div>
+@endif
+
 <div class="max-w-3xl space-y-4">
 
     @foreach($grouped as $groupKey => $group)

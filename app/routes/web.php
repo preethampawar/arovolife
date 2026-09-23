@@ -16,6 +16,7 @@ use App\Modules\Admin\Http\Controllers\AdminImpersonationController;
 use App\Modules\Admin\Http\Controllers\AdminKycController;
 use App\Modules\Admin\Http\Controllers\AdminLifetimeAwardsController;
 use App\Modules\Admin\Http\Controllers\AdminLineChangeController;
+use App\Modules\Admin\Http\Controllers\AdminLogController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminStaffUserController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
@@ -537,6 +538,15 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // Payments — gateway intents, the event timeline and the unsettled-refunds
     // worklist. Reading is monitoring (`audit.read`, every scoped role); the
     // actions that move or create money are `finance.record` (R-17).
+    // Developer settings → Logs (every *.log under storage/logs).
+    // `role:developer` is a role gate the Gate::before bypass cannot open;
+    // the controller 404s anyone else as well (F84).
+    Route::middleware('role:developer')->prefix('logs')->name('logs.')->group(function (): void {
+        Route::get('/', [AdminLogController::class, 'index'])->name('index');
+        Route::get('/{file}', [AdminLogController::class, 'download'])
+            ->where('file', '[A-Za-z0-9_-]+\\.log')->name('download');
+    });
+
     Route::prefix('payments')->name('payments.')->middleware('can:audit.read')->group(function (): void {
         Route::get('/', [AdminPaymentController::class, 'index'])->name('index');
         Route::get('/refunds', [AdminPaymentController::class, 'refunds'])->name('refunds');
