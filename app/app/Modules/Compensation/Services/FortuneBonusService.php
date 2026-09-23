@@ -10,9 +10,12 @@ use App\Modules\Compensation\Models\FortuneMonthlyPool;
 use App\Modules\Compensation\Models\FortuneMonthlyPoolLevel;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\DTOs\FortuneDashboardCard;
+use App\Modules\Compensation\Services\DTOs\FortuneQualification;
 use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Support\IndianNumber;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -197,31 +200,27 @@ final class FortuneBonusService
                 continue;
             }
 
-            $currentRank = $rankMap[$distributorId] ?? 0;
-            $tier = $this->determineTier($currentRank, isset($newJoinerIds[$distributorId]));
-
             // A month-1 joiner qualifies on the GSB 1st income specifically —
             // the 15K/15K slab-1 match — not on any slab (KP 2026-08-07).
-            $slabCount = $tier === self::TIER_NEW_JOINER
-                ? ($slab1Counts[$distributorId] ?? 0)
-                : ($slabCounts[$distributorId] ?? 0);
-
-            $personalBv = $personalBvMap[$distributorId] ?? 0;
-            $tierGates = $this->plan->fortuneTier($tier);
-            $bvRequired = $tierGates['bv_required_paise'];
-            $slabsRequired = $tierGates['slabs_required'];
-
-            if ($personalBv < $bvRequired || $slabCount < $slabsRequired) {
-                continue;
-            }
-
+            //
             // From month 2 a non-ranked distributor must additionally hold one
             // of the 7 personal-purchase titles (KP 2026-08-07). The ranked
             // tiers already imply a title through their rank requirements, and
             // a new joiner's own 3,000 BV month-1 gate is the same threshold.
-            if ($tier === self::TIER_NON_RANKED && ! $this->holdsATitle($lifetimeBvMap[$distributorId] ?? 0)) {
+            $verdict = $this->evaluateGates(
+                rank: $rankMap[$distributorId] ?? 0,
+                isNewJoiner: isset($newJoinerIds[$distributorId]),
+                slabCountAll: $slabCounts[$distributorId] ?? 0,
+                slab1Count: $slab1Counts[$distributorId] ?? 0,
+                personalBvPaise: $personalBvMap[$distributorId] ?? 0,
+                lifetimeBvPaise: $lifetimeBvMap[$distributorId] ?? 0,
+            );
+
+            if (! $verdict['passes']) {
                 continue;
             }
+
+            $tier = $verdict['tier'];
 
             // The repurchase condition is not an enrolment gate. Under the
             // forfeit model (client 2026-09-07) a failed repurchase day simply
@@ -467,6 +466,31 @@ final class FortuneBonusService
     }
 
     /**
+     * The one statement of the Fortune Bonus entry gates, shared by the
+     * month-end enrolment and the dashboard's live read.
+     *
+     * @return array{tier: string, slab_count: int, slabs_required: int, bv_required: int, holds_title: ?bool, passes: bool}
+     */
+    private function evaluateGates(int $rank, bool $isNewJoiner, int $slabCountAll, int $slab1Count, int $personalBvPaise, int $lifetimeBvPaise): array
+    {
+        $tier = $this->determineTier($rank, $isNewJoiner);
+        $slabCount = $tier === self::TIER_NEW_JOINER ? $slab1Count : $slabCountAll;
+        $gates = $this->plan->fortuneTier($tier);
+        $holdsTitle = $tier === self::TIER_NON_RANKED ? $this->holdsATitle($lifetimeBvPaise) : null;
+
+        return [
+            'tier' => $tier,
+            'slab_count' => $slabCount,
+            'slabs_required' => $gates['slabs_required'],
+            'bv_required' => $gates['bv_required_paise'],
+            'holds_title' => $holdsTitle,
+            'passes' => $personalBvPaise >= $gates['bv_required_paise']
+                && $slabCount >= $gates['slabs_required']
+                && $holdsTitle !== false,
+        ];
+    }
+
+    /**
      * Σ of what the frozen cascade allocated to the participants the month-end
      * repurchase wallet gate forfeited.
      *
@@ -515,6 +539,69 @@ final class FortuneBonusService
         }
 
         return $forfeited;
+    }
+
+    /**
+     * The distributor's own Fortune Bonus standing for the dashboard: this
+     * month's live gate verdict (through the same builders and gates the
+     * engine uses) and last month's written outcome. Read-only, no money
+     * projected — a matrix position is only assigned when the month closes.
+     */
+    public function dashboardCardFor(int $distributorId, ?Carbon $today = null): FortuneDashboardCard
+    {
+        $today ??= Carbon::now('Asia/Kolkata');
+
+        $monthStart = $today->copy()->startOfMonth()->toDateString();
+        $monthEnd = $today->copy()->endOfMonth()->toDateString();
+        $prevStart = $today->copy()->startOfMonth()->subMonthNoOverflow()->toDateString();
+
+        $firstGsbDates = $this->buildFirstGsbDates($monthStart, $monthEnd, $distributorId);
+        $rankIneligible = in_array($distributorId, $this->buildIneligibleRankIds($monthStart, $distributorId), true);
+        $hasGsbIncome = isset($firstGsbDates[$distributorId]);
+        $personalBvPaise = $this->buildPersonalBvMap($monthStart, $monthEnd, $distributorId)[$distributorId] ?? 0;
+
+        $verdict = $this->evaluateGates(
+            rank: $this->buildRankMap($monthStart, $distributorId)[$distributorId] ?? 0,
+            isNewJoiner: isset($this->buildNewJoinerIds($monthStart, $monthEnd, $distributorId)[$distributorId]),
+            slabCountAll: $this->buildSlabCounts($monthStart, $monthEnd, null, $distributorId)[$distributorId] ?? 0,
+            slab1Count: $this->buildSlabCounts($monthStart, $monthEnd, 1, $distributorId)[$distributorId] ?? 0,
+            personalBvPaise: $personalBvPaise,
+            lifetimeBvPaise: $this->buildLifetimeBvMap($distributorId)[$distributorId] ?? 0,
+        );
+
+        $thisMonth = new FortuneQualification(
+            tier: $verdict['tier'],
+            rankIneligible: $rankIneligible,
+            hasGsbIncome: $hasGsbIncome,
+            personalBvPaise: $personalBvPaise,
+            bvRequiredPaise: $verdict['bv_required'],
+            slabCount: $verdict['slab_count'],
+            slabsRequired: $verdict['slabs_required'],
+            holdsTitle: $verdict['holds_title'],
+            qualified: ! $rankIneligible && $hasGsbIncome && $verdict['passes'],
+        );
+
+        $lastMonth = FortuneBonusResult::where('distributor_id', $distributorId)
+            ->where('month_start', $prevStart)
+            ->whereIn('status', [
+                FortuneBonusResult::STATUS_CREDITED,
+                FortuneBonusResult::STATUS_SKIPPED,
+                FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
+            ])
+            ->first();
+
+        $lastMonthEntry = $lastMonth === null
+            ? FortuneBonusParticipant::where('distributor_id', $distributorId)
+                ->where('month_start', $prevStart)
+                ->first()
+            : null;
+
+        return new FortuneDashboardCard(
+            month: CarbonImmutable::parse($monthStart),
+            thisMonth: $thisMonth,
+            lastMonth: $lastMonth,
+            lastMonthEntry: $lastMonthEntry,
+        );
     }
 
     /**
@@ -842,11 +929,12 @@ final class FortuneBonusService
      *
      * @return array<int, string>
      */
-    private function buildFirstGsbDates(string $monthStart, string $monthEnd): array
+    private function buildFirstGsbDates(string $monthStart, string $monthEnd, ?int $distributorId = null): array
     {
         $rows = DB::table('gsb_cutoff_results')
             ->where('status', GsbCutoffResult::STATUS_CREDITED)
             ->whereBetween('cutoff_date', [$monthStart, $monthEnd])
+            ->when($distributorId !== null, fn ($query) => $query->where('distributor_id', $distributorId))
             ->select('distributor_id', DB::raw('MIN(cutoff_date) as first_date'))
             ->groupBy('distributor_id')
             ->get();
@@ -869,13 +957,14 @@ final class FortuneBonusService
      *                          only the GSB 1st income, i.e. slab 1).
      * @return array<int, int>
      */
-    private function buildSlabCounts(string $monthStart, string $monthEnd, ?int $slab = null): array
+    private function buildSlabCounts(string $monthStart, string $monthEnd, ?int $slab = null, ?int $distributorId = null): array
     {
         $rows = DB::table('gsb_cutoff_results')
             ->where('status', GsbCutoffResult::STATUS_CREDITED)
             ->whereBetween('cutoff_date', [$monthStart, $monthEnd])
             ->whereNotNull('slab')
             ->when($slab !== null, fn ($query) => $query->where('slab', $slab))
+            ->when($distributorId !== null, fn ($query) => $query->where('distributor_id', $distributorId))
             ->select('distributor_id', DB::raw('COUNT(*) as slab_count'))
             ->groupBy('distributor_id')
             ->get();
@@ -894,11 +983,12 @@ final class FortuneBonusService
      *
      * @return array<int, int>
      */
-    private function buildPersonalBvMap(string $monthStart, string $monthEnd): array
+    private function buildPersonalBvMap(string $monthStart, string $monthEnd, ?int $distributorId = null): array
     {
         $rows = DB::table('bv_ledger_entries')
             ->where('type', 'accrual')
             ->whereBetween('effective_at', [$monthStart, $monthEnd.' 23:59:59'])
+            ->when($distributorId !== null, fn ($query) => $query->where('distributor_id', $distributorId))
             ->select('distributor_id', DB::raw('SUM(bv_paise) as total_bv'))
             ->groupBy('distributor_id')
             ->get();
@@ -925,9 +1015,10 @@ final class FortuneBonusService
      *
      * @return array<int, int>
      */
-    private function buildLifetimeBvMap(): array
+    private function buildLifetimeBvMap(?int $distributorId = null): array
     {
         $rows = DB::table('bv_ledger_entries')
+            ->when($distributorId !== null, fn ($query) => $query->where('distributor_id', $distributorId))
             ->select('distributor_id', DB::raw('SUM(bv_paise) as total_bv'))
             ->groupBy('distributor_id')
             ->get();
@@ -947,10 +1038,11 @@ final class FortuneBonusService
      *
      * @return array<int, bool>
      */
-    private function buildNewJoinerIds(string $monthStart, string $monthEnd): array
+    private function buildNewJoinerIds(string $monthStart, string $monthEnd, ?int $distributorId = null): array
     {
         return DB::table('distributors')
             ->whereBetween('effective_date', [$monthStart.' 00:00:00', $monthEnd.' 23:59:59'])
+            ->when($distributorId !== null, fn ($query) => $query->where('id', $distributorId))
             ->pluck('id')
             ->mapWithKeys(fn ($id): array => [(int) $id => true])
             ->all();
@@ -972,10 +1064,11 @@ final class FortuneBonusService
      *
      * @return array<int, int>
      */
-    private function buildIneligibleRankIds(string $monthStart): array
+    private function buildIneligibleRankIds(string $monthStart, ?int $distributorId = null): array
     {
         return RankQualification::query()->rankedInMonth($monthStart)
             ->whereIn('rank_number', $this->plan->fortuneIneligibleRanks())
+            ->when($distributorId !== null, fn ($query) => $query->where('distributor_id', $distributorId))
             ->distinct()
             ->pluck('distributor_id')
             ->map(fn ($id) => (int) $id)
@@ -987,9 +1080,10 @@ final class FortuneBonusService
      *
      * @return array<int, int>
      */
-    private function buildRankMap(string $monthStart): array
+    private function buildRankMap(string $monthStart, ?int $distributorId = null): array
     {
         $rows = RankQualification::query()->rankedInMonth($monthStart)
+            ->when($distributorId !== null, fn ($query) => $query->where('distributor_id', $distributorId))
             ->select('distributor_id', DB::raw('MAX(rank_number) as max_rank'))
             ->groupBy('distributor_id')
             ->get();

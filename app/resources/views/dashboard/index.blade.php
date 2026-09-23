@@ -70,6 +70,10 @@
         @include('dashboard._income-snapshot')
     @endif
 
+    @if($fortuneCard)
+        @include('dashboard._fortune-bonus')
+    @endif
+
     @include('dashboard._my-team')
 @else
     {{-- Registration incomplete --}}

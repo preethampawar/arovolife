@@ -7,6 +7,7 @@ namespace App\Modules\Identity\Http\Controllers;
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
+use App\Modules\Compensation\Services\FortuneBonusService;
 use App\Modules\Compensation\Services\GsbSlabProgressService;
 use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
@@ -20,6 +21,7 @@ use App\Modules\Identity\Services\TeamStatsService;
 use App\Modules\Messaging\Models\Message;
 use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
 use App\Modules\Shared\Features\DistributorRequestsFeature;
+use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
@@ -91,6 +93,7 @@ final class DashboardController extends Controller
         $slabProgress = null;
         $rankStatus = null;
         $repurchaseCard = null;
+        $fortuneCard = null;
         $bonusSummary = [];
         $keyDates = IncomeOverviewService::keyDates();
         $teamGrowth = [];
@@ -167,6 +170,12 @@ final class DashboardController extends Controller
                     ? app(RepurchaseCycleService::class)->cardFor($distributorId)
                     : null;
 
+                // Fortune Bonus card — own data only, zero trace while the
+                // engine flag is off.
+                $fortuneCard = Feature::for(null)->active(FortuneBonusFeature::class)
+                    ? app(FortuneBonusService::class)->dashboardCardFor($distributorId)
+                    : null;
+
                 $bonusSummary = $incomeOverview->bonusSummary($distributorId);
                 $teamGrowth = $teamStatsService->joinedPerDay($distributor, 30);
                 $creditsByMonth = app(WalletService::class)->creditTotalsByMonth($distributorId, 6);
@@ -181,6 +190,7 @@ final class DashboardController extends Controller
                 $slabProgress = null;
                 $rankStatus = null;
                 $repurchaseCard = null;
+                $fortuneCard = null;
                 $bonusSummary = [];
                 $teamGrowth = [];
                 $creditsByMonth = [];
@@ -229,6 +239,7 @@ final class DashboardController extends Controller
             'rankStatus' => $rankStatus,
             'repurchaseCard' => $repurchaseCard,
             'bonusSummary' => $bonusSummary,
+            'fortuneCard' => $fortuneCard,
             'keyDates' => $keyDates,
             'teamGrowth' => $teamGrowth,
             'creditsByMonth' => $creditsByMonth,
