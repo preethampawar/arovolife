@@ -303,7 +303,7 @@ final class DistributorIdCardStats
      * viewer's own node always, widened to the R-65 downline audience only
      * while that subset's own switch is ON. The audience costs one closure
      * query and one sponsor query, resolved once and shared by both — and not
-     * run at all while both switches are OFF.
+     * run at all while both switches are OFF. Staff always get every id in `mark` on the admin Genos (admin.tree.*).
      *
      * @param  int[]  $ids
      * @return array{stats: int[], mark: int[]}
@@ -320,15 +320,24 @@ final class DistributorIdCardStats
 
         $statsOn = $this->downlineStatsVisible();
         $markOn = $this->purchaseMarkVisible();
+        // Staff see the purchase mark on every card they can open (the admin
+        // Genos). The switch exists for the R-65 downline audience — a
+        // distributor looking at other distributors — and staff already see
+        // personal BV on the admin distributor page. Stats rows stay switched.
+        // Scoped to the admin Genos only: the same service feeds the Details
+        // popup, the dashboard and the membership card, where a staff member
+        // who also holds a distributor record is just another viewer.
+        $staff = $viewer->isStaff() && request()->routeIs('admin.tree.*');
+
         if (! $statsOn && ! $markOn) {
-            return ['stats' => $ownOnly, 'mark' => $ownOnly];
+            return ['stats' => $ownOnly, 'mark' => $staff ? $ids : $ownOnly];
         }
 
         $audience = $this->downlineAudience($ids, $ownOnly, $own === null ? null : (int) $own);
 
         return [
             'stats' => $statsOn ? $audience : $ownOnly,
-            'mark' => $markOn ? $audience : $ownOnly,
+            'mark' => $staff ? $ids : ($markOn ? $audience : $ownOnly),
         ];
     }
 

@@ -5,10 +5,13 @@ declare(strict_types=1);
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\DistributorIdCardStats;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
@@ -116,3 +119,65 @@ it('logs a warning when the downline-visibility switch cannot be read', function
 
     expect(app(DistributorIdCardStats::class)->downlineStatsVisible())->toBeFalse();
 });
+
+it('shows the purchase mark to staff on every admin Genos card while the switch is OFF', function (): void {
+    $a = Distributor::factory()->create();
+    seedIdCardPersonalBv($a, 60_000);   // 600 BV — on the gate
+    $b = Distributor::factory()->create();
+
+    $admin = User::factory()->create();
+    Role::findOrCreate('admin', 'web');
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin->refresh());
+    idCardStatsOnRoute('admin.tree.show');
+    $stats = app(DistributorIdCardStats::class)->compactMany(
+        Distributor::query()->with('user')->whereIn('id', [$a->id, $b->id])->get()
+    );
+
+    expect($stats[$a->id]['purchase_state'])->not->toBeNull()
+        ->and($stats[$b->id]['purchase_state'])->not->toBeNull()
+        ->and($stats[$a->id]['highest_rank'])->toBeNull()
+        ->and($stats[$b->id]['highest_rank'])->toBeNull();
+});
+
+it('keeps the purchase mark off downline cards for a distributor while the switch is OFF', function (): void {
+    $sponsor = Distributor::factory()->create();
+    seedIdCardPersonalBv($sponsor, 60_000);
+    $downline = Distributor::factory()->create(['sponsor_id' => $sponsor->id]);
+    seedIdCardPersonalBv($downline, 10_000);
+
+    $this->actingAs($sponsor->user);
+    $stats = app(DistributorIdCardStats::class)->compactMany(
+        Distributor::query()->with('user')->whereIn('id', [$sponsor->id, $downline->id])->get()
+    );
+
+    expect($stats[$sponsor->id]['purchase_state'])->not->toBeNull()
+        ->and($stats[$downline->id]['purchase_state'])->toBeNull();
+});
+
+it('does not widen the purchase mark for staff outside the admin Genos', function (): void {
+    $a = Distributor::factory()->create();
+    seedIdCardPersonalBv($a, 60_000);
+
+    $admin = User::factory()->create();
+    Role::findOrCreate('admin', 'web');
+    $admin->assignRole('admin');
+
+    $this->actingAs($admin->refresh());
+    idCardStatsOnRoute('dashboard');
+    $stats = app(DistributorIdCardStats::class)->compactMany(
+        Distributor::query()->with('user')->whereIn('id', [$a->id])->get()
+    );
+
+    expect($stats[$a->id]['purchase_state'])->toBeNull();
+});
+
+/** Bind a request resolved to the named route, as the HTTP kernel would. */
+function idCardStatsOnRoute(string $name): void
+{
+    $route = app('router')->getRoutes()->getByName($name);
+    $request = Request::create('/');
+    $request->setRouteResolver(fn () => $route);
+    app()->instance('request', $request);
+}
