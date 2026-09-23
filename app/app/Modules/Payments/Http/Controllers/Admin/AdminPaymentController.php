@@ -314,7 +314,11 @@ final class AdminPaymentController extends Controller
             return back()->withErrors(['refund' => $e->getMessage()]);
         }
 
-        return redirect()->route('admin.payments.refunds')->with('status', 'Manual settlement recorded against the settlement bank account; the refund payable is discharged and the order is marked refunded.');
+        $closed = $order->status === Order::STATUS_CANCELLED
+            ? 'the order stays cancelled'
+            : 'the order is marked refunded';
+
+        return redirect()->route('admin.payments.refunds')->with('status', "Manual settlement recorded against the settlement bank account; the refund payable is discharged and {$closed}.");
     }
 
     /** Re-drive the SAME refund intent — never a new one. */

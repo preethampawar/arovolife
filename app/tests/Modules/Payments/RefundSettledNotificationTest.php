@@ -12,6 +12,7 @@ declare(strict_types=1);
  * RSN-04: a refused settlement (rolled back) sends nothing
  * RSN-05: an order settled by hand with nothing owed sends nothing
  * RSN-06: the mail renders the amount, order number, method and reference
+ * RSN-07: the greeting uses the account holder's name, falling back to the ship-to name
  */
 
 use App\Modules\Commerce\Models\Customer;
@@ -92,7 +93,7 @@ it('RSN-01: a gateway settlement notifies the buyer once with the amount, method
     Notification::assertSentOnDemand(RefundSettledNotification::class, function (RefundSettledNotification $n, array $channels, AnonymousNotifiable $notifiable) use ($order) {
         return $notifiable->routes['mail'] === 'rsn-buyer@test.com'
             && $n->orderNo === $order->order_no
-            && $n->buyerName === 'Asha'
+            && $n->buyerName === 'RSN Buyer'
             && $n->amountPaise === 118000
             && $n->method === RefundSettledNotification::METHOD_GATEWAY
             && $n->reference === 'rfnd_rsn';
@@ -149,4 +150,28 @@ it('RSN-06: the mail renders the amount, order number, method and reference', fu
         ->toContain('23 Sep 2026')
         ->toContain('/orders/ORD-RSN-777');
     expect(str_contains($html, 'earn'))->toBeFalse();
+});
+
+it("RSN-07: the greeting uses the account holder's name, falling back to the ship-to name", function () {
+    $owner = User::create([
+        'full_name' => 'Kavya Rao', 'email' => 'rsn-owner-'.uniqid().'@test.com',
+        'phone_e164' => '+91'.str_pad((string) random_int(7000000000, 9999999999), 10, '0'),
+        'password_hash' => bcrypt('x'), 'status' => 'active',
+    ]);
+    $linked = rsnOrder();
+    Customer::whereKey($linked->customer_id)->update(['user_id' => $owner->id]);
+    $unlinked = rsnOrder();
+    $guest = rsnOrder();
+    Customer::whereKey($guest->customer_id)->update(['display_name' => 'Guest']);
+
+    foreach ([$linked, $unlinked, $guest] as $i => $order) {
+        $refund = rsnRefund($order);
+        $refund->update(['gateway_refund_id' => 'rfnd_rsn7_'.$i]);
+        app(RazorpayRefundService::class)->settleProcessed($refund, 'webhook');
+    }
+
+    // The linked order is sent to the account; the others on demand to the customer's email.
+    Notification::assertSentTo($owner, RefundSettledNotification::class, fn (RefundSettledNotification $n) => $n->orderNo === $linked->order_no && $n->buyerName === 'Kavya Rao');
+    Notification::assertSentOnDemand(RefundSettledNotification::class, fn (RefundSettledNotification $n) => $n->orderNo === $unlinked->order_no && $n->buyerName === 'RSN Buyer');
+    Notification::assertSentOnDemand(RefundSettledNotification::class, fn (RefundSettledNotification $n) => $n->orderNo === $guest->order_no && $n->buyerName === 'Asha');
 });

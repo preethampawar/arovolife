@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Notifications\RefundSettledNotification;
 use App\Modules\Commerce\Support\OrderBuyerNotifier;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\User;
 use App\Modules\Ledger\Models\LedgerEntry;
 use App\Modules\Ledger\Models\LedgerTx;
 use App\Modules\Ledger\Services\LedgerPoster;
@@ -520,16 +521,20 @@ final class RazorpayRefundService
      * Finance paid a buyer by NEFT for a refund that never had a gateway
      * payment behind it — cash on delivery, or a payment recorded outside the
      * platform (R-68). The payable is read from the `order.refund_approved`
-     * entry itself, so the amount discharged is exactly the amount owed, and
-     * the same settlement bank account is credited as for a gateway refund
-     * settled by hand.
+     * entry — or, for a cancelled paid order, the `order.cancelled` entry —
+     * itself, so the amount discharged is exactly the amount owed, and the
+     * same settlement bank account is credited as for a gateway refund
+     * settled by hand. A refund-approved order closes as refunded; a
+     * cancelled order stays cancelled, the ledger entry being its only
+     * settled marker.
      */
     public function settleOrderManually(Order $order, int $actorUserId, string $reference, ?string $note): void
     {
         $this->db->transaction(function () use ($order, $actorUserId, $reference, $note): void {
             /** @var Order $locked */
             $locked = Order::lockForUpdate()->findOrFail($order->id);
-            if ($locked->status !== Order::STATUS_REFUND_APPROVED) {
+            $cancelled = $locked->status === Order::STATUS_CANCELLED && $locked->paid_at !== null;
+            if ($locked->status !== Order::STATUS_REFUND_APPROVED && ! $cancelled) {
                 throw new RuntimeException("Order {$locked->order_no} is not awaiting a refund.");
             }
             if (RefundIntent::where('order_id', $locked->id)->exists()) {
@@ -537,6 +542,14 @@ final class RazorpayRefundService
             }
 
             $owed = RefundPayable::owedOutsideGateway($locked);
+            if ($cancelled && RefundPayable::settledManually($locked)) {
+                throw new RuntimeException("The refund on order {$locked->order_no} is already settled.");
+            }
+            if ($cancelled && $owed <= 0) {
+                throw new RuntimeException("Order {$locked->order_no} is not awaiting a refund.");
+            }
+
+            $beforeStatus = $locked->status;
             if ($owed > 0) {
                 $this->ledger->transfer(
                     sourceModule: 'Payments',
@@ -558,14 +571,16 @@ final class RazorpayRefundService
                 'action' => 'refund.manual_settlement',
                 'subject_type' => 'order',
                 'subject_id' => $locked->id,
-                'before_hash' => AuditLog::digest(Order::STATUS_REFUND_APPROVED),
-                'after_hash' => AuditLog::digest(Order::STATUS_REFUNDED),
+                'before_hash' => AuditLog::digest($beforeStatus),
+                'after_hash' => AuditLog::digest($locked->status),
                 'details' => [
                     'order_id' => $locked->id,
                     'amount_paise' => $owed,
                     'reference' => $reference,
                     'note' => $note,
                     'gateway' => 'none',
+                    'status_before' => $beforeStatus,
+                    'status_after' => $locked->status,
                 ],
             ]);
 
@@ -599,7 +614,7 @@ final class RazorpayRefundService
             try {
                 $this->buyerNotifier->send($order, new RefundSettledNotification(
                     orderNo: (string) $order->order_no,
-                    buyerName: (string) ($order->ship_name ?: 'there'),
+                    buyerName: $this->buyerGreetingName($order),
                     amountPaise: $amountPaise,
                     method: $method,
                     reference: $reference,
@@ -612,6 +627,26 @@ final class RazorpayRefundService
                 ]);
             }
         });
+    }
+
+    /**
+     * The account holder's name first — the linked login's full name, else
+     * the customer record's name — then the ship-to name, then "there".
+     */
+    private function buyerGreetingName(Order $order): string
+    {
+        $customer = $order->customer;
+        $accountName = $customer?->user_id !== null
+            ? User::whereKey($customer->user_id)->value('full_name')
+            : null;
+
+        foreach ([$accountName, $customer?->display_name === 'Guest' ? null : $customer?->display_name, $order->ship_name] as $name) {
+            if (is_string($name) && trim($name) !== '') {
+                return trim($name);
+            }
+        }
+
+        return 'there';
     }
 
     private function closeOrder(RefundIntent $refund): void

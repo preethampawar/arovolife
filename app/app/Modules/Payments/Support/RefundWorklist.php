@@ -12,9 +12,12 @@ use App\Modules\Grievance\Enums\TicketChannel;
 use App\Modules\Grievance\Services\GrievanceService;
 use App\Modules\Payments\Models\RefundIntent;
 use App\Modules\Returns\Models\ReturnRequest;
+use Illuminate\Contracts\Database\Query\Expression;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -61,12 +64,57 @@ final class RefundWorklist
      */
     public function manualRefunds(): Collection
     {
-        return Order::query()
+        return self::manualRefundsQuery()
             ->with('customer')
-            ->where('status', Order::STATUS_REFUND_APPROVED)
-            ->whereNotExists(fn (QueryBuilder $q) => $q->selectRaw('1')->from('refund_intents')->whereColumn('refund_intents.order_id', 'orders.id'))
-            ->orderBy('refund_approved_at')
+            ->orderByRaw('COALESCE(orders.refund_approved_at, orders.cancelled_at, orders.updated_at)')
             ->get();
+    }
+
+    /**
+     * The one definition of "owed outside the gateway", shared by the worklist,
+     * the attention badge and the Action Center:
+     *
+     *   refund_approved  no refund intent (any amount, as before).
+     *   cancelled        paid, no refund intent, the cancellation credited
+     *                    `liability.refund_payable` (`order.cancelled:{id}`),
+     *                    and no manual settlement (`refund.manual.order:{id}`)
+     *                    is recorded yet — a settled cancelled order stays
+     *                    cancelled, so the ledger is the only closed marker.
+     *
+     * @return Builder<Order>
+     */
+    public static function manualRefundsQuery(): Builder
+    {
+        return Order::query()
+            ->whereNotExists(fn (QueryBuilder $q) => $q->selectRaw('1')->from('refund_intents')->whereColumn('refund_intents.order_id', 'orders.id'))
+            ->where(fn (Builder $q) => $q
+                ->where('orders.status', Order::STATUS_REFUND_APPROVED)
+                ->orWhere(fn (Builder $c) => $c
+                    ->where('orders.status', Order::STATUS_CANCELLED)
+                    ->whereNotNull('orders.paid_at')
+                    ->whereExists(fn (QueryBuilder $tx) => $tx->selectRaw('1')
+                        ->from('ledger_tx')
+                        ->join('ledger_entries', 'ledger_entries.ledger_tx_id', '=', 'ledger_tx.id')
+                        ->join('ledger_accounts', 'ledger_accounts.id', '=', 'ledger_entries.account_id')
+                        ->where('ledger_tx.idempotency_key', '=', self::orderKey('order.cancelled:'))
+                        ->where('ledger_entries.side', 'credit')
+                        ->where('ledger_accounts.code', 'liability.refund_payable')
+                        ->where('ledger_entries.amount_paise', '>', 0))
+                    ->whereNotExists(fn (QueryBuilder $tx) => $tx->selectRaw('1')
+                        ->from('ledger_tx')
+                        ->where('ledger_tx.idempotency_key', '=', self::orderKey('refund.manual.order:')))));
+    }
+
+    /**
+     * `'<prefix>' || orders.id` in the connection's own dialect.
+     *
+     * @param  literal-string  $prefix  a fixed internal key prefix, never input
+     */
+    private static function orderKey(string $prefix): Expression
+    {
+        return DB::raw(DB::connection()->getDriverName() === 'mysql'
+            ? "CONCAT('".$prefix."', orders.id)"
+            : "('".$prefix."' || orders.id)");
     }
 
     /** @return Collection<int, ReturnRequest> cooling-off returns whose goods are still out */
@@ -125,10 +173,7 @@ final class RefundWorklist
             ->where(fn ($q) => $q->whereNull('error_code')->orWhere('error_code', '!=', RefundIntent::ERROR_GOODS_NOT_RETURNED))
             ->count();
 
-        $count += Order::query()
-            ->where('status', Order::STATUS_REFUND_APPROVED)
-            ->whereNotExists(fn (QueryBuilder $q) => $q->selectRaw('1')->from('refund_intents')->whereColumn('refund_intents.order_id', 'orders.id'))
-            ->count();
+        $count += self::manualRefundsQuery()->count();
 
         return $count + ReturnRequest::query()
             ->whereNotNull('entitlements_held_at')

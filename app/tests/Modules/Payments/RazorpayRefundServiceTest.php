@@ -20,10 +20,13 @@ declare(strict_types=1);
  * RRF-12: the gateway idempotency key is Razorpay-legal and the speed is frozen at creation
  * RRF-13: a manual NEFT settlement is refused on a held or forfeited refund
  * RRF-14: a refund owed with no gateway payment is settled by NEFT against the order (R-68)
+ * RRF-15: a cancelled paid order with no gateway payment is owed, settled by NEFT once, and stays cancelled
+ * RRF-16: a cancelled order owing nothing in cash, or never paid, is not on the list and cannot be settled
  */
 
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Notifications\RefundSettledNotification;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
@@ -37,6 +40,7 @@ use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Models\RefundIntent;
 use App\Modules\Payments\Services\RazorpayRefundService;
 use App\Modules\Payments\Support\RefundPayable;
+use App\Modules\Payments\Support\RefundWorklist;
 use App\Modules\Returns\Models\ReturnRequest;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -44,6 +48,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use RuntimeException;
 
@@ -401,4 +406,58 @@ it('RRF-14: a refund owed with no gateway payment is settled by NEFT against the
     // Twice is refused, and the ledger did not move again.
     expect(fn () => app(RazorpayRefundService::class)->settleOrderManually($order->fresh(), $staff, 'NEFT-UTR-MANUAL', null))->toThrow(RuntimeException::class, 'not awaiting a refund');
     expect(rrfBalance('asset.cash.bank.settlement'))->toBe(45000);
+});
+
+/** A paid order cancelled with no gateway payment: the cancellation credits refund_payable and no refund intent is created. */
+function rrfCancelledOwed(int $amount = 118000): Order
+{
+    $order = rrfOrder(Order::STATUS_CANCELLED);
+    $order->update(['cancelled_at' => now()->subDays(2)]);
+    Customer::whereKey($order->customer_id)->update(['email_enc' => 'rrf-buyer@test.com']);
+    app(LedgerPoster::class)->transfer('Commerce', 'order.cancelled', $order->id, 'order.cancelled:'.$order->id, 'liability.customer_prepayment', 'liability.refund_payable', $amount);
+
+    return $order;
+}
+
+it('RRF-15: a cancelled paid order with no gateway payment is owed, settled by NEFT once, and stays cancelled', function () {
+    Notification::fake();
+    $order = rrfCancelledOwed(45000);
+    $staff = rrfStaff();
+    $worklist = app(RefundWorklist::class);
+
+    expect(RefundPayable::owedOutsideGateway($order))->toBe(45000)
+        ->and(RefundPayable::settledManually($order))->toBeFalse()
+        ->and($worklist->manualRefunds()->pluck('id')->all())->toBe([$order->id]);
+
+    app(RazorpayRefundService::class)->settleOrderManually($order, $staff, 'NEFT-UTR-CANCEL', null);
+
+    expect(LedgerTx::where('idempotency_key', 'refund.manual.order:'.$order->id)->exists())->toBeTrue()
+        ->and(rrfBalance('asset.cash.bank.settlement'))->toBe(45000)
+        ->and($order->fresh()->status)->toBe(Order::STATUS_CANCELLED)
+        ->and($order->status)->toBe(Order::STATUS_CANCELLED)
+        ->and(RefundPayable::settledManually($order))->toBeTrue()
+        ->and($worklist->manualRefunds())->toHaveCount(0);
+    $audit = AuditLog::where('action', 'refund.manual_settlement')->where('subject_id', $order->id)->sole();
+    expect($audit->details['status_before'])->toBe(Order::STATUS_CANCELLED)
+        ->and($audit->details['status_after'])->toBe(Order::STATUS_CANCELLED)
+        ->and($audit->after_hash)->toBe(AuditLog::digest(Order::STATUS_CANCELLED));
+    Notification::assertSentOnDemandTimes(RefundSettledNotification::class, 1);
+
+    // A second settlement is refused and the ledger does not move again.
+    expect(fn () => app(RazorpayRefundService::class)->settleOrderManually($order->fresh(), $staff, 'NEFT-UTR-AGAIN', null))->toThrow(RuntimeException::class, 'already settled');
+    expect(rrfBalance('asset.cash.bank.settlement'))->toBe(45000);
+    Notification::assertSentOnDemandTimes(RefundSettledNotification::class, 1);
+});
+
+it('RRF-16: a cancelled order owing nothing in cash, or never paid, is not on the list and cannot be settled', function () {
+    $staff = rrfStaff();
+    $nothingOwed = rrfOrder(Order::STATUS_CANCELLED);
+    $unpaid = rrfCancelledOwed();
+    $unpaid->update(['paid_at' => null]);
+
+    expect(app(RefundWorklist::class)->manualRefunds())->toHaveCount(0)
+        ->and(app(RefundWorklist::class)->attentionCount())->toBe(0);
+    expect(fn () => app(RazorpayRefundService::class)->settleOrderManually($nothingOwed, $staff, 'NEFT-UTR-NONE', null))->toThrow(RuntimeException::class, 'not awaiting a refund');
+    expect(fn () => app(RazorpayRefundService::class)->settleOrderManually($unpaid, $staff, 'NEFT-UTR-UNPD', null))->toThrow(RuntimeException::class, 'not awaiting a refund');
+    expect(rrfBalance('asset.cash.bank.settlement'))->toBe(0);
 });

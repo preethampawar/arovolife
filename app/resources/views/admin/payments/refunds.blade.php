@@ -75,7 +75,7 @@
 </x-ui.card>
 
 <h2 class="font-semibold text-gray-900 mb-3">Refunds owed outside the gateway</h2>
-<p class="text-xs text-gray-600 mb-3">Approved refunds on orders with no gateway payment to refund against — cash on delivery, or a payment recorded outside the platform. The obligation is in the ledger; the only discharge is the NEFT finance makes, recorded here with its UTR. The same 7-working-day promise applies.</p>
+<p class="text-xs text-gray-600 mb-3">Approved refunds, and cancelled orders that were paid, with no gateway payment to refund against — cash on delivery, or a payment recorded outside the platform. The obligation is in the ledger; the only discharge is the NEFT finance makes, recorded here with its UTR. The same 7-working-day promise applies.</p>
 <x-ui.card flush class="mb-8">
     <div class="overflow-x-auto">
     <table class="w-full text-sm">
@@ -93,14 +93,14 @@
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse($manualRefunds as $manualOrder)
-            @php $owedPaise = $owed($manualOrder); $manualDays = (int) ($manualOrder->refund_approved_at ?? $manualOrder->updated_at)->diffInWeekdays(now()); @endphp
+            @php $owedPaise = $owed($manualOrder); $manualCancelled = $manualOrder->status === \App\Modules\Commerce\Models\Order::STATUS_CANCELLED; $manualSince = $manualCancelled ? $manualOrder->cancelled_at : $manualOrder->refund_approved_at; $manualDays = (int) ($manualSince ?? $manualOrder->updated_at)->diffInWeekdays(now()); @endphp
             <tr class="{{ $manualDays >= \App\Modules\Payments\Support\RefundWorklist::PROMISE_BUSINESS_DAYS ? 'bg-amber-50' : 'hover:bg-gray-50' }}">
                 <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
                 <td class="px-4 py-3"><a href="{{ route('admin.commerce.orders.show', $manualOrder) }}" class="text-brand-700 font-mono text-xs">{{ $manualOrder->order_no }}</a></td>
                 <td class="px-4 py-3 text-gray-700">{{ $manualOrder->customer->display_name ?? '—' }}</td>
                 <td class="px-4 py-3 text-gray-700">{{ str_replace('_', ' ', $manualOrder->payment_method) }}</td>
                 <td class="px-4 py-3 text-right font-semibold">₹{{ \App\Modules\Shared\Support\IndianNumber::format($owedPaise / 100, 2) }}</td>
-                <td class="px-4 py-3 text-gray-600 text-xs">{{ $manualOrder->refund_approved_at?->format('d M Y') ?? '—' }}</td>
+                <td class="px-4 py-3 text-gray-600 text-xs">{{ $manualSince?->format('d M Y') ?? '—' }}@if($manualCancelled) <span class="ml-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600">cancelled</span>@endif</td>
                 <td class="px-4 py-3 text-right {{ $manualDays >= \App\Modules\Payments\Support\RefundWorklist::PROMISE_BUSINESS_DAYS ? 'text-red-700 font-semibold' : 'text-gray-700' }}">{{ $manualDays }}</td>
                 <td class="px-4 py-3 text-right">
                     @can('finance.record')
@@ -108,7 +108,7 @@
                         <summary class="text-sm text-gray-700 cursor-pointer hover:underline">{{ $owedPaise > 0 ? 'Settle by NEFT' : 'Close as refunded' }}</summary>
                         <form method="POST" action="{{ route('admin.payments.orders.settle', $manualOrder) }}" class="mt-2 space-y-2 w-64"
                               data-confirm="{{ $owedPaise > 0 ? 'Record a manual NEFT settlement?' : 'Close this refund with nothing owed in cash?' }}" data-confirm-title="Manual settlement"
-                              data-confirm-impact="Impact: {{ $owedPaise > 0 ? 'discharges the refund payable against the settlement bank account and' : 'no cash was owed (settled in points or credit);' }} marks the order refunded. Only do this after any transfer has actually been made. Audit-logged against your user.">
+                              data-confirm-impact="Impact: {{ $owedPaise > 0 ? 'discharges the refund payable against the settlement bank account and' : 'no cash was owed (settled in points or credit);' }} {{ $manualCancelled ? 'leaves the order cancelled' : 'marks the order refunded' }}. Only do this after any transfer has actually been made. Audit-logged against your user.">
                             @csrf
                             <input type="text" name="reference" required minlength="6" maxlength="64" placeholder="{{ $owedPaise > 0 ? 'NEFT / UTR reference' : 'Reference or reason' }}" class="w-full rounded-lg border-gray-300 text-sm">
                             <input type="text" name="note" maxlength="500" placeholder="Note (optional)" class="w-full rounded-lg border-gray-300 text-sm">

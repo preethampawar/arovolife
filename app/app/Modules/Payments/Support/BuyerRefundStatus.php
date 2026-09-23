@@ -30,13 +30,18 @@ final class BuyerRefundStatus
         $refunds = RefundIntent::where('order_id', $order->id)->orderBy('id')->get();
 
         if ($refunds->isEmpty()) {
-            $owed = $order->status === Order::STATUS_REFUND_APPROVED
-                ? RefundPayable::owedOutsideGateway($order)
-                : 0;
+            // No gateway payment to refund against: a refund-approved order or
+            // a cancelled paid order is settled by our team's bank transfer.
+            $outsideGateway = in_array($order->status, [Order::STATUS_REFUND_APPROVED, Order::STATUS_CANCELLED], true);
+            $owed = $outsideGateway ? RefundPayable::owedOutsideGateway($order) : 0;
 
-            return $owed > 0
-                ? ['tone' => self::TONE_PENDING, 'text' => 'Refund of '.IndianNumber::rupees($owed).' is being paid to you by bank transfer by our team.']
-                : null;
+            if ($owed <= 0) {
+                return null;
+            }
+
+            return RefundPayable::settledManually($order)
+                ? ['tone' => self::TONE_DONE, 'text' => 'Refund of '.IndianNumber::rupees($owed).' paid to you by bank transfer.']
+                : ['tone' => self::TONE_PENDING, 'text' => 'Refund of '.IndianNumber::rupees($owed).' is being paid to you by bank transfer by our team.'];
         }
 
         $amount = IndianNumber::rupees((int) $refunds->sum('amount_paise'));

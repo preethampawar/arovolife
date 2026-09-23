@@ -9,15 +9,17 @@ use App\Modules\ActionCenter\Support\ActionGroup;
 use App\Modules\ActionCenter\Support\ActionItem;
 use App\Modules\ActionCenter\Support\Severity;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Payments\Support\RefundWorklist;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 
 /**
- * A refund approved for an order with no gateway payment behind it — cash on
- * delivery, or a payment recorded outside the platform (plan §4, Money).
- * Mirrors `RefundWorklist::manualRefunds()` exactly: the obligation is in the
- * ledger and the only discharge is finance recording the NEFT it made.
+ * A refund owed on an order with no gateway payment behind it — cash on
+ * delivery, or a payment recorded outside the platform (plan §4, Money) —
+ * either approved on a return or arising from cancelling a paid order.
+ * Built on `RefundWorklist::manualRefundsQuery()`, so it matches
+ * `manualRefunds()` exactly: the obligation is in the ledger and the only
+ * discharge is finance recording the NEFT it made.
  */
 final class RefundsManualOwedProvider extends AbstractProvider
 {
@@ -38,7 +40,7 @@ final class RefundsManualOwedProvider extends AbstractProvider
 
     public function description(): string
     {
-        return 'Refunds approved with no gateway intent — cash on delivery or a manual NEFT. Record the settlement from the refunds screen.';
+        return 'Refunds approved, or owed on cancelled paid orders, with no gateway intent — cash on delivery or a manual NEFT. Record the settlement from the refunds screen.';
     }
 
     public function permission(): string
@@ -70,16 +72,19 @@ final class RefundsManualOwedProvider extends AbstractProvider
     public function items(int $limit = 50): Collection
     {
         return $this->baseQuery()
-            ->orderBy('orders.refund_approved_at')
+            ->orderByRaw('COALESCE(orders.refund_approved_at, orders.cancelled_at, orders.updated_at)')
             ->limit($limit)
-            ->get(['orders.id', 'orders.order_no', 'orders.refund_approved_at', 'orders.total_paise'])
+            ->get(['orders.id', 'orders.order_no', 'orders.status', 'orders.refund_approved_at', 'orders.cancelled_at', 'orders.total_paise'])
             ->map(function (Order $order): ActionItem {
+                $cancelled = $order->status === Order::STATUS_CANCELLED;
+                $since = $cancelled ? $order->cancelled_at : $order->refund_approved_at;
+
                 return new ActionItem(
                     subjectType: $this->subjectType(),
                     subjectId: (int) $order->id,
                     title: (string) $order->order_no,
-                    subtitle: 'Approved '.$this->ageLabel($order->refund_approved_at).' ago, no gateway refund — settle manually',
-                    occurredAt: $order->refund_approved_at ?? now(),
+                    subtitle: ($cancelled ? 'Cancelled after payment ' : 'Approved ').$this->ageLabel($since).' ago, no gateway refund — settle manually',
+                    occurredAt: $since ?? now(),
                     dueAt: null,
                     severity: $this->severity(),
                     url: route($this->targetRoute()),
@@ -95,9 +100,7 @@ final class RefundsManualOwedProvider extends AbstractProvider
     /** @return Builder<Order> */
     private function baseQuery(): Builder
     {
-        $query = Order::query()
-            ->where('orders.status', Order::STATUS_REFUND_APPROVED)
-            ->whereNotExists(fn (QueryBuilder $q) => $q->selectRaw('1')->from('refund_intents')->whereColumn('refund_intents.order_id', 'orders.id'));
+        $query = RefundWorklist::manualRefundsQuery();
 
         $this->excludeSnoozed($query->getQuery(), 'orders.id');
 

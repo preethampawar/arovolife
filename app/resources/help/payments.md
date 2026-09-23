@@ -120,6 +120,9 @@ Payments → *Unsettled refunds* lists every refund not yet in the buyer's hands
   through the gateway (cash on delivery, or a payment recorded outside the
   platform). There is no gateway refund to send; finance makes the NEFT and
   records it against the *order* with its UTR. Same 7-working-day promise.
+  This list also shows **paid orders that were cancelled** before shipping with
+  no gateway payment behind them. Settling one records the NEFT and leaves the
+  order **cancelled** (it is not marked refunded); it then drops off the list.
 
 A refund closed as **not returned** (the buyer never sent the goods back) is
 forfeited: the original refund entry is written back line for line, nothing is

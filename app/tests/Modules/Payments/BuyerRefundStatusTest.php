@@ -14,15 +14,20 @@ declare(strict_types=1);
  * BRS-06: an order with no refund has no line
  * BRS-07: the cancelled order's page shows the refund line to its owner
  * BRS-08: a forfeited return shows the no-refund line on the delivered order page
+ * BRS-09: a cancelled paid order with no gateway payment reads pending, then paid by bank transfer once settled
  */
 
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Identity\Models\User;
+use App\Modules\Ledger\Services\LedgerPoster;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Models\RefundIntent;
+use App\Modules\Payments\Services\RazorpayRefundService;
 use App\Modules\Payments\Support\BuyerRefundStatus;
+use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
@@ -138,4 +143,28 @@ it('BRS-08: a forfeited return shows the no-refund line on the delivered order p
         ->assertOk()
         ->assertSee('No refund is due on this order', false)
         ->assertSee('raise a grievance', false);
+});
+
+it('BRS-09: a cancelled paid order with no gateway payment reads pending, then paid by bank transfer once settled', function (): void {
+    $this->seed(LedgerAccountSeeder::class);
+    Notification::fake();
+    $order = brsOrder(Order::STATUS_CANCELLED);
+    app(LedgerPoster::class)->transfer('Commerce', 'order.cancelled', $order->id, 'order.cancelled:'.$order->id, 'liability.customer_prepayment', 'liability.refund_payable', 105800);
+
+    expect(BuyerRefundStatus::for($order))->toBe([
+        'tone' => BuyerRefundStatus::TONE_PENDING,
+        'text' => 'Refund of ₹1,058.00 is being paid to you by bank transfer by our team.',
+    ]);
+
+    $staff = User::create([
+        'full_name' => 'BRS Staff', 'email' => 'brs-staff-'.uniqid().'@test.com',
+        'phone_e164' => '+91'.random_int(7000000000, 9999999999),
+        'password_hash' => bcrypt('x'), 'status' => 'active',
+    ]);
+    app(RazorpayRefundService::class)->settleOrderManually($order, $staff->id, 'NEFT-UTR-BRS9', null);
+
+    expect(BuyerRefundStatus::for($order->fresh()))->toBe([
+        'tone' => BuyerRefundStatus::TONE_DONE,
+        'text' => 'Refund of ₹1,058.00 paid to you by bank transfer.',
+    ]);
 });

@@ -17,6 +17,7 @@ declare(strict_types=1);
  * APT-10: a paid order without an invoice is listed; finance issues it, operations cannot
  * APT-11: a refund owed outside the gateway is listed; finance settles it against the order
  * APT-12: the list opens on today, and the money tiles follow the filters
+ * APT-13: a cancelled paid order owed outside the gateway is listed with its cancellation date and stays cancelled once settled
  */
 
 use App\Modules\Commerce\Models\Customer;
@@ -365,4 +366,26 @@ it('APT-12: the list opens on this month, and the money tiles follow the filters
     $this->actingAs($compliance)->get(route('admin.payments.index', ['status' => PaymentIntent::STATUS_FAILED]))->assertOk()
         ->assertDontSee('₹1,180.00')
         ->assertDontSee('Showing payments created this month.');
+});
+
+it('APT-13: a cancelled paid order owed outside the gateway is listed with its cancellation date and stays cancelled once settled', function () {
+    $order = aptOrder(Order::STATUS_CANCELLED);
+    $order->update(['paid_at' => now()->subDays(4), 'cancelled_at' => now()->subDays(3)]);
+    // The cancellation's own entry, as OrderStateMachine::cancel() books a paid order.
+    app(LedgerPoster::class)->transfer('Commerce', 'order.cancelled', $order->id, 'order.cancelled:'.$order->id, 'liability.customer_prepayment', 'liability.refund_payable', 118000);
+    $finance = aptUser('admin-finance');
+
+    expect(app(RefundWorklist::class)->manualRefunds()->pluck('id')->all())->toBe([$order->id])
+        ->and(app(RefundWorklist::class)->attentionCount())->toBe(1);
+    $this->actingAs($finance)->get(route('admin.payments.refunds'))->assertOk()
+        ->assertSee($order->order_no)->assertSee('1,180.00')
+        ->assertSee(now()->subDays(3)->format('d M Y'))->assertSee('leaves the order cancelled');
+
+    $this->actingAs($finance)->post(route('admin.payments.orders.settle', $order), ['reference' => 'UTR-NEFT-CANCEL1'])
+        ->assertRedirect(route('admin.payments.refunds'))
+        ->assertSessionHas('status', fn (string $m) => str_contains($m, 'the order stays cancelled'));
+
+    expect($order->fresh()->status)->toBe(Order::STATUS_CANCELLED)
+        ->and(app(RefundWorklist::class)->manualRefunds())->toHaveCount(0)
+        ->and(app(RefundWorklist::class)->attentionCount())->toBe(0);
 });
