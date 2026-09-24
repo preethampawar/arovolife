@@ -317,8 +317,24 @@ final class AdminOrderController extends Controller
             ->with('status', "Recorded as ready to collect. The buyer has been emailed collection code {$code} — it will not be shown again.");
     }
 
-    public function markDelivered(Order $order): RedirectResponse
+    public function markDelivered(Request $request, Order $order): RedirectResponse
     {
+        // A collection is released against the buyer's code, whoever records
+        // it: the handover record (collected_at) is what the ADC bonus is paid
+        // on, and a bare "delivered" would leave the centre unpaid and the
+        // handover unauthenticated.
+        if ($order->status === Order::STATUS_AWAITING_COLLECTION) {
+            $validated = $request->validate(['code' => ['required', 'digits:6']]);
+
+            try {
+                app(CollectionHandoverService::class)->recordCollection($order, $validated['code'], is_numeric(auth()->id()) ? (int) auth()->id() : null);
+            } catch (\RuntimeException $e) {
+                return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['deliver' => $e->getMessage()]);
+            }
+
+            return redirect()->route('admin.commerce.orders.show', $order)->with('status', 'Collection recorded. 30-day cooling-off clock opened.');
+        }
+
         try {
             $this->stateMachine->markDelivered($order, auth()->id());
         } catch (\RuntimeException $e) {

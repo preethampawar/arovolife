@@ -17,6 +17,7 @@ use App\Modules\Fulfilment\Services\CollectionHandoverService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\LedgerAccountSeeder;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -141,4 +142,19 @@ it('alerts staff to a parcel left at the centre past the dwell limit, and only t
 
     expect(app(AtCentreNotCollectedProvider::class)->items()->pluck('subjectId')->all())->toBe([$old->id])
         ->and($old->fresh()->status)->toBe(Order::STATUS_AWAITING_COLLECTION);
+});
+
+it('makes staff record a collection against the buyer\'s code too', function () {
+    seed(RolesAndPermissionsSeeder::class);
+    $staff = User::factory()->create(['status' => 'active']);
+    $staff->assignRole('admin-operations');
+    [$order] = ccShippedToOwnedCentre();
+    $code = app(CollectionHandoverService::class)->acknowledgeArrival($order);
+
+    actingAs($staff)->post(route('admin.commerce.orders.deliver', $order))->assertSessionHasErrors('code');
+    expect($order->fresh()->status)->toBe(Order::STATUS_AWAITING_COLLECTION);
+
+    actingAs($staff)->post(route('admin.commerce.orders.deliver', $order), ['code' => $code])->assertSessionHasNoErrors();
+    expect($order->fresh()->status)->toBe(Order::STATUS_DELIVERED)
+        ->and(Shipment::where('order_id', $order->id)->value('collected_at'))->not->toBeNull();
 });

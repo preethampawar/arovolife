@@ -188,6 +188,10 @@
                     data-confirm="Mark this order as delivered?"
                     data-confirm-title="Confirm delivery"
                     data-confirm-impact="Impact: sets the order to DELIVERED and OPENS the statutory 30-day cooling-off window (the customer may return for a full refund until it closes). This is not easily reversible.">@csrf
+                    @if($order->status === 'awaiting_collection')
+                    <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="off" placeholder="Buyer's code"
+                        title="The six-digit collection code the buyer received by email" class="w-32 rounded-lg border-gray-300 font-mono text-sm">
+                    @endif
                     <button class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium">{{ $order->isCollection() ? 'Record collection (opens cooling-off)' : 'Mark as Delivered (opens cooling-off)' }}</button>
                 </form>
                 @endif
