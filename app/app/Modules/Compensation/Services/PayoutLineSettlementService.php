@@ -45,8 +45,13 @@ final class PayoutLineSettlementService
         private readonly PayoutGatewaySettings $settings,
     ) {}
 
-    /** Record a transfer the bank confirmed outside the response file. */
-    public function markPaid(PayoutLineItem $line, string $utr, int $actorId): PayoutLineItem
+    /**
+     * Record a transfer the bank confirmed outside the response file.
+     *
+     * Not named markPaid(): that name is pinned to the order choke point
+     * (MarkPaidChokePointTest), which must stay a plain source scan.
+     */
+    public function markLinePaid(PayoutLineItem $line, string $utr, int $actorId): PayoutLineItem
     {
         $utr = strtoupper(trim($utr));
 

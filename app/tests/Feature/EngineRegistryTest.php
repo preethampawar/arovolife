@@ -52,6 +52,12 @@ it('has exactly one registry entry per compensation console command', function (
         // appear on the Engine Runs page — deciding a payout batch is owed
         // again belongs to someone who has read the worker logs.
         'PayoutReopenStuckBatchCommand',
+        // DPDP retention housekeeping for stored payout bank files: deletes
+        // expired ciphertext, pays nothing, freezes nothing.
+        'PurgeExpiredPayoutBankFilesCommand',
+        // Test-environment fixture: writes the paid orders a rehearsal needs,
+        // then leaves every derived row to the recompute. Produces no bonus.
+        'SeedPayingPeriodCommand',
     ];
 
     $commandClasses = collect($commandFiles ?: [])

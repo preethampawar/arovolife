@@ -99,7 +99,7 @@ function fakeRazorpayPayout(string $payoutId, string $status, ?string $utr = nul
 it('marks a waiting line paid with its UTR and completes the batch with its last line', function (): void {
     [$batch, $line] = reconcileFixture('ADN2001');
 
-    settlement()->markPaid($line, 'utr0001abc', financeUser()->id);
+    settlement()->markLinePaid($line, 'utr0001abc', financeUser()->id);
 
     expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_TRANSFERRED)
         ->and($line->fresh()->utr_number)->toBe('UTR0001ABC')
@@ -112,7 +112,7 @@ it('refuses a UTR already settling another line', function (): void {
     $other = extraLine($batch, 'ADN2003', status: PayoutLineItem::STATUS_TRANSFERRED);
     $other->forceFill(['utr_number' => 'UTRTAKEN01'])->save();
 
-    expect(fn () => settlement()->markPaid($line, 'utrtaken01', financeUser()->id))
+    expect(fn () => settlement()->markLinePaid($line, 'utrtaken01', financeUser()->id))
         ->toThrow(PayoutLineActionRefused::class);
 
     expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING);
@@ -122,7 +122,7 @@ it('never lets a person mark a Razorpay line paid or failed — the dispatch job
     useRazorpay();
     [$batch, $line] = reconcileFixture('ADN2004');
 
-    expect(fn () => settlement()->markPaid($line, 'UTR2004', financeUser()->id))->toThrow(PayoutLineActionRefused::class)
+    expect(fn () => settlement()->markLinePaid($line, 'UTR2004', financeUser()->id))->toThrow(PayoutLineActionRefused::class)
         ->and(fn () => settlement()->markFailed($line, 'bounced', financeUser()->id))->toThrow(PayoutLineActionRefused::class);
 
     expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING);
@@ -132,7 +132,7 @@ it('marks a failed line paid when the bank confirms it went through after all', 
     [$batch, $line] = reconcileFixture('ADN2005');
     $line->forceFill(['status' => PayoutLineItem::STATUS_FAILED, 'failure_reason' => 'Timeout'])->save();
 
-    settlement()->markPaid($line, 'UTR2005', financeUser()->id);
+    settlement()->markLinePaid($line, 'UTR2005', financeUser()->id);
 
     expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_TRANSFERRED)
         ->and($line->fresh()->failure_reason)->toBeNull();
@@ -141,7 +141,7 @@ it('marks a failed line paid when the bank confirms it went through after all', 
 it('marks a waiting line failed with a reason and the batch partially failed', function (): void {
     [$batch, $line] = reconcileFixture('ADN2006');
     $paid = extraLine($batch, 'ADN2007');
-    settlement()->markPaid($paid, 'UTR2007', financeUser()->id);
+    settlement()->markLinePaid($paid, 'UTR2007', financeUser()->id);
 
     expect(fn () => settlement()->markFailed($line, '   ', financeUser()->id))->toThrow(PayoutLineActionRefused::class);
 
@@ -224,7 +224,7 @@ it('warns when a waiting line is already in a bank file downloaded since it beca
 it('leaves paid lines out of the bank file and refuses a file with nothing to pay', function (): void {
     [$batch, $line] = reconcileFixture('ADN2012');
     $finance = financeUser();
-    settlement()->markPaid($line, 'UTR2012', $finance->id);
+    settlement()->markLinePaid($line, 'UTR2012', $finance->id);
 
     $this->actingAs($finance)
         ->from(route('admin.compensation.weekly-payouts.show', $batch))
@@ -240,8 +240,8 @@ it('leaves paid lines out of the bank file and refuses a file with nothing to pa
 it('marks a paid line returned: failed again, UTR kept only in the audit, completed batch reopened', function (): void {
     [$batch, $line] = reconcileFixture('ADN2013');
     $paid = extraLine($batch, 'ADN2014');
-    settlement()->markPaid($line, 'UTR2013', financeUser()->id);
-    settlement()->markPaid($paid, 'UTR2014', financeUser()->id);
+    settlement()->markLinePaid($line, 'UTR2013', financeUser()->id);
+    settlement()->markLinePaid($paid, 'UTR2014', financeUser()->id);
     expect($batch->fresh()->status)->toBe(PayoutBatch::STATUS_COMPLETED);
 
     settlement()->markReturned($line->fresh(), 'Account closed', financeUser()->id);
@@ -256,7 +256,7 @@ it('marks a paid line returned: failed again, UTR kept only in the audit, comple
 
 it('refuses mark returned in Razorpay mode — Razorpay reports its own reversals', function (): void {
     [$batch, $line] = reconcileFixture('ADN2015');
-    settlement()->markPaid($line, 'UTR2015', financeUser()->id);
+    settlement()->markLinePaid($line, 'UTR2015', financeUser()->id);
     useRazorpay();
 
     expect(fn () => settlement()->markReturned($line->fresh(), 'Returned', financeUser()->id))
@@ -381,7 +381,7 @@ it('never touches the wallet ledger, whatever the controls do', function (): voi
 
     settlement()->markFailed($line, 'Bounced', $finance->id);
     settlement()->sendAgain($line->fresh(), $finance->id);
-    settlement()->markPaid($line->fresh(), 'UTR2020', $finance->id);
+    settlement()->markLinePaid($line->fresh(), 'UTR2020', $finance->id);
     settlement()->markReturned($line->fresh(), 'Returned', $finance->id);
     settlement()->sendAgain($line->fresh(), $finance->id);
 

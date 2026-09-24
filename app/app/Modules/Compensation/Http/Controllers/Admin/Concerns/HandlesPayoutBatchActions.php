@@ -484,7 +484,7 @@ trait HandlesPayoutBatchActions
         ], ['utr.regex' => 'The UTR may contain letters and digits only.'], ['utr' => 'bank reference (UTR)']);
 
         return $this->lineAction($batch, $line, function () use ($request, $line, $settlement, $data): string {
-            $settlement->markPaid($line, (string) $data['utr'], (int) $request->user()->id);
+            $settlement->markLinePaid($line, (string) $data['utr'], (int) $request->user()->id);
 
             return 'ADN '.$this->adnOf($line).' marked paid with UTR '.strtoupper(trim((string) $data['utr'])).'.';
         });
