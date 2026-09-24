@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin\Concerns;
 
 use App\Modules\Compensation\Exceptions\BankDecryptionException;
-use App\Modules\Compensation\Jobs\RetryRazorpayPayoutJob;
+use App\Modules\Compensation\Exceptions\PayoutLineActionRefused;
+use App\Modules\Compensation\Models\PayoutBankFile;
+use App\Modules\Compensation\Models\PayoutBankFileRow;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Services\PayoutBankFileDiffService;
+use App\Modules\Compensation\Services\PayoutBankFileVault;
 use App\Modules\Compensation\Services\PayoutGatewaySettings;
+use App\Modules\Compensation\Services\PayoutLineSettlementService;
 use App\Modules\Compensation\Services\PayoutReconciliationService;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compliance\Models\AuditLog;
@@ -16,6 +21,7 @@ use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Support\Csv;
 use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Shared\Support\ReportExport;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
@@ -23,7 +29,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Throwable;
 
 /**
  * Everything an admin does TO a payout batch: approve it, reconcile the bank's
@@ -326,7 +334,7 @@ trait HandlesPayoutBatchActions
             'response_file' => ['required', 'file', 'mimes:csv,txt', 'max:5120'],
         ], [], ['response_file' => 'bank response file']);
 
-        if (! in_array($batch->status, [
+        if ($batch->approved_at === null || ! in_array($batch->status, [
             PayoutBatch::STATUS_APPROVED,
             PayoutBatch::STATUS_PARTIALLY_FAILED,
             PayoutBatch::STATUS_FAILED,
@@ -365,93 +373,327 @@ trait HandlesPayoutBatchActions
             ->with('success', $message);
     }
 
-    /** Re-send every failed line item in the batch that is still under the retry limit. */
-    public function retryFailedLineItems(Request $request, PayoutBatch $batch, PayoutGatewaySettings $settings): RedirectResponse
+    /**
+     * Send all failed again: every failed line in the batch goes back in front
+     * of the bank.
+     *
+     * Manual NEFT: each returns to waiting and is in the next bank file.
+     * Razorpay: each line under the retry limit is re-dispatched; one whose
+     * earlier payout Razorpay does not confirm as dead is skipped and named.
+     */
+    public function retryFailedLineItems(Request $request, PayoutBatch $batch, PayoutLineSettlementService $settlement, PayoutGatewaySettings $settings): RedirectResponse
     {
-        if (! $settings->isRazorpay()) {
-            return back()->with('error', 'Retry is only available while the payout gateway is Razorpay. In Manual NEFT mode, re-export the CSV for the failed lines and import the bank’s response again.');
+        if (($refusal = $this->lineActionRefusal($batch)) !== null) {
+            return back()->with('error', $refusal);
         }
 
-        $lineIds = $batch->lineItems()
+        $query = $batch->lineItems()
             ->where('status', PayoutLineItem::STATUS_FAILED)
-            ->whereNull('razorpay_payout_id')
-            ->where('net_transferred_paise', '>', 0)
-            ->where('retry_count', '<', $settings->maxRetries())
-            ->orderBy('id')
-            ->pluck('id');
+            ->where('net_transferred_paise', '>', 0);
 
-        if ($lineIds->isEmpty()) {
-            return back()->with('error', 'No failed line items in this batch are eligible for retry.');
+        $needsCheck = collect();
+        if ($settings->isRazorpay()) {
+            $query->where('retry_count', '<', $settings->maxRetries());
+
+            // A line that still holds a payout id needs Razorpay to confirm the
+            // old transfer is dead first — one API call per line, which a bulk
+            // click must not make inside a web request. Those are named, and
+            // sent one by one with Send again.
+            $needsCheck = (clone $query)->whereNotNull('razorpay_payout_id')->where('razorpay_payout_id', '!=', '')
+                ->with('distributor')->get();
+            $query->where(fn ($q) => $q->whereNull('razorpay_payout_id')->orWhere('razorpay_payout_id', ''));
         }
 
-        foreach ($lineIds as $lineId) {
-            RetryRazorpayPayoutJob::dispatch((int) $lineId, (int) $request->user()->id);
+        /** @var EloquentCollection<int, PayoutLineItem> $lines */
+        $lines = $query->with('distributor')->orderBy('id')->get();
+
+        if ($lines->isEmpty() && $needsCheck->isNotEmpty()) {
+            return back()->with('error', 'Each failed line here was reported failed by Razorpay itself. Use Send again on each line — Razorpay is asked to confirm the earlier transfer is dead before a new one is sent.');
+        }
+
+        if ($lines->isEmpty()) {
+            return back()->with('error', $settings->isRazorpay()
+                ? 'No failed line in this batch can be sent again: each has reached the retry limit ('.$settings->maxRetries().'). Use Send again on a line after correcting its bank details.'
+                : 'No failed line in this batch has anything to send.');
+        }
+
+        $actorId = (int) $request->user()->id;
+        $sent = [];
+        $refused = [];
+
+        foreach ($lines as $line) {
+            try {
+                $settlement->sendAgain($line, $actorId, respectRetryLimit: true);
+                $sent[] = (int) $line->id;
+            } catch (PayoutLineActionRefused $e) {
+                $refused[] = ($line->distributor->adn ?? $line->distributor_id).' ('.$e->getMessage().')';
+            }
         }
 
         AuditLog::create([
-            'actor_id' => $request->user()->id,
+            'actor_id' => $actorId,
             'action' => 'payout.batch.retry_requested',
             'subject_type' => 'payout_batch',
             'subject_id' => (int) $batch->id,
-            // Queueing moves nothing yet; the after digest pins which lines
-            // were authorised for another attempt.
+            // Each line wrote its own sent_again row; this one pins which lines
+            // the bulk click covered.
             'before_hash' => AuditDigests::of($batch),
-            'after_hash' => AuditDigests::of(['line_item_ids' => $lineIds->all()]),
+            'after_hash' => AuditDigests::of(['line_item_ids' => $sent]),
             'details' => [
                 'batch_type' => $batch->batch_type,
                 'batch_date' => $batch->batch_date->toDateString(),
-                'line_item_count' => $lineIds->count(),
+                'gateway' => $settings->gateway(),
+                'line_item_count' => count($sent),
+                'refused_count' => count($refused),
             ],
             'ip' => $request->ip(),
         ]);
 
-        return back()->with('success', 'Queued '.$lineIds->count().' failed payout(s) for retry.');
+        $message = $settings->isRazorpay()
+            ? count($sent).' failed payout(s) sent to Razorpay again.'
+            : count($sent).' failed payout(s) are waiting for the bank again. Download the bank file — it holds only the lines still to pay — and upload it to the bank.';
+
+        foreach ($needsCheck as $line) {
+            $refused[] = ($line->distributor->adn ?? $line->distributor_id).' (reported failed by Razorpay — use Send again on the line)';
+        }
+
+        if ($refused !== []) {
+            $message .= ' Not sent: '.implode('; ', array_slice($refused, 0, 5)).(count($refused) > 5 ? '; …' : '').'.';
+        }
+
+        return redirect()->route($this->payoutRouteName('show'), $batch)->with($sent === [] ? 'error' : 'success', $message);
     }
 
-    /** Re-send one failed line item. */
-    public function retryLineItem(Request $request, PayoutBatch $batch, PayoutLineItem $line, PayoutGatewaySettings $settings): RedirectResponse
+    /** Send again: put one failed line back in front of the bank. */
+    public function retryLineItem(Request $request, PayoutBatch $batch, PayoutLineItem $line, PayoutLineSettlementService $settlement, PayoutGatewaySettings $settings): RedirectResponse
+    {
+        return $this->lineAction($batch, $line, function () use ($request, $line, $settlement, $settings): string {
+            $settlement->sendAgain($line, (int) $request->user()->id);
+
+            return $settings->isRazorpay()
+                ? 'Sent to Razorpay again for ADN '.$this->adnOf($line).'.'
+                : 'ADN '.$this->adnOf($line).' is waiting for the bank again. Download the bank file and upload it to the bank.';
+        });
+    }
+
+    /** Mark paid: the bank confirmed this transfer outside the response file. */
+    public function markLinePaid(Request $request, PayoutBatch $batch, PayoutLineItem $line, PayoutLineSettlementService $settlement): RedirectResponse
+    {
+        $data = $request->validate([
+            'utr' => ['required', 'string', 'max:64', 'regex:/^[A-Za-z0-9]+$/'],
+        ], ['utr.regex' => 'The UTR may contain letters and digits only.'], ['utr' => 'bank reference (UTR)']);
+
+        return $this->lineAction($batch, $line, function () use ($request, $line, $settlement, $data): string {
+            $settlement->markPaid($line, (string) $data['utr'], (int) $request->user()->id);
+
+            return 'ADN '.$this->adnOf($line).' marked paid with UTR '.strtoupper(trim((string) $data['utr'])).'.';
+        });
+    }
+
+    /** Mark failed: the bank reported this transfer failed outside the response file. */
+    public function markLineFailed(Request $request, PayoutBatch $batch, PayoutLineItem $line, PayoutLineSettlementService $settlement): RedirectResponse
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500']], [], ['reason' => 'reason']);
+
+        return $this->lineAction($batch, $line, function () use ($request, $line, $settlement, $data): string {
+            $settlement->markFailed($line, (string) $data['reason'], (int) $request->user()->id);
+
+            return 'ADN '.$this->adnOf($line).' marked failed. Use Send again once the cause is fixed.';
+        });
+    }
+
+    /** Mark returned: the bank sent back a transfer already recorded as paid. */
+    public function markLineReturned(Request $request, PayoutBatch $batch, PayoutLineItem $line, PayoutLineSettlementService $settlement): RedirectResponse
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'max:500']], [], ['reason' => 'reason']);
+
+        return $this->lineAction($batch, $line, function () use ($request, $line, $settlement, $data): string {
+            $settlement->markReturned($line, (string) $data['reason'], (int) $request->user()->id);
+
+            return 'ADN '.$this->adnOf($line).' marked returned — the line is failed again. Use Send again once the cause is fixed.';
+        });
+    }
+
+    /** Check with Razorpay: ask where a transfer stands when its webhook never came. */
+    public function checkLineWithGateway(Request $request, PayoutBatch $batch, PayoutLineItem $line, PayoutLineSettlementService $settlement): RedirectResponse
+    {
+        return $this->lineAction($batch, $line, function () use ($request, $line, $settlement): string {
+            $outcome = $settlement->checkWithRazorpay($line, (int) $request->user()->id);
+
+            return match ($outcome) {
+                PayoutLineItem::STATUS_TRANSFERRED => 'Razorpay confirms ADN '.$this->adnOf($line).' was paid. The line is marked paid.',
+                PayoutLineItem::STATUS_FAILED => 'Razorpay reports ADN '.$this->adnOf($line).' as failed. The line is marked failed — use Send again once the cause is fixed.',
+                'unchanged' => 'ADN '.$this->adnOf($line).' was already settled while Razorpay was being asked. Nothing changed.',
+                default => 'Razorpay still has ADN '.$this->adnOf($line).' in progress ("'.$outcome.'"). Nothing changed — check again later.',
+            };
+        });
+    }
+
+    /**
+     * The guards every line action shares, then the action itself; a refusal
+     * becomes the red message on the batch page.
+     *
+     * @param  callable(): string  $action  returns the success message
+     */
+    private function lineAction(PayoutBatch $batch, PayoutLineItem $line, callable $action): RedirectResponse
     {
         // Route-model binding resolves the line independently of the batch, so
-        // the relationship is checked here or a crafted URL could retry any
+        // the relationship is checked here or a crafted URL could act on any
         // line item from any batch.
         abort_unless((int) $line->payout_batch_id === (int) $batch->id, 404);
 
-        if (! $settings->isRazorpay()) {
-            return back()->with('error', 'Retry is only available while the payout gateway is Razorpay.');
+        if (($refusal = $this->lineActionRefusal($batch)) !== null) {
+            return back()->with('error', $refusal);
         }
 
-        if ($line->status !== PayoutLineItem::STATUS_FAILED) {
-            return back()->with('error', 'Only a failed line item can be retried.');
+        try {
+            $message = $action();
+        } catch (PayoutLineActionRefused $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        if ($line->razorpay_payout_id !== null && $line->razorpay_payout_id !== '') {
-            return back()->with('error', 'This transfer is already with Razorpay — it cannot be sent again.');
+        return redirect()->route($this->payoutRouteName('show'), $batch)->with('success', $message);
+    }
+
+    /** Why no line of this batch may be acted on right now, or null. */
+    private function lineActionRefusal(PayoutBatch $batch): ?string
+    {
+        if ($batch->approved_at === null || ! in_array($batch->status, [
+            PayoutBatch::STATUS_APPROVED,
+            PayoutBatch::STATUS_DISPATCHED,
+            PayoutBatch::STATUS_COMPLETED,
+            PayoutBatch::STATUS_PARTIALLY_FAILED,
+            PayoutBatch::STATUS_FAILED,
+        ], true)) {
+            return 'This batch has not been approved, so none of its lines can be settled or sent. Approve the batch first.';
         }
 
-        if ($line->retry_count >= $settings->maxRetries()) {
-            return back()->with('error', 'This line item has reached the retry limit ('.$settings->maxRetries().'). Correct the distributor’s bank details before trying again.');
+        return $this->projectedFiguresRefusal(
+            'The amounts in this batch were computed on a clock that has not arrived, so they cannot be settled or sent to a bank.'
+        );
+    }
+
+    private function adnOf(PayoutLineItem $line): string
+    {
+        return (string) ($line->distributor->adn ?? $line->distributor_id);
+    }
+
+    /**
+     * What the batch page's "Bank files" section and download button need:
+     * every file of the batch with its "#n", and how many waiting lines are
+     * already in a bank file downloaded since they last became payable.
+     *
+     * @return array{files: EloquentCollection<int, PayoutBankFile>, ordinals: array<int, int>, import_count: int, pending_already_sent: int}
+     */
+    protected function bankFilePanel(PayoutBatch $batch): array
+    {
+        if (! Gate::allows('finance.record')) {
+            return ['files' => new EloquentCollection, 'ordinals' => [], 'import_count' => 0, 'pending_already_sent' => 0];
         }
 
-        RetryRazorpayPayoutJob::dispatch((int) $line->id, (int) $request->user()->id);
+        /** @var EloquentCollection<int, PayoutBankFile> $files */
+        $files = $batch->bankFiles()->with('actor')->get();
+
+        /** @var EloquentCollection<int, PayoutLineItem> $pending */
+        $pending = $batch->lineItems()
+            ->where('status', PayoutLineItem::STATUS_PENDING)
+            ->get(['id', 'retry_count']);
+
+        return [
+            'files' => $files->reverse()->values(),
+            'ordinals' => app(PayoutBankFileDiffService::class)->ordinals($batch),
+            'import_count' => $files->where('direction', PayoutBankFile::DIRECTION_IMPORT)->count(),
+            'pending_already_sent' => count($this->linesInEarlierBankFiles($pending)),
+        ];
+    }
+
+    /**
+     * Download a stored bank file — the exact bytes that were handed to the
+     * bank or uploaded from it. A disclosure of every payee's account number
+     * in it, so each download writes an audit row (never the contents).
+     */
+    public function downloadBankFile(Request $request, PayoutBatch $batch, PayoutBankFile $file, PayoutBankFileVault $vault): StreamedResponse|RedirectResponse
+    {
+        abort_unless((int) $file->payout_batch_id === (int) $batch->id, 404);
+
+        if ($file->isPurged()) {
+            return back()->with('error', 'This file was deleted after the retention period'
+                .($file->purged_at !== null ? ' on '.$file->purged_at->format('d M Y') : '')
+                .'. Its rows are still shown in the comparisons.');
+        }
+
+        $bytes = $vault->read($file);
+        if ($bytes === null) {
+            return back()->with('error', 'This file could not be found in storage. Tell the developer — the record of it is intact, the stored copy is not.');
+        }
 
         AuditLog::create([
             'actor_id' => $request->user()->id,
-            'action' => 'payout.line_item.retry_requested',
-            'subject_type' => 'payout_line_item',
-            'subject_id' => (int) $line->id,
-            // The retry job moves the line, not this request; the digests pin
-            // the state it was authorised against.
-            'before_hash' => AuditDigests::of($line),
-            'after_hash' => AuditDigests::of($line),
+            'action' => 'payout.bank_file.downloaded',
+            'subject_type' => 'payout_batch',
+            'subject_id' => (int) $batch->id,
+            'before_hash' => null,
+            'after_hash' => AuditLog::digest($bytes),
             'details' => [
-                'payout_batch_id' => $batch->id,
-                'distributor_id' => $line->distributor_id,
-                'retry_count' => $line->retry_count,
+                'payout_bank_file_id' => (int) $file->id,
+                'direction' => $file->direction,
+                // Deliberately no contents, names or account numbers.
             ],
             'ip' => $request->ip(),
         ]);
 
-        return back()->with('success', 'Retry queued for ADN '.($line->distributor->adn ?? $line->distributor_id).'.');
+        return response()->streamDownload(static function () use ($bytes): void {
+            echo $bytes;
+        }, $file->original_name, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Compare two bank response files of the batch. Defaults to the latest
+     * import against the one before it; `?vs=first` compares it with the first.
+     */
+    public function compareBankFiles(Request $request, PayoutBatch $batch, PayoutBankFileDiffService $diff): View|RedirectResponse
+    {
+        $imports = $diff->imports($batch);
+
+        if ($imports->count() < 2) {
+            return redirect()->route($this->payoutRouteName('show'), $batch)
+                ->with('error', 'Comparing needs at least two imported bank response files for this batch.');
+        }
+
+        $ids = $imports->pluck('id')->map(static fn ($id): int => (int) $id)->all();
+        $latest = end($ids);
+
+        $toId = in_array((int) $request->integer('to'), $ids, true) ? (int) $request->integer('to') : $latest;
+        $position = array_search($toId, $ids, true);
+        $defaultFrom = $request->query('vs') === 'first' ? $ids[0] : ($ids[max(0, (int) $position - 1)]);
+        $fromId = in_array((int) $request->integer('from'), $ids, true) ? (int) $request->integer('from') : $defaultFrom;
+
+        /** @var PayoutBankFile $from */
+        $from = $imports->firstWhere('id', $fromId);
+        /** @var PayoutBankFile $to */
+        $to = $imports->firstWhere('id', $toId);
+
+        return view('admin.compensation.payout-bank-files.compare', [
+            'batch' => $batch,
+            'imports' => $imports,
+            'ordinals' => $diff->ordinals($batch),
+            'comparison' => $diff->compare($from, $to),
+            'routeBase' => $this->payoutRouteName(''),
+        ]);
+    }
+
+    /** Every import of the batch side by side, by ADN. */
+    public function bankFileHistory(Request $request, PayoutBatch $batch, PayoutBankFileDiffService $diff): View
+    {
+        $all = $request->boolean('all');
+
+        return view('admin.compensation.payout-bank-files.history', [
+            'batch' => $batch,
+            'history' => $diff->history($batch, $all),
+            'ordinals' => $diff->ordinals($batch),
+            'showAll' => $all,
+            'routeBase' => $this->payoutRouteName(''),
+        ]);
     }
 
     /**
@@ -479,9 +721,9 @@ trait HandlesPayoutBatchActions
      * of the exact bytes handed over — enough to prove later which file went to
      * the bank, without the file or any account number being stored anywhere.
      */
-    public function exportNeft(Request $request, PayoutBatch $batch, PayoutService $payoutService): StreamedResponse|RedirectResponse
+    public function exportNeft(Request $request, PayoutBatch $batch, PayoutService $payoutService, PayoutBankFileVault $vault): StreamedResponse|RedirectResponse
     {
-        if (! in_array($batch->status, [
+        if ($batch->approved_at === null || ! in_array($batch->status, [
             PayoutBatch::STATUS_APPROVED,
             PayoutBatch::STATUS_DISPATCHED,
             PayoutBatch::STATUS_COMPLETED,
@@ -497,20 +739,66 @@ trait HandlesPayoutBatchActions
             return back()->with('error', $projected);
         }
 
+        // Only the lines still to pay. A paid line in a file that is handed
+        // to the bank again is a second payment; a failed one comes back here
+        // only once someone has clicked Send again on it.
         /** @var EloquentCollection<int, PayoutLineItem> $lines */
         $lines = $batch->lineItems()
             ->with('distributor.user')
-            ->whereIn('status', [
-                PayoutLineItem::STATUS_PENDING,
-                PayoutLineItem::STATUS_TRANSFERRED,
-            ])
+            ->where('status', PayoutLineItem::STATUS_PENDING)
             ->orderBy('id')
             ->get();
+
+        if ($lines->isEmpty()) {
+            return back()->with('error', 'Nothing left to pay in this batch — every line is paid, failed or held.');
+        }
 
         // Built in full before anything is sent: the audit row has to carry a
         // digest of the bytes the admin actually received, which cannot be
         // known while they are still being streamed.
         $csv = $this->buildBankFile($batch, $lines, $payoutService);
+
+        $alreadySent = $this->linesInEarlierBankFiles($lines);
+
+        $filename = 'bank-upload-'.$batch->batch_type.'-'.$batch->batch_date->format('Y-m-d').'-'.now()->format('Hi').'.csv';
+
+        // The file is kept before it is handed over: what the bank was told
+        // must be on record. Storage down means no file (fail-closed).
+        try {
+            $bankFile = $vault->keep($batch, PayoutBankFile::DIRECTION_EXPORT, $csv, $filename, (int) $request->user()->id);
+        } catch (Throwable $e) {
+            Log::error('Bank file could not be stored — export refused', [
+                'payout_batch_id' => $batch->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'The bank file could not be saved to storage, so it was not produced. Every bank file is kept as evidence of what the bank was told — try again, and tell the developer if it keeps failing.');
+        }
+
+        try {
+            $vault->finish($bankFile, PayoutBankFile::OUTCOME_APPLIED, [
+                'line_count' => $lines->count(),
+                'total_net_paise' => (int) $lines->sum('net_transferred_paise'),
+                'already_in_earlier_file' => count($alreadySent),
+            ], array_values(array_map(static fn (PayoutLineItem $line, int $i): array => [
+                'row_no' => $i + 1,
+                'adn' => (string) ($line->distributor->adn ?? ''),
+                'payout_line_item_id' => (int) $line->id,
+                'attempt' => (int) $line->retry_count,
+                'amount_paise' => (int) $line->net_transferred_paise,
+                'result' => PayoutBankFileRow::RESULT_SENT,
+            ], $lines->all(), array_keys($lines->all()))));
+        } catch (Throwable $e) {
+            // Without its `sent` rows the file would not count as "already in
+            // a bank file" next time — so no file is handed over at all.
+            $vault->discard($bankFile);
+            Log::error('Bank file rows could not be recorded — export refused', [
+                'payout_batch_id' => $batch->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'The bank file could not be recorded, so it was not produced. Try again, and tell the developer if it keeps failing.');
+        }
 
         AuditLog::create([
             'actor_id' => $request->user()->id,
@@ -526,13 +814,15 @@ trait HandlesPayoutBatchActions
                 'batch_date' => $batch->batch_date->toDateString(),
                 'line_count' => $lines->count(),
                 'total_net_paise' => $batch->total_net_paise,
-                // Deliberately no account numbers, no names, no file body.
+                'scope' => 'unpaid_only',
+                'already_in_earlier_file' => count($alreadySent),
+                'payout_bank_file_id' => (int) $bankFile->id,
+                // Deliberately no account numbers, no names, no file body —
+                // the file itself is the encrypted object the id points at.
                 'digest_algorithm' => 'sha256',
             ],
             'ip' => $request->ip(),
         ]);
-
-        $filename = 'bank-upload-'.$batch->batch_type.'-'.$batch->batch_date->format('Y-m-d').'.csv';
 
         return response()->streamDownload(static function () use ($csv): void {
             echo $csv;
@@ -597,6 +887,42 @@ trait HandlesPayoutBatchActions
         fclose($handle);
 
         return $csv;
+    }
+
+    /**
+     * Which of these waiting lines are already in a bank file downloaded for
+     * their current attempt — so the bank may still pay that file.
+     *
+     * Each exported row records the line's attempt number (`retry_count`). A
+     * line that bounced and was sent again has moved to a new attempt, so the
+     * file it bounced from no longer counts. The download button warns before
+     * a second file for the same attempt is handed over, because uploading
+     * both pays those distributors twice.
+     *
+     * @param  EloquentCollection<int, PayoutLineItem>  $lines
+     * @return list<int>
+     */
+    protected function linesInEarlierBankFiles(EloquentCollection $lines): array
+    {
+        if ($lines->isEmpty()) {
+            return [];
+        }
+
+        $sent = PayoutBankFileRow::query()
+            ->whereIn('payout_line_item_id', $lines->modelKeys())
+            ->where('result', PayoutBankFileRow::RESULT_SENT)
+            ->get(['payout_line_item_id', 'attempt'])
+            ->map(static fn (PayoutBankFileRow $row): string => $row->payout_line_item_id.':'.(int) $row->attempt)
+            ->flip();
+
+        $already = [];
+        foreach ($lines as $line) {
+            if ($sent->has($line->id.':'.(int) $line->retry_count)) {
+                $already[] = (int) $line->id;
+            }
+        }
+
+        return $already;
     }
 
     /**

@@ -700,6 +700,30 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             Route::post('/{batch}/line-items/{line}/retry', [AdminMonthlyPayoutController::class, 'retryLineItem'])
                 ->middleware('can:finance.record')->name('line-items.retry')
                 ->whereNumber('batch')->whereNumber('line');
+            // Manual controls that finish a line (all finance.record, all
+            // audited): record what the bank said outside the response file,
+            // a transfer it sent back, or ask Razorpay where one stands.
+            Route::post('/{batch}/line-items/{line}/mark-paid', [AdminMonthlyPayoutController::class, 'markLinePaid'])
+                ->middleware('can:finance.record')->name('line-items.mark-paid')
+                ->whereNumber('batch')->whereNumber('line');
+            Route::post('/{batch}/line-items/{line}/mark-failed', [AdminMonthlyPayoutController::class, 'markLineFailed'])
+                ->middleware('can:finance.record')->name('line-items.mark-failed')
+                ->whereNumber('batch')->whereNumber('line');
+            Route::post('/{batch}/line-items/{line}/mark-returned', [AdminMonthlyPayoutController::class, 'markLineReturned'])
+                ->middleware('can:finance.record')->name('line-items.mark-returned')
+                ->whereNumber('batch')->whereNumber('line');
+            Route::post('/{batch}/line-items/{line}/check-gateway', [AdminMonthlyPayoutController::class, 'checkLineWithGateway'])
+                ->middleware('can:finance.record')->name('line-items.check-gateway')
+                ->whereNumber('batch')->whereNumber('line');
+            // Stored bank files carry every payee's account number: the same
+            // authority as pulling the NEFT file.
+            Route::get('/{batch}/bank-files/compare', [AdminMonthlyPayoutController::class, 'compareBankFiles'])
+                ->middleware('can:finance.record')->name('bank-files.compare')->whereNumber('batch');
+            Route::get('/{batch}/bank-files/history', [AdminMonthlyPayoutController::class, 'bankFileHistory'])
+                ->middleware('can:finance.record')->name('bank-files.history')->whereNumber('batch');
+            Route::get('/{batch}/bank-files/{file}/download', [AdminMonthlyPayoutController::class, 'downloadBankFile'])
+                ->middleware('can:finance.record')->name('bank-files.download')
+                ->whereNumber('batch')->whereNumber('file');
         });
 
         Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function (): void {
@@ -731,6 +755,30 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             Route::post('/{batch}/line-items/{line}/retry', [AdminWeeklyPayoutController::class, 'retryLineItem'])
                 ->middleware('can:finance.record')->name('line-items.retry')
                 ->whereNumber('batch')->whereNumber('line');
+            // Manual controls that finish a line (all finance.record, all
+            // audited): record what the bank said outside the response file,
+            // a transfer it sent back, or ask Razorpay where one stands.
+            Route::post('/{batch}/line-items/{line}/mark-paid', [AdminWeeklyPayoutController::class, 'markLinePaid'])
+                ->middleware('can:finance.record')->name('line-items.mark-paid')
+                ->whereNumber('batch')->whereNumber('line');
+            Route::post('/{batch}/line-items/{line}/mark-failed', [AdminWeeklyPayoutController::class, 'markLineFailed'])
+                ->middleware('can:finance.record')->name('line-items.mark-failed')
+                ->whereNumber('batch')->whereNumber('line');
+            Route::post('/{batch}/line-items/{line}/mark-returned', [AdminWeeklyPayoutController::class, 'markLineReturned'])
+                ->middleware('can:finance.record')->name('line-items.mark-returned')
+                ->whereNumber('batch')->whereNumber('line');
+            Route::post('/{batch}/line-items/{line}/check-gateway', [AdminWeeklyPayoutController::class, 'checkLineWithGateway'])
+                ->middleware('can:finance.record')->name('line-items.check-gateway')
+                ->whereNumber('batch')->whereNumber('line');
+            // Stored bank files carry every payee's account number: the same
+            // authority as pulling the NEFT file.
+            Route::get('/{batch}/bank-files/compare', [AdminWeeklyPayoutController::class, 'compareBankFiles'])
+                ->middleware('can:finance.record')->name('bank-files.compare')->whereNumber('batch');
+            Route::get('/{batch}/bank-files/history', [AdminWeeklyPayoutController::class, 'bankFileHistory'])
+                ->middleware('can:finance.record')->name('bank-files.history')->whereNumber('batch');
+            Route::get('/{batch}/bank-files/{file}/download', [AdminWeeklyPayoutController::class, 'downloadBankFile'])
+                ->middleware('can:finance.record')->name('bank-files.download')
+                ->whereNumber('batch')->whereNumber('file');
         });
 
         // How money leaves the platform: the gateway in use, the RazorpayX

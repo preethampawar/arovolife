@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Compensation\Models\PayoutBankFile;
+use App\Modules\Compensation\Models\PayoutBankFileRow;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Manual-NEFT reconciliation: read the bank's response file back into the
@@ -36,6 +40,12 @@ use Illuminate\Http\UploadedFile;
  *               payout line, in this file or an earlier import, is rejected
  *               (QA F15); `uniq_payout_line_items_utr` enforces the same rule
  *               in the database, where a concurrent import is also visible.
+ *
+ * Every uploaded file is kept (encrypted, {@see PayoutBankFileVault}) before a
+ * single row is applied, with one parsed row per CSV row recording what the
+ * file said and what was done with it — the timeline and the import
+ * comparisons on the batch page read those. A file that cannot be stored is
+ * refused outright: nothing is applied without its evidence.
  */
 final class PayoutReconciliationService
 {
@@ -59,7 +69,10 @@ final class PayoutReconciliationService
 
     private const FAILURE_VALUES = ['failed', 'failure', 'rejected', 'returned', 'reversed', 'bounced'];
 
-    public function __construct(private readonly RazorpayPayoutDispatchService $dispatcher) {}
+    public function __construct(
+        private readonly RazorpayPayoutDispatchService $dispatcher,
+        private readonly PayoutBankFileVault $vault,
+    ) {}
 
     /**
      * Every line's settlement state on a batch, for the before/after digests
@@ -83,7 +96,7 @@ final class PayoutReconciliationService
      * @return array{
      *   rows: int, matched: int, transferred: int, failed: int,
      *   unmatched: list<string>, skipped: list<string>, rejected: list<string>,
-     *   errors: list<string>, amount_checked: bool
+     *   errors: list<string>, amount_checked: bool, bank_file_id: int|null
      * }
      */
     public function import(PayoutBatch $batch, UploadedFile $file, int $actorId): array
@@ -102,21 +115,45 @@ final class PayoutReconciliationService
             'rejected' => [],
             'errors' => [],
             'amount_checked' => false,
+            'bank_file_id' => null,
         ];
 
-        $handle = fopen($file->getRealPath(), 'r');
-        if ($handle === false) {
+        $bytes = @file_get_contents($file->getRealPath());
+        if ($bytes === false) {
             $summary['errors'][] = 'The uploaded file could not be read.';
 
             return $summary;
         }
+
+        try {
+            $bankFile = $this->vault->keep($batch, PayoutBankFile::DIRECTION_IMPORT, $bytes, $file->getClientOriginalName(), $actorId);
+        } catch (Throwable $e) {
+            Log::error('Bank response file could not be stored — import refused', [
+                'payout_batch_id' => $batch->id,
+                'error' => $e->getMessage(),
+            ]);
+            $summary['errors'][] = 'The file could not be saved to storage, so nothing was imported. Every bank file is kept as evidence before it is applied — try again, and tell the developer if it keeps failing.';
+
+            return $summary;
+        }
+
+        $summary['bank_file_id'] = (int) $bankFile->id;
+
+        $handle = fopen('php://temp', 'r+');
+        if ($handle === false) {
+            $summary['errors'][] = 'The uploaded file could not be read.';
+
+            return $this->refuse($bankFile, $summary);
+        }
+        fwrite($handle, $bytes);
+        rewind($handle);
 
         $header = fgetcsv($handle);
         if ($header === false) {
             fclose($handle);
             $summary['errors'][] = 'The uploaded file is empty.';
 
-            return $summary;
+            return $this->refuse($bankFile, $summary);
         }
 
         $columns = $this->mapColumns($header);
@@ -124,14 +161,17 @@ final class PayoutReconciliationService
             fclose($handle);
             $summary['errors'][] = 'No ADN column found. The file must have a header row with an "ADN" column.';
 
-            return $summary;
+            return $this->refuse($bankFile, $summary);
         }
         if ($columns['status'] === null) {
             fclose($handle);
             $summary['errors'][] = 'No Status column found. The file must have a header row with a "Status" column.';
 
-            return $summary;
+            return $this->refuse($bankFile, $summary);
         }
+
+        /** @var list<array{row_no: int, adn: string, payout_line_item_id: int|null, bank_status: string|null, verdict: string|null, utr: string|null, amount_paise: int|null, reason: string|null, result: string}> $recorded */
+        $recorded = [];
 
         $summary['amount_checked'] = $columns['amount'] !== null;
 
@@ -157,16 +197,42 @@ final class PayoutReconciliationService
                 continue;
             }
 
+            $rawStatus = trim($this->cell($row, $columns['status']));
+            $verdict = $this->verdict($rawStatus);
+            $utr = $columns['utr'] !== null ? trim($this->cell($row, $columns['utr'])) : '';
+            $claimedPaise = $columns['amount'] !== null
+                ? $this->amountPaise($this->cell($row, $columns['amount']))
+                : null;
+            $reason = $columns['reason'] !== null ? trim($this->cell($row, $columns['reason'])) : '';
+
             $line = $linesByAdn[$adn] ?? null;
+
+            // What the file said about this ADN, whatever becomes of the row —
+            // the import comparisons are built from these.
+            $record = function (string $result) use (&$recorded, $summary, $adn, $line, $rawStatus, $verdict, $utr, $claimedPaise, $reason): void {
+                $recorded[] = [
+                    'row_no' => $summary['rows'],
+                    'adn' => $adn,
+                    'payout_line_item_id' => $line !== null ? (int) $line->id : null,
+                    'bank_status' => $rawStatus !== '' ? $rawStatus : null,
+                    'verdict' => $verdict ?? 'unrecognised',
+                    'utr' => $utr !== '' ? $utr : null,
+                    'amount_paise' => $claimedPaise,
+                    'reason' => $reason !== '' ? $reason : null,
+                    'result' => $result,
+                ];
+            };
+
             if ($line === null) {
                 $summary['unmatched'][] = $adn;
+                $record(PayoutBankFileRow::RESULT_UNMATCHED);
 
                 continue;
             }
 
-            $verdict = $this->verdict($this->cell($row, $columns['status']));
             if ($verdict === null) {
                 $summary['skipped'][] = $adn.' (unrecognised status)';
+                $record(PayoutBankFileRow::RESULT_UNRECOGNISED_STATUS);
 
                 continue;
             }
@@ -175,6 +241,7 @@ final class PayoutReconciliationService
             // Re-importing the same response must not rewrite history.
             if ($line->status !== PayoutLineItem::STATUS_PENDING) {
                 $summary['skipped'][] = $adn.' (already '.$line->status.')';
+                $record(PayoutBankFileRow::RESULT_ALREADY_SETTLED);
 
                 continue;
             }
@@ -184,24 +251,20 @@ final class PayoutReconciliationService
             // step — used to import silently and record the wrong people paid
             // (QA F14). A blank cell is not a mismatch: banks routinely leave it
             // empty on a returned transfer.
-            $claimedPaise = $columns['amount'] !== null
-                ? $this->amountPaise($this->cell($row, $columns['amount']))
-                : null;
-
             if ($claimedPaise !== null && $claimedPaise !== (int) $line->net_transferred_paise) {
                 $summary['rejected'][] = $adn.' (amount '.$this->rupees($claimedPaise).
                     ' does not match the line’s '.$this->rupees((int) $line->net_transferred_paise).')';
+                $record(PayoutBankFileRow::RESULT_REJECTED_AMOUNT);
 
                 continue;
             }
-
-            $utr = $columns['utr'] !== null ? trim($this->cell($row, $columns['utr'])) : '';
 
             // One UTR, one settled line — within this file and against every
             // line item already recorded (QA F15). `uniq_payout_line_items_utr`
             // is the database's half of the same rule.
             if ($utr !== '' && isset($usedUtrs[strtoupper($utr)])) {
                 $summary['rejected'][] = $adn.' (bank reference already settles another payout line)';
+                $record(PayoutBankFileRow::RESULT_REJECTED_UTR);
 
                 continue;
             }
@@ -220,11 +283,10 @@ final class PayoutReconciliationService
                 }
 
                 $summary['transferred']++;
+                $record(PayoutBankFileRow::RESULT_MARKED_PAID);
 
                 continue;
             }
-
-            $reason = $columns['reason'] !== null ? trim($this->cell($row, $columns['reason'])) : '';
 
             $line->forceFill([
                 'status' => PayoutLineItem::STATUS_FAILED,
@@ -232,9 +294,12 @@ final class PayoutReconciliationService
             ])->save();
 
             $summary['failed']++;
+            $record(PayoutBankFileRow::RESULT_MARKED_FAILED);
         }
 
         fclose($handle);
+
+        $this->vault->finish($bankFile, PayoutBankFile::OUTCOME_APPLIED, $this->fileSummary($summary), $recorded);
 
         AuditLog::create([
             'actor_id' => $actorId,
@@ -259,6 +324,7 @@ final class PayoutReconciliationService
                 'rejected' => array_slice($summary['rejected'], 0, 50),
                 'rejected_count' => count($summary['rejected']),
                 'amount_checked' => $summary['amount_checked'],
+                'payout_bank_file_id' => (int) $bankFile->id,
             ],
             'ip' => request()->ip(),
         ]);
@@ -266,6 +332,41 @@ final class PayoutReconciliationService
         $this->dispatcher->refreshBatchStatus($batch->refresh());
 
         return $summary;
+    }
+
+    /**
+     * Keep a file that could not be read at all, with the reason, and apply
+     * nothing from it.
+     *
+     * @param  array{rows: int, matched: int, transferred: int, failed: int, unmatched: list<string>, skipped: list<string>, rejected: list<string>, errors: list<string>, amount_checked: bool, bank_file_id: int|null}  $summary
+     * @return array{rows: int, matched: int, transferred: int, failed: int, unmatched: list<string>, skipped: list<string>, rejected: list<string>, errors: list<string>, amount_checked: bool, bank_file_id: int|null}
+     */
+    private function refuse(PayoutBankFile $bankFile, array $summary): array
+    {
+        $this->vault->finish($bankFile, PayoutBankFile::OUTCOME_REFUSED, $this->fileSummary($summary), []);
+
+        return $summary;
+    }
+
+    /**
+     * The counts kept on the stored file's row — the timeline's one-line
+     * description of what the import did.
+     *
+     * @param  array{rows: int, matched: int, transferred: int, failed: int, unmatched: list<string>, skipped: list<string>, rejected: list<string>, errors: list<string>, amount_checked: bool, bank_file_id: int|null}  $summary
+     * @return array<string, mixed>
+     */
+    private function fileSummary(array $summary): array
+    {
+        return [
+            'rows' => $summary['rows'],
+            'transferred' => $summary['transferred'],
+            'failed' => $summary['failed'],
+            'skipped' => count($summary['skipped']),
+            'rejected' => count($summary['rejected']),
+            'unmatched' => count($summary['unmatched']),
+            'amount_checked' => $summary['amount_checked'],
+            'errors' => $summary['errors'],
+        ];
     }
 
     /**

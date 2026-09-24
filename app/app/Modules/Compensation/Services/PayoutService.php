@@ -183,7 +183,11 @@ final class PayoutService
             $wasCreated = true;
         }
 
+        // `approved_at` too: a signed-off batch whose lines the bank has since
+        // settled or bounced (`partially_failed`, `failed`) is still one
+        // finance approved, and a re-run must never append to it.
         if (in_array($batch->status, self::CLOSED_BATCH_STATUSES, true)
+            || $batch->approved_at !== null
             || ($batch->status === PayoutBatch::STATUS_PENDING && $batch->processed_at !== null)) {
             return $batch;
         }
@@ -301,7 +305,11 @@ final class PayoutService
             $wasCreated = true;
         }
 
+        // `approved_at` too: a signed-off batch whose lines the bank has since
+        // settled or bounced (`partially_failed`, `failed`) is still one
+        // finance approved, and a re-run must never append to it.
         if (in_array($batch->status, self::CLOSED_BATCH_STATUSES, true)
+            || $batch->approved_at !== null
             || ($batch->status === PayoutBatch::STATUS_PENDING && $batch->processed_at !== null)) {
             return $batch;
         }

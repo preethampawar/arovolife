@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\PayoutBankFile;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\PayoutService;
@@ -15,12 +16,15 @@ use App\Modules\Shared\Crypto\PiiCrypter;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
     $this->seed(RolesAndPermissionsSeeder::class);
+    // Every NEFT file downloaded is kept on this disk.
+    Storage::fake(PayoutBankFile::DISK);
 });
 
 function smokeAdmin(): User
@@ -172,7 +176,20 @@ it('refuses the NEFT file for a batch nobody has approved', function (): void {
         ->assertRedirect(route('admin.compensation.weekly-payouts.show', $batch))
         ->assertSessionHas('error');
 
-    $batch->update(['status' => PayoutBatch::STATUS_APPROVED]);
+    $batch->update(['status' => PayoutBatch::STATUS_APPROVED, 'approved_at' => now()]);
+
+    // The file holds only the lines still to pay, so an approved batch needs one.
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => Distributor::factory()->create()->id,
+        'wallet_balance_paise' => 100_000,
+        'gross_paise' => 100_000,
+        'repurchase_deduction_paise' => 0,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_transferred_paise' => 100_000,
+        'status' => PayoutLineItem::STATUS_PENDING,
+    ]);
 
     $this->actingAs(smokeAdmin())
         ->get(route('admin.compensation.weekly-payouts.neft', $batch))
@@ -356,6 +373,7 @@ it('exports a bank file the bank can execute, and audits every download', functi
         'batch_type' => PayoutBatch::TYPE_WEEKLY,
         'batch_date' => now()->toDateString(),
         'status' => PayoutBatch::STATUS_APPROVED,
+        'approved_at' => now(),
         'total_net_paise' => 150_000,
         'distributor_count' => 2,
     ]);
@@ -438,6 +456,7 @@ it('exports a line whose bank details no longer decrypt with no account number',
         'batch_type' => PayoutBatch::TYPE_WEEKLY,
         'batch_date' => now()->toDateString(),
         'status' => PayoutBatch::STATUS_APPROVED,
+        'approved_at' => now(),
     ]);
 
     $broken = Distributor::factory()->create();

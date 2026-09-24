@@ -27,6 +27,7 @@ use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
 use App\Modules\Compensation\Console\Commands\PayoutReopenStuckBatchCommand;
+use App\Modules\Compensation\Console\Commands\PurgeExpiredPayoutBankFilesCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
 use App\Modules\Compensation\Console\Commands\RebuildMonthCommand;
@@ -200,6 +201,7 @@ class AppServiceProvider extends ServiceProvider
                 PayoutReopenStuckBatchCommand::class,
                 EngineHealthDigestCommand::class,
                 AutoRetryFailedPayoutsCommand::class,
+                PurgeExpiredPayoutBankFilesCommand::class,
                 RepurchaseEvaluateCommand::class,
                 PaymentsReconcileCommand::class,
                 ExpireUnpaidOrdersCommand::class,

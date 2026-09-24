@@ -10,6 +10,7 @@ declare(strict_types=1);
  * dispatch path.
  */
 
+use App\Modules\Compensation\Models\PayoutBankFile;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\PayoutGatewaySettings;
@@ -19,23 +20,17 @@ use App\Modules\Compensation\Support\RazorpayPayoutPayloadScrubber;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
+    // Every imported response file is kept on this disk before it is applied.
+    Storage::fake(PayoutBankFile::DISK);
 });
-
-function setGatewaySetting(string $key, string $value): void
-{
-    DB::table('settings')->updateOrInsert(
-        ['key' => $key],
-        ['value' => $value, 'version' => 1, 'updated_at' => now()],
-    );
-}
 
 // ── Gateway settings ───────────────────────────────────────────────────
 
@@ -170,45 +165,6 @@ it('rejects a webhook whose signature does not verify', function (): void {
 });
 
 // ── Manual NEFT reconciliation ─────────────────────────────────────────
-
-/**
- * A batch with one pending line item for a distributor with the given ADN.
- *
- * `$daysAgo` moves the batch date: one weekly batch per date, so a test needing
- * two batches has to place them on different days.
- */
-function reconcileFixture(string $adn, int $daysAgo = 0): array
-{
-    $batch = PayoutBatch::create([
-        'batch_type' => PayoutBatch::TYPE_WEEKLY,
-        'batch_date' => now()->subDays($daysAgo)->toDateString(),
-        'status' => PayoutBatch::STATUS_APPROVED,
-    ]);
-
-    $distributor = Distributor::factory()->create(['adn' => $adn]);
-
-    $line = PayoutLineItem::create([
-        'payout_batch_id' => $batch->id,
-        'distributor_id' => $distributor->id,
-        'wallet_balance_paise' => 100_000,
-        'gross_paise' => 100_000,
-        'repurchase_deduction_paise' => 0,
-        'admin_charge_paise' => 0,
-        'tds_paise' => 0,
-        'net_transferred_paise' => 100_000,
-        'status' => PayoutLineItem::STATUS_PENDING,
-    ]);
-
-    return [$batch, $line];
-}
-
-function uploadCsv(string $contents): UploadedFile
-{
-    $path = tempnam(sys_get_temp_dir(), 'neft').'.csv';
-    file_put_contents($path, $contents);
-
-    return new UploadedFile($path, 'bank-response.csv', 'text/csv', null, true);
-}
 
 it('settles a line item from the bank response file and records the UTR', function (): void {
     [$batch, $line] = reconcileFixture('ARV00001');
@@ -383,32 +339,6 @@ it('refuses a file with no ADN column rather than guessing', function (): void {
 });
 
 // ── Webhook settlement ─────────────────────────────────────────────────
-
-/** A dispatched line item awaiting its payout webhook. */
-function dispatchedFixture(string $payoutId): array
-{
-    $batch = PayoutBatch::create([
-        'batch_type' => PayoutBatch::TYPE_WEEKLY,
-        'batch_date' => now()->toDateString(),
-        'status' => PayoutBatch::STATUS_DISPATCHED,
-    ]);
-
-    $line = PayoutLineItem::create([
-        'payout_batch_id' => $batch->id,
-        'distributor_id' => Distributor::factory()->create()->id,
-        'wallet_balance_paise' => 100_000,
-        'gross_paise' => 100_000,
-        'repurchase_deduction_paise' => 0,
-        'admin_charge_paise' => 0,
-        'tds_paise' => 0,
-        'net_transferred_paise' => 100_000,
-        'status' => PayoutLineItem::STATUS_PENDING,
-        'razorpay_payout_id' => $payoutId,
-        'dispatched_at' => now(),
-    ]);
-
-    return [$batch, $line];
-}
 
 /** POST a signed payout webhook exactly as RazorpayX would. */
 function postPayoutWebhook(array $body, ?string $eventId = null): TestResponse

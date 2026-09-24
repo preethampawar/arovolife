@@ -18,7 +18,9 @@ declare(strict_types=1);
  * *envelope* — status, content type, filename extension and who may reach it.
  */
 
+use App\Modules\Compensation\Models\PayoutBankFile;
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
@@ -30,6 +32,7 @@ use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Laravel\Pennant\Feature;
 
@@ -278,10 +281,27 @@ it('404s in both formats when its bonus feature flag is off', function (string $
 // portal parses CSV and nothing else, so these two must NOT have been swept up
 // with the rest. If someone "finishes the job" in a later pass, this fails.
 it('keeps the NEFT bank file as CSV, whatever format is asked for', function (string $route): void {
+    // Every download is kept on this disk.
+    Storage::fake(PayoutBankFile::DISK);
+
     $batch = PayoutBatch::create([
         'batch_type' => str_contains($route, 'monthly') ? PayoutBatch::TYPE_MONTHLY : PayoutBatch::TYPE_WEEKLY,
         'batch_date' => now()->toDateString(),
         'status' => PayoutBatch::STATUS_APPROVED,
+        'approved_at' => now(),
+    ]);
+
+    // The file holds only the lines still to pay.
+    PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => Distributor::factory()->create()->id,
+        'wallet_balance_paise' => 100_000,
+        'gross_paise' => 100_000,
+        'repurchase_deduction_paise' => 0,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_transferred_paise' => 100_000,
+        'status' => PayoutLineItem::STATUS_PENDING,
     ]);
 
     // `can:finance.record` — the gate the matrix says must survive.

@@ -8,10 +8,17 @@ account, and what every button on the payout screens actually does.
 **Approving a batch is not the same as paying it.** Approval is finance saying
 "this amount is correct and may be released". Payment is the bank actually
 moving the money, and only the bank can tell us it happened — through a
-Razorpay payout webhook, or through the response file the bank returns after a
-NEFT upload. A line item is marked `transferred` on that evidence and nothing
-else, because "transferred" is the number that appears on a distributor's
-Total Withdrawal Income and on their tax statement.
+Razorpay payout webhook, the response file the bank returns after a NEFT
+upload, or a bank confirmation you record by hand with its UTR (**Mark paid**).
+A line item is marked `transferred` on that evidence and nothing else, because
+"transferred" is the number that appears on a distributor's Total Withdrawal
+Income and on their tax statement.
+
+**Nothing on the batch page changes a wallet.** The money left the
+distributor's wallet when the batch was built. Every control below only records
+what the bank did with it, or — when the bank bounced it — puts the same line
+back in front of the bank. A failed payment is never reversed into the wallet
+and never debited twice.
 
 ## The two modes
 
@@ -263,15 +270,25 @@ needs to execute a transfer — not a reconciliation sheet:
 | `IFSC` | The branch code. |
 | `Net Amount (₹)` | What leaves the company for that line, after every deduction. Plain digits with two decimals and no grouping — a bank parser reads `1234.50`, not `1,234.50`. |
 | `Narration` | `arovolife <ADN> B<batch id>` — what the distributor sees on their statement, and what ties a credit back to a batch. |
-| `UTR` | Blank until the bank's response file is imported. |
-| `Status` | The line's state at the moment of download. |
+| `UTR` | Blank — the line is still waiting for the bank. |
+| `Status` | The line's state at the moment of download (always `pending`, or `bank_decrypt_failed` — see below). |
 
-**Every download is audited.** A `payout.batch.bank_file_exported` row records
-who downloaded it, which batch, how many lines, and a SHA-256 of the exact
-bytes handed over. The file itself is never stored and no account number is
-ever written to the audit log or to any application log — the digest is there so
-that a file produced later can be proved identical to (or different from) the
-one that went to the bank.
+**The file holds only the lines still to pay.** Lines already paid, failed or
+held are left out, so downloading the file again after the bank has answered
+gives you exactly what is left. A failed line comes back into the file only
+after someone clicks **Send again** on it. When nothing is left to pay, the
+download is refused.
+
+**Downloading the same lines twice is the one way to pay someone twice.** If a
+waiting line is already in a bank file you downloaded earlier (for the same
+attempt), the download button warns you before you take the new file. Upload
+it only if the bank did **not** process the earlier one.
+
+**Every download is kept and audited.** The file is stored encrypted (see
+*Bank files* below) and a `payout.batch.bank_file_exported` row records who
+downloaded it, which batch, how many lines, and a SHA-256 of the exact bytes
+handed over. No account number is ever written to the audit log or to any
+application log.
 
 **A line the platform can no longer decrypt** — a bank account whose ciphertext
 does not open, which normally means a key rotation between the batch run and the
@@ -289,6 +306,12 @@ and re-run the batch date.
 4. **Import bank response** on the batch page. Rows are matched on ADN. A row
    marks that line `transferred` (with its UTR) or `failed` (with the bank's
    reason).
+5. **Finish what is left** with the buttons on each line (next section), then
+   download the bank file again for anything sent again. Repeat until the
+   batch reads *Completed*.
+
+The **What to do next** box at the top of an approved batch says, from the live
+line counts, which of these steps is next.
 
 The file needs a header row with an **ADN** column and a **Status** column.
 **UTR** and **Failure Reason** are used when present. Status wording is matched
@@ -314,16 +337,51 @@ batch as settled:
   item, is refused: two distributors cannot be paid by one transfer. The
   database enforces the same rule, so it holds even if two imports run at once.
 
-## When a transfer fails
+## Finishing a payment that failed or is still waiting
 
-Failures come in two kinds, and the difference decides what you do.
+Every line of an approved batch has buttons for the step that finishes it. All
+of them need `finance.record` (the same permission that imports the bank
+file), every click asks you to confirm, and every click is audited.
+
+| The line is | Manual NEFT | Razorpay |
+|---|---|---|
+| `pending` (waiting for the bank) | **Mark paid** — enter the UTR the bank gave you. **Mark failed** — enter the bank's reason. Use these when the bank tells you by email, phone or statement instead of a response file. | **Check with Razorpay** — asks Razorpay where the transfer stands and applies its answer. A line Razorpay has not received yet shows *Being sent to Razorpay* and has no button: the dispatch job may still be sending it. |
+| `failed` | **Send again** — the line goes back to waiting and is in the next bank file you download. **Mark paid** — the bank confirms it went through after all. | **Send again** — Razorpay is first asked to confirm the earlier transfer is dead (failed or reversed); only then is a new transfer sent. |
+| `transferred` | **Mark returned** — the bank sent the money back days later (account closed, for example). The line becomes `failed`, its UTR is cleared (kept in the audit log), and you send it again once the cause is fixed. | Razorpay reports its own reversals through the `payout.reversed` webhook. |
+
+**Send all failed again** in the page header does the same for every failed line
+of the batch. In Razorpay mode it skips lines that have reached the retry limit
+(default 3); **Send again** on a single line is a person's decision and is not
+limited.
+
+A UTR can settle only one line. **Mark paid** refuses a UTR already recorded on
+any payout line.
+
+When a line moves, the batch moves with it: a line sent again puts a *Completed*
+or *Failed* batch back to *Approved — awaiting bank*; a line marked returned
+turns a *Completed* batch into *Partially failed*.
+
+**A return changes figures already reported.** The TDS already deducted stays
+(the deduction happened), but a line marked returned no longer counts as
+transferred, so a past period's "net transferred" on the Company snapshot drops,
+and the TDS register shows the line without its old UTR (the old UTR is in the
+`payout.line_item.marked_returned` audit row).
+
+**Every manual action is reviewed.** One finance user can do all of this alone,
+so admin-compliance reviews the month's Mark paid, Mark returned and Send again
+actions (risk register R-108).
+
+A batch that has not been approved has none of these buttons, no bank file and
+no import — it is not yet a payment instruction.
+
+### Why it failed decides what you do first
 
 **The bank details are wrong** — invalid IFSC, invalid account number, an
-account that no longer exists. Retrying changes nothing. The details have to be
-corrected first, then retry. In Razorpay mode a corrected account produces a new
-fund account automatically.
+account that no longer exists. Sending again changes nothing until the details
+are corrected. In Razorpay mode a corrected account produces a new fund account
+automatically.
 
-Two paths now correct them, and the distributor's own is the better one:
+Two paths correct them, and the distributor's own is the better one:
 
 - **The distributor, from My profile → Bank details.** They type the account
   number twice, give the IFSC and the account holder's name as their bank has
@@ -335,28 +393,69 @@ Two paths now correct them, and the distributor's own is the better one:
 - **You, from Distributors → the distributor → bank details**, when they cannot
   do it themselves.
 
-Either way the held line clears on its own: holds are re-read from live state
-when the batch is re-run and again at approval.
+The bank file reads the distributor's bank details at the moment you download
+it, so a line sent again after the correction goes out to the corrected account.
 
 **Something transient went wrong** — a gateway blip, a rate limit, a RazorpayX
-balance that was short at the time. Retrying is exactly the right answer.
+balance that was short at the time. Sending again is exactly the right answer.
 
-### Retrying
+A failed payout also appears in the **Action Center** (*Failed payouts waiting
+to be sent again*) until it is sent again or marked paid — the wallet was
+already debited, so nothing else will pay that distributor. On their own wallet
+page the distributor sees *Transfer failed — will be sent again*.
 
-- **Retry** on a single line item — Razorpay mode only, for a `failed` line
-  that has not already reached the retry limit.
-- **Retry N failed** in the header — queues every eligible failed line in the
-  batch at once.
-- **Automatic** — a nightly sweep at 11:00 IST re-sends failed transfers that
-  have sat untouched longer than the configured window (default 24 hours) and
-  are under the retry limit (default 3). It does nothing in Manual NEFT mode.
+### Automatic retries (Razorpay only)
+
+A nightly sweep at 11:00 IST re-sends failed transfers that have sat untouched
+longer than the configured window (default 24 hours) and are under the retry
+limit (default 3). It never touches a line whose transfer Razorpay reported
+failed or reversed — that needs a person to check the cause — and it does
+nothing in Manual NEFT mode.
 
 A retry never sends a second transfer for a payout Razorpay already has: each
 attempt carries a deterministic idempotency key, and a line item that already
-holds a payout id is skipped outright.
+holds a live payout id is skipped outright.
 
-`bank_decrypt_failed` lines are deliberately never auto-retried — the stored
-bank details cannot be read at all, and only re-capturing them fixes it.
+`bank_decrypt_failed` lines are deliberately never retried — the stored bank
+details cannot be read at all, and only re-capturing them fixes it.
+
+## Bank files and comparing imports
+
+Every bank file of a batch is kept: each NEFT file downloaded (**Export #1,
+#2 …**) and each bank response file uploaded (**Import #1, #2 …**). The
+**Bank files** section at the bottom of the batch page lists them newest first
+with who downloaded or uploaded each one, when, and what it did — for an
+import, how many rows were marked paid, failed, skipped, rejected or not in the
+batch. A file uploaded twice is labelled *identical to Import #n*. A file that
+could not be read at all is kept too, marked *Not applied* with the reason.
+
+- **Download** returns the exact file that went to or came from the bank. The
+  files hold full account numbers, so only `finance.record` sees this section,
+  and every download writes a `payout.bank_file.downloaded` audit row.
+- **Compare imports** shows what changed between two response files, matched
+  on ADN: new in the later file, missing from it, status changed (e.g. failed →
+  success), UTR changed, amount changed, reason changed — with the old and new
+  values and what the platform did with each row. Two tabs cover the usual
+  questions: **vs previous import** and **vs first import**; the dropdowns
+  compare any two. An ADN listed twice in one file is flagged, and compared on
+  its first row.
+- **All imports** lays every import side by side, one row per ADN and one
+  column per file. It shows only the ADNs that two imports report
+  differently (an ADN missing from a later file is not a change — follow-up
+  files usually carry only the payments sent again); **Show all ADNs** lists
+  every one. On the compare page, missing ADNs are listed last for the same
+  reason.
+
+**Storage.** Files are stored encrypted on a private S3 location, the same way
+as KYC scans. If storage cannot be reached, the download and the import are
+**refused** — a bank file must never exist without its record. Try again; if it
+keeps failing, tell the platform team.
+
+**Retention.** Files are deleted after **Bank file retention (days)** in
+Settings → Payout (default 2,920 days — eight years), by a nightly job at
+03:40 IST. The batch's record of each file and its rows stay, so the timeline
+and comparisons keep working; the Download button then reads *Deleted after
+the retention period*.
 
 ## Where the deductions end up: the Company snapshot
 
@@ -452,8 +551,8 @@ outside the payout engine, so tell the platform team. Every export is audited
 | Status | Meaning | Money position |
 |---|---|---|
 | `pending` | Computed and payable; awaiting approval, or in flight with the bank. | Debited from the wallet, not yet with the distributor. |
-| `transferred` | The bank confirmed the transfer. | Paid. Counts toward Total Withdrawal Income. |
-| `failed` | The transfer was attempted and refused, or reversed. | Debited, not paid. Retryable. |
+| `transferred` | The bank confirmed the transfer (response file, webhook, or Mark paid with a UTR). | Paid. Counts toward Total Withdrawal Income. |
+| `failed` | The transfer was refused, reversed, or returned by the bank. | Debited, not paid. Send it again once the cause is fixed. |
 | `below_minimum` | Net fell under the minimum payout threshold. | Held in the wallet; rolls into a later batch. |
 | `web_only` | Personal BV below the NEFT eligibility threshold. | Held in the wallet. Income still accrues and is visible. |
 | `kyc_pending` | KYC not yet verified. | Held in the wallet. Released by the first batch after approval. |
@@ -469,8 +568,13 @@ outside the payout engine, so tell the platform team. Every export is audited
 | `approved` | Manual NEFT: signed off, awaiting the bank response file. |
 | `dispatched` | Razorpay: every line handed to the gateway, awaiting webhooks. |
 | `completed` | Every payable line transferred. |
-| `partially_failed` | Some transferred, some failed. Fix and retry the failures. |
+| `partially_failed` | Some transferred, some failed. Fix the cause and send the failures again. |
 | `failed` | Every payable line failed. |
+
+A settled batch is not final while a line can still move: sending a failed line
+again puts the batch back to `approved` (Manual NEFT) or `dispatched`
+(Razorpay), and marking a paid line returned turns `completed` into
+`partially_failed` or `failed`.
 
 An `approved` or `dispatched` batch is closed: re-running the batch date will
 not append new line items to it.
@@ -484,12 +588,18 @@ Every action leaves an `audit_log` row. In Compliance → Audit log, look for:
 | `payout.batch.created` / `payout.batch.finalised` | The engine run that produced the batch. |
 | `payout.batch.approved` | Who approved it, under which gateway, for how much. |
 | `payout.batch.self_approval_refused` | An approver was refused their own batch: who tried, and who created it. |
-| `payout.batch.bank_file_exported` | Who downloaded the bank file, for which batch, how many lines, and a SHA-256 of the exact bytes. |
+| `payout.batch.bank_file_exported` | Who downloaded the bank file, for which batch, how many lines, how many were already in an earlier file, the stored file's id, and a SHA-256 of the exact bytes. |
 | `payout.batch.dispatched` | How many line items were sent, how many failed on the way out. |
-| `payout.batch.reconciled` | A bank response import: file name, rows, matched, transferred, failed. |
+| `payout.batch.reconciled` | A bank response import: file name, rows, matched, transferred, failed, and the stored file's id. |
+| `payout.bank_file.downloaded` | Someone downloading a stored bank file (never its contents). |
+| `payout.bank_file.purged` | The nightly job deleting a stored file after its retention period. |
+| `payout.line_item.marked_paid` / `marked_failed` | A person recording what the bank said, with the UTR or reason. |
+| `payout.line_item.marked_returned` | A paid line the bank sent back; the old UTR is in the details. |
+| `payout.line_item.sent_again` | A failed line put back in front of the bank; the earlier reason (and, in Razorpay mode, the earlier payout id) is in the details. |
+| `payout.line_item.gateway_checked` | A person asking Razorpay where a transfer stands, and the answer. |
 | `payout.batch.settled` | The batch reaching completed / partially failed / failed. |
 | `payout.line_item.dispatched` | One transfer handed to Razorpay, with its payout id. |
-| `payout.line_item.retry_requested` / `retry_dispatched` | Who asked for a retry, and the attempt that followed. |
+| `payout.batch.retry_requested` / `payout.line_item.retry_dispatched` | Who clicked Send all failed again, and each Razorpay attempt that followed. |
 | `payout.line_item.dispatch_failed` | A transfer that could not be sent, and why. |
 | `payout.line_item.transferred` / `failed` | A webhook changing a line item's state. |
 | `payout.settings.updated` | A change to the gateway or its levers. |
@@ -510,10 +620,18 @@ a call to Razorpay support, not a button here.
 Nothing happens the second time. Approval only acts on a batch in `pending`.
 
 **A transfer's webhook never arrived. The line is stuck on `pending`.**
-Check the payout id shown in the UTR column against the RazorpayX dashboard. If
-the transfer really did settle, the webhook subscription is the problem — check
-that the endpoint on Payout Settings is registered and its secret matches.
-Never mark a line transferred to work around a missing webhook.
+Click **Check with Razorpay** on the line: it asks Razorpay directly and applies
+the answer. If Razorpay says it settled, the webhook subscription is the
+problem — check that the endpoint on Payout Settings is registered and its
+secret matches.
+
+**The bank told me by email that a payment bounced, but I have no response file.**
+Use **Mark failed** on the line with the bank's reason, then **Send again** once
+the cause is fixed.
+
+**I need to see exactly what we sent the bank last Tuesday.**
+Batch page → Bank files → the export → **Download**. It is the same file,
+byte for byte.
 
 **Can I pay one distributor without running a batch?**
 No. Payouts exist only as line items of a batch, and batches come only from the

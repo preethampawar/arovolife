@@ -299,6 +299,11 @@
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Above the monthly income cap — not paid (forfeited)</span>
                             @elseif($row->status === 'no_bank_account')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">No bank account on file</span>
+                            @elseif($row->status === 'failed')
+                                {{-- The money already left the wallet; the company re-sends the same payment once the cause is fixed. --}}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700" title="Your bank did not accept this transfer. The company sends it again — please make sure your bank details under My profile are correct.">Transfer failed — the company will send it again once your bank details are confirmed</span>
+                            @elseif($row->status === 'pending')
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">With the bank</span>
                             @elseif($row->status === 'web_only')
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Below 3,000 BV — web only</span>
                             @else

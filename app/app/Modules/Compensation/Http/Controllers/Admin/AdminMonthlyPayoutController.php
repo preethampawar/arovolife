@@ -93,6 +93,7 @@ final class AdminMonthlyPayoutController extends Controller
             'isRazorpay' => $settings->isRazorpay(),
             'gatewayReady' => $settings->razorpayReady(),
             'maxRetries' => $settings->maxRetries(),
+            'bankFiles' => $this->bankFilePanel($batch),
         ]);
     }
 }

@@ -144,6 +144,16 @@ final class PayoutBatch extends Model
         return $this->hasMany(PayoutLineItem::class, 'payout_batch_id');
     }
 
+    /**
+     * Every bank file downloaded for or uploaded to this batch, oldest first.
+     *
+     * @return HasMany<PayoutBankFile, $this>
+     */
+    public function bankFiles(): HasMany
+    {
+        return $this->hasMany(PayoutBankFile::class, 'payout_batch_id')->orderBy('id');
+    }
+
     public function approvedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');

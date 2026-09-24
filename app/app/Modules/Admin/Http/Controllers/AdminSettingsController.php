@@ -1086,6 +1086,16 @@ final class AdminSettingsController extends Controller
                 'max' => 168,
                 'default' => '24',
             ],
+            'payout.bank_file_retention_days' => [
+                'group' => 'payout',
+                'label' => 'Bank file retention (days)',
+                'description' => 'How long every bank file (NEFT) downloaded for a payout batch, and every bank response file uploaded to one, is kept, counted from the download or upload. The files hold full account numbers, so they are stored encrypted and every download is logged. Once the period has passed the nightly sweep deletes the file; the batch, its payout lines and the file comparisons are not affected. Default 2,920 days (eight years), the books-of-account period.',
+                'impact' => 'Shortening this deletes older bank files on the next nightly run; they cannot be recovered.',
+                'type' => 'int',
+                'min' => 365,
+                'max' => 7300,
+                'default' => '2920',
+            ],
 
             // ── Compensation plan — rates, caps & periods ──────────────────
             // KP-confirmed parameters. Rates are stored as integer basis points

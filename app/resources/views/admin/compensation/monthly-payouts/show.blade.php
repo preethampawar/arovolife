@@ -41,7 +41,12 @@
     $canReconcile = in_array($batch->status, ['approved', 'partially_failed', 'failed'], true);
     // The NEFT file is the instruction the bank acts on, so it exists only once
     // finance has signed the amount off — and only for finance (QA F95).
-    $canExportNeft = in_array($batch->status, ['approved', 'dispatched', 'completed', 'partially_failed', 'failed'], true);
+    $canExportNeft = $batch->approved_at !== null
+        && in_array($batch->status, ['approved', 'dispatched', 'completed', 'partially_failed', 'failed'], true);
+    // The manual controls on each line need a batch someone signed off.
+    $canActOnLines = $canExportNeft && auth()->user()?->can('finance.record');
+    $pendingAlreadySent = (int) ($bankFiles['pending_already_sent'] ?? 0);
+    $routeBase = 'admin.compensation.monthly-payouts';
 @endphp
 
 <div class="mb-4 flex items-start justify-between gap-3 flex-wrap">
@@ -57,10 +62,19 @@
         @if($canExportNeft)
         {{-- In Razorpay mode the file is a record to reconcile against rather
              than an instruction, but it still only exists after approval. --}}
-        <a href="{{ route('admin.compensation.monthly-payouts.neft', $batch) }}"
-           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-            <x-lucide-download class="w-4 h-4" /> Download bank file (NEFT)
-        </a>
+        {{-- Holds only the lines still to pay. Every download is kept (see
+             Bank files below). --}}
+        <form method="GET" action="{{ route('admin.compensation.monthly-payouts.neft', $batch) }}"
+              data-confirm-title="Download bank file"
+              data-confirm="Download the bank file for the {{ $countOf('pending') }} line(s) still to pay?"
+              data-confirm-impact="{{ $pendingAlreadySent > 0
+                  ? 'Warning: '.$pendingAlreadySent.' of these lines are already in a bank file you downloaded earlier. Upload this new file only if the bank did NOT process the earlier one, or those distributors are paid twice.'
+                  : 'Impact: the file is kept on record, and the download is logged. It holds full account numbers — hand it only to the bank.' }}">
+            <button type="submit"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <x-lucide-download class="w-4 h-4" /> Download bank file (NEFT)
+            </button>
+        </form>
         @endif
         @endcan
 
@@ -88,15 +102,17 @@
             @endif
         @endif
 
-        @if($isRazorpay && $failedCount > 0)
+        @if($canActOnLines && $failedCount > 0)
         <form method="POST" action="{{ route('admin.compensation.monthly-payouts.retry-failed', $batch) }}"
-              data-confirm-title="Retry failed payouts"
-              data-confirm="Re-send all {{ $failedCount }} failed transfer(s) in this batch?"
-              data-confirm-impact="Impact: each eligible line item is queued for another attempt with Razorpay. Lines that have reached the retry limit ({{ $maxRetries }}) are skipped.">
+              data-confirm-title="Send all failed again"
+              data-confirm="Send all {{ $failedCount }} failed payment(s) in this batch again?"
+              data-confirm-impact="{{ $isRazorpay
+                  ? 'Impact: each failed line under the retry limit ('.$maxRetries.') is sent to Razorpay again as a real bank transfer. Fix wrong bank details first — they fail again.'
+                  : 'Impact: every failed line goes back to waiting and is included in the next bank file you download. Fix wrong bank details first — they fail again.' }}">
             @csrf
             <button type="submit"
                     class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-sm font-medium text-amber-800 hover:bg-amber-100 transition-colors">
-                <x-lucide-refresh-cw class="w-4 h-4" /> Retry {{ $failedCount }} failed
+                <x-lucide-refresh-cw class="w-4 h-4" /> Send all {{ $failedCount }} failed again
             </button>
         </form>
         @endif
@@ -139,6 +155,8 @@
 </div>
 @endif
 
+@include('admin.compensation.payout-bank-files._next-steps')
+
 @if(! $isRazorpay && $canReconcile)
 <x-ui.card flush class="mb-6">
     <div class="px-5 py-3 border-b border-gray-100">
@@ -160,6 +178,7 @@
             <p class="mt-1 text-xs text-gray-500">
                 Needs a header row with an <strong>ADN</strong> column and a <strong>Status</strong> column;
                 <strong>UTR</strong> and <strong>Failure Reason</strong> are used when present.
+                Rows for lines already paid or failed are skipped. Every uploaded file is kept (see Bank files below).
             </p>
         </div>
         <x-ui.button >
@@ -260,8 +279,10 @@
                     </th>
                     <th class="px-3 py-2 text-center text-gray-600">Status</th>
                     <th class="px-3 py-2 text-left text-gray-600">Reason</th>
-                    @if($isRazorpay)
-                    <th class="px-3 py-2 text-center text-gray-600">Actions</th>
+                    @if($canActOnLines)
+                    <th class="px-3 py-2 text-center text-gray-600">
+                        Actions <x-help-tip text="Finish a payment here when the bank response file cannot: Mark paid or Mark failed with what the bank told you, Mark returned when the bank sends a paid transfer back, Send again once a failure's cause is fixed. Every click is logged." />
+                    </th>
                     @endif
                 </tr>
             </thead>
@@ -316,24 +337,9 @@
                     <td class="px-3 py-2 text-gray-600 max-w-[220px]">
                         <span class="line-clamp-2" title="{{ $line->failure_reason }}">{{ $line->failure_reason ?? '—' }}</span>
                     </td>
-                    @if($isRazorpay)
-                    <td class="px-3 py-2 text-center">
-                        @if($line->status === 'failed' && $line->razorpay_payout_id === null && $line->retry_count < $maxRetries && $line->net_transferred_paise > 0)
-                        <form method="POST" action="{{ route('admin.compensation.monthly-payouts.line-items.retry', [$batch, $line]) }}"
-                              data-confirm-title="Retry this payout"
-                              data-confirm="Re-send {{ $rupees($line->net_transferred_paise) }} to ADN {{ $line->distributor->adn ?? $line->distributor_id }}?"
-                              data-confirm-impact="Impact: this queues another real bank transfer attempt. Attempt {{ $line->retry_count + 1 }} of {{ $maxRetries }}.">
-                            @csrf
-                            <button type="submit"
-                                    class="inline-flex items-center gap-1 px-2 py-1 rounded border border-amber-300 bg-amber-50 text-[11px] font-medium text-amber-800 hover:bg-amber-100 transition-colors">
-                                <x-lucide-refresh-cw class="w-3 h-3" /> Retry
-                            </button>
-                        </form>
-                        @elseif($line->status === 'failed')
-                        <span class="text-[11px] text-gray-500">Not retryable</span>
-                        @else
-                        <span class="text-gray-400">—</span>
-                        @endif
+                    @if($canActOnLines)
+                    <td class="px-3 py-2 text-center whitespace-nowrap">
+                        @include('admin.compensation.payout-bank-files._line-actions')
                     </td>
                     @endif
                 </tr>
@@ -344,5 +350,7 @@
     <div class="px-4 py-3 border-t border-gray-100">{{ $lines->links() }}</div>
     @endif
 </x-ui.card>
+
+@include('admin.compensation.payout-bank-files._panel')
 
 @endsection

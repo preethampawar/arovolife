@@ -33,9 +33,15 @@ final class RetryRazorpayPayoutJob implements ShouldQueue
 
     public int $timeout = 120;
 
+    /**
+     * @param  bool  $ignoreRetryLimit  true when a person clicked Send again on
+     *                                  this one line; the bulk button and the
+     *                                  nightly sweep keep the limit
+     */
     public function __construct(
         private readonly int $lineItemId,
         private readonly ?int $actorId = null,
+        private readonly bool $ignoreRetryLimit = false,
     ) {
         $this->onQueue('compensation');
     }
@@ -68,7 +74,10 @@ final class RetryRazorpayPayoutJob implements ShouldQueue
             return;
         }
 
-        if ($line->retry_count >= $settings->maxRetries()) {
+        // `?? false`: a job serialized before this property existed comes back
+        // with it uninitialized, and reading that throws — with tries 1 the
+        // retry would be dropped without a trace.
+        if (! ($this->ignoreRetryLimit ?? false) && $line->retry_count >= $settings->maxRetries()) { // @phpstan-ignore nullCoalesce.property
             Log::warning('Payout retry skipped — retry limit reached', [
                 'payout_line_item_id' => $line->id,
                 'retry_count' => $line->retry_count,

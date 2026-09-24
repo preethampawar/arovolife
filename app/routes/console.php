@@ -7,6 +7,7 @@ use App\Modules\Compensation\Console\Commands\CompensationRecomputeAllCommand;
 use App\Modules\Compensation\Console\Commands\EngineHealthDigestCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
+use App\Modules\Compensation\Console\Commands\PurgeExpiredPayoutBankFilesCommand;
 use App\Modules\Compensation\Console\Commands\WeeklyRunCommand;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeState;
@@ -197,6 +198,14 @@ Schedule::command(PurgeExpiredDocumentsCommand::class)
 // their admin-owned retention periods, then erased (DPDP §8(7), R-107).
 Schedule::command(PurgeOfflinePaymentProofsCommand::class)
     ->dailyAt('03:35')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping();
+
+// Payout bank files (NEFT files and the bank's response files, full account
+// numbers inside) are kept for their admin-owned retention period, then the
+// encrypted object is erased; the batch's record of them stays.
+Schedule::command(PurgeExpiredPayoutBankFilesCommand::class)
+    ->dailyAt('03:40')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping();
 

@@ -32,7 +32,7 @@ final class RazorpayPayoutDispatchService
     public const AUDIT_RETRY_DISPATCHED = 'payout.line_item.retry_dispatched';
 
     /** Razorpay payout states that are terminal failures. */
-    private const FAILED_STATES = ['rejected', 'cancelled', 'reversed', 'failed'];
+    public const FAILED_STATES = ['rejected', 'cancelled', 'reversed', 'failed'];
 
     public function __construct(
         private readonly RazorpayPayoutGateway $gateway,
@@ -45,6 +45,20 @@ final class RazorpayPayoutDispatchService
      */
     public function dispatch(PayoutLineItem $line, ?int $actorId, string $auditAction): bool
     {
+        // The batch job loads its lines up front and may reach this one long
+        // after; re-read it so a line settled or changed meanwhile is never
+        // sent. Only a waiting line (first dispatch) or a failed one (retry)
+        // may go to the bank.
+        $fresh = PayoutLineItem::find($line->id);
+        if ($fresh === null) {
+            return false;
+        }
+        $line->setRawAttributes($fresh->getAttributes(), true);
+
+        if (! in_array($line->status, [PayoutLineItem::STATUS_PENDING, PayoutLineItem::STATUS_FAILED], true)) {
+            return $line->status === PayoutLineItem::STATUS_TRANSFERRED;
+        }
+
         // Crash-resume guard: a payout id means Razorpay already has this
         // transfer. Re-sending it is a second credit to the distributor.
         if ($line->razorpay_payout_id !== null && $line->razorpay_payout_id !== '') {
@@ -143,16 +157,26 @@ final class RazorpayPayoutDispatchService
      * lines never leave the company, so a batch made entirely of them is
      * settled the moment it is approved.
      *
-     * Never runs on a batch that is still awaiting approval, and never
-     * downgrades one that has already settled.
+     * Never runs on a batch nobody has approved: the builder can leave an
+     * unapproved batch `partially_failed` or `failed`, and recomputing it here
+     * would relabel a payment no one signed as one awaiting the bank.
+     *
+     * A settled batch moves again when a line does: a transfer returned by the
+     * bank turns `completed` into `partially_failed`/`failed`, and a failed
+     * line sent again puts the batch back to awaiting the bank.
      */
     public function refreshBatchStatus(PayoutBatch $batch): void
     {
+        if ($batch->approved_at === null) {
+            return;
+        }
+
         if (! in_array($batch->status, [
             PayoutBatch::STATUS_APPROVED,
             PayoutBatch::STATUS_DISPATCHED,
             PayoutBatch::STATUS_PARTIALLY_FAILED,
             PayoutBatch::STATUS_FAILED,
+            PayoutBatch::STATUS_COMPLETED,
         ], true)) {
             return;
         }
@@ -170,14 +194,20 @@ final class RazorpayPayoutDispatchService
         $failed = (int) ($counts->failed ?? 0);
 
         if ($pending > 0) {
-            return;
-        }
+            // A line is back with the bank. A batch already waiting stays as
+            // it is; a settled one returns to waiting.
+            if (in_array($batch->status, [PayoutBatch::STATUS_APPROVED, PayoutBatch::STATUS_DISPATCHED], true)) {
+                return;
+            }
 
-        $status = match (true) {
-            $failed > 0 && $transferred > 0 => PayoutBatch::STATUS_PARTIALLY_FAILED,
-            $failed > 0 => PayoutBatch::STATUS_FAILED,
-            default => PayoutBatch::STATUS_COMPLETED,
-        };
+            $status = $this->settings->isRazorpay() ? PayoutBatch::STATUS_DISPATCHED : PayoutBatch::STATUS_APPROVED;
+        } else {
+            $status = match (true) {
+                $failed > 0 && $transferred > 0 => PayoutBatch::STATUS_PARTIALLY_FAILED,
+                $failed > 0 => PayoutBatch::STATUS_FAILED,
+                default => PayoutBatch::STATUS_COMPLETED,
+            };
+        }
 
         if ($batch->status === $status) {
             return;
@@ -196,6 +226,7 @@ final class RazorpayPayoutDispatchService
                 'after' => $status,
                 'transferred' => $transferred,
                 'failed' => $failed,
+                'pending' => $pending,
             ],
             'ip' => app()->runningInConsole() ? null : request()->ip(),
         ]);

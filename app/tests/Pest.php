@@ -1,11 +1,15 @@
 <?php
 
+use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Identity\Models\Distributor;
 use Database\Seeders\ContentPageSeeder;
 use Database\Seeders\FortuneBonusLevelsSeeder;
 use Database\Seeders\FortuneBonusTiersSeeder;
 use Database\Seeders\GsbSlabsSeeder;
 use Database\Seeders\LifetimeAwardRewardsSeeder;
 use Database\Seeders\RankTiersSeeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -170,4 +174,89 @@ function seedConsentDocuments(): void
 function publishHeldContentPages(): void
 {
     (new ContentPageSeeder)->publish(ContentPageSeeder::HELD_SLUGS);
+}
+
+/*
+|--------------------------------------------------------------------------
+| Payout fixtures
+|--------------------------------------------------------------------------
+|
+| Shared by the payout gateway, manual-settlement and bank-file tests. Both
+| batches are approved: a batch nobody signed off is not a payment
+| instruction, and none of the settlement paths act on one.
+*/
+
+function setGatewaySetting(string $key, string $value): void
+{
+    DB::table('settings')->updateOrInsert(
+        ['key' => $key],
+        ['value' => $value, 'version' => 1, 'updated_at' => now()],
+    );
+}
+
+/**
+ * A batch with one pending line item for a distributor with the given ADN.
+ *
+ * `$daysAgo` moves the batch date: one weekly batch per date, so a test needing
+ * two batches has to place them on different days.
+ */
+function reconcileFixture(string $adn, int $daysAgo = 0): array
+{
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->subDays($daysAgo)->toDateString(),
+        'status' => PayoutBatch::STATUS_APPROVED,
+        'approved_at' => now(),
+    ]);
+
+    $distributor = Distributor::factory()->create(['adn' => $adn]);
+
+    $line = PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => $distributor->id,
+        'wallet_balance_paise' => 100_000,
+        'gross_paise' => 100_000,
+        'repurchase_deduction_paise' => 0,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_transferred_paise' => 100_000,
+        'status' => PayoutLineItem::STATUS_PENDING,
+    ]);
+
+    return [$batch, $line];
+}
+
+function uploadCsv(string $contents): UploadedFile
+{
+    $path = tempnam(sys_get_temp_dir(), 'neft').'.csv';
+    file_put_contents($path, $contents);
+
+    return new UploadedFile($path, 'bank-response.csv', 'text/csv', null, true);
+}
+
+/** A dispatched line item awaiting its payout webhook. */
+function dispatchedFixture(string $payoutId): array
+{
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => now()->toDateString(),
+        'status' => PayoutBatch::STATUS_DISPATCHED,
+        'approved_at' => now(),
+    ]);
+
+    $line = PayoutLineItem::create([
+        'payout_batch_id' => $batch->id,
+        'distributor_id' => Distributor::factory()->create()->id,
+        'wallet_balance_paise' => 100_000,
+        'gross_paise' => 100_000,
+        'repurchase_deduction_paise' => 0,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_transferred_paise' => 100_000,
+        'status' => PayoutLineItem::STATUS_PENDING,
+        'razorpay_payout_id' => $payoutId,
+        'dispatched_at' => now(),
+    ]);
+
+    return [$batch, $line];
 }
