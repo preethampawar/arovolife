@@ -41,14 +41,14 @@
         <div class="absolute -top-32 -right-24 w-[460px] h-[460px] bg-brand-200/40 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute -bottom-24 -left-24 w-[360px] h-[360px] bg-leaf-100/50 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div class="max-w-7xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 items-center gap-12 relative">
+        <div class="max-w-6xl mx-auto px-6 py-16 md:py-24 grid md:grid-cols-2 items-center gap-12 lg:gap-16 relative">
             <div data-reveal>
                 <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">About arovolife</p>
                 <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.05] mb-6">
                     A new chapter in <span class="text-brand-700">Indian direct selling industry</span>.
                 </h1>
                 <p class="text-lg text-gray-700 font-semibold mb-4">Wellness with Purpose. Opportunity with Possibility.</p>
-                <p class="text-lg text-gray-600 mb-4 max-w-xl leading-relaxed">
+                <p class="text-base text-gray-600 mb-4 max-w-xl leading-relaxed">
                     arovolife is an India-incorporated direct-selling company, born in the first half of 2026
                     with one resolute belief — that doing right by the customer and doing right by the
                     distributor are the same job, every single day.
@@ -79,7 +79,7 @@
             </div>
 
             <div class="relative" data-reveal data-reveal-delay="200">
-                <div class="aspect-square max-w-md mx-auto rounded-3xl overflow-hidden shadow-2xl shadow-brand-500/20 bg-white">
+                <div class="aspect-[4/5] w-full max-w-md mx-auto rounded-3xl overflow-hidden shadow-2xl shadow-brand-500/20 bg-white">
                     <img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800&q=80&auto=format&fit=crop" alt="A team of distributors meeting" class="w-full h-full object-cover" loading="lazy">
                 </div>
                 <div class="ar-float-slow absolute -top-6 -left-6 bg-white rounded-2xl shadow-xl border border-gray-100 px-4 py-3 flex items-center gap-3">
@@ -102,8 +102,8 @@
 
     {{-- ── 2. OUR STORY ─────────────────────────────────────────────────── --}}
     <section class="bg-white border-y border-gray-100 py-20">
-        <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-5 gap-12 items-center">
-            <div class="md:col-span-2 rounded-2xl overflow-hidden shadow-xl" data-reveal>
+        <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-5 gap-12 items-start">
+            <div class="md:col-span-2 aspect-[4/5] rounded-3xl overflow-hidden shadow-xl md:sticky md:top-32" data-reveal>
                 <img src="https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?w=900&q=80&auto=format&fit=crop" alt="A team building together" class="w-full h-full object-cover" loading="lazy">
             </div>
             <div class="md:col-span-3" data-reveal data-reveal-delay="200">
@@ -241,7 +241,7 @@
 
     {{-- ── 5. COMPLIANCE & TRUST ────────────────────────────────────────── --}}
     <section class="py-20">
-        <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
+        <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-start">
             <div data-reveal>
                 <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Compliance & trust</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
@@ -269,7 +269,7 @@
                     @endforeach
                 </ul>
             </div>
-            <div class="rounded-3xl overflow-hidden shadow-xl" data-reveal data-reveal-delay="200">
+            <div class="aspect-[4/5] rounded-3xl overflow-hidden shadow-xl md:sticky md:top-32" data-reveal data-reveal-delay="200">
                 <img src="https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=900&q=80&auto=format&fit=crop" alt="Compliance commitment" class="w-full h-full object-cover" loading="lazy">
             </div>
         </div>
@@ -324,8 +324,8 @@
     {{-- ── 7. GROWTH PATHWAY ────────────────────────────────────────────── --}}
     <section class="py-20">
         <div class="max-w-6xl mx-auto px-6">
-            <div class="grid md:grid-cols-2 gap-12 items-center">
-                <div class="rounded-3xl overflow-hidden shadow-xl" data-reveal>
+            <div class="grid md:grid-cols-2 gap-12 items-start">
+                <div class="aspect-[4/5] rounded-3xl overflow-hidden shadow-xl md:sticky md:top-32" data-reveal>
                     <img src="https://images.unsplash.com/photo-1573164574572-cb89e39749b4?w=900&q=80&auto=format&fit=crop" alt="Growth pathway" class="w-full h-full object-cover" loading="lazy">
                 </div>
                 <div data-reveal data-reveal-delay="200">
@@ -408,7 +408,7 @@
     {{-- ── 9. WHY NOW / STATS ───────────────────────────────────────────── --}}
     <section class="py-20">
         <div class="max-w-6xl mx-auto px-6">
-            <div class="grid md:grid-cols-2 gap-12 items-center">
+            <div class="grid md:grid-cols-2 gap-12 items-start">
                 <div data-reveal>
                     <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Why now, why arovolife</p>
                     <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
@@ -446,7 +446,7 @@
                         transparency in our practices and people at the heart of our growth.
                     </p>
                 </div>
-                <div class="grid grid-cols-2 gap-4" data-reveal data-reveal-delay="200">
+                <div class="grid grid-cols-2 gap-4 md:sticky md:top-32" data-reveal data-reveal-delay="200">
                     @foreach([
                         ['stat' => '2026', 'label' => 'Our beginning', 'sub' => 'Founded in India with a long-term vision for wellness, entrepreneurship and responsible growth.'],
                         ['stat' => '100%', 'label' => 'DSR-2021 compliant', 'sub' => 'From the first user, every sale'],
@@ -456,8 +456,9 @@
                         ['stat' => 'People-powered growth', 'label' => '', 'sub' => 'Creating opportunities for individuals to learn, serve customers, develop leadership and grow through their own efforts.'],
                         ['stat' => 'Built for tomorrow',    'label' => '', 'sub' => 'Combining responsible business practices, digital capabilities and a long-term commitment to building a trusted wellness community.'],
                     ] as $s)
-                    <div class="rounded-2xl bg-gradient-to-br from-brand-50 to-white border border-brand-100 p-5">
-                        <p class="ar-stat-num text-3xl md:text-4xl font-bold text-brand-700 leading-none mb-2">{{ $s['stat'] }}</p>
+                    @php $isWord = mb_strlen($s['stat']) > 5; @endphp
+                    <div class="rounded-2xl bg-gradient-to-br from-brand-50 to-white border border-brand-100 p-5 {{ $loop->last && $loop->count % 2 === 1 ? 'col-span-2' : '' }}">
+                        <p class="{{ $isWord ? 'text-lg md:text-xl leading-snug' : 'ar-stat-num text-3xl md:text-4xl leading-none' }} font-bold text-brand-700 mb-2">{{ $s['stat'] }}</p>
                         @if($s['label'] !== '')
                         <p class="text-sm font-semibold text-gray-900">{{ $s['label'] }}</p>
                         @endif

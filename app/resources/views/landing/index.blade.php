@@ -610,15 +610,15 @@
                     ];
                 @endphp
                 @foreach($categories as $cat)
-                <a href="{{ route('shop.index') }}" class="group relative rounded-3xl overflow-hidden border {{ $cat['card'] }} p-7 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 block">
-                    <div class="relative">
+                <a href="{{ route('shop.index') }}" class="group relative rounded-3xl overflow-hidden border {{ $cat['card'] }} p-7 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col h-full">
+                    <div class="relative flex flex-col flex-1">
                         <div class="mb-3 inline-flex items-center justify-center w-14 h-14 rounded-2xl {{ $cat['iconChip'] }}">
                             {{ svg('lucide-'.$cat['icon'], 'w-7 h-7') }}
                         </div>
                         <p class="text-[11px] uppercase tracking-wider {{ $cat['accent'] }} font-semibold mb-1">{{ $cat['subtitle'] }}</p>
                         <h3 class="text-2xl font-bold mb-3 leading-tight text-gray-900">{{ $cat['title'] }}</h3>
                         <p class="text-sm text-gray-600 leading-relaxed mb-5">{{ $cat['body'] }}</p>
-                        <span class="inline-flex items-center gap-1.5 text-sm font-semibold {{ $cat['accent'] }} group-hover:translate-x-1 transition-transform">
+                        <span class="mt-auto self-start inline-flex items-center gap-1.5 text-sm font-semibold {{ $cat['accent'] }} group-hover:translate-x-1 transition-transform">
                             Browse range
                             <x-lucide-arrow-right class="w-4 h-4" />
                         </span>
@@ -627,8 +627,8 @@
                 @endforeach
             </div>
 
-            <div class="grid md:grid-cols-2 gap-10 mt-12 max-w-5xl mx-auto">
-                <div>
+            <div class="grid md:grid-cols-2 gap-6 mt-12">
+                <div class="rounded-3xl bg-white border border-gray-100 shadow-sm p-7">
                     <p class="text-lg text-gray-700 font-semibold mb-4">What makes arovolife products different?</p>
                     <ul class="space-y-3">
                         @foreach([
@@ -648,16 +648,14 @@
                         @endforeach
                     </ul>
                 </div>
-                <div>
+                <div class="rounded-3xl bg-white border border-gray-100 shadow-sm p-7">
                     <p class="text-lg text-gray-700 font-semibold mb-4">Our product philosophy</p>
-                    <p class="text-sm text-gray-600 mb-3">At arovolife, we believe products should do more than fill shelves—they should add value to lives. That is why our product philosophy is rooted in:</p>
-                    <ul class="space-y-3">
+                    <p class="text-sm text-gray-600 mb-5 leading-relaxed">At arovolife, we believe products should do more than fill shelves—they should add value to lives. That is why our product philosophy is rooted in:</p>
+                    <ul class="flex flex-wrap gap-2.5">
                         @foreach(['Usefulness', 'Quality', 'Trust', 'Everyday relevance', 'Long-term customer value'] as $title)
-                        <li class="flex gap-3">
+                        <li class="inline-flex items-center gap-2 rounded-full bg-leaf-50 border border-leaf-100 pl-1.5 pr-4 py-1.5">
                             <span class="shrink-0 w-6 h-6 rounded-full bg-leaf-100 text-leaf-700 flex items-center justify-center text-xs font-bold">✓</span>
-                            <div>
-                                <p class="text-sm font-semibold text-gray-900">{{ $title }}</p>
-                            </div>
+                            <span class="text-sm font-semibold text-gray-900">{{ $title }}</span>
                         </li>
                         @endforeach
                     </ul>
