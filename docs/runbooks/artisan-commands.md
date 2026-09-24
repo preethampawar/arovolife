@@ -368,23 +368,23 @@ Runs the full post-`git pull` deployment pipeline: Composer install, npm build, 
 **Examples:**
 
 ```bash
-# Standard deployment after a git pull
-php artisan app:deploy
+# Staging — after the Cloudways git pull, with nvm sourced (Node v24)
+php artisan app:deploy --maintenance --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
 
-# With maintenance mode + smoke test
-php artisan app:deploy --maintenance --health-url=https://arovolife.in/health
+# Production — the CLI `php` there is 8.2, so call php8.4 (and put ~/bin first on PATH)
+php8.4 artisan app:deploy --maintenance --health-url=https://arovolife.com/
 
 # Assets-only redeployment (CSS/JS change, no migrations)
 php artisan app:deploy --skip-migrate --skip-seed --skip-composer
 ```
 
-See also: `docs/runbooks/cloudways-deployment.md` for the full Cloudways workflow.
+See also: `docs/runbooks/cloudways-deployment.md` §2.1 for the step-by-step staging and production deploy (pull, shell setup, reading the summary).
 
 ---
 
 ### `app:status`
 
-Read-only service health table: release (env / commit / PHP), maintenance mode, database, cache round-trip, pending migrations, per-queue worker health (`otp`, `default`, `compensation` — idle with no process is OK; a job waiting over 2 minutes with no worker fails), queue backlog, failed jobs in the last 24h, and the scheduler heartbeat (stamped every minute by `routes/console.php`). Exits non-zero if any check FAILs. `--wait=<seconds>` polls for missing workers. Details: `docs/runbooks/cloudways-deployment.md` §2.4.
+Read-only service health table: release (env / commit / PHP), maintenance mode, database, cache round-trip, pending migrations, per-queue worker health (`otp`, `default`, `compensation` — idle with no process is OK; a job waiting over 2 minutes with no worker fails), queue backlog, failed jobs in the last 24h, and the scheduler heartbeat (stamped every minute by `routes/console.php`). Exits non-zero if any check FAILs. `--wait=<seconds>` polls for missing workers. Details: `docs/runbooks/cloudways-deployment.md` §2.3.
 
 ```bash
 php artisan app:status

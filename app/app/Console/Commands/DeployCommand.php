@@ -20,11 +20,14 @@ use Throwable;
  * ProductionSeeder, cache rebuilds, queue restart, an optional HTTP smoke
  * test, and finally a service health report ({@see AppStatusCommand}).
  *
- * Wired into the Cloudways Deploy Hook as:
+ * Run over SSH after the Cloudways git pull, e.g. on staging:
  *
  *     cd /home/master/applications/ahdhesuhty/public_html/app \
  *       && php artisan app:deploy --maintenance \
  *           --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
+ *
+ * Production needs `php8.4` (its CLI `php` is 8.2). Per-environment steps:
+ * docs/runbooks/cloudways-deployment.md §2.1.
  *
  * Refuses to run unless APP_ENV is staging or production, so a stray
  * invocation against a developer laptop can't blow away the local DB.

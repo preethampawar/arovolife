@@ -242,9 +242,9 @@ This runbook covers the local-dev and reset paths only. For production:
    - **Never** run `platform:reset` in production — it wipes `audit_log`,
      `consents`, `cooling_off_events`, and `distributors`, all of which are
      statutorily required under DSR 2021 Rule 5.
-2. **Asset builds** are gitignored under `app/public/build/`. Run `make build`
-   on the deployment host (or build artifacts in CI and ship them as part
-   of the release).
+2. **Asset builds** are gitignored under `app/public/build/`. `app:deploy`
+   runs `npm ci && npm run build` on the server (Node v24 via nvm — see
+   `cloudways-deployment.md` §2.1), so a git pull alone never updates them.
 3. **Pennant flags** carry over per environment. Use
    `php artisan pennant:activate <key>` / `:deactivate` or the admin UI at
    `/admin/feature-flags` to flip them.

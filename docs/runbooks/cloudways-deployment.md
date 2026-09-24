@@ -1,16 +1,30 @@
-# Cloudways deployment runbook — arovolife (Karonix Wellness app)
+# Cloudways deployment runbook — arovolife
 
-> **Server**: Cloudways 8 GB DO/Vultr droplet
-> **Cloudways application name**: Karonix Wellness
-> **Cloudways application slug**: `ahdhesuhty`
-> **Master user**: `master` (default Cloudways)
-> **Application path on server**: `/home/master/applications/ahdhesuhty/public_html`
-> **Webroot (document root)**: `/home/master/applications/ahdhesuhty/public_html/app/public`
-> **Repo**: `git@github.com:preethampawar/arovolife.git`
+> **Repo**: `git@github.com:preethampawar/arovolife.git`, branch `main`
+> **Routine deploy**: §2.1 (staging and production, step by step)
+
+| | Staging | Production |
+|---|---|---|
+| Cloudways server | `1611779` (`karonix-8GB-Server`, shared with other apps) | `1674229` (`arovolife-prod-4GB`, dedicated) |
+| Cloudways app | `6390605` `arovolife-staging` | `6692015` `arovolife-prod` |
+| App sys_user (the `<app>` in paths) | `ahdhesuhty` | `hrnpvxpkgw` |
+| SSH | `master_mvgumpkwtu@139.59.92.229` | `master_hkmtmetvcf@139.59.92.246` |
+| App root | `/home/master/applications/ahdhesuhty/public_html/app` | `/home/master/applications/hrnpvxpkgw/public_html/app` |
+| URL (also the `--health-url`) | `https://phplaravel-1611779-6390605.cloudwaysapps.com/` | `https://arovolife.com/` |
+| CLI PHP | `php` (8.4) | **`php8.4`** — bare `php` is 8.2 on this server |
+| Redis ACL | not enforced — leave `REDIS_USERNAME/PASSWORD/PREFIX` unset | enforced — `.env` needs `REDIS_USERNAME`, `REDIS_PASSWORD` and `REDIS_PREFIX=hrnpvxpkgw:` |
+| Queue workers | flock'd master crontab (§1.9) | flock'd master crontab (§1.9) |
+
+In the paths below, `<app>` means the sys_user from this table.
 
 The Laravel project lives at `…/public_html/app/` and Laravel's own `public/`
 folder is the webroot. Cloudways must be configured to serve from
 `app/public`, not the default `public_html`.
+
+`public_html` is a synced copy with **no `.git`** — Cloudways keeps the clone
+in `/home/master/applications/<app>/git_repo`. So code reaches the server
+only through the Cloudways *Pull*, never through `git` run in `public_html`,
+and `app:status` reports `commit=unknown`.
 
 ---
 
@@ -48,6 +62,14 @@ folder is the webroot. Cloudways must be configured to serve from
 If left at the default the site will 404 because Laravel's front controller lives one level deeper.
 
 ### 1.3 Clone the repo into `public_html`
+
+> **How staging and production are actually set up:** through Cloudways
+> *Application → Deployment via Git* (repo `git@github.com:preethampawar/arovolife.git`,
+> branch `main`, deploy path `public_html`). Cloudways keeps the clone in
+> `/home/master/applications/<app>/git_repo` and syncs the files into
+> `public_html`, which is why `public_html` has no `.git`. The manual clone
+> below is the fallback for a server without that feature; if you use it,
+> §2.1 Step 1 becomes `git pull` in `public_html`.
 
 ```bash
 ssh master@<server-ip>
@@ -178,16 +200,16 @@ make sure `PROD_ADMIN_*` is in `.env` so the seeder can provision an
 initial admin user.
 
 ```bash
-cd /home/master/applications/ahdhesuhty/public_html/app
+cd /home/master/applications/<app>/public_html/app
 
 # Confirm these are already set in .env (otherwise add them once):
 #   PROD_ADMIN_EMAIL=ops@arovolife.com
 #   PROD_ADMIN_PASSWORD=<strong-password>
 #   PROD_ADMIN_NAME=Arovolife Operations
 
-php artisan app:deploy \
-    --maintenance \
-    --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
+# Same shell setup and command as a routine deploy — see §2.1 for the
+# per-environment version (production needs php8.4).
+php artisan app:deploy --maintenance --health-url=<environment URL>
 ```
 
 The command runs composer install, vite build, `storage:link`,
@@ -238,7 +260,45 @@ php artisan event:cache
 If `config:cache` errors, it's almost always an `env()` call outside a
 config file — fix the source, then re-cache.
 
-### 1.9 Queue workers (Supervisord Jobs)
+### 1.9 Queue workers
+
+**Current setup on both servers: a flock'd master crontab.** Cloudways'
+Supervisord form can only generate `queue:work redis …` jobs, so both
+environments run their workers from the master user's crontab instead
+(`crontab -l` as the SSH user). One line per queue; `flock -n` guarantees at
+most one worker per queue — which `compensation` requires — and
+`--stop-when-empty` lets each worker exit once its queue drains, so cron
+starts a fresh one (on fresh code) within a minute.
+
+Production (`/usr/bin/php8.4` — the CLI `php` is 8.2):
+
+```cron
+# arovolife-prod — scheduler + queue workers (database driver, ADR-0011). php8.4: CLI php is 8.2.
+* * * * * cd /home/master/applications/hrnpvxpkgw/public_html/app && umask 002 && /usr/bin/php8.4 artisan schedule:run >> /dev/null 2>&1
+* * * * * flock -n /tmp/arovolife-prod-q-otp.lock -c "cd /home/master/applications/hrnpvxpkgw/public_html/app && umask 002 && /usr/bin/php8.4 artisan queue:work database --queue=otp --stop-when-empty --tries=3 --timeout=120" >> /dev/null 2>&1
+* * * * * flock -n /tmp/arovolife-prod-q-default.lock -c "cd /home/master/applications/hrnpvxpkgw/public_html/app && umask 002 && /usr/bin/php8.4 artisan queue:work database --queue=default --stop-when-empty --tries=3 --timeout=120" >> /dev/null 2>&1
+* * * * * flock -n /tmp/arovolife-prod-q-compensation.lock -c "cd /home/master/applications/hrnpvxpkgw/public_html/app && umask 002 && /usr/bin/php8.4 artisan queue:work database --queue=compensation --stop-when-empty --tries=1 --timeout=3600" >> /dev/null 2>&1
+```
+
+Staging (same shape, plain `php`, lock files `/tmp/arovolife-q-<queue>.lock`;
+its scheduler runs from *Cron Job Management*, §1.10). The staging box is
+shared with other apps — edit only the arovolife lines.
+
+```cron
+* * * * * flock -n /tmp/arovolife-q-otp.lock -c 'cd /home/master/applications/ahdhesuhty/public_html/app && umask 002 && php artisan queue:work database --queue=otp --stop-when-empty --tries=3 --timeout=120' >> /dev/null 2>&1
+* * * * * flock -n /tmp/arovolife-q-default.lock -c 'cd /home/master/applications/ahdhesuhty/public_html/app && umask 002 && php artisan queue:work database --queue=default --stop-when-empty --tries=3 --timeout=120' >> /dev/null 2>&1
+* * * * * flock -n /tmp/arovolife-q-compensation.lock -c 'cd /home/master/applications/ahdhesuhty/public_html/app && umask 002 && php artisan queue:work database --queue=compensation --stop-when-empty --tries=1 --timeout=3600' >> /dev/null 2>&1
+```
+
+An idle queue therefore has no worker process at all; `app:status` reads
+that as OK (§2.3). `queue:restart` needs no follow-up — running workers exit
+and cron respawns them.
+
+The Supervisord Jobs described below are the original setup and are kept
+for reference. Staging still has them; `app:status` counts them only when
+their artisan path is this app's.
+
+#### Supervisord Jobs (original setup)
 
 *Application → Application Settings → Supervisord Jobs → Add New Job.* The
 panel is a form, not a command line. Its **Connection Driver** field is
@@ -360,7 +420,7 @@ both jobs show RUNNING afterwards (*View Jobs Status*, or the MCP
 the `redis` connection is still the database driver.
 
 Total worker processes go from 1 to 4. Restart all three jobs after every deploy so
-they pick up new code (see §3).
+they pick up new code.
 
 ### 1.10 Scheduler
 
@@ -373,7 +433,14 @@ Cron Job**:
 | Command | `php /home/master/applications/ahdhesuhty/public_html/app/artisan schedule:run >> /dev/null 2>&1` |
 
 This drives cooling-off reminders (D-7 / D-1), audit-log
-compaction, and any future scheduled jobs.
+compaction, and any future scheduled jobs. That is the staging setup
+(path `ahdhesuhty`). Production runs `schedule:run` from the master
+crontab with `/usr/bin/php8.4` instead (§1.9), because the panel cron
+would use the 8.2 CLI.
+
+The schedule also writes a heartbeat every minute
+(`ops:scheduler-heartbeat` in `routes/console.php`); `app:status` fails
+its Scheduler row when that is more than 3 minutes old.
 
 ### 1.11 SSL
 
@@ -416,86 +483,149 @@ Every post-pull task is wrapped in a single artisan command,
 (optionally inside maintenance mode), the idempotent `ProductionSeeder`,
 config/route/view/event cache rebuilds, `queue:restart`, an HTTP
 smoke test against `--health-url`, a one-line-per-step summary, and a
-closing `app:status` service health table (see §2.4). Every line is teed to
+closing `app:status` service health table (see §2.3). Every line is teed to
 `storage/logs/deploy.log` with ISO-8601 timestamps. Refuses to run
 unless `APP_ENV` is `staging` or `production`.
 
-### 2.1 Manual SSH deploy (canonical)
+A deploy is always two moves: **pull the code** (Cloudways), then **run
+`app:deploy`** (SSH). The pull alone copies files and nothing else — no
+composer, no Vite build, no migrations, no cache rebuild, no queue restart.
+
+### 2.1 Step by step — staging, then production
+
+Deploy to staging first, check it, then repeat on production.
+
+**Step 0 — before you start (laptop)**
+
+1. The commit is on `main` and pushed: `git log origin/main -1`.
+2. Scan the diff for `migrations/`, `composer.lock`, `package-lock.json`,
+   `config/` and `database/seeders/ProductionSeeder.php` so you know which
+   steps will do real work.
+3. Production only: if a migration drops or rewrites data, take a backup
+   first (§3c).
+
+**Step 1 — pull the code (Cloudways)**
+
+Either the panel: *Application → Deployment via Git → Pull* (branch `main`),
+or the Cloudways MCP / API:
+
+```
+tool:      execute_tool  (toolset: git, tool_name: git_pull)
+staging:   {"server_id":"1611779","app_id":"6390605","branch_name":"main"}
+production:{"server_id":"1674229","app_id":"6692015","branch_name":"main"}
+```
+
+The call is asynchronous: poll `operation_status` with the returned
+`operation_id` until it reports completed. Never run `git` inside
+`public_html` — it has no `.git` (see the table at the top).
+
+**Step 2 — run the deploy (SSH)**
+
+Staging:
 
 ```bash
-ssh master@<server-ip>
+ssh master_mvgumpkwtu@139.59.92.229
+export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default   # Node v24 for the Vite build
 cd /home/master/applications/ahdhesuhty/public_html/app
-
-# 1. Pull
-git fetch origin main
-git reset --hard origin/main           # discards any drift on the server
-
-# 2. One command for the rest
-php artisan app:deploy \
-    --maintenance \
+php artisan app:deploy --maintenance \
     --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
 ```
 
-Watch it stream the `▶ <step>` / `✓` / `✘` lines. On success the last
-line is `✓ deploy complete`. On failure the command exits non-zero and
-the offending step is the one labelled `✘`.
-
-Tail the log in another shell while it runs if you want a persisted
-copy:
+Production:
 
 ```bash
-tail -F /home/master/applications/ahdhesuhty/public_html/app/storage/logs/deploy.log
+ssh master_hkmtmetvcf@139.59.92.246
+export PATH="$HOME/bin:$PATH"                                       # ~/bin/php -> 8.4 (composer calls php)
+export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default   # Node v24 for the Vite build
+cd /home/master/applications/hrnpvxpkgw/public_html/app
+php8.4 artisan app:deploy --maintenance --health-url=https://arovolife.com/
 ```
 
+The same thing as one command from the laptop (production shown):
+
+```bash
+ssh master_hkmtmetvcf@139.59.92.246 'export PATH="$HOME/bin:$PATH"; export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default; cd /home/master/applications/hrnpvxpkgw/public_html/app && php8.4 artisan app:deploy --maintenance --health-url=https://arovolife.com/'
+```
+
+Why the shell setup matters: nvm is not sourced by any login profile, so
+without it the build runs on the system Node 20.5.1 and Vite 8 refuses it;
+on production, bare `php` is 8.2, so composer and artisan must see PHP 8.4.
+
+**Step 3 — read the result**
+
+Watch it stream `▶ <step>` / `✓` / `✘` lines. It ends with:
+
+- `── deploy summary ──` — one line per step: `✓`, `✘ failed` (a hard step;
+  everything after it was skipped and the command exits non-zero) or
+  `⚠ warning` (a soft step; the deploy carried on).
+- The `app:status` table (§2.3) — every row should be `OK`.
+- `✓ deploy complete`, or `✘ deploy finished with errors`.
+
+Tail the persisted copy from another shell if you want:
+
+```bash
+tail -F /home/master/applications/<app>/public_html/app/storage/logs/deploy.log
+```
+
+**Step 4 — spot-check**
+
+1. Open the environment URL and sign in.
+2. If the commit changed a held content page, publish it deliberately:
+   `php artisan content:publish <slug>` — the deploy never publishes held
+   pages.
+3. Re-run the health report any time: `php artisan app:status` (production:
+   `php8.4 artisan app:status`).
+
 ### 2.2 Useful flag combinations
+
+Production: use `php8.4 artisan` and the same shell setup as §2.1.
 
 | Scenario | Command |
 |---|---|
 | Code-only redeploy (composer.lock + package-lock.json unchanged) | `php artisan app:deploy --skip-composer --skip-npm --health-url=…` |
 | Frontend-only redeploy | `php artisan app:deploy --skip-migrate --skip-seed --health-url=…` |
 | Hot-fix (no migrations, no maintenance window) | `php artisan app:deploy --skip-migrate --skip-seed --health-url=…` |
+| Health report only (nothing changed on disk that needs a build) | `php artisan app:status` |
 | Dry inspection of what would run | `php artisan app:deploy --skip-composer --skip-npm --skip-migrate --skip-seed --skip-cache --skip-queue` |
 
-### 2.4 Service health report (`app:status`)
+### 2.3 Service health report (`app:status`)
 
 The last step of every deploy runs `php artisan app:status --wait=75` in a
 fresh process. It is read-only and can be run by hand at any time:
 
 | Check | FAIL when | WARN when |
 |---|---|---|
-| Release | — (shows env, commit, PHP version — catch the CLI-is-8.2 trap here) | — |
+| Release | — (shows env, commit, PHP version — catch the CLI-is-8.2 trap here; `commit=unknown` is normal, `public_html` has no `.git`) | — |
 | Maintenance mode | the app is still down | — |
 | Database | `select 1` fails | — |
 | Cache | a write/read round-trip on the default store fails | — |
 | Migrations | any migration is pending | — |
-| Worker: otp / default / compensation | a runnable job has waited over 2 minutes and no `queue:work --queue=<name>` process is running | a job is waiting and cron has not started a worker yet |
+| Worker: otp / default / compensation | a runnable job has waited over 2 minutes and no `queue:work` process of this app drains that queue | a job is waiting and cron has not started a worker yet |
 | Queue backlog | — | a job has waited over 15 minutes |
 | Failed jobs | — | any failure in the last 24 hours |
 | Scheduler | the per-minute heartbeat is older than 3 minutes | no heartbeat yet (first deploy of it, or a cache flush) |
 
 Both servers launch workers from a flock'd crontab with
-`--stop-when-empty`, so an idle queue has no worker process at all — that
-reads as OK ("idle"). The check fails only when work is waiting with nobody
-to take it. `--wait` keeps polling because `queue:restart` only signals
-workers to exit and cron respawns them within a minute. A failing status check is reported as `⚠ service
-status` and does **not** fail the deploy — the release is already live, so
-act on the table instead. Skip it with `--skip-status`; change the wait with
-`--status-wait=<seconds>`.
+`--stop-when-empty` (§1.9), so an idle queue has no worker process at all —
+that reads as OK ("idle — no jobs waiting"). The check fails only when work
+is waiting with nobody to take it. Only PHP processes whose artisan resolves
+to this app's own are counted: the staging box also runs other apps' workers
+on a queue named `default`, and the `flock` / `sh -c` launchers are not
+workers. `--wait` keeps polling because `queue:restart` only signals workers
+to exit and cron respawns them within a minute.
 
-### 2.3 Cloudways Deploy Hook (alternative — currently unused)
+A failing status check is reported as `⚠ service status` and does **not**
+fail the deploy — the release is already live, so act on the table instead.
+Skip it with `--skip-status`; change the wait with `--status-wait=<seconds>`.
+
+### 2.4 Cloudways Deploy Hook (alternative — currently unused)
 
 The same command works as the Cloudways Deploy Hook if you ever want
 push-to-deploy. Configure under *Application → Application Settings →
-Deploy Hooks*:
+Deploy Hooks* — the §2.1 Step 2 command for that environment, including its
+shell setup (nvm, and `php8.4` on production).
 
-```bash
-cd /home/master/applications/ahdhesuhty/public_html/app && \
-  php artisan app:deploy --maintenance \
-    --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
-```
-
-Phase 1 keeps deploys manual (Section 2.1); revisit when the team is
-ready for hands-off CD.
+Deploys stay manual (§2.1) until the team is ready for hands-off CD.
 
 ---
 
@@ -505,19 +635,24 @@ Two rollback strategies depending on what broke.
 
 ### 3a. Code rollback only
 
+`public_html` has no `.git`, so the server cannot be reset to an old commit.
+Roll back through `main` instead — `git revert` keeps history and needs no
+force-push:
+
 ```bash
-ssh master@<server-ip>
-cd /home/master/applications/ahdhesuhty/public_html/app
-
-git log --oneline -5                   # find the last-known-good commit
-git reset --hard <good-sha>
-
-# Same deploy command, no migrations to re-run on a code-only rollback:
-php artisan app:deploy \
-    --skip-migrate \
-    --skip-seed \
-    --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
+# Laptop
+git log --oneline -5                   # find the bad commit(s)
+git revert <bad-sha>                   # one revert commit per bad commit
+git push origin main
 ```
+
+Then §2.1 Step 1 (pull) and Step 2 with no migrations to re-run:
+
+```bash
+php artisan app:deploy --skip-migrate --skip-seed --health-url=<environment URL>
+```
+
+(Production: `php8.4 artisan …` after the §2.1 shell setup.)
 
 ### 3b. Code + DB rollback
 
@@ -534,7 +669,7 @@ php artisan migrate:rollback --step=1 --force
 ### 3c. Production database backup (manual, before risky deploys)
 
 ```bash
-ssh master@<server-ip>
+ssh master_hkmtmetvcf@139.59.92.246    # staging: master_mvgumpkwtu@139.59.92.229
 mysqldump -u <db-user> -p<db-pass> <db-name> \
   --single-transaction --quick --skip-lock-tables \
   | gzip > ~/backups/arovolife-$(date +%Y%m%d-%H%M%S).sql.gz
@@ -612,6 +747,11 @@ The Servers card on the dashboard stays empty as a result; that is expected.
 | Saving a job fails with "Only lowercase alphanumeric characters are allowed" | Queue field given a comma list such as `otp,default` | One queue name per job; that is why there are three jobs (§1.9) |
 | A Supervisord job shows FATAL and never RUNNING | Artisan Path left at the panel default `public_html/artisan` | Set it to `public_html/app/artisan` — Laravel is one level down in this repo |
 | Jobs run, but `failed_jobs.connection` says `redis` and someone "fixes" `config/queue.php` | The `redis` connection is deliberately the database driver; the name is forced by Cloudways | Leave the alias; `QueueRoutingTest` fails if it is reverted. See §1.9 |
+| `npm run build` fails with a Vite / Node version error during `app:deploy` | nvm not sourced, so the system Node 20.5.1 ran | `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default` before the deploy (§2.1) |
+| Production composer or artisan fails on PHP 8.4 syntax / platform check | Bare `php` on the production CLI is 8.2 | Use `php8.4 artisan …` and `export PATH="$HOME/bin:$PATH"` (§2.1) |
+| Production `migrate` or cache fails with `NOPERM` | Redis ACL is enforced there and `REDIS_PREFIX` is missing | Set `REDIS_USERNAME`, `REDIS_PASSWORD` and `REDIS_PREFIX=hrnpvxpkgw:` in `.env` |
+| `git` in `public_html` says "not a git repository" | Cloudways syncs `public_html` from `git_repo`; there is no `.git` there | Pull through Cloudways (§2.1 Step 1); roll back with `git revert` on `main` (§3a) |
+| `app:status` Worker row FAILs after a deploy | A job waited over 2 min and no cron worker started | `crontab -l` — the flock'd worker lines must exist and use this app's path (§1.9); check `/tmp/*-q-*.lock` isn't held by a hung worker |
 | `php artisan config:cache` errors with `RuntimeException` | An `env()` call outside `config/` | Search code, move env reads into a config file |
 | Permission denied on `storage/logs/laravel.log` | Wrong owner after rsync | `chown -R master:www-data storage bootstrap/cache && chmod -R 775 …` |
 
@@ -736,25 +876,29 @@ BCRYPT_ROUNDS=12
 ## §B — Operator quick-reference card
 
 ```
-SSH:          ssh master@<server-ip>
-App root:     /home/master/applications/ahdhesuhty/public_html/app
-Webroot:      /home/master/applications/ahdhesuhty/public_html/app/public
-App logs:     storage/logs/laravel.log
-Deploy log:   storage/logs/deploy.log
-Deploy:       cd app && git fetch origin main && git reset --hard origin/main && \
-              php artisan app:deploy --maintenance \
-                --health-url=https://phplaravel-1611779-6390605.cloudwaysapps.com/
-Code-only:    php artisan app:deploy --skip-composer --skip-npm --health-url=…
-Rollback:     git reset --hard <good-sha> && php artisan app:deploy --maintenance --health-url=…
-DB backup:    mysqldump … | gzip > ~/backups/<ts>.sql.gz
-Tail logs:    tail -F storage/logs/laravel.log
-Tail deploy:  tail -F storage/logs/deploy.log
-Failed jobs:  php artisan queue:failed
-Workers:      Application Settings -> Supervisord Jobs (3 jobs, all on the
-              database driver despite the panel's `redis` label -- 1.9):
-                Job 1  otp           1 proc   timeout 120   tries 3
-                Job 2  default       2 procs  timeout 120   tries 3
-                Job 3  compensation  1 proc   timeout 999   tries 1  (never >1 proc; long jobs carry their own 3600/7200)
-              Artisan Path on all three: public_html/app/artisan
-Open tinker:  php artisan tinker
+                STAGING                                           PRODUCTION
+SSH:            master_mvgumpkwtu@139.59.92.229                   master_hkmtmetvcf@139.59.92.246
+App root:       /home/master/applications/ahdhesuhty/public_html/app
+                                                                  /home/master/applications/hrnpvxpkgw/public_html/app
+URL:            https://phplaravel-1611779-6390605.cloudwaysapps.com/
+                                                                  https://arovolife.com/
+Artisan:        php artisan                                       php8.4 artisan  (+ export PATH="$HOME/bin:$PATH")
+Pull:           git_pull 1611779 / 6390605 / main                 git_pull 1674229 / 6692015 / main
+
+Shell setup:    export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; nvm use default
+Deploy:         <artisan> app:deploy --maintenance --health-url=<URL>
+Code-only:      <artisan> app:deploy --skip-composer --skip-npm --health-url=<URL>
+Health report:  <artisan> app:status
+Rollback:       laptop: git revert <bad-sha> && git push origin main; then pull + deploy
+                (no git on the server -- public_html has no .git)
+App logs:       storage/logs/laravel.log     (tail -F)
+Deploy log:     storage/logs/deploy.log      (tail -F)
+Failed jobs:    <artisan> queue:failed
+Workers:        master crontab, one flock'd line per queue (crontab -l -- §1.9):
+                  otp           tries 3  timeout 120
+                  default       tries 3  timeout 120
+                  compensation  tries 1  timeout 3600  (never >1 process)
+                all `queue:work database --stop-when-empty`; cron respawns them each minute
+DB backup:      mysqldump … | gzip > ~/backups/<ts>.sql.gz   (§3c)
+Open tinker:    <artisan> tinker
 ```
