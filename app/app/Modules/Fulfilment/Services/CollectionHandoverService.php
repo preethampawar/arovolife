@@ -97,20 +97,31 @@ final class CollectionHandoverService
             );
         }
 
-        $previousAttempts = (int) $shipment->handover_attempts;
-        $code = $this->issueCode($shipment);
+        // Under the order lock, so a re-issue racing a handover cannot write
+        // a fresh code (and an audit row) onto an order already collected.
+        $code = $this->db->transaction(function () use ($order, $shipment, $actorUserId): string {
+            $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== Order::STATUS_AWAITING_COLLECTION) {
+                throw new RuntimeException("Order {$order->order_no} is no longer waiting at a centre.");
+            }
 
-        AuditLog::create([
-            'actor_id' => $actorUserId,
-            'action' => 'order.collection_code_reissued',
-            'subject_type' => 'order',
-            'subject_id' => $order->id,
-            'details' => [
-                'order_no' => $order->order_no,
-                'arete_center_id' => $shipment->arete_center_id,
-                'previous_attempts' => $previousAttempts,
-            ],
-        ]);
+            $previousAttempts = (int) $shipment->handover_attempts;
+            $code = $this->issueCode($shipment);
+
+            AuditLog::create([
+                'actor_id' => $actorUserId,
+                'action' => 'order.collection_code_reissued',
+                'subject_type' => 'order',
+                'subject_id' => $order->id,
+                'details' => [
+                    'order_no' => $order->order_no,
+                    'arete_center_id' => $shipment->arete_center_id,
+                    'previous_attempts' => $previousAttempts,
+                ],
+            ]);
+
+            return $code;
+        });
 
         $this->sendCode($order, $code);
 
