@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Fulfilment\Services;
 
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Notifications\OrderReadyForCollectionNotification;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Commerce\Support\OrderBuyerNotifier;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Fulfilment\Models\Shipment;
 use Illuminate\Database\DatabaseManager;
@@ -37,7 +39,50 @@ final class CollectionHandoverService
     public function __construct(
         private readonly DatabaseManager $db,
         private readonly OrderStateMachine $orders,
+        private readonly OrderBuyerNotifier $buyerNotifier,
     ) {}
+
+    /**
+     * The centre (or staff, on its behalf) confirms the parcel has arrived:
+     * the order moves to awaiting collection, and the buyer is emailed a fresh
+     * collection code. One path for the centre's own page and the admin
+     * override, so neither can skip the code.
+     *
+     * Returns the code in the clear, once, for the admin flash; null when the
+     * order has no shipment row (shipped by the old button) and so no code can
+     * be issued. The centre page never shows what this returns.
+     */
+    public function acknowledgeArrival(Order $order, ?int $actorUserId = null): ?string
+    {
+        $this->orders->markAwaitingCollection($order, $actorUserId);
+
+        $shipment = Shipment::where('order_id', $order->id)->first();
+
+        if ($shipment === null) {
+            return null;
+        }
+
+        $code = $this->issueCode($shipment);
+        $centre = $order->areteCenter;
+
+        if ($centre !== null) {
+            $buyerName = $order->ship_name;
+            if ($buyerName === null || $buyerName === '') {
+                $buyerName = $order->customer !== null ? $order->customer->display_name : 'there';
+            }
+
+            $this->buyerNotifier->send($order, new OrderReadyForCollectionNotification(
+                orderNo: $order->order_no,
+                buyerName: (string) $buyerName,
+                centreName: $centre->name,
+                centreAddress: $centre->displayAddress(),
+                centrePhone: $centre->contact_number,
+                collectionCode: $code,
+            ));
+        }
+
+        return $code;
+    }
 
     /**
      * Issue the buyer's collection code and return it in the clear, once, for

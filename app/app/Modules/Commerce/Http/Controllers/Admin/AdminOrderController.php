@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Commerce\Http\Controllers\Admin;
 
 use App\Modules\Commerce\Models\Order;
-use App\Modules\Commerce\Notifications\OrderReadyForCollectionNotification;
 use App\Modules\Commerce\Services\OrderStateMachine;
-use App\Modules\Commerce\Support\OrderBuyerNotifier;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Fulfilment\Services\CollectionHandoverService;
@@ -40,7 +38,6 @@ final class AdminOrderController extends Controller
         private readonly OrderStateMachine $stateMachine,
         private readonly OrderFulfilmentService $fulfilment,
         private readonly InventorySettings $inventorySettings,
-        private readonly OrderBuyerNotifier $buyerNotifier,
         private readonly CourierGatewayResolver $couriers,
         private readonly DispatchService $dispatch,
     ) {}
@@ -296,7 +293,7 @@ final class AdminOrderController extends Controller
         $actorId = auth()->id();
 
         try {
-            $this->stateMachine->markAwaitingCollection($order, is_numeric($actorId) ? (int) $actorId : null);
+            $code = app(CollectionHandoverService::class)->acknowledgeArrival($order, is_numeric($actorId) ? (int) $actorId : null);
         } catch (\RuntimeException $e) {
             Log::warning('Order awaiting-collection transition refused', [
                 'order_id' => $order->id,
@@ -307,33 +304,11 @@ final class AdminOrderController extends Controller
             return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['collection' => $e->getMessage()]);
         }
 
-        // The buyer's collection code, issued once and emailed to them. It is
-        // stored only as an HMAC, so it cannot be read back from this page or
-        // from the database afterwards.
-        $shipment = Shipment::where('order_id', $order->id)->first();
-
-        if ($shipment === null) {
+        // The buyer's collection code is stored only as an HMAC, so it cannot
+        // be read back from this page or from the database afterwards.
+        if ($code === null) {
             return redirect()->route('admin.commerce.orders.show', $order)
                 ->with('status', 'Recorded as ready to collect.');
-        }
-
-        $code = app(CollectionHandoverService::class)->issueCode($shipment);
-        $centre = $order->areteCenter;
-
-        if ($centre !== null) {
-            $buyerName = $order->ship_name;
-            if ($buyerName === null || $buyerName === '') {
-                $buyerName = $order->customer !== null ? $order->customer->display_name : 'there';
-            }
-
-            $this->buyerNotifier->send($order, new OrderReadyForCollectionNotification(
-                orderNo: $order->order_no,
-                buyerName: (string) $buyerName,
-                centreName: $centre->name,
-                centreAddress: $centre->displayAddress(),
-                centrePhone: $centre->contact_number,
-                collectionCode: $code,
-            ));
         }
 
         // Still shown to the operator once: email is not instant and a buyer

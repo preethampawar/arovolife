@@ -23,6 +23,7 @@ use App\Modules\ActionCenter\Providers\Money\RefundsFailedProvider;
 use App\Modules\ActionCenter\Providers\Money\RefundsManualOwedProvider;
 use App\Modules\ActionCenter\Providers\Money\RefundsPastPromiseProvider;
 use App\Modules\ActionCenter\Providers\Money\UnpayableManualCreditProvider;
+use App\Modules\ActionCenter\Providers\Orders\AtCentreNotCollectedProvider;
 use App\Modules\ActionCenter\Providers\Orders\CourierExceptionProvider;
 use App\Modules\ActionCenter\Providers\Orders\InvoiceMissingProvider;
 use App\Modules\ActionCenter\Providers\Orders\PackedNotShippedProvider;
@@ -69,6 +70,7 @@ final class ActionCenterServiceProvider extends ServiceProvider
         PackedNotShippedProvider::class,
         ShippedNotDeliveredProvider::class,
         CourierExceptionProvider::class,
+        AtCentreNotCollectedProvider::class,
         UnpaidExpiringProvider::class,
         RestockNotReconciledProvider::class,
         AwaitingInspectionProvider::class,

@@ -45,6 +45,34 @@ final class OrderPolicy
     }
 
     /**
+     * The centre a collection order was sent to may confirm its arrival and
+     * hand it over. Ownership comes from `orders.arete_center_id`, not the
+     * shipment row, which is empty for parcels shipped before dispatch went
+     * through the courier routes.
+     *
+     * R-24: the number of centres one distributor may hold is uncapped, so an
+     * owner of several centres acts for all of them. What keeps the handover
+     * honest is the buyer's collection code, which the centre never sees.
+     *
+     * Refused while impersonating (the R-98 precedent from the declarations):
+     * a receipt or handover recorded by staff wearing the owner's session
+     * would read as the owner's own act.
+     */
+    public function actAtCentre(User $user, Order $order): bool
+    {
+        if (session()->has('impersonator_id')) {
+            return false;
+        }
+
+        $distributorId = $user->distributor?->id;
+
+        return $distributorId !== null
+            && $order->isCollection()
+            && $order->areteCenter !== null
+            && $order->areteCenter->assigned_distributor_id === $distributorId;
+    }
+
+    /**
      * Ownership is via the customer record, not the attributed distributor.
      *
      * The distinction matters: a distributor is *attributed* orders placed by

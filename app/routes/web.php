@@ -87,6 +87,7 @@ use App\Modules\Content\Http\Controllers\Public\PublicFaqController;
 use App\Modules\Content\Http\Controllers\Public\PublicNewsController;
 use App\Modules\Content\Http\Controllers\Public\PublicSeminarController;
 use App\Modules\Fulfilment\Http\Controllers\Admin\AdminDispatchController;
+use App\Modules\Fulfilment\Http\Controllers\CentreConsignmentController;
 use App\Modules\Fulfilment\Http\Controllers\ShiprocketWebhookController;
 use App\Modules\Genealogy\Http\Controllers\LineChangeController;
 use App\Modules\Genealogy\Http\Controllers\TreeController;
@@ -1433,4 +1434,12 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     // way for its owner to clear the block (R-95).
     Route::post('/my/arete-centre/{centre}/declarations', [DistributorAreteCenterApplicationController::class, 'acceptDeclarations'])
         ->whereNumber('centre')->name('my.adc.declarations.accept');
+    // The centre owner's parcels: confirm arrival, hand over against the
+    // buyer's code. 404 while collection at a centre is off (R-97) or for
+    // someone who runs no centre; ownership is checked per order.
+    Route::get('/my/arete-centre/consignments', [CentreConsignmentController::class, 'index'])->name('my.adc.consignments');
+    Route::post('/my/arete-centre/consignments/{order:order_no}/received', [CentreConsignmentController::class, 'received'])
+        ->middleware('throttle:10,1')->name('my.adc.consignments.received');
+    Route::post('/my/arete-centre/consignments/{order:order_no}/handover', [CentreConsignmentController::class, 'handover'])
+        ->middleware('throttle:10,1')->name('my.adc.consignments.handover');
 });

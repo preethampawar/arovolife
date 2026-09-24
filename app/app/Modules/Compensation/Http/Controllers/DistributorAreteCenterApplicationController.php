@@ -77,6 +77,8 @@ final class DistributorAreteCenterApplicationController extends Controller
             // The declaration binds the owner to "the period arovolife
             // publishes to me in writing". This is where it is published.
             'maxDwellDays' => $fulfilment->maxDwellDays(),
+            // The consignments page exists only while collection is on (R-97).
+            'collectionEnabled' => AreteCenter::collectionEnabled(),
         ]);
     }
 
