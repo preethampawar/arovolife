@@ -49,6 +49,9 @@ final class ShiprocketClient
 
     private const ASSIGN_AWB_TIMEOUT_SECONDS = 60;
 
+    /** A staff member is waiting on the courier list: answer fast or not at all. */
+    private const QUOTE_TIMEOUT_SECONDS = 10;
+
     public function __construct(private readonly ShiprocketPayloadScrubber $scrubber) {}
 
     // ── Configuration ──────────────────────────────────────────────────
@@ -132,13 +135,47 @@ final class ShiprocketClient
     }
 
     /** @return array<string, mixed> */
-    public function assignAwb(string $gatewayShipmentId, ?int $shipmentId, ?int $orderId): array
+    public function assignAwb(string $gatewayShipmentId, ?int $shipmentId, ?int $orderId, ?int $courierId = null): array
     {
+        // Without a courier id Shiprocket picks one itself.
+        $body = ['shipment_id' => (int) $gatewayShipmentId];
+        if ($courierId !== null) {
+            $body['courier_id'] = $courierId;
+        }
+
         // Courier allocation is slow: the sandbox took ~32 s to answer on
         // 2026-09-24, past the 20 s default. A timeout here leaves the booking
         // without an AWB, so give it room.
-        return $this->request('POST', '/courier/assign/awb', ['shipment_id' => (int) $gatewayShipmentId],
+        return $this->request('POST', '/courier/assign/awb', $body,
             'courier.assign_awb', $shipmentId, $orderId, $gatewayShipmentId, timeoutSeconds: self::ASSIGN_AWB_TIMEOUT_SECONDS);
+    }
+
+    /**
+     * The couriers that can carry a parcel between two pincodes, with their
+     * rates and delivery estimates. Nothing is booked.
+     *
+     * @param  array<string, scalar>  $query
+     * @param  bool  $interactive  a person is waiting: short timeout, no retry
+     * @return array<string, mixed>
+     */
+    public function serviceability(array $query, ?int $shipmentId, ?int $orderId, bool $interactive = false): array
+    {
+        return $this->request('GET', '/courier/serviceability/', $query, 'courier.serviceability',
+            $shipmentId, $orderId, interactive: $interactive);
+    }
+
+    /**
+     * The account's pickup addresses.
+     *
+     * @param  bool  $interactive  a person is waiting: short timeout, no retry
+     * @return list<array<string, mixed>>
+     */
+    public function pickupLocations(bool $interactive = false): array
+    {
+        $json = $this->request('GET', '/settings/company/pickup', [], 'settings.pickup', null, null, interactive: $interactive);
+        $rows = $json['data']['shipping_address'] ?? [];
+
+        return is_array($rows) ? array_values(array_filter($rows, 'is_array')) : [];
     }
 
     /** @return array<string, mixed> */
@@ -246,15 +283,16 @@ final class ShiprocketClient
         ?int $orderId,
         ?string $gatewayShipmentId = null,
         ?int $timeoutSeconds = null,
+        bool $interactive = false,
     ): array {
         $started = hrtime(true);
 
         try {
-            $response = $this->send($method, $path, $body, $this->token(), $timeoutSeconds);
+            $response = $this->send($method, $path, $body, $this->token(), $timeoutSeconds, $interactive);
 
             if ($response->status() === 401) {
                 // Expired or revoked. One fresh login, one retry — never a loop.
-                $response = $this->send($method, $path, $body, $this->token(renew: true), $timeoutSeconds);
+                $response = $this->send($method, $path, $body, $this->token(renew: true), $timeoutSeconds, $interactive);
             }
         } catch (ConnectionException $e) {
             $this->record($eventType, $shipmentId, $orderId, $gatewayShipmentId, null, $started,
@@ -286,10 +324,12 @@ final class ShiprocketClient
     }
 
     /** @param  array<string, mixed>  $body */
-    private function send(string $method, string $path, array $body, string $token, ?int $timeoutSeconds = null): Response
+    private function send(string $method, string $path, array $body, string $token, ?int $timeoutSeconds = null, bool $interactive = false): Response
     {
-        $pending = $this->pending($token, retry: $method === 'GET');
-        if ($timeoutSeconds !== null) {
+        $pending = $this->pending($token, retry: $method === 'GET' && ! $interactive);
+        if ($interactive) {
+            $pending = $pending->timeout(self::QUOTE_TIMEOUT_SECONDS);
+        } elseif ($timeoutSeconds !== null) {
             $pending = $pending->timeout(max($timeoutSeconds, $this->timeout()));
         }
 

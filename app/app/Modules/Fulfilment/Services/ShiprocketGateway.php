@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Fulfilment\Contracts\CourierGateway;
 use App\Modules\Fulfilment\Data\Consignee;
+use App\Modules\Fulfilment\Data\CourierQuote;
 use App\Modules\Fulfilment\Data\CourierShipment;
 use App\Modules\Fulfilment\Data\DispatchInstruction;
 use App\Modules\Fulfilment\Data\ParcelGap;
@@ -15,11 +16,13 @@ use App\Modules\Fulfilment\Exceptions\MissingParcelDetailsException;
 use App\Modules\Fulfilment\Exceptions\ShiprocketApiException;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Fulfilment\Support\FulfilmentSettings;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
- * Books a consignment with Shiprocket: an order, then an AWB (which picks the
- * courier), then — best effort — a pickup request and a label.
+ * Books a consignment with Shiprocket: an order, then an AWB (with the courier
+ * staff chose from `quotes()`, or one Shiprocket picks), then — best effort — a pickup request and a label.
  *
  * **Resumable, and never books twice for one shipment.** The remote calls run
  * outside any database transaction (see `DispatchService`), and Shiprocket's
@@ -39,6 +42,9 @@ final class ShiprocketGateway implements CourierGateway
 
     /** Shiprocket's floor for weight (kg) and each dimension (cm). */
     private const MIN_MEASURE = 0.5;
+
+    /** The pickup address's pincode rarely changes; the nickname is in the key. */
+    private const PICKUP_PIN_TTL_SECONDS = 24 * 3600;
 
     public function __construct(
         private readonly ShiprocketClient $client,
@@ -134,14 +140,20 @@ final class ShiprocketGateway implements CourierGateway
         }
 
         $shipment->refresh();
+        $quote = null;
         $resumed = $shipment->gateway === Shipment::GATEWAY_SHIPROCKET && $shipment->gateway_shipment_id !== null;
         if ($resumed) {
             $remoteId = (string) $shipment->gateway_shipment_id;
         } else {
+            // A courier that no longer serves the route is refused before
+            // anything exists in Shiprocket.
+            if ($instruction->courierId !== null) {
+                $quote = $this->chosenQuote($order, $instruction->consignee, $instruction->courierId, $shipment);
+            }
             [$remoteId, $resumed] = $this->book($shipment, $order, $instruction->consignee, $phone, $pickup);
         }
 
-        [$awb, $courier] = $this->awbFor($remoteId, $shipment, $resumed);
+        [$awb, $courier, $quote] = $this->awbFor($remoteId, $shipment, $resumed, $order, $instruction, $quote);
 
         // The AWB is the booking. Pickup and label are conveniences the
         // operator can repeat in the Shiprocket panel; their failure is on
@@ -167,7 +179,61 @@ final class ShiprocketGateway implements CourierGateway
             awbNo: mb_substr($awb, 0, self::AWB_MAX),
             gatewayShipmentId: $remoteId,
             labelUrl: $labelUrl,
+            quote: $quote,
         );
+    }
+
+    /**
+     * Every courier Shiprocket offers for this parcel, recommended first, then
+     * cheapest. Nothing is booked. The rates are the company's cost.
+     *
+     * @param  bool  $interactive  a person is waiting on the list
+     * @return list<CourierQuote>
+     *
+     * @throws MissingParcelDetailsException|RuntimeException|ShiprocketApiException
+     */
+    public function quotes(Order $order, Consignee $consignee, bool $interactive = true, ?int $shipmentId = null): array
+    {
+        // Without every product's weight and size the quote is for a parcel
+        // that does not exist.
+        $gaps = $this->parcelGaps($order);
+        if ($gaps !== []) {
+            throw new MissingParcelDetailsException($gaps);
+        }
+
+        [$weight, $length, $breadth, $height, $subTotalPaise] = $this->parcelMeasures($order);
+
+        $json = $this->client->serviceability([
+            'pickup_postcode' => $this->pickupPostcode($interactive),
+            'delivery_postcode' => $consignee->pincode,
+            // Only prepaid orders reach dispatch.
+            'cod' => 0,
+            'weight' => $weight,
+            'length' => $length,
+            'breadth' => $breadth,
+            'height' => $height,
+            'declared_value' => round($subTotalPaise / 100, 2),
+        ], $shipmentId, $order->id, $interactive);
+
+        $data = is_array($json['data'] ?? null) ? $json['data'] : [];
+        $recommended = $data['recommended_courier_company_id'] ?? $data['shiprocket_recommended_courier_id'] ?? null;
+        $recommendedId = is_int($recommended) || (is_string($recommended) && ctype_digit($recommended)) ? (int) $recommended : null;
+        if ($recommendedId === null) {
+            Log::info('shiprocket serviceability without a recommended courier', ['order_id' => $order->id, 'data_keys' => array_keys($data)]);
+        }
+
+        $quotes = [];
+        foreach (is_array($data['available_courier_companies'] ?? null) ? $data['available_courier_companies'] : [] as $row) {
+            $quote = is_array($row) ? CourierQuote::fromShiprocket($row, $recommendedId) : null;
+            if ($quote !== null) {
+                $quotes[$quote->courierId] = $quote; // one row per courier
+            }
+        }
+
+        $quotes = array_values($quotes);
+        usort($quotes, fn (CourierQuote $a, CourierQuote $b): int => [$b->recommended, $a->ratePaise] <=> [$a->recommended, $b->ratePaise]);
+
+        return $quotes;
     }
 
     public function track(Shipment $shipment): ?CourierShipment
@@ -300,9 +366,9 @@ final class ShiprocketGateway implements CourierGateway
      * The AWB and courier for a booked shipment. A resumed booking may
      * already have one — assigning again would be refused, or worse, succeed.
      *
-     * @return array{0: string, 1: string|null}
+     * @return array{0: string, 1: string|null, 2: CourierQuote|null}
      */
-    private function awbFor(string $remoteId, Shipment $shipment, bool $resumed): array
+    private function awbFor(string $remoteId, Shipment $shipment, bool $resumed, Order $order, DispatchInstruction $instruction, ?CourierQuote $quote): array
     {
         if ($resumed) {
             $shown = $this->client->showShipment($remoteId, $shipment->id, $shipment->order_id);
@@ -310,11 +376,17 @@ final class ShiprocketGateway implements CourierGateway
             $awb = is_string($data['awb'] ?? null) ? trim($data['awb']) : '';
 
             if ($awb !== '') {
-                return [$awb, is_string($data['courier'] ?? null) && $data['courier'] !== '' ? $data['courier'] : null];
+                // The courier is already fixed; a choice made now cannot apply.
+                return [$awb, is_string($data['courier'] ?? null) && $data['courier'] !== '' ? $data['courier'] : null, null];
+            }
+
+            // A held booking with no AWB yet: the choice still applies.
+            if ($instruction->courierId !== null && $quote === null) {
+                $quote = $this->chosenQuote($order, $instruction->consignee, $instruction->courierId, $shipment);
             }
         }
 
-        $assigned = $this->client->assignAwb($remoteId, $shipment->id, $shipment->order_id);
+        $assigned = $this->client->assignAwb($remoteId, $shipment->id, $shipment->order_id, $quote?->courierId);
         $data = $assigned['response']['data'] ?? null;
         $awb = is_array($data) && (is_string($data['awb_code'] ?? null) || is_int($data['awb_code'] ?? null))
             ? trim((string) $data['awb_code'])
@@ -326,9 +398,102 @@ final class ShiprocketGateway implements CourierGateway
 
         $courier = is_array($data) && is_string($data['courier_name'] ?? null) && $data['courier_name'] !== ''
             ? $data['courier_name']
-            : null;
+            : $quote?->name;
 
-        return [$awb, $courier];
+        return [$awb, $courier, $quote];
+    }
+
+    /**
+     * Re-read the quotes and find the courier staff chose. The rate stored is
+     * this server-side answer, never anything the form sent.
+     */
+    private function chosenQuote(Order $order, Consignee $consignee, int $courierId, Shipment $shipment): CourierQuote
+    {
+        foreach ($this->quotes($order, $consignee, interactive: false, shipmentId: $shipment->id) as $quote) {
+            if ($quote->courierId === $courierId) {
+                return $quote;
+            }
+        }
+
+        throw new RuntimeException(
+            "The courier you chose no longer serves this parcel's route, so order {$order->order_no} was not booked with it. "
+            .'Reload the courier list and choose again.'
+        );
+    }
+
+    /**
+     * The pincode of the pickup address named in settings, from the
+     * Shiprocket account. Cached as a plain string, keyed on the nickname and
+     * the API host, so changing either never serves the old origin.
+     */
+    private function pickupPostcode(bool $interactive): string
+    {
+        $nickname = $this->settings->shiprocketPickupLocation();
+        if ($nickname === '') {
+            throw new RuntimeException('No Shiprocket pickup location is set. Set it under Settings → Fulfilment.');
+        }
+
+        $key = 'fulfilment:shiprocket:pickup-pin:'.sha1($this->client->baseUrl().'|'.$nickname);
+        $cached = Cache::get($key);
+        if (is_string($cached) && preg_match('/^\d{6}$/', $cached) === 1) {
+            return $cached;
+        }
+
+        foreach ($this->client->pickupLocations($interactive) as $row) {
+            if ((string) ($row['pickup_location'] ?? '') !== $nickname) {
+                continue;
+            }
+            $pin = trim((string) ($row['pin_code'] ?? ''));
+            if (preg_match('/^\d{6}$/', $pin) === 1) {
+                Cache::put($key, $pin, self::PICKUP_PIN_TTL_SECONDS);
+
+                return $pin;
+            }
+        }
+
+        throw new RuntimeException(
+            "The pickup location \"{$nickname}\" was not found in the Shiprocket account, so couriers cannot be quoted. "
+            .'Check the nickname under Settings → Fulfilment.'
+        );
+    }
+
+    /**
+     * The stacked-box estimate, in Shiprocket's units: the widest footprint,
+     * units piled on top of each other. Not a packing algorithm.
+     *
+     * @return array{0: float, 1: float, 2: float, 3: float, 4: int} weight kg, length, breadth, height cm, sub-total paise
+     */
+    private function parcelMeasures(Order $order): array
+    {
+        $order->loadMissing('items.variant');
+
+        $weightG = 0;
+        $lengthMm = 0;
+        $breadthMm = 0;
+        $heightMm = 0;
+        $subTotalPaise = 0;
+
+        /** @var OrderItem $item */
+        foreach ($order->items as $item) {
+            $variant = $item->variant;
+            if ($variant === null) {
+                continue; // unreachable: parcelGaps() refused it
+            }
+
+            $weightG += (int) $variant->weight_g * (int) $item->qty;
+            $lengthMm = max($lengthMm, (int) $variant->length_mm);
+            $breadthMm = max($breadthMm, (int) $variant->breadth_mm);
+            $heightMm += (int) $variant->height_mm * (int) $item->qty;
+            $subTotalPaise += (int) $item->line_total_paise;
+        }
+
+        return [
+            max(self::MIN_MEASURE, round($weightG / 1000, 3)),
+            max(self::MIN_MEASURE, round($lengthMm / 10, 1)),
+            max(self::MIN_MEASURE, round($breadthMm / 10, 1)),
+            max(self::MIN_MEASURE, round($heightMm / 10, 1)),
+            $subTotalPaise,
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -337,11 +502,6 @@ final class ShiprocketGateway implements CourierGateway
         $order->loadMissing('items.variant');
 
         $items = [];
-        $weightG = 0;
-        $lengthMm = 0;
-        $breadthMm = 0;
-        $heightMm = 0;
-        $subTotalPaise = 0;
 
         /** @var OrderItem $item */
         foreach ($order->items as $item) {
@@ -356,15 +516,9 @@ final class ShiprocketGateway implements CourierGateway
                 'units' => (int) $item->qty,
                 'selling_price' => round($item->unit_price_paise / 100, 2),
             ];
-
-            // A stacked-box estimate, not a packing algorithm: the widest
-            // footprint, units piled on top of each other.
-            $weightG += (int) $variant->weight_g * (int) $item->qty;
-            $lengthMm = max($lengthMm, (int) $variant->length_mm);
-            $breadthMm = max($breadthMm, (int) $variant->breadth_mm);
-            $heightMm += (int) $variant->height_mm * (int) $item->qty;
-            $subTotalPaise += (int) $item->line_total_paise;
         }
+
+        [$weight, $length, $breadth, $height, $subTotalPaise] = $this->parcelMeasures($order);
 
         // Shiprocket refuses a booking without a last name (sandbox, 2026-09-24),
         // and plenty of buyers give one word. The label prints both halves.
@@ -394,10 +548,10 @@ final class ShiprocketGateway implements CourierGateway
             // Only prepaid orders reach dispatch; there is no COD.
             'payment_method' => 'Prepaid',
             'sub_total' => round($subTotalPaise / 100, 2),
-            'weight' => max(self::MIN_MEASURE, round($weightG / 1000, 3)),
-            'length' => max(self::MIN_MEASURE, round($lengthMm / 10, 1)),
-            'breadth' => max(self::MIN_MEASURE, round($breadthMm / 10, 1)),
-            'height' => max(self::MIN_MEASURE, round($heightMm / 10, 1)),
+            'weight' => $weight,
+            'length' => $length,
+            'breadth' => $breadth,
+            'height' => $height,
         ];
 
         if ($consignee->isCollection() && $consignee->collectorName !== null) {

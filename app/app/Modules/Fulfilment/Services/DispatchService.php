@@ -10,6 +10,7 @@ use App\Modules\Compensation\Models\AreteCenterDeclaration;
 use App\Modules\Compensation\Support\AreteCenterDeclarations;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Fulfilment\Data\Consignee;
+use App\Modules\Fulfilment\Data\CourierQuote;
 use App\Modules\Fulfilment\Data\DispatchInstruction;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
@@ -57,6 +58,8 @@ final class DispatchService
      *                                          re-dispatching through the same
      *                                          courier, has checked its panel and
      *                                          an unanswered booking is not there.
+     * @param  int|null  $courierId  The courier staff chose from `courierQuotes()`.
+     *                               Null lets the gateway choose.
      * @return Shipment|null null only when a manual dispatch shipped an order
      *                       the lenient pack left unpacked (no shipment row)
      */
@@ -68,6 +71,7 @@ final class DispatchService
         ?int $actorUserId = null,
         ?string $warehouseCode = null,
         bool $confirmedRemoteCancelled = false,
+        ?int $courierId = null,
     ): ?Shipment {
         if (! in_array($order->status, [Order::STATUS_PAID, Order::STATUS_READY_TO_SHIP], true)) {
             throw new RuntimeException("Cannot dispatch an order in status {$order->status}.");
@@ -136,7 +140,7 @@ final class DispatchService
 
             $result = $gateway->dispatch(
                 $shipment,
-                new DispatchInstruction($consignee, $carrierName, $awbNo),
+                new DispatchInstruction($consignee, $carrierName, $awbNo, $manual ? null : $courierId),
                 'shipment:'.$shipment->id,
             );
 
@@ -168,6 +172,12 @@ final class DispatchService
                     'arete_center_id' => $consignee->areteCenterId,
                     'consigned_at' => now(),
                 ];
+                $etdDays = $result->quote?->etdDays === null ? null : min(255, $result->quote->etdDays);
+                if ($result->quote !== null) {
+                    $update['courier_company_id'] = $result->quote->courierId;
+                    $update['quoted_rate_paise'] = $result->quote->ratePaise;
+                    $update['quoted_etd_days'] = $etdDays;
+                }
                 if ($abandonedBooking === null) {
                     $update['gateway'] = $result->gateway;
                     $update['gateway_shipment_id'] = $result->gatewayShipmentId;
@@ -193,6 +203,10 @@ final class DispatchService
                         'arete_center_id' => $consignee->areteCenterId,
                         'remote_booking_cancelled_by_operator' => $abandonedBooking,
                         'unanswered_booking_confirmed_absent_by_operator' => $releasedUnansweredClaim,
+                        'courier_id' => $result->quote?->courierId,
+                        'quoted_rate_paise' => $result->quote?->ratePaise,
+                        'quoted_etd_days' => $etdDays,
+                        'chose_recommended' => $result->quote?->recommended,
                     ],
                 ]);
 
@@ -201,6 +215,28 @@ final class DispatchService
         } finally {
             $lock->release();
         }
+    }
+
+    /**
+     * The couriers the named route offers for this order, with rates and
+     * delivery estimates. A collection order is quoted to its centre.
+     *
+     * @return list<CourierQuote>
+     *
+     * @throws RuntimeException when the order cannot be dispatched or the route cannot quote
+     */
+    public function courierQuotes(Order $order, string $route): array
+    {
+        if (! in_array($order->status, [Order::STATUS_PAID, Order::STATUS_READY_TO_SHIP], true)) {
+            throw new RuntimeException("Order {$order->order_no} is not waiting to be dispatched.");
+        }
+
+        $gateway = $this->routes->route($route);
+        if (! $gateway instanceof ShiprocketGateway) {
+            throw new RuntimeException("The {$route} route does not offer a choice of courier right now.");
+        }
+
+        return $gateway->quotes($order, $this->consigneeFor($order));
     }
 
     /**

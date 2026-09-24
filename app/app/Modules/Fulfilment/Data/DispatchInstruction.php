@@ -19,5 +19,7 @@ final readonly class DispatchInstruction
         public Consignee $consignee,
         public ?string $carrierName = null,
         public ?string $awbNo = null,
+        /** The courier staff chose from the gateway's quotes. Null lets the gateway choose. */
+        public ?int $courierId = null,
     ) {}
 }

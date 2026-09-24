@@ -6,12 +6,13 @@ namespace App\Modules\Commerce\Http\Controllers\Admin;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
-use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Fulfilment\Data\CourierQuote;
+use App\Modules\Fulfilment\Exceptions\ShiprocketApiException;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Fulfilment\Services\CollectionHandoverService;
 use App\Modules\Fulfilment\Services\CourierGatewayResolver;
-use App\Modules\Fulfilment\Exceptions\ShiprocketApiException;
 use App\Modules\Fulfilment\Services\CourierTrackingSync;
 use App\Modules\Fulfilment\Services\DispatchService;
 use App\Modules\Fulfilment\Services\ManualCourier;
@@ -23,11 +24,13 @@ use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Shared\Features\OfflineOrdersFeature;
 use App\Modules\Shared\Features\ShiprocketFulfilmentFeature;
 use App\Modules\Shared\Support\FilterField;
+use App\Modules\Shared\Support\IndianNumber;
 use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Tax\Models\Invoice;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -265,6 +268,8 @@ final class AdminOrderController extends Controller
             'ship_carrier' => ['required_if:route,manual', 'nullable', 'string', 'max:'.ManualCourier::CARRIER_MAX],
             'ship_tracking_no' => ['nullable', 'string', 'max:'.ManualCourier::AWB_MAX],
             'confirm_remote_cancelled' => ['sometimes', 'boolean'],
+            // Only the courier's id: its rate is re-read from Shiprocket, never taken from the form.
+            'courier_id' => ['nullable', 'integer', 'min:1'],
         ], [
             'ship_carrier.required_if' => 'Enter the courier carrying this parcel.',
         ]);
@@ -279,6 +284,7 @@ final class AdminOrderController extends Controller
                 $manual ? ($validated['ship_tracking_no'] ?? null) : null,
                 is_numeric(auth()->id()) ? (int) auth()->id() : null,
                 confirmedRemoteCancelled: $request->boolean('confirm_remote_cancelled'),
+                courierId: $manual || ! isset($validated['courier_id']) ? null : (int) $validated['courier_id'],
             );
         } catch (\RuntimeException $e) {
             Log::warning('Order ship transition refused', [
@@ -294,8 +300,39 @@ final class AdminOrderController extends Controller
         $order->refresh();
         $how = $order->ship_carrier !== null && $order->ship_carrier !== '' ? " via {$order->ship_carrier}" : '';
         $awb = $order->ship_tracking_no !== null && $order->ship_tracking_no !== '' ? ", AWB {$order->ship_tracking_no}" : '';
+        $shipment = Shipment::where('order_id', $order->id)->first();
+        $quoted = '';
+        if ($shipment?->quoted_rate_paise !== null) {
+            $days = $shipment->quoted_etd_days;
+            $quoted = ', quoted ₹'.IndianNumber::format($shipment->quoted_rate_paise / 100, 2)
+                .($days !== null ? ", {$days} ".($days === 1 ? 'day' : 'days') : '');
+        }
 
-        return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} shipped{$how}{$awb}.");
+        return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} shipped{$how}{$awb}{$quoted}.");
+    }
+
+    /**
+     * The couriers Shiprocket offers for this parcel, for the dispatch form.
+     * Staff-only figures: what the company would pay, not what the buyer paid.
+     */
+    public function courierQuotes(Order $order): JsonResponse
+    {
+        try {
+            $quotes = $this->dispatch->courierQuotes($order, Shipment::GATEWAY_SHIPROCKET);
+        } catch (ShiprocketApiException $e) {
+            Log::warning('Courier quotes unavailable', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+
+            return response()->json(['error' => 'Shiprocket could not list couriers right now. You can still dispatch: Shiprocket will choose the courier.'], 422);
+        } catch (\RuntimeException $e) {
+            // A database fault is not a message for the page.
+            if ($e instanceof \PDOException) {
+                throw $e;
+            }
+
+            return response()->json(['error' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['quotes' => array_map(fn (CourierQuote $quote): array => $quote->toArray(), $quotes)]);
     }
 
     /**

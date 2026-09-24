@@ -36,6 +36,8 @@ final class ShiprocketPayloadScrubber
         // Tracking webhook. `scans` is deliberately absent: its locations
         // trace the parcel to the buyer's door.
         'current_status_id', 'shipment_status_id', 'current_timestamp', 'sr_order_id', 'etd',
+        // Courier quotes. Never the pickup or delivery pincode.
+        'recommended_courier_company_id', 'shiprocket_recommended_courier_id', 'courier_id',
     ];
 
     /** Scalar keys kept only after sanitising, because they are free text. */
@@ -44,11 +46,13 @@ final class ShiprocketPayloadScrubber
     /** Keys whose value is an object or list we descend into. */
     private const ALLOWED_CONTAINERS = [
         'response', 'data', 'order_items', 'tracking_data', 'shipment_track', 'shipments',
+        'available_courier_companies',
     ];
 
     /** Containers with a narrower key set than the global one. */
     private const CONTAINER_KEYS = [
         'order_items' => ['name', 'sku', 'units', 'selling_price'],
+        'available_courier_companies' => ['courier_company_id', 'courier_name', 'rate', 'estimated_delivery_days'],
     ];
 
     private const MAX_TEXT = 200;

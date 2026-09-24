@@ -79,7 +79,20 @@ and pick list still exist behind it.
 | Route | When it is offered | What you type |
 |---|---|---|
 | **Manual** | Always | The courier's name (required) and the AWB / tracking number. |
-| **Shiprocket** | Only while Shiprocket is switched on and configured | Nothing: Shiprocket picks the courier and returns the AWB and a label link, shown on the order page. |
+| **Shiprocket** | Only while Shiprocket is switched on and configured | The courier, from Shiprocket's list (see below). The AWB and a label link come back from Shiprocket and show on the order page. |
+
+**Choosing the courier.** When you pick *Shiprocket*, the order page lists
+every courier Shiprocket can use for this parcel (for example DTDC, India Post,
+Delhivery) with its rate, estimated delivery days and date, rating, surface or
+air, and extras such as real-time tracking or proof of delivery. Shiprocket's
+recommended courier is ticked; choose another if you prefer. The rate is what
+the company pays Shiprocket; the buyer's shipping charge does not change.
+When you ship, the system asks Shiprocket for the rates again and books with
+your courier. If that courier no longer serves the route, nothing is booked:
+reload and choose again. If the list cannot load, you can still ship and
+Shiprocket chooses the courier. The quoted rate and days are kept on the
+shipment line. On a held booking (below) your choice applies only if
+Shiprocket has not assigned a courier yet.
 
 **Shiprocket needs a weight and packed size for every product in the order.**
 When one is missing, the order page lists the products with a link to each, and

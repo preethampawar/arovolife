@@ -31,6 +31,16 @@ properties had to hold:
      1. runs `preflight` **before** packing, so a refusal leaves stock untouched;
      2. packs strictly for a courier route, or leniently for manual;
      3. calls the courier's `dispatch`, and records the shipment.
+   - *Amended 2026-09-24 (courier choice):* staff choose the Shiprocket
+     courier from `ShiprocketGateway::quotes()` (serviceability API; pickup
+     pincode from the account, cached per nickname). The form posts only the
+     courier id. At dispatch the gateway re-quotes server-side and refuses an
+     id that is no longer offered, before a new booking is created or, on a
+     held booking with no AWB, before the AWB is assigned. The quoted rate and
+     days are stored on the shipment (`quoted_rate_paise`, `quoted_etd_days`,
+     `courier_company_id`) and in the `order.dispatched` audit. They are the
+     company's cost, never the buyer's charge. With no id, Shiprocket assigns
+     the courier as before.
 2. **A collection order still has a courier leg (AD-5).**
    - The consignee is the centre, not the buyer.
    - The centre receives a sealed consignment for one identified, already-paid

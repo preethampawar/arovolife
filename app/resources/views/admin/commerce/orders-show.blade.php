@@ -141,6 +141,15 @@
                                 </label>
                             </div>
                         </fieldset>
+                        <div id="courier-choice" class="w-full hidden" data-quotes-url="{{ route('admin.commerce.orders.courier-quotes', $order) }}">
+                            <p class="block text-xs font-medium text-gray-600 mb-1">Courier <x-help-tip text="The couriers Shiprocket can use for this parcel. The rate is what the company pays Shiprocket; the buyer's shipping charge does not change. Shiprocket's recommended courier is ticked; choose another if you prefer." /></p>
+                            @if($pendingBooking && $pendingBooking->gateway_shipment_id)
+                            <p class="text-xs text-gray-600 mb-2">The held booking may already have a courier. Your choice applies only if Shiprocket has not assigned one yet.</p>
+                            @endif
+                            <p data-courier-loading class="text-sm text-gray-500">Loading couriers from Shiprocket…</p>
+                            <p data-courier-error class="hidden text-sm text-red-700"></p>
+                            <div data-courier-list class="grid gap-2 sm:grid-cols-2"></div>
+                        </div>
                         @else
                         <input type="hidden" name="route" value="manual">
                         @endif
@@ -265,6 +274,7 @@
                 @if($shipment->carrier_code !== \App\Modules\Inventory\Services\OrderFulfilmentService::CARRIER_MANUAL)· {{ $shipment->carrier_code }}@endif @if($shipment->awb_no) · AWB <span class="font-mono">{{ $shipment->awb_no }}</span>@endif
                 @if($shipment->gateway !== 'manual')
                 · {{ ucfirst($shipment->gateway) }}@if($shipment->gateway_shipment_id) shipment <span class="font-mono">{{ $shipment->gateway_shipment_id }}</span>@endif
+                @if($shipment->quoted_rate_paise !== null) · quoted ₹{{ \App\Modules\Shared\Support\IndianNumber::format($shipment->quoted_rate_paise / 100, 2) }}@if($shipment->quoted_etd_days) · {{ $shipment->quoted_etd_days }} {{ $shipment->quoted_etd_days === 1 ? 'day' : 'days' }}@endif @endif
                 @if($shipment->courier_status) · courier says <span class="font-medium">{{ $shipment->courier_status }}</span>@endif
                 @if($shipment->label_url && str_starts_with($shipment->label_url, 'https://')) · <a href="{{ $shipment->label_url }}" target="_blank" rel="noopener noreferrer" class="text-brand-700 underline">Shipping label</a>@endif
                 @endif
@@ -425,3 +435,117 @@
 </div>
 
 @endsection
+
+@if(count($dispatchRoutes) > 1)
+@push('scripts')
+<script>
+(function () {
+    var panel = document.getElementById('courier-choice');
+    if (!panel) { return; }
+    var form = panel.closest('form');
+    var list = panel.querySelector('[data-courier-list]');
+    var loading = panel.querySelector('[data-courier-loading]');
+    var error = panel.querySelector('[data-courier-error]');
+    var baseImpact = form.dataset.confirmImpact || '';
+    var loaded = false;
+
+    function el(tag, className, text) {
+        var node = document.createElement(tag);
+        if (className) { node.className = className; }
+        if (text !== undefined && text !== null) { node.textContent = String(text); }
+        return node;
+    }
+
+    // What the confirm modal says follows the chosen courier.
+    function describeChoice() {
+        var chosen = form.querySelector('input[name="courier_id"]:checked');
+        var shiprocket = form.querySelector('input[name="route"][value="shiprocket"]:checked');
+        form.dataset.confirmImpact = shiprocket && chosen
+            ? baseImpact + ' Courier: ' + chosen.dataset.label + '.'
+            : baseImpact;
+    }
+
+    function render(quotes) {
+        list.replaceChildren();
+        if (quotes.length === 0) {
+            loaded = false;
+            error.textContent = 'Shiprocket has no courier for this route. Dispatch manually, or check the pincode.';
+            error.classList.remove('hidden');
+            return;
+        }
+        quotes.forEach(function (q, index) {
+            var label = el('label', 'flex items-start gap-2 rounded-lg border border-gray-200 p-3 text-sm cursor-pointer hover:border-brand-500');
+            var radio = el('input');
+            radio.type = 'radio';
+            radio.name = 'courier_id';
+            radio.value = q.courier_id;
+            radio.className = 'mt-1';
+            radio.checked = q.recommended || index === 0;
+            radio.dataset.label = q.name + ', ' + q.rate + (q.etd_days ? ', ' + q.etd_days + (q.etd_days === 1 ? ' day' : ' days') : '');
+            radio.addEventListener('change', describeChoice);
+
+            var body = el('span', 'flex-1 min-w-0');
+            var head = el('span', 'flex flex-wrap items-center gap-2');
+            head.appendChild(el('span', 'font-medium text-gray-900', q.name));
+            if (q.recommended) { head.appendChild(el('span', 'rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-800', 'Recommended')); }
+            head.appendChild(el('span', 'rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700', q.mode));
+            body.appendChild(head);
+
+            var facts = [q.rate];
+            if (q.etd_days) { facts.push(q.etd_days + (q.etd_days === 1 ? ' day' : ' days')); }
+            if (q.etd) { facts.push('by ' + q.etd); }
+            if (q.rating !== null) { facts.push('rating ' + q.rating + '/5'); }
+            body.appendChild(el('span', 'block text-gray-700', facts.join(' · ')));
+            if (q.services.length) {
+                body.appendChild(el('span', 'block text-xs text-gray-500', q.services.join(' · ')));
+            }
+
+            label.appendChild(radio);
+            label.appendChild(body);
+            list.appendChild(label);
+        });
+        sync();
+    }
+
+    function load() {
+        if (loaded) { return; }
+        loaded = true;
+        error.classList.add('hidden');
+        loading.classList.remove('hidden');
+        fetch(panel.dataset.quotesUrl, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+            .then(function (response) {
+                return response.json().then(function (body) { return { ok: response.ok, body: body }; });
+            })
+            .then(function (result) {
+                loading.classList.add('hidden');
+                if (!result.ok) {
+                    loaded = false; // switching route away and back asks again
+                    error.textContent = result.body.error || 'Couriers could not be listed. You can still dispatch: Shiprocket will choose the courier.';
+                    error.classList.remove('hidden');
+                    return;
+                }
+                render(result.body.quotes || []);
+            })
+            .catch(function () {
+                loaded = false;
+                loading.classList.add('hidden');
+                error.textContent = 'Couriers could not be listed. You can still dispatch: Shiprocket will choose the courier.';
+                error.classList.remove('hidden');
+            });
+    }
+
+    function sync() {
+        var shiprocket = form.querySelector('input[name="route"][value="shiprocket"]:checked');
+        panel.classList.toggle('hidden', !shiprocket);
+        // A hidden choice must never ride along with a manual dispatch.
+        list.querySelectorAll('input[name="courier_id"]').forEach(function (input) { input.disabled = !shiprocket; });
+        if (shiprocket) { load(); }
+        describeChoice();
+    }
+
+    form.querySelectorAll('input[name="route"]').forEach(function (input) { input.addEventListener('change', sync); });
+    sync();
+})();
+</script>
+@endpush
+@endif

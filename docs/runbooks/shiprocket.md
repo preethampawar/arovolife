@@ -75,6 +75,25 @@ pickup address in the Shiprocket panel (Settings → Pickup addresses).
   - **RTO…** → the shipment becomes `returned_to_origin`. The order is left alone.
   - **RTO, LOST, DAMAGED, DESTROYED or CANCELED** → the order appears in the Action Center under `orders.courier_exception`.
 
+## Courier choice
+
+Picking Shiprocket on the order page calls
+`GET admin/commerce/orders/{order}/courier-quotes` (throttled 20 a minute),
+which asks `GET /courier/serviceability/` with the pickup pincode, delivery
+pincode (the centre's for a collection order), the parcel size and `cod=0`.
+It uses a 10 s timeout with no retry, because a person is waiting.
+
+- **Pickup pincode.** Read from `GET /settings/company/pickup` for the
+  nickname in `fulfilment.shiprocket.pickup_location`, cached 24 h under a
+  key that includes the nickname and API host. If the nickname isn't in the
+  account, quotes are refused with that message; shipping without a choice
+  still works.
+- **At dispatch** the gateway re-quotes and books with `courier_id` on
+  `/courier/assign/awb`. It refuses an id that is no longer offered, before
+  anything is booked.
+- `shipment_events` keeps courier id, name, rate and days for each quote
+  call, and never the pincodes.
+
 ## Parcel size: the stacked-box estimate
 
 Every variant needs a weight and a packed length, breadth and height. We

@@ -26,5 +26,7 @@ final readonly class CourierShipment
         public ?string $labelUrl = null,
         /** The courier's own wording for where the parcel is ("RTO INITIATED", "LOST"), verbatim. */
         public ?string $courierStatus = null,
+        /** The quote the parcel was booked on, when staff chose the courier. */
+        public ?CourierQuote $quote = null,
     ) {}
 }
