@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Identity\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Compensation\Models\AreteCenterMember;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
@@ -460,6 +461,27 @@ final class DistributorIdCardStats
     }
 
     /**
+     * Name of the Arete Development Centre the distributor currently belongs
+     * to. Own card only — the tree's Details popup shows this panel to the
+     * upline, and centre membership is not part of what hard rule 3 lets
+     * them see.
+     */
+    private function ownAreteCenter(Distributor $distributor): ?string
+    {
+        if (auth()->id() !== $distributor->user_id) {
+            return null;
+        }
+
+        return AreteCenterMember::where('distributor_id', $distributor->id)
+            ->whereNull('effective_to')
+            ->with('center')
+            ->orderByDesc('effective_from')->orderByDesc('id')
+            ->first()
+            ?->center
+            ?->name;
+    }
+
+    /**
      * Full 15-field stats — the dashboard's "Your ADN" panel and the
      * tree's Details popup. Adds team counts and the remaining
      * dashboard-only fields on top of {@see self::compact()}.
@@ -473,7 +495,7 @@ final class DistributorIdCardStats
 
         return array_merge($compact, [
             'registration_date' => $distributor->effective_date,
-            'company' => 'Arovolife Private Limited',
+            'arete_center' => $this->ownAreteCenter($distributor),
             'personal_sales_title' => $this->ownPersonalTitle($distributor),
             'left_team' => $teamCounts['left_team'],
             'right_team' => $teamCounts['right_team'],

@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
+use App\Modules\Compensation\Models\AreteCenter;
+use App\Modules\Compensation\Models\AreteCenterMember;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
@@ -109,6 +111,39 @@ it('never exposes another distributor\'s withdrawal income (own data only)', fun
 
     $this->actingAs($me->user);
     expect(app(DistributorIdCardStats::class)->full($other)['total_withdrawal_income'])->toBeNull();
+});
+
+/** Enrol a distributor in a freshly created Arete centre. */
+function seedIdCardAreteCenter(Distributor $distributor, string $name, ?string $effectiveTo = null): void
+{
+    $centre = AreteCenter::create([
+        'name' => $name, 'status' => AreteCenter::STATUS_ACTIVE,
+        'city' => 'Warangal', 'state' => 'Telangana',
+    ]);
+    AreteCenterMember::create([
+        'center_id' => $centre->id,
+        'distributor_id' => $distributor->id,
+        'effective_from' => now()->subMonth()->toDateString(),
+        'effective_to' => $effectiveTo,
+    ]);
+}
+
+it('shows the Arete centre the distributor currently belongs to', function (): void {
+    $me = Distributor::factory()->create();
+    seedIdCardAreteCenter($me, 'Old Centre', now()->subDay()->toDateString());
+    seedIdCardAreteCenter($me, 'Hanamkonda Centre');
+
+    $this->actingAs($me->user);
+    expect(app(DistributorIdCardStats::class)->full($me)['arete_center'])->toBe('Hanamkonda Centre');
+});
+
+it('never exposes another distributor\'s Arete centre (own data only)', function (): void {
+    $me = Distributor::factory()->create();
+    $other = Distributor::factory()->create();
+    seedIdCardAreteCenter($other, 'Hanamkonda Centre');
+
+    $this->actingAs($me->user);
+    expect(app(DistributorIdCardStats::class)->full($other)['arete_center'])->toBeNull();
 });
 
 it('logs a warning when the downline-visibility switch cannot be read', function (): void {

@@ -35,7 +35,7 @@
                 ['label' => 'Name',                    'group' => 'identity', 'value' => $idCardStats['name']],
                 ['label' => 'ID Number',               'group' => 'identity', 'value' => $idCardStats['adn'],                'class' => 'font-mono text-brand-700 tracking-wider'],
                 ['label' => 'Registration Date',       'group' => 'identity', 'value' => $idCardStats['registration_date']?->format('d M Y, h:i A')],
-                ['label' => 'Company',                 'group' => 'identity', 'value' => $idCardStats['company']],
+                ['label' => 'Arete Center',            'group' => 'identity', 'value' => $idCardStats['arete_center']],
                 ['label' => 'Region',                  'group' => 'identity', 'value' => $idCardStats['region']],
                 ['label' => 'Status',                  'group' => 'identity', 'value' => $idCardStats['verification_label'], 'render' => 'pill', 'pill_class' => $idCardStats['verification_class']],
                 ['label' => 'Activation Date',         'group' => 'identity', 'value' => $idCardStats['activation_date']?->format('d M Y')],
