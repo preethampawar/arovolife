@@ -87,24 +87,89 @@
                 @endif
 
                 @if(in_array($order->status, ['paid', 'ready_to_ship'], true))
-                {{-- Ship: capture courier + tracking, then confirm. --}}
-                <form method="POST" action="{{ route('admin.commerce.orders.ship', $order) }}"
-                    class="flex flex-wrap items-end gap-3"
-                    data-confirm="Mark this order as shipped?"
-                    data-confirm-title="Confirm shipment"
-                    data-confirm-impact="{{ $order->isCollection() ? 'Impact: sets the order to SHIPPED and consigns the parcel to the Arete centre the buyer chose — not to the buyer. It also recognises revenue in the ledger. Not easily reversible.' : 'Impact: sets the order to SHIPPED, recognises revenue in the ledger, and emails the customer their shipping details. This is not easily reversible — make sure the courier and tracking number are correct first.' }}">@csrf
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Courier / carrier <x-help-tip text="The delivery company handling this shipment; shown to the customer in their shipping email." /></label>
-                        <input name="ship_carrier" type="text" maxlength="120" placeholder="e.g. Delhivery, BlueDart"
-                            class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                @can('commerce.order.manage')
+                {{-- Ship: pick the route, then confirm. Everything goes through
+                     DispatchService, so the courier leg is recorded either way. --}}
+                <div class="w-full space-y-3">
+                    @error('ship')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
+
+                    @if($pendingBooking)
+                    <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                        @if($pendingBooking->gateway_shipment_id)
+                        This parcel is already booked with {{ ucfirst($pendingBooking->gateway) }} (shipment <span class="font-mono">{{ $pendingBooking->gateway_shipment_id }}</span>).
+                        To send it another way, cancel that booking in the {{ ucfirst($pendingBooking->gateway) }} panel first. Dispatching through {{ ucfirst($pendingBooking->gateway) }} again resumes the same booking.
+                        @else
+                        An earlier {{ ucfirst($pendingBooking->gateway) }} booking request got no reply, so it may exist anyway.
+                        Search the {{ ucfirst($pendingBooking->gateway) }} panel for order <span class="font-mono">{{ $order->order_no }}</span> before dispatching again.
+                        @endif
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Tracking number <x-help-tip text="The courier's tracking number so the customer can follow the shipment." /></label>
-                        <input name="ship_tracking_no" type="text" maxlength="120" placeholder="e.g. 1234567890"
-                            class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    @endif
+
+                    @if($parcelGaps !== [])
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                        <p class="font-medium">Shiprocket needs a weight and packed size for every product. Missing:</p>
+                        <ul class="mt-1 list-disc list-inside">
+                            @foreach($parcelGaps as $gap)
+                            <li>
+                                @if($gap->productId)
+                                <a href="{{ route('admin.catalog.products.edit', $gap->productId) }}" class="underline">{{ $gap->productName }}</a>
+                                @else
+                                {{ $gap->productName }}
+                                @endif
+                                <span class="font-mono text-xs">{{ $gap->sku }}</span> — {{ implode(', ', $gap->missing) }}
+                            </li>
+                            @endforeach
+                        </ul>
+                        <p class="mt-1">Fill them in on the product, or dispatch manually.</p>
                     </div>
-                    <x-ui.button >Mark as Shipped</x-ui.button>
-                </form>
+                    @endif
+
+                    <form method="POST" action="{{ route('admin.commerce.orders.ship', $order) }}"
+                        class="flex flex-wrap items-end gap-3"
+                        data-confirm="Mark this order as shipped?"
+                        data-confirm-title="Confirm shipment"
+                        data-confirm-impact="{{ ($order->isCollection() ? 'Impact: sets the order to SHIPPED and consigns the parcel to the Arete centre the buyer chose — not to the buyer. It also recognises revenue in the ledger.' : 'Impact: sets the order to SHIPPED, recognises revenue in the ledger, and emails the customer their shipping details.') . (count($dispatchRoutes) > 1 ? ' Choosing Shiprocket books a real courier pickup.' : '') . ' Not easily reversible — check the details first.' }}">@csrf
+                        @if(count($dispatchRoutes) > 1)
+                        <fieldset>
+                            <legend class="block text-xs font-medium text-gray-600 mb-1">Route <x-help-tip text="Manual: you hand the parcel to a courier and type its name and AWB. Shiprocket: the system books the courier, and the AWB and label come back from Shiprocket." /></legend>
+                            <div class="flex gap-4 text-sm">
+                                <label class="inline-flex items-center gap-1.5">
+                                    <input type="radio" name="route" value="manual" @checked(old('route', $preferredRoute) === 'manual' || $parcelGaps !== [])> Manual
+                                </label>
+                                <label class="inline-flex items-center gap-1.5 {{ $parcelGaps !== [] ? 'text-gray-400' : '' }}">
+                                    <input type="radio" name="route" value="shiprocket" @checked(old('route', $preferredRoute) === 'shiprocket' && $parcelGaps === []) @disabled($parcelGaps !== [])> Shiprocket
+                                </label>
+                            </div>
+                        </fieldset>
+                        @else
+                        <input type="hidden" name="route" value="manual">
+                        @endif
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Courier / carrier{{ count($dispatchRoutes) > 1 ? ' (manual only)' : '' }} <x-help-tip text="The delivery company handling this shipment; shown to the customer in their shipping email. Required for a manual dispatch." /></label>
+                            <input name="ship_carrier" type="text" maxlength="{{ \App\Modules\Fulfilment\Services\ManualCourier::CARRIER_MAX }}" value="{{ old('ship_carrier') }}" placeholder="e.g. Delhivery, BlueDart"
+                                class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Tracking number{{ count($dispatchRoutes) > 1 ? ' (manual only)' : '' }} <x-help-tip text="The courier's tracking number so the customer can follow the shipment." /></label>
+                            <input name="ship_tracking_no" type="text" maxlength="{{ \App\Modules\Fulfilment\Services\ManualCourier::AWB_MAX }}" value="{{ old('ship_tracking_no') }}" placeholder="e.g. 1234567890"
+                                class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        @if($pendingBooking)
+                        <label class="w-full inline-flex items-start gap-2 text-sm text-gray-800">
+                            <input type="checkbox" name="confirm_remote_cancelled" value="1" class="mt-0.5">
+                            <span>
+                                @if($pendingBooking->gateway_shipment_id)
+                                Sending manually: I have cancelled {{ ucfirst($pendingBooking->gateway) }} shipment {{ $pendingBooking->gateway_shipment_id }} in the {{ ucfirst($pendingBooking->gateway) }} panel.
+                                @else
+                                I have checked the {{ ucfirst($pendingBooking->gateway) }} panel: order {{ $order->order_no }} is not there, or I have cancelled it.
+                                @endif
+                            </span>
+                        </label>
+                        @endif
+                        <x-ui.button >Mark as Shipped</x-ui.button>
+                    </form>
+                </div>
+                @endcan
                 @endif
 
                 @if($order->status === 'shipped' && $order->isCollection())
@@ -185,6 +250,11 @@
                 @if($shipment)
                 Shipment #{{ $shipment->id }} · <span class="capitalize">{{ str_replace('_', ' ', $shipment->status) }}</span>
                 · {{ $shipment->carrier_code }}@if($shipment->awb_no) · AWB <span class="font-mono">{{ $shipment->awb_no }}</span>@endif
+                @if($shipment->gateway !== 'manual')
+                · {{ ucfirst($shipment->gateway) }}@if($shipment->gateway_shipment_id) shipment <span class="font-mono">{{ $shipment->gateway_shipment_id }}</span>@endif
+                @if($shipment->courier_status) · courier says <span class="font-medium">{{ $shipment->courier_status }}</span>@endif
+                @if($shipment->label_url && str_starts_with($shipment->label_url, 'https://')) · <a href="{{ $shipment->label_url }}" target="_blank" rel="noopener noreferrer" class="text-brand-700 underline">Shipping label</a>@endif
+                @endif
                 @else
                 No shipment recorded for this order.
                 @endif

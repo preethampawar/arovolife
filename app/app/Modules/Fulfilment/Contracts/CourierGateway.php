@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Fulfilment\Contracts;
 
+use App\Modules\Commerce\Models\Order;
 use App\Modules\Fulfilment\Data\CourierShipment;
 use App\Modules\Fulfilment\Data\DispatchInstruction;
 use App\Modules\Fulfilment\Models\Shipment;
@@ -28,6 +29,15 @@ interface CourierGateway
 
     /** Whether this courier can take a parcel right now, in this environment. */
     public function permitted(): bool;
+
+    /**
+     * Refuse, before anything is packed or booked, an order this courier
+     * cannot take. Packing commits stock, so a refusal after it would leave
+     * the order packed for a courier that was never going to accept it.
+     *
+     * @throws \RuntimeException
+     */
+    public function preflight(Order $order): void;
 
     /**
      * Hand the parcel over. Idempotent on `$idempotencyKey`: a double-submitted

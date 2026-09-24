@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $gateway
  * @property string|null $gateway_shipment_id
  * @property string|null $label_url
+ * @property string|null $courier_status
  * @property int|null $arete_center_id
  * @property string $status
  * @property Carbon|null $dispatched_at
@@ -54,7 +55,7 @@ final class Shipment extends Model
 
     protected $fillable = [
         'order_id', 'warehouse_code', 'carrier_code', 'awb_no',
-        'gateway', 'gateway_shipment_id', 'label_url',
+        'gateway', 'gateway_shipment_id', 'label_url', 'courier_status',
         'arete_center_id', 'consigned_at', 'at_centre_at',
         'collected_at', 'collected_by_user_id',
         'status', 'dispatched_at', 'delivered_at', 'pod_hash_sha256',

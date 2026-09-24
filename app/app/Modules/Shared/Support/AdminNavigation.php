@@ -203,6 +203,11 @@ final class AdminNavigation
             ['route' => 'admin.commerce.orders.index',    'label' => 'Orders',         'icon' => 'shopping-cart', 'prefix' => 'admin.commerce.orders', 'children' => [
                 ['prefix' => 'admin.returns', 'label' => 'Returns', 'route' => 'admin.returns.index'],
             ]],
+            // Same permission as the dispatch actions themselves: a worklist of
+            // things the viewer could not act on is noise.
+            ...($user?->can('commerce.order.manage')
+                ? [['route' => 'admin.fulfilment.dispatch', 'label' => 'Dispatch queue', 'icon' => 'package', 'prefix' => 'admin.fulfilment']]
+                : []),
             // Payments and the unsettled-refunds worklist. Monitoring
             // (`audit.read`), so every scoped role sees it; the badge
             // is refunds needing a human — failed, or held past the

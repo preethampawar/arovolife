@@ -89,6 +89,9 @@
                         @if($o->payment_method === \App\Modules\Commerce\Models\Order::PAYMENT_OFFLINE)
                         <x-ui.badge tone="warning" class="ml-1 align-middle">Offline</x-ui.badge>
                         @endif
+                        @if($o->isCollection())
+                        <x-ui.badge tone="info" class="ml-1 align-middle">Collect</x-ui.badge>
+                        @endif
                     </td>
                     <td class="px-4 py-3 text-gray-700">
                         @if($o->customer?->distributor_id)

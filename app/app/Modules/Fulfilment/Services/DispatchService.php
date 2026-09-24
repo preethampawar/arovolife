@@ -57,6 +57,8 @@ final class DispatchService
      *                                          re-dispatching through the same
      *                                          courier, has checked its panel and
      *                                          an unanswered booking is not there.
+     * @return Shipment|null null only when a manual dispatch shipped an order
+     *                       the lenient pack left unpacked (no shipment row)
      */
     public function dispatch(
         Order $order,
@@ -66,7 +68,7 @@ final class DispatchService
         ?int $actorUserId = null,
         ?string $warehouseCode = null,
         bool $confirmedRemoteCancelled = false,
-    ): Shipment {
+    ): ?Shipment {
         if (! in_array($order->status, [Order::STATUS_PAID, Order::STATUS_READY_TO_SHIP], true)) {
             throw new RuntimeException("Cannot dispatch an order in status {$order->status}.");
         }
@@ -89,13 +91,36 @@ final class DispatchService
         }
 
         try {
+            // Before packing: packing commits stock, and a courier refusal
+            // after it would leave the order packed for nothing.
+            $gateway->preflight($order);
+
+            $manual = $gateway->name() === Shipment::GATEWAY_MANUAL;
+
             if ($order->packed_at === null) {
-                // pack() opens its own transaction and locks the order.
-                $this->fulfilment->pack($order, $warehouseCode, $actorUserId);
+                if ($manual) {
+                    // Today's one-click ship: while availability is not
+                    // enforced, missing stock records never stop a parcel an
+                    // operator is holding. It may leave no shipment row.
+                    $this->fulfilment->packForShipment($order, $actorUserId);
+                } else {
+                    // A courier books a real parcel, so it must really be
+                    // packed. pack() opens its own transaction and locks the order.
+                    $this->fulfilment->pack($order, $warehouseCode, $actorUserId);
+                }
                 $order->refresh();
             }
 
-            $shipment = Shipment::where('order_id', $order->id)->firstOrFail();
+            $shipment = Shipment::where('order_id', $order->id)->first();
+
+            if ($shipment === null) {
+                if (! $manual) {
+                    throw new RuntimeException("Order {$order->order_no} has no parcel to hand to {$gateway->name()}. Pack it first.");
+                }
+
+                return $this->shipUnpacked($order, $consignee, $carrierName, $awbNo, $actorUserId);
+            }
+
             $abandonedBooking = $this->guardAbandonedBooking($shipment, $gateway->name(), $confirmedRemoteCancelled);
             $releasedUnansweredClaim = $this->releaseUnansweredClaim($shipment, $gateway->name(), $confirmedRemoteCancelled);
 
@@ -166,6 +191,46 @@ final class DispatchService
         } finally {
             $lock->release();
         }
+    }
+
+    /**
+     * The manual ship of an order the lenient pack left unpacked (stock not
+     * recorded). There is no shipment row to hand a courier, so this is
+     * exactly today's ship, plus the carrier rule and the dispatch audit.
+     */
+    private function shipUnpacked(Order $order, Consignee $consignee, ?string $carrierName, ?string $awbNo, ?int $actorUserId): null
+    {
+        $carrier = trim((string) $carrierName);
+        if ($carrier === '') {
+            throw new RuntimeException(
+                'A manual dispatch needs the carrier name. Nothing else records who is carrying the parcel.'
+            );
+        }
+        $carrier = mb_substr($carrier, 0, ManualCourier::CARRIER_MAX);
+        $awb = trim((string) $awbNo);
+        $awb = $awb === '' ? null : mb_substr($awb, 0, ManualCourier::AWB_MAX);
+
+        $this->db->transaction(function () use ($order, $consignee, $carrier, $awb, $actorUserId): void {
+            $this->orders->markShipped($order, $actorUserId, $carrier, $awb);
+
+            AuditLog::create([
+                'actor_id' => $actorUserId,
+                'action' => 'order.dispatched',
+                'subject_type' => 'order',
+                'subject_id' => $order->id,
+                'details' => [
+                    'order_no' => $order->order_no,
+                    'gateway' => Shipment::GATEWAY_MANUAL,
+                    'carrier' => $carrier,
+                    'awb_present' => $awb !== null,
+                    'consigned_to' => $consignee->isCollection() ? 'arete_centre' : 'buyer',
+                    'arete_center_id' => $consignee->areteCenterId,
+                    'unpacked' => true,
+                ],
+            ]);
+        });
+
+        return null;
     }
 
     /**

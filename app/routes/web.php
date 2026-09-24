@@ -86,6 +86,7 @@ use App\Modules\Content\Http\Controllers\Public\PublicContentPageController;
 use App\Modules\Content\Http\Controllers\Public\PublicFaqController;
 use App\Modules\Content\Http\Controllers\Public\PublicNewsController;
 use App\Modules\Content\Http\Controllers\Public\PublicSeminarController;
+use App\Modules\Fulfilment\Http\Controllers\Admin\AdminDispatchController;
 use App\Modules\Genealogy\Http\Controllers\LineChangeController;
 use App\Modules\Genealogy\Http\Controllers\TreeController;
 use App\Modules\Grievance\Http\Controllers\AdminGrievanceController;
@@ -426,6 +427,8 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::post('/commerce/orders/{order}/awaiting-collection', [AdminOrderController::class, 'markAwaitingCollection'])->name('commerce.orders.awaiting-collection');
         Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
         Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
+        // Worklist of paid orders waiting to leave; dispatch itself is on the order page.
+        Route::get('/fulfilment/dispatch', [AdminDispatchController::class, 'index'])->name('fulfilment.dispatch');
     });
 
     // Offline orders — money paid outside the gateway (flag commerce.offline_orders;

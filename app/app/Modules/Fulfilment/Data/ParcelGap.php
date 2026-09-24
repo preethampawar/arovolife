@@ -25,11 +25,13 @@ final readonly class ParcelGap
     /**
      * @param  int|null  $productVariantId  null when the variant no longer exists — there is nothing to link to
      * @param  list<string>  $missing  `ParcelGap::*` values
+     * @param  int|null  $productId  for the edit link; null when the variant no longer exists
      */
     public function __construct(
         public ?int $productVariantId,
         public string $productName,
         public string $sku,
         public array $missing,
+        public ?int $productId = null,
     ) {}
 }

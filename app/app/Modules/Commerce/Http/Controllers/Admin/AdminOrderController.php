@@ -11,6 +11,10 @@ use App\Modules\Commerce\Support\OrderBuyerNotifier;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Fulfilment\Services\CollectionHandoverService;
+use App\Modules\Fulfilment\Services\CourierGatewayResolver;
+use App\Modules\Fulfilment\Services\DispatchService;
+use App\Modules\Fulfilment\Services\ManualCourier;
+use App\Modules\Fulfilment\Services\ShiprocketGateway;
 use App\Modules\Inventory\Models\Warehouse;
 use App\Modules\Inventory\Services\InventorySettings;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
@@ -27,6 +31,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Laravel\Pennant\Feature;
 
 final class AdminOrderController extends Controller
@@ -36,6 +41,8 @@ final class AdminOrderController extends Controller
         private readonly OrderFulfilmentService $fulfilment,
         private readonly InventorySettings $inventorySettings,
         private readonly OrderBuyerNotifier $buyerNotifier,
+        private readonly CourierGatewayResolver $couriers,
+        private readonly DispatchService $dispatch,
     ) {}
 
     public function index(Request $request): View
@@ -172,6 +179,14 @@ final class AdminOrderController extends Controller
     {
         $order->load(['customer', 'items.variant', 'coolingOff', 'distributor', 'areteCenter', 'offlinePayment.recordedBy', 'offlinePayment.confirmedBy', 'offlinePayment.rejectedBy']);
 
+        $shipment = Shipment::where('order_id', $order->id)->latest('id')->first();
+
+        // The dispatch form's choices. Only while the order can still be
+        // dispatched: a shipped order has nothing to choose.
+        $dispatchable = in_array($order->status, [Order::STATUS_PAID, Order::STATUS_READY_TO_SHIP], true);
+        $routes = $dispatchable ? $this->couriers->available() : [];
+        $shiprocket = $routes[Shipment::GATEWAY_SHIPROCKET] ?? null;
+
         // The tax invoice and the gateway intent are owned by other modules but
         // belong on this page: support could otherwise neither see a buyer's
         // invoice nor reach the payment behind the order (QA F101).
@@ -187,7 +202,13 @@ final class AdminOrderController extends Controller
                 ->first(),
             // Inventory plan H7: pick list, shipment and pack warehouses.
             'pickList' => $this->fulfilment->pickList($order),
-            'shipment' => Shipment::where('order_id', $order->id)->latest('id')->first(),
+            'shipment' => $shipment,
+            'dispatchRoutes' => array_keys($routes),
+            'preferredRoute' => $dispatchable ? $this->couriers->preferred()->name() : Shipment::GATEWAY_MANUAL,
+            'parcelGaps' => $shiprocket instanceof ShiprocketGateway ? $shiprocket->parcelGaps($order) : [],
+            // A courier booking made (or requested with no reply) for a parcel
+            // that has not shipped: the form must make the operator deal with it.
+            'pendingBooking' => $dispatchable && $shipment !== null && $shipment->gateway !== Shipment::GATEWAY_MANUAL ? $shipment : null,
             'packWarehouses' => Warehouse::query()->fulfilling()->orderBy('name')->get(),
             'defaultWarehouseCode' => $this->inventorySettings->defaultWarehouseCode(),
             'offlineOrdersOn' => Feature::for(null)->active(OfflineOrdersFeature::class),
@@ -216,31 +237,52 @@ final class AdminOrderController extends Controller
         return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} packed.");
     }
 
+    /**
+     * Dispatch through the chosen courier route. Everything goes through
+     * `DispatchService`, so the courier leg, the consignee, the shipment's
+     * gateway columns and the declaration gate apply to every ship.
+     */
     public function markShipped(Request $request, Order $order): RedirectResponse
     {
+        $request->mergeIfMissing(['route' => Shipment::GATEWAY_MANUAL]);
+
         $validated = $request->validate([
-            'ship_carrier' => ['nullable', 'string', 'max:120'],
-            'ship_tracking_no' => ['nullable', 'string', 'max:120'],
+            'route' => ['required', 'string', Rule::in([Shipment::GATEWAY_MANUAL, Shipment::GATEWAY_SHIPROCKET])],
+            // Limits match what the shipment row stores, so nothing is cut short silently.
+            'ship_carrier' => ['required_if:route,manual', 'nullable', 'string', 'max:'.ManualCourier::CARRIER_MAX],
+            'ship_tracking_no' => ['nullable', 'string', 'max:'.ManualCourier::AWB_MAX],
+            'confirm_remote_cancelled' => ['sometimes', 'boolean'],
+        ], [
+            'ship_carrier.required_if' => 'Enter the courier carrying this parcel.',
         ]);
 
+        $manual = $validated['route'] === Shipment::GATEWAY_MANUAL;
+
         try {
-            $this->stateMachine->markShipped(
+            $this->dispatch->dispatch(
                 $order,
-                auth()->id(),
-                $validated['ship_carrier'] ?? null,
-                $validated['ship_tracking_no'] ?? null,
+                $validated['route'],
+                $manual ? ($validated['ship_carrier'] ?? null) : null,
+                $manual ? ($validated['ship_tracking_no'] ?? null) : null,
+                is_numeric(auth()->id()) ? (int) auth()->id() : null,
+                confirmedRemoteCancelled: $request->boolean('confirm_remote_cancelled'),
             );
         } catch (\RuntimeException $e) {
             Log::warning('Order ship transition refused', [
                 'order_id' => $order->id,
                 'order_no' => $order->order_no,
+                'route' => $validated['route'],
                 'error' => $e->getMessage(),
             ]);
 
             return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['ship' => $e->getMessage()]);
         }
 
-        return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} marked shipped.");
+        $order->refresh();
+        $how = $order->ship_carrier !== null && $order->ship_carrier !== '' ? " via {$order->ship_carrier}" : '';
+        $awb = $order->ship_tracking_no !== null && $order->ship_tracking_no !== '' ? ", AWB {$order->ship_tracking_no}" : '';
+
+        return redirect()->route('admin.commerce.orders.show', $order)->with('status', "Order {$order->order_no} shipped{$how}{$awb}.");
     }
 
     /**

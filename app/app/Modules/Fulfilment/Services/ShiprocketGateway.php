@@ -62,6 +62,19 @@ final class ShiprocketGateway implements CourierGateway
             && $this->settings->shiprocketPickupLocation() !== '';
     }
 
+    /** The parcel-detail and pickup refusals, before `DispatchService` packs. */
+    public function preflight(Order $order): void
+    {
+        $gaps = $this->parcelGaps($order);
+        if ($gaps !== []) {
+            throw new MissingParcelDetailsException($gaps);
+        }
+
+        if ($this->settings->shiprocketPickupLocation() === '') {
+            throw new RuntimeException('No Shiprocket pickup location is set. Set it under Settings → Fulfilment.');
+        }
+    }
+
     /**
      * Every line whose product lacks a weight or a packed size. Empty means
      * the order can be booked. The dispatch screen shows these to the operator
@@ -97,7 +110,7 @@ final class ShiprocketGateway implements CourierGateway
 
             if ($missing !== []) {
                 $gaps[] = new ParcelGap($variant->id, (string) $item->product_name_snapshot,
-                    (string) $item->variant_sku_snapshot, $missing);
+                    (string) $item->variant_sku_snapshot, $missing, (int) $variant->product_id);
             }
         }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Fulfilment\Services;
 
+use App\Modules\Commerce\Models\Order;
 use App\Modules\Fulfilment\Contracts\CourierGateway;
 use App\Modules\Fulfilment\Data\CourierShipment;
 use App\Modules\Fulfilment\Data\DispatchInstruction;
@@ -29,9 +30,9 @@ use RuntimeException;
 final class ManualCourier implements CourierGateway
 {
     /** `shipments.carrier_code` is 32 chars; `awb_no` is 64. */
-    private const CARRIER_MAX = 32;
+    public const CARRIER_MAX = 32;
 
-    private const AWB_MAX = 64;
+    public const AWB_MAX = 64;
 
     public function name(): string
     {
@@ -46,6 +47,9 @@ final class ManualCourier implements CourierGateway
     {
         return true;
     }
+
+    /** An operator with a parcel can take anything; the carrier name is checked at dispatch. */
+    public function preflight(Order $order): void {}
 
     public function dispatch(Shipment $shipment, DispatchInstruction $instruction, string $idempotencyKey): CourierShipment
     {
