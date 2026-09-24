@@ -47,6 +47,19 @@ return [
             'report' => false,
         ],
 
+        // Catalogue images (products, categories, banners) — not PII, served
+        // straight by the web server at stable URLs under /storage/catalog.
+        // Only CatalogImageUrl and ProductImageStorage touch it; every private
+        // upload stays on S3.
+        'catalog' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public/catalog'),
+            'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage/catalog',
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
         // Private KYC bucket — ALWAYS S3 (Mumbai). No local fallback by
         // policy: KYC documents are PII and DPDP-2023-regulated; they
         // must never live on a local server's filesystem where a server

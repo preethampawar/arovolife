@@ -5,24 +5,26 @@ declare(strict_types=1);
 namespace App\Modules\Catalog\Services;
 
 use App\Modules\Catalog\Models\ProductImage;
+use App\Modules\Catalog\Support\CatalogImageUrl;
 use App\Modules\Identity\Services\IdPhotoStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Stores catalog product images on the public `s3` disk and records a
+ * Stores catalog product images on the local `catalog` disk and records a
  * {@see ProductImage} row. Mirrors the EXIF-strip + canonical-extension
- * behaviour of {@see IdPhotoStorage}, but
- * for the PUBLIC disk — catalog images are not PII (unlike KYC documents),
- * so they are web-served directly via their S3 URL.
+ * behaviour of {@see IdPhotoStorage}, but for a web-served disk — catalog
+ * images are not PII (unlike KYC documents), so the web server serves them
+ * directly at a stable URL ({@see CatalogImageUrl}). Only re-encoded JPG/PNG
+ * files with generated names are ever written there.
  *
  * Used for two kinds:
  *   - 'gallery' — product gallery images (attached to a product)
  *   - 'inline'  — images embedded in the WYSIWYG description via Trix
  *                 (product_id may be null until the product is saved)
  *
- * Storage key: `products/{kind}/{uuid}.{ext}` on the `s3` disk.
+ * Storage key: `products/{kind}/{uuid}.{ext}` on the `catalog` disk.
  */
 final class ProductImageStorage
 {
@@ -31,10 +33,7 @@ final class ProductImageStorage
      */
     public function store(UploadedFile $file, string $kind, ?int $productId = null, ?string $alt = null): ProductImage
     {
-        $ext = strtolower($file->extension() ?: 'jpg');
-        if ($ext === 'jpeg') {
-            $ext = 'jpg';
-        }
+        $ext = $this->extensionFor($file);
 
         $key = sprintf('products/%s/%s.%s', $kind, Str::uuid()->toString(), $ext);
 
@@ -43,11 +42,9 @@ final class ProductImageStorage
             throw new \RuntimeException('We could not process that image. Please upload a valid JPG or PNG.');
         }
 
-        // No per-object ACL: the bucket has ACLs disabled, so a 'public' ACL is
-        // rejected and the write SILENTLY fails (the disk is throw=false),
-        // leaving a dead s3_key. Write without an ACL and fail loudly instead;
-        // the object is served via a signed URL ({@see ProductImage::url()}).
-        if (Storage::disk('s3')->put($key, $cleaned) === false) {
+        // The disk is throw=false: a failed write returns false and would
+        // leave a dead s3_key, so fail loudly instead.
+        if (Storage::disk(CatalogImageUrl::DISK)->put($key, $cleaned) === false) {
             throw new \RuntimeException('Could not upload the image to storage. Please try again.');
         }
 
@@ -66,7 +63,7 @@ final class ProductImageStorage
 
     /**
      * Record an externally-hosted (CDN) image as a gallery image WITHOUT
-     * uploading anything to S3 — the row carries the URL verbatim and has a
+     * storing anything — the row carries the URL verbatim and has a
      * null `s3_key`. Sort order continues the product/kind sequence so a URL
      * image slots in after any uploads, mirroring {@see self::store()}.
      */
@@ -87,16 +84,13 @@ final class ProductImageStorage
     }
 
     /**
-     * Store an image on the public `s3` disk WITHOUT creating a ProductImage
+     * Store an image on the `catalog` disk WITHOUT creating a ProductImage
      * row, returning the object key. Used for the category tile image, whose
      * key is held directly on the category row. EXIF-stripped like the rest.
      */
     public function putRaw(UploadedFile $file, string $prefix): string
     {
-        $ext = strtolower($file->extension() ?: 'jpg');
-        if ($ext === 'jpeg') {
-            $ext = 'jpg';
-        }
+        $ext = $this->extensionFor($file);
 
         $cleaned = $this->stripExif($file, $ext);
         if ($cleaned === null) {
@@ -104,8 +98,8 @@ final class ProductImageStorage
         }
 
         $key = sprintf('%s/%s.%s', rtrim($prefix, '/'), Str::uuid()->toString(), $ext);
-        // See store(): no ACL (bucket rejects it), fail loudly, serve signed.
-        if (Storage::disk('s3')->put($key, $cleaned) === false) {
+        // See store(): fail loudly on a false write.
+        if (Storage::disk(CatalogImageUrl::DISK)->put($key, $cleaned) === false) {
             throw new \RuntimeException('Could not upload the image to storage. Please try again.');
         }
 
@@ -113,7 +107,7 @@ final class ProductImageStorage
     }
 
     /**
-     * Best-effort delete of a raw S3 object (no DB row).
+     * Best-effort delete of a raw catalogue file (no DB row).
      */
     public function deleteKey(?string $key): void
     {
@@ -121,30 +115,49 @@ final class ProductImageStorage
             return;
         }
         try {
-            Storage::disk('s3')->delete($key);
+            Storage::disk(CatalogImageUrl::DISK)->delete($key);
         } catch (\Throwable) {
             // Janitor reconciles.
         }
     }
 
     /**
-     * Delete a product image (S3 object + row). Best-effort on the S3 delete.
+     * Delete a product image (file + row). Best-effort on the file delete.
      */
     public function delete(ProductImage $image): void
     {
         $key = $image->s3_key;
         $image->delete();
 
-        // An externally-hosted image has no S3 object — nothing to remove.
+        // An externally-hosted image has no stored file — nothing to remove.
         if ($key === null) {
             return;
         }
 
         try {
-            Storage::disk('s3')->delete($key);
+            Storage::disk(CatalogImageUrl::DISK)->delete($key);
         } catch (\Throwable) {
             // Orphan reconciled by the janitor; DB is the source of truth.
         }
+    }
+
+    /**
+     * Canonical extension of an upload: jpg or png only. The file is written
+     * under the web root, so anything else is refused outright — validation
+     * already allows only JPEG/PNG, this keeps it true for every caller.
+     */
+    private function extensionFor(UploadedFile $file): string
+    {
+        $ext = strtolower($file->extension() ?: 'jpg');
+        if ($ext === 'jpeg') {
+            $ext = 'jpg';
+        }
+
+        if (! in_array($ext, ['jpg', 'png'], true)) {
+            throw new \RuntimeException('Please upload a JPG or PNG image.');
+        }
+
+        return $ext;
     }
 
     /**

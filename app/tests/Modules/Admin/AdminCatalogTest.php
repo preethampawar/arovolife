@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Catalog\Models\ProductImage;
+use App\Modules\Catalog\Services\ProductImageStorage;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -84,6 +85,7 @@ function acatProductPayload(int $categoryId, array $overrides = []): array
 
 it('ACAT-01: admin creates a product with pricing tiers + attributes + inventory + audit', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
     $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
 
@@ -125,6 +127,7 @@ it('ACAT-01: admin creates a product with pricing tiers + attributes + inventory
 
 it('ACAT-07: a product attribute value_html is sanitized (script stripped, table kept)', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
     $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
 
@@ -147,6 +150,7 @@ it('ACAT-07: a product attribute value_html is sanitized (script stripped, table
 
 it('ACAT-02: product WYSIWYG description is sanitized (script stripped)', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
     $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
 
@@ -166,6 +170,7 @@ it('ACAT-02: product WYSIWYG description is sanitized (script stripped)', functi
 
 it('ACAT-03: gallery image uploads to S3 and records a ProductImage row', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
     $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
 
@@ -181,11 +186,12 @@ it('ACAT-03: gallery image uploads to S3 and records a ProductImage row', functi
     $image = ProductImage::where('product_id', $product->id)->where('kind', 'gallery')->first();
     expect($image)->not->toBeNull();
     expect($image->s3_key)->toStartWith('products/gallery/');
-    Storage::disk('s3')->assertExists($image->s3_key);
+    Storage::disk('catalog')->assertExists($image->s3_key);
 });
 
 it('ACAT-03b: gallery image URLs are recorded as URL-only ProductImage rows (no S3)', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
     $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
 
@@ -211,6 +217,7 @@ it('ACAT-03b: gallery image URLs are recorded as URL-only ProductImage rows (no 
 
 it('ACAT-03c: an invalid gallery image URL is rejected', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
     $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
 
@@ -227,6 +234,7 @@ it('ACAT-03c: an invalid gallery image URL is rejected', function (): void {
 
 it('ACAT-04: trix-upload stores an inline image and returns its URL', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
 
     $response = $this->actingAs($admin)
@@ -239,6 +247,7 @@ it('ACAT-04: trix-upload stores an inline image and returns its URL', function (
 
 it('ACAT-05: admin creates a category with audit', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
 
     $this->actingAs($admin)
@@ -260,6 +269,7 @@ it('ACAT-05: admin creates a category with audit', function (): void {
 
 it('ACAT-08: admin sets a product food_type (veg) and it persists', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
     $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
 
@@ -278,6 +288,7 @@ it('ACAT-08: admin sets a product food_type (veg) and it persists', function ():
 
 it('ACAT-09: food_type defaults to null (not applicable) when omitted', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
     $cat = ProductCategory::create(['slug' => 'agri-care', 'name' => 'Agri Care', 'sort' => 1, 'status' => 'active']);
 
@@ -296,6 +307,7 @@ it('ACAT-09: food_type defaults to null (not applicable) when omitted', function
 
 it('ACAT-10: an invalid food_type is rejected', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
     $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
 
@@ -311,6 +323,7 @@ it('ACAT-10: an invalid food_type is rejected', function (): void {
 
 it('ACAT-11: admin can update a product food_type to non_veg', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
     $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
 
@@ -336,6 +349,7 @@ it('ACAT-11: admin can update a product food_type to non_veg', function (): void
 
 it('ACAT-13: admin saves the packed size, and a blank field clears it', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     $admin = acatAdmin();
     $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
 
@@ -379,9 +393,9 @@ it('ACAT-12: the product form loads Trix from the bundled asset, never unpkg', f
         ->assertSee('assets/trix-', false);
 });
 
-it('ACAT-14: with the CDN set, trix-upload returns the stable CDN URL the editor will save', function (): void {
+it('ACAT-14: trix-upload returns the stable catalogue URL the editor will save', function (): void {
     Storage::fake('s3');
-    config(['arovolife.media.catalog_cdn_url' => 'https://cdn.example.com']);
+    fakeCatalogDisk();
     $admin = acatAdmin();
 
     $response = $this->actingAs($admin)
@@ -390,5 +404,14 @@ it('ACAT-14: with the CDN set, trix-upload returns the stable CDN URL the editor
 
     $key = $response->assertOk()->json('key');
     expect($key)->toStartWith('products/inline/');
-    expect($response->json('url'))->toBe('https://cdn.example.com/'.$key);
+    expect($response->json('url'))->toBe(rtrim((string) config('app.url'), '/').'/storage/catalog/'.$key);
+    Storage::disk('catalog')->assertExists($key);
+});
+
+it('ACAT-15: an upload that is not JPG or PNG never reaches the web-served disk', function (): void {
+    fakeCatalogDisk();
+
+    expect(fn () => app(ProductImageStorage::class)->putRaw(UploadedFile::fake()->image('tile.gif'), 'categories'))
+        ->toThrow(RuntimeException::class, 'Please upload a JPG or PNG image.');
+    expect(Storage::disk('catalog')->allFiles())->toBe([]);
 });

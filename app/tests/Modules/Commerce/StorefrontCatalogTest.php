@@ -156,6 +156,7 @@ function scatDistributor(string $adn): User
 
 it('SCAT-03: product detail renders sorted rich attributes, gallery, category and sanitized WYSIWYG; BV hidden from public', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     scatEnableStorefront();
     $health = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
     $product = scatProduct('AV-DET', 'detail-prod', $health, [
@@ -188,6 +189,7 @@ it('SCAT-03: product detail renders sorted rich attributes, gallery, category an
 
 it('SCAT-04: a logged-in distributor sees the distributor price, BV and the Easy Purchase share link', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     scatEnableStorefront();
     $health = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
     scatProduct('AV-DP', 'dp-prod', $health, ['name' => 'Tier Tonic']);
@@ -204,6 +206,7 @@ it('SCAT-04: a logged-in distributor sees the distributor price, BV and the Easy
 
 it('SCAT-06: the shop listing card has an Add-to-Cart button posting the variant', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     scatEnableStorefront();
     $health = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
     $product = scatProduct('AV-ATC', 'atc-prod', $health, ['name' => 'Add Tonic']);
@@ -217,6 +220,7 @@ it('SCAT-06: the shop listing card has an Add-to-Cart button posting the variant
 
 it('SCAT-05: the shop listing shows the BV badge to a distributor but not to the public', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
     scatEnableStorefront();
     $health = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
     scatProduct('AV-LST', 'list-prod', $health, ['name' => 'List Tonic']);
@@ -251,12 +255,11 @@ it('SCAT-07: the All-products view segregates products by category, capped at 5,
         ->assertSee('Segmented Item 6');
 });
 
-it('SCAT-08: stored description and attribute images with an expired signed URL render from the CDN', function (): void {
+it('SCAT-08: stored description and attribute images with an expired signed URL render from the catalog disk', function (): void {
     Storage::fake('s3');
-    config([
-        'filesystems.disks.s3.bucket' => 'arovolife-prod',
-        'arovolife.media.catalog_cdn_url' => 'https://cdn.example.com',
-    ]);
+    fakeCatalogDisk();
+    config(['filesystems.disks.s3.bucket' => 'arovolife-prod']);
+    $base = rtrim((string) config('app.url'), '/').'/storage/catalog/';
     scatEnableStorefront();
     $health = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
     $expired = fn (string $key): string => 'https://arovolife-prod.s3.ap-south-1.amazonaws.com/'.$key
@@ -269,7 +272,7 @@ it('SCAT-08: stored description and attribute images with an expired signed URL 
     ProductAttribute::create(['product_id' => $product->id, 'label' => 'Nutrition', 'value_html' => '<img src="'.$expired($attrKey).'" alt="n">', 'sort' => 1]);
 
     $this->get(route('shop.product', 'cdn-prod'))->assertOk()
-        ->assertSee('src="https://cdn.example.com/'.$descKey.'"', false)
-        ->assertSee('src="https://cdn.example.com/'.$attrKey.'"', false)
+        ->assertSee('src="'.$base.$descKey.'"', false)
+        ->assertSee('src="'.$base.$attrKey.'"', false)
         ->assertDontSee('X-Amz-Signature=deadbeef', false);
 });

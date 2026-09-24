@@ -1,5 +1,11 @@
 # CloudFront CDN for catalogue images — plan (2026-09-24)
 
+> **Superseded 2026-09-25.** CloudFront was dropped: AWS would not create a distribution until the
+> account was verified. Catalogue images are now stored on the app server's local `catalog` disk and
+> served by the web server at `/storage/catalog/<key>` (see `CatalogImageUrl`, `ProductImageStorage`,
+> `catalog:copy-images-from-s3`, and R-109). `CATALOG_CDN_URL` no longer exists. The rest of this
+> document is kept for history.
+
 ## Why
 
 Every catalogue image (product gallery, product-description inline images, category tiles,

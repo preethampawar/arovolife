@@ -11,6 +11,7 @@ use Database\Seeders\LifetimeAwardRewardsSeeder;
 use Database\Seeders\RankTiersSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /*
@@ -259,4 +260,13 @@ function dispatchedFixture(string $payoutId): array
     ]);
 
     return [$batch, $line];
+}
+
+/**
+ * Fake the local `catalog` disk. Storage::fake() drops the disk's `url`, so
+ * pass it back — url() then yields the real …/storage/catalog/<key> shape.
+ */
+function fakeCatalogDisk(): void
+{
+    Storage::fake('catalog', ['url' => config('filesystems.disks.catalog.url')]);
 }

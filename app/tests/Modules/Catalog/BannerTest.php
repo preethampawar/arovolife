@@ -58,6 +58,7 @@ it('BAN-01: admin creates a banner via external URL and it shows on the shop car
 
 it('BAN-02: admin uploads a banner image to S3 (file wins over URL)', function (): void {
     Storage::fake('s3');
+    fakeCatalogDisk();
 
     $this->actingAs(banAdmin())->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.catalog.banners.store'), [
@@ -69,7 +70,7 @@ it('BAN-02: admin uploads a banner image to S3 (file wins over URL)', function (
     $banner = Banner::first();
     expect($banner->s3_key)->not->toBeNull()
         ->and($banner->external_url)->toBeNull(); // upload took precedence
-    Storage::disk('s3')->assertExists($banner->s3_key);
+    Storage::disk('catalog')->assertExists($banner->s3_key);
 });
 
 it('BAN-03: an archived banner is NOT shown on the shop', function (): void {
@@ -91,10 +92,9 @@ it('BAN-05: admin can delete a banner', function (): void {
     expect(Banner::find($banner->id))->toBeNull();
 });
 
-it('BAN-07: an uploaded banner is written to S3 and served via a signed URL (not a dead public URL)', function (): void {
+it('BAN-07: an uploaded banner is written to the catalog disk and served at a stable URL', function (): void {
     Storage::fake('s3');
-    // The fake (local) disk needs a stub for signed URLs, mirroring real S3.
-    Storage::disk('s3')->buildTemporaryUrlsUsing(fn (string $path, $exp) => 'https://signed.example/'.$path);
+    fakeCatalogDisk();
 
     $this->actingAs(banAdmin())->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.catalog.banners.store'), [
@@ -106,10 +106,11 @@ it('BAN-07: an uploaded banner is written to S3 and served via a signed URL (not
     $banner = Banner::first();
     expect($banner->s3_key)->not->toBeNull();
     expect($banner->external_url)->toBeNull();
-    // The object was actually written (the silent-fail bug is gone)...
-    Storage::disk('s3')->assertExists($banner->s3_key);
-    // ...and url() returns a SIGNED url, not a plain (403-ing) public one.
-    expect($banner->url())->toBe('https://signed.example/'.$banner->s3_key);
+    // The file was actually written (the silent-fail bug is gone), never to S3...
+    Storage::disk('catalog')->assertExists($banner->s3_key);
+    Storage::disk('s3')->assertMissing($banner->s3_key);
+    // ...and url() is the stable, unsigned catalogue URL.
+    expect($banner->url())->toBe(rtrim((string) config('app.url'), '/').'/storage/catalog/'.$banner->s3_key);
 });
 
 it('BAN-06: the admin banners index renders a status flash exactly once (no duplicate)', function (): void {
