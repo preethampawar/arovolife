@@ -262,7 +262,7 @@
             <div class="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-600">
                 @if($shipment)
                 Shipment #{{ $shipment->id }} · <span class="capitalize">{{ str_replace('_', ' ', $shipment->status) }}</span>
-                · {{ $shipment->carrier_code }}@if($shipment->awb_no) · AWB <span class="font-mono">{{ $shipment->awb_no }}</span>@endif
+                @if($shipment->carrier_code !== \App\Modules\Inventory\Services\OrderFulfilmentService::CARRIER_MANUAL)· {{ $shipment->carrier_code }}@endif @if($shipment->awb_no) · AWB <span class="font-mono">{{ $shipment->awb_no }}</span>@endif
                 @if($shipment->gateway !== 'manual')
                 · {{ ucfirst($shipment->gateway) }}@if($shipment->gateway_shipment_id) shipment <span class="font-mono">{{ $shipment->gateway_shipment_id }}</span>@endif
                 @if($shipment->courier_status) · courier says <span class="font-medium">{{ $shipment->courier_status }}</span>@endif
