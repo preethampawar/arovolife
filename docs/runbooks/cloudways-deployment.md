@@ -414,8 +414,9 @@ Every post-pull task is wrapped in a single artisan command,
 `app/app/Console/Commands/DeployCommand.php`). It runs composer install
 `--no-dev`, `npm ci && npm run build`, `storage:link`, migrations
 (optionally inside maintenance mode), the idempotent `ProductionSeeder`,
-config/route/view/event cache rebuilds, `queue:restart`, and an HTTP
-smoke test against `--health-url`. Every line is teed to
+config/route/view/event cache rebuilds, `queue:restart`, an HTTP
+smoke test against `--health-url`, a one-line-per-step summary, and a
+closing `app:status` service health table (see §2.4). Every line is teed to
 `storage/logs/deploy.log` with ISO-8601 timestamps. Refuses to run
 unless `APP_ENV` is `staging` or `production`.
 
@@ -454,6 +455,30 @@ tail -F /home/master/applications/ahdhesuhty/public_html/app/storage/logs/deploy
 | Frontend-only redeploy | `php artisan app:deploy --skip-migrate --skip-seed --health-url=…` |
 | Hot-fix (no migrations, no maintenance window) | `php artisan app:deploy --skip-migrate --skip-seed --health-url=…` |
 | Dry inspection of what would run | `php artisan app:deploy --skip-composer --skip-npm --skip-migrate --skip-seed --skip-cache --skip-queue` |
+
+### 2.4 Service health report (`app:status`)
+
+The last step of every deploy runs `php artisan app:status --wait=75` in a
+fresh process. It is read-only and can be run by hand at any time:
+
+| Check | FAIL when | WARN when |
+|---|---|---|
+| Release | — (shows env, commit, PHP version — catch the CLI-is-8.2 trap here) | — |
+| Maintenance mode | the app is still down | — |
+| Database | `select 1` fails | — |
+| Cache | a write/read round-trip on the default store fails | — |
+| Migrations | any migration is pending | — |
+| Worker: otp / default / compensation | no `queue:work --queue=<name>` process on the host after the wait | `ps` unavailable |
+| Queue backlog | — | a job has waited over 15 minutes |
+| Failed jobs | — | any failure in the last 24 hours |
+| Scheduler | the per-minute heartbeat is older than 3 minutes | no heartbeat yet (first deploy of it, or a cache flush) |
+
+`--wait` keeps polling for workers because `queue:restart` only signals
+them to exit; Supervisord respawns within seconds, the staging flock'd
+crontab within a minute. A failing status check is reported as `⚠ service
+status` and does **not** fail the deploy — the release is already live, so
+act on the table instead. Skip it with `--skip-status`; change the wait with
+`--status-wait=<seconds>`.
 
 ### 2.3 Cloudways Deploy Hook (alternative — currently unused)
 

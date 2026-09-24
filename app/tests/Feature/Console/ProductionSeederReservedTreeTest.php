@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Genealogy\Support\ReservedAdns;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use Database\Seeders\ProductionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -77,4 +78,19 @@ it('skips the reserved block when non-reserved distributors already exist', func
     expect(Distributor::query()->count())->toBe(1)
         ->and(Distributor::query()->value('id'))->toBe($organic->id)
         ->and(DB::table('sponsorship')->count())->toBe(0);
+});
+
+it('re-running keeps every other role the provisioned admin holds', function () {
+    config([
+        'arovolife.seeder.admin.email' => 'ops@arovolife.test',
+        'arovolife.seeder.admin.password' => 'secret-password',
+    ]);
+    $this->seed(ProductionSeeder::class);
+
+    $admin = User::query()->where('email', 'ops@arovolife.test')->firstOrFail();
+    $admin->assignRole('developer');
+
+    $this->seed(ProductionSeeder::class);
+
+    expect($admin->fresh()->getRoleNames()->sort()->values()->all())->toBe(['admin', 'developer']);
 });

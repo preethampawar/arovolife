@@ -348,7 +348,7 @@ php artisan pii:reencrypt
 
 ### `app:deploy`
 
-Runs the full post-`git pull` deployment pipeline: Composer install, npm build, migrations, production seeder, cache rebuild, and queue restart. Wrap in `--maintenance` to put the site into maintenance mode during migrations.
+Runs the full post-`git pull` deployment pipeline: Composer install, npm build, migrations, production seeder, cache rebuild, queue restart, optional smoke test, a per-step summary, and a closing `app:status` health report. Wrap in `--maintenance` to put the site into maintenance mode during migrations.
 
 **Options:**
 
@@ -359,6 +359,8 @@ Runs the full post-`git pull` deployment pipeline: Composer install, npm build, 
 | `--skip-npm` | Skip `npm ci && npm run build`. |
 | `--skip-migrate` | Skip `php artisan migrate --force`. |
 | `--skip-seed` | Skip `php artisan db:seed ProductionSeeder`. |
+| `--skip-status` | Skip the closing `app:status` service health report. |
+| `--status-wait=75` | Seconds `app:status` polls for queue workers to come back after `queue:restart`. |
 | `--skip-cache` | Skip config/route/view/event cache rebuild. |
 | `--skip-queue` | Skip `php artisan queue:restart`. |
 | `--health-url=URL` | URL to GET as a final smoke test (200/30x = pass). |
@@ -377,6 +379,16 @@ php artisan app:deploy --skip-migrate --skip-seed --skip-composer
 ```
 
 See also: `docs/runbooks/cloudways-deployment.md` for the full Cloudways workflow.
+
+---
+
+### `app:status`
+
+Read-only service health table: release (env / commit / PHP), maintenance mode, database, cache round-trip, pending migrations, a `queue:work` process per queue (`otp`, `default`, `compensation`), queue backlog, failed jobs in the last 24h, and the scheduler heartbeat (stamped every minute by `routes/console.php`). Exits non-zero if any check FAILs. `--wait=<seconds>` polls for missing workers. Locally the workers live in their own containers, so run it inside `arovolife-queue` to see them. Details: `docs/runbooks/cloudways-deployment.md` §2.4.
+
+```bash
+php artisan app:status
+```
 
 ---
 

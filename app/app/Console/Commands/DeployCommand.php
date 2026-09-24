@@ -17,8 +17,8 @@ use Throwable;
  * One artisan command that runs every step the staging / production server
  * needs after Cloudways pulls the repo: composer install, vite build,
  * migrations (under maintenance mode if requested), the idempotent
- * ProductionSeeder, cache rebuilds, queue restart, and an optional HTTP
- * smoke test.
+ * ProductionSeeder, cache rebuilds, queue restart, an optional HTTP smoke
+ * test, and finally a service health report ({@see AppStatusCommand}).
  *
  * Wired into the Cloudways Deploy Hook as:
  *
@@ -41,12 +41,17 @@ final class DeployCommand extends Command
         {--skip-cache     : Skip config/route/view/event cache rebuild}
         {--skip-queue     : Skip php artisan queue:restart}
         {--maintenance    : Wrap migrations in php artisan down/up}
-        {--health-url=    : URL to GET as the final smoke test (200/30x = pass)}';
+        {--health-url=    : URL to GET as the final smoke test (200/30x = pass)}
+        {--skip-status    : Skip the closing app:status service health report}
+        {--status-wait=75 : Seconds app:status waits for queue workers to come back after queue:restart}';
 
     protected $description = 'Run the post-git-deploy pipeline (composer, npm, migrate, seed, cache, queue, smoke test).';
 
     /** Steps that should hard-fail the whole run when they error. */
     private bool $failed = false;
+
+    /** @var list<array{0: string, 1: string}> step label => ✓ / ✘ / ⚠, for the closing summary */
+    private array $summary = [];
 
     public function handle(): int
     {
@@ -129,6 +134,18 @@ final class DeployCommand extends Command
                 }
             });
         }
+
+        if (! $this->option('skip-status')) {
+            // Fresh process: reports on the config the deploy just cached.
+            // Soft — the release is already live; an unhealthy service is
+            // something to act on, not a reason to call the deploy failed.
+            $wait = (string) max(0, (int) $this->option('status-wait'));
+            $this->stepSoft('service status', fn () => $this->artisanFresh('app:status', '--wait='.$wait));
+        } else {
+            $this->logBoth('  ↷ service status skipped');
+        }
+
+        $this->printSummary();
 
         if ($this->failed) {
             $this->logBoth('✘ deploy finished with errors');
@@ -232,9 +249,11 @@ final class DeployCommand extends Command
         try {
             $fn();
             $this->logBoth("  ✓ {$label}");
+            $this->summary[] = [$label, '✓'];
         } catch (Throwable $e) {
             $this->failed = true;
             $this->logBoth("  ✘ {$label} — {$e->getMessage()}");
+            $this->summary[] = [$label, '✘ failed'];
         }
     }
 
@@ -245,8 +264,10 @@ final class DeployCommand extends Command
         try {
             $fn();
             $this->logBoth("  ✓ {$label}");
+            $this->summary[] = [$label, '✓'];
         } catch (Throwable $e) {
             $this->logBoth("  ⚠ {$label} — {$e->getMessage()} (non-fatal)");
+            $this->summary[] = [$label, '⚠ warning'];
         }
     }
 
@@ -268,9 +289,20 @@ final class DeployCommand extends Command
                 $this->logBoth(rtrim($buffer));
             });
             $this->logBoth("  ✓ {$label}");
+            $this->summary[] = [$label, '✓'];
         } catch (Throwable $e) {
             $this->failed = true;
             $this->logBoth("  ✘ {$label} — {$e->getMessage()}");
+            $this->summary[] = [$label, '✘ failed'];
+        }
+    }
+
+    /** One line per step that ran, so the outcome reads without scrolling the log. */
+    private function printSummary(): void
+    {
+        $this->logBoth('── deploy summary ──');
+        foreach ($this->summary as [$label, $result]) {
+            $this->logBoth(sprintf('  %-28s %s', $label, $result));
         }
     }
 

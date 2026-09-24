@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\AppStatusCommand;
 use App\Modules\Commerce\Console\Commands\PurgeOfflinePaymentProofsCommand;
 use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
 use App\Modules\Compensation\Console\Commands\AutoRetryFailedPayoutsCommand;
@@ -23,6 +24,7 @@ use App\Modules\Payments\Console\Commands\PaymentsRedactEventsCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -252,3 +254,11 @@ Schedule::command(VerifyStockLedgerCommand::class)
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->runInBackground();
+
+// ── Ops ──────────────────────────────────────────────────────────────────────
+// Every minute: stamp a heartbeat so `app:status` (run at the end of every
+// app:deploy) can prove the schedule:run cron is actually firing. Nothing else
+// on the schedule leaves a timestamp a health check could read.
+Schedule::call(fn () => Cache::put(AppStatusCommand::SCHEDULER_HEARTBEAT_KEY, time(), 600))
+    ->everyMinute()
+    ->name('ops:scheduler-heartbeat');
