@@ -81,7 +81,9 @@ final class DeployCommand extends Command
             if (! $this->option('skip-migrate')) {
                 $this->stepHard('migrate', function (): void {
                     $this->logBoth('  pretend run:');
-                    $this->artisanFresh('migrate', '--pretend');
+                    // --force: in production Laravel cancels any migrate
+                    // without it, the dry run included (--pretend writes nothing).
+                    $this->artisanFresh('migrate', '--pretend', '--force');
                     $this->artisanFresh('migrate', '--force');
                 });
             } else {
