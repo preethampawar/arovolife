@@ -48,21 +48,77 @@ final class CollectionHandoverService
      * collection code. One path for the centre's own page and the admin
      * override, so neither can skip the code.
      *
-     * Returns the code in the clear, once, for the admin flash; null when the
-     * order has no shipment row (shipped by the old button) and so no code can
-     * be issued. The centre page never shows what this returns.
+     * Returns the code in the clear, once, for the admin flash. Refuses an
+     * order with no shipment row (shipped by the old button), which has
+     * nowhere to keep a code. The centre page never shows what this returns.
      */
-    public function acknowledgeArrival(Order $order, ?int $actorUserId = null): ?string
+    public function acknowledgeArrival(Order $order, ?int $actorUserId = null): string
     {
-        $this->orders->markAwaitingCollection($order, $actorUserId);
-
+        // Refused before any state change: without a shipment row there is
+        // nowhere to keep the code, so the buyer could never collect.
         $shipment = Shipment::where('order_id', $order->id)->first();
 
         if ($shipment === null) {
-            return null;
+            throw new RuntimeException(
+                "Order {$order->order_no} has no parcel record, so no collection code can be issued. Ask support to pack and record it before confirming arrival."
+            );
         }
 
+        if ($shipment->status === Shipment::STATUS_RETURNED) {
+            throw new RuntimeException(
+                "The courier reports order {$order->order_no} as returning to the warehouse, so it cannot be at the centre. Contact support."
+            );
+        }
+
+        $this->orders->markAwaitingCollection($order, $actorUserId);
+
         $code = $this->issueCode($shipment);
+        $this->sendCode($order, $code);
+
+        return $code;
+    }
+
+    /**
+     * A new code for a parcel already waiting at the centre: the buyer lost
+     * the email, the old code was locked after five wrong tries, or the order
+     * reached the centre before codes existed. Staff only; the old code stops
+     * working and the attempt counter starts again.
+     */
+    public function reissueCode(Order $order, ?int $actorUserId = null): string
+    {
+        if ($order->status !== Order::STATUS_AWAITING_COLLECTION) {
+            throw new RuntimeException("Order {$order->order_no} is not waiting at a centre.");
+        }
+
+        $shipment = Shipment::where('order_id', $order->id)->first();
+        if ($shipment === null) {
+            throw new RuntimeException(
+                "Order {$order->order_no} has no parcel record, so no collection code can be issued. Arrange delivery to the buyer instead."
+            );
+        }
+
+        $previousAttempts = (int) $shipment->handover_attempts;
+        $code = $this->issueCode($shipment);
+
+        AuditLog::create([
+            'actor_id' => $actorUserId,
+            'action' => 'order.collection_code_reissued',
+            'subject_type' => 'order',
+            'subject_id' => $order->id,
+            'details' => [
+                'order_no' => $order->order_no,
+                'arete_center_id' => $shipment->arete_center_id,
+                'previous_attempts' => $previousAttempts,
+            ],
+        ]);
+
+        $this->sendCode($order, $code);
+
+        return $code;
+    }
+
+    private function sendCode(Order $order, string $code): void
+    {
         $centre = $order->areteCenter;
 
         if ($centre !== null) {
@@ -81,7 +137,6 @@ final class CollectionHandoverService
             ));
         }
 
-        return $code;
     }
 
     /**
@@ -116,9 +171,9 @@ final class CollectionHandoverService
             );
         }
 
-        $shipment = Shipment::where('order_id', $order->id)->firstOrFail();
+        $shipment = Shipment::where('order_id', $order->id)->first();
 
-        if ($shipment->handover_code_hash === null) {
+        if ($shipment === null || $shipment->handover_code_hash === null) {
             throw new RuntimeException(
                 "Order {$order->order_no} has no collection code on file. Re-issue one before handing the parcel over."
             );

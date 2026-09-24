@@ -155,7 +155,7 @@ it('groups the items as the IA table says', function () {
     expect($map)->toBe([
         'overview' => ['Dashboard', 'Action Center'],
         'network' => ['Distributors', 'Genealogy tree', 'KYC review', 'Line changes', 'Distributor requests', 'Dormancy (§21)', 'Arete Centres'],
-        'commerce' => ['Orders', 'Payments', 'Coupons', 'Offers', 'BV Ledger', 'Profit on Sales'],
+        'commerce' => ['Orders', 'Dispatch queue', 'Payments', 'Coupons', 'Offers', 'BV Ledger', 'Profit on Sales'],
         'inventory' => ['Stock', 'Reports', 'Warehouses', 'Suppliers', 'Purchase Orders', 'Goods Receipts (GRN)', 'Transfers', 'Adjustments'],
         'compensation' => ['Compensation', 'Engine failures'],
         'catalog' => ['Products', 'Categories', 'Banners', 'Content Pages', 'Announcements'],
@@ -229,6 +229,7 @@ it('renders exactly this ordered list for a developer', function () {
         'Dormancy (§21)',
         'Arete Centres',
         'Orders',
+        'Dispatch queue',
         'Payments',
         'Coupons',
         'Offers',

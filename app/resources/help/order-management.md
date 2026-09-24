@@ -227,9 +227,14 @@ and there is no delivery here.
 
 The centre owner's page shows only the order number, the buyer's first name, how
 many items there are and the dates: no phone number, address or amounts. The
-owner never sees the collection code. The page only exists while *collection at
-a centre* is switched on, and staff cannot use it while impersonating the owner:
-a receipt recorded that way would read as the owner's own act.
+owner never sees the collection code, and a parcel drops off the page once it is
+handed over. The page only exists while *collection at a centre* is switched on.
+Staff impersonating the owner can view it but cannot confirm arrival or hand
+over: a receipt recorded that way would read as the owner's own act.
+
+A collection order can only be marked delivered by the handover, against the
+buyer's code. It cannot be shipped without a packed parcel record, because that
+record is where the code and the handover are kept.
 
 ### The collection code
 
@@ -237,10 +242,14 @@ Six digits, issued to the **buyer**, and the centre cannot produce it. That is
 deliberate: the centre earns a commission on parcels it hands over, so the
 authentication for a handover must not come from the party being paid for it.
 
-Five wrong attempts locks the parcel and staff have to release it. The code is
-stored only as a keyed hash — nobody, including us, can read it back out of the
-database, so if the buyer loses it the parcel must be re-issued a new one rather
-than looked up.
+Five wrong attempts locks the parcel. The code is stored only as a keyed hash —
+nobody, including us, can read it back out of the database. If the buyer loses
+it, or the parcel locks, press **New collection code** on the order page: the
+buyer is emailed a fresh code, the old one stops working, the attempt count
+starts again, and the new code is shown to you once. Every re-issue is audited.
+
+A centre cannot confirm arrival of a parcel the courier reports as returning to
+the warehouse.
 
 ### How long a parcel may wait at a centre
 

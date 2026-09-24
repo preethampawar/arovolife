@@ -183,6 +183,15 @@
                 </form>
                 @endif
 
+                @if($order->status === 'awaiting_collection')
+                <form method="POST" action="{{ route('admin.commerce.orders.collection-code', $order) }}"
+                    data-confirm="Issue a new collection code?"
+                    data-confirm-title="New collection code"
+                    data-confirm-impact="Impact: the buyer is emailed a new code and the old one stops working. Use this when the buyer lost the email or the parcel locked after five wrong codes.">@csrf
+                    <button class="px-4 py-2 rounded-lg border border-purple-600 text-purple-700 hover:bg-purple-50 text-sm font-medium">New collection code</button>
+                </form>
+                @endif
+
                 @if(($order->status === 'shipped' && ! $order->isCollection()) || $order->status === 'awaiting_collection')
                 <form method="POST" action="{{ route('admin.commerce.orders.deliver', $order) }}"
                     data-confirm="Mark this order as delivered?"

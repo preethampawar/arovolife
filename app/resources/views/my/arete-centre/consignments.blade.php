@@ -71,6 +71,9 @@
                 @if($showCentre)<p class="text-xs text-gray-500">{{ $order->areteCenter?->name }}</p>@endif
                 <p class="text-xs text-gray-500">Sent {{ ($order->shipment?->consigned_at ?? $order->shipped_at)?->format('d M Y') ?? '—' }}</p>
             </div>
+            @if($order->shipment?->status === \App\Modules\Fulfilment\Models\Shipment::STATUS_RETURNED)
+            <p class="text-xs font-medium text-amber-700">The courier reports this parcel is going back to the warehouse.</p>
+            @else
             <form method="POST" action="{{ route('my.adc.consignments.received', $order->order_no) }}"
                   data-confirm="Confirm order {{ $order->order_no }} has arrived?"
                   data-confirm-title="Parcel arrived"
@@ -78,22 +81,10 @@
                 @csrf
                 <button type="submit" class="rounded-lg border border-brand-700 text-brand-700 hover:bg-brand-50 font-medium px-4 py-2 text-sm">It has arrived</button>
             </form>
+            @endif
         </div>
         @empty
         <p class="text-sm text-gray-500">Nothing is on the way to your centre.</p>
-        @endforelse
-    </section>
-
-    {{-- Collected in the last 30 days --}}
-    <section>
-        <h2 class="text-lg font-semibold mb-3">Collected in the last 30 days ({{ $groups['collected']->count() }})</h2>
-        @forelse($groups['collected'] as $order)
-        <div class="flex items-center justify-between border-b border-gray-100 py-2 text-sm">
-            <span class="font-mono">{{ $order->order_no }}</span>
-            <span class="text-gray-500">Collected {{ $order->shipment?->collected_at?->format('d M Y') ?? '—' }}</span>
-        </div>
-        @empty
-        <p class="text-sm text-gray-500">No parcels collected recently.</p>
         @endforelse
     </section>
 </div>

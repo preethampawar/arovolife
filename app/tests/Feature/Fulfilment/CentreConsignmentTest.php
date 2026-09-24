@@ -11,9 +11,11 @@ use App\Modules\ActionCenter\Providers\Orders\AtCentreNotCollectedProvider;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Commerce\Notifications\OrderReadyForCollectionNotification;
+use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Fulfilment\Services\CollectionHandoverService;
+use App\Modules\Fulfilment\Services\DispatchService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\LedgerAccountSeeder;
@@ -157,4 +159,90 @@ it('makes staff record a collection against the buyer\'s code too', function () 
     actingAs($staff)->post(route('admin.commerce.orders.deliver', $order), ['code' => $code])->assertSessionHasNoErrors();
     expect($order->fresh()->status)->toBe(Order::STATUS_DELIVERED)
         ->and(Shipment::where('order_id', $order->id)->value('collected_at'))->not->toBeNull();
+});
+
+it('will not deliver a collection order still on its way to the centre, even by a direct post', function () {
+    seed(RolesAndPermissionsSeeder::class);
+    $staff = User::factory()->create(['status' => 'active']);
+    $staff->assignRole('admin-operations');
+    [$order] = ccShippedToOwnedCentre();
+
+    actingAs($staff)->post(route('admin.commerce.orders.deliver', $order))->assertSessionHasErrors('deliver');
+
+    expect($order->fresh()->status)->toBe(Order::STATUS_SHIPPED)
+        ->and(OrderCoolingOff::where('order_id', $order->id)->exists())->toBeFalse();
+    expect(fn () => app(OrderStateMachine::class)->markDelivered($order->fresh()))->toThrow(RuntimeException::class, 'collection code');
+});
+
+it('will not ship a collection order that has no packed parcel to carry the code', function () {
+    // More than the 10 in stock: a collection parcel is packed strictly, so it is refused rather than shipped unpacked.
+    $order = srPaidOrder(null, 11, srCentre());
+
+    expect(fn () => app(DispatchService::class)->dispatch($order, Shipment::GATEWAY_MANUAL, 'DTDC', null, null))
+        ->toThrow(RuntimeException::class);
+    expect($order->fresh()->status)->toBe(Order::STATUS_PAID);
+});
+
+it('refuses to confirm arrival of a parcel with no record to hold a code, changing nothing', function () {
+    [$order, $owner] = ccShippedToOwnedCentre();
+    Shipment::where('order_id', $order->id)->delete();
+
+    actingAs($owner)->post(route('my.adc.consignments.received', $order->order_no))->assertSessionHasErrors('consignment');
+
+    expect($order->fresh()->status)->toBe(Order::STATUS_SHIPPED);
+});
+
+it('lets staff issue a new code after the parcel locks, and the old code stops working', function () {
+    seed(RolesAndPermissionsSeeder::class);
+    $staff = User::factory()->create(['status' => 'active']);
+    $staff->assignRole('admin-operations');
+    [$order, $owner] = ccShippedToOwnedCentre();
+    $old = app(CollectionHandoverService::class)->acknowledgeArrival($order);
+    Shipment::where('order_id', $order->id)->update(['handover_attempts' => CollectionHandoverService::MAX_ATTEMPTS]);
+
+    actingAs($owner)->post(route('my.adc.consignments.handover', $order->order_no), ['code' => $old])->assertSessionHasErrors('code');
+
+    Notification::fake();
+    actingAs($staff)->post(route('admin.commerce.orders.collection-code', $order))->assertSessionHasNoErrors();
+
+    $new = null;
+    Notification::assertSentTo(ccBuyer($order), OrderReadyForCollectionNotification::class, function ($n) use (&$new): bool {
+        $new = $n->collectionCode;
+
+        return true;
+    });
+
+    if ($new !== $old) {
+        actingAs($owner)->post(route('my.adc.consignments.handover', $order->order_no), ['code' => $old])->assertSessionHasErrors('code');
+    }
+    actingAs($owner)->post(route('my.adc.consignments.handover', $order->order_no), ['code' => $new])->assertSessionHasNoErrors();
+    expect($order->fresh()->status)->toBe(Order::STATUS_DELIVERED);
+});
+
+it('will not confirm arrival of a parcel the courier is returning', function () {
+    [$order, $owner] = ccShippedToOwnedCentre();
+    Shipment::where('order_id', $order->id)->update(['status' => Shipment::STATUS_RETURNED]);
+
+    actingAs($owner)->get(route('my.adc.consignments'))->assertSee('going back to the warehouse');
+    actingAs($owner)->post(route('my.adc.consignments.received', $order->order_no))->assertSessionHasErrors('consignment');
+
+    expect($order->fresh()->status)->toBe(Order::STATUS_SHIPPED);
+});
+
+it('says why a malformed code was refused', function () {
+    [$order, $owner] = ccShippedToOwnedCentre();
+    app(CollectionHandoverService::class)->acknowledgeArrival($order);
+
+    actingAs($owner)->from(route('my.adc.consignments'))
+        ->post(route('my.adc.consignments.handover', $order->order_no), ['code' => '12a'])
+        ->assertSessionHasErrors('code')
+        ->assertSessionHas('handover_order', $order->order_no);
+});
+
+it('refuses a second arrival for the same parcel', function () {
+    [$order] = ccShippedToOwnedCentre();
+    $stale = $order->fresh();
+    app(CollectionHandoverService::class)->acknowledgeArrival($order);
+
+    expect(fn () => app(CollectionHandoverService::class)->acknowledgeArrival($stale))->toThrow(RuntimeException::class, 'already');
 });

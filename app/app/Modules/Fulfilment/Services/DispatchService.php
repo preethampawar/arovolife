@@ -98,7 +98,10 @@ final class DispatchService
             $manual = $gateway->name() === Shipment::GATEWAY_MANUAL;
 
             if ($order->packed_at === null) {
-                if ($manual) {
+                // A collection parcel is packed strictly on every route: its
+                // shipment row carries the buyer's code and the handover
+                // record, so it may not go out unpacked.
+                if ($manual && ! $consignee->isCollection()) {
                     // Today's one-click ship: while availability is not
                     // enforced, missing stock records never stop a parcel an
                     // operator is holding. It may leave no shipment row.
@@ -116,6 +119,13 @@ final class DispatchService
             if ($shipment === null) {
                 if (! $manual) {
                     throw new RuntimeException("Order {$order->order_no} has no parcel to hand to {$gateway->name()}. Pack it first.");
+                }
+
+                // A collection parcel needs its shipment row: that is where the
+                // buyer's collection code and the handover record live, and
+                // without them the buyer can never collect.
+                if ($consignee->isCollection()) {
+                    throw new RuntimeException("Order {$order->order_no} is for collection at a centre and has no packed parcel. Pack it first.");
                 }
 
                 return $this->shipUnpacked($order, $consignee, $carrierName, $awbNo, $actorUserId);

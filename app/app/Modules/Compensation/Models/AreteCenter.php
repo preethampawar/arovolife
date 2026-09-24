@@ -133,6 +133,7 @@ final class AreteCenter extends Model
             'premises_sqft' => 'int',
             'monthly_cap_override_paise' => 'int',
             'is_company_default' => 'bool',
+            'assigned_distributor_id' => 'int',
             'deactivated_at' => 'datetime',
         ];
     }

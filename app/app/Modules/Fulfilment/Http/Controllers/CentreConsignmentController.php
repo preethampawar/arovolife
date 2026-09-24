@@ -39,11 +39,9 @@ final class CentreConsignmentController extends Controller
         $orders = Order::query()
             ->where('delivery_type', Order::DELIVERY_COLLECT)
             ->whereIn('arete_center_id', $centreIds)
-            ->where(function ($q): void {
-                $q->whereIn('status', [Order::STATUS_SHIPPED, Order::STATUS_AWAITING_COLLECTION])
-                    ->orWhere(fn ($delivered) => $delivered->where('status', Order::STATUS_DELIVERED)
-                        ->whereHas('shipment', fn ($s) => $s->where('collected_at', '>=', now()->subDays(30))));
-            })
+            // Only parcels the centre is expecting or holding: once handed
+            // over, the order is no longer the centre's to see (privacy 4a).
+            ->whereIn('status', [Order::STATUS_SHIPPED, Order::STATUS_AWAITING_COLLECTION])
             ->with(['customer:id,display_name', 'areteCenter:id,name', 'shipment'])
             ->withSum('items as item_count', 'qty')
             ->orderBy('shipped_at')
@@ -74,9 +72,12 @@ final class CentreConsignmentController extends Controller
     {
         $this->authorised($request, $order);
 
-        $validated = $request->validate([
-            'code' => ['required', 'digits:6'],
-        ]);
+        $validator = validator($request->all(), ['code' => ['required', 'digits:6']]);
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->with('handover_order', $order->order_no);
+        }
+        /** @var array{code: string} $validated */
+        $validated = $validator->validated();
 
         try {
             $this->handover->recordCollection($order, $validated['code'], $request->user()?->id);
@@ -111,14 +112,13 @@ final class CentreConsignmentController extends Controller
 
     /**
      * @param  Collection<int, Order>  $orders
-     * @return array{on_the_way: Collection<int, Order>, waiting: Collection<int, Order>, collected: Collection<int, Order>}
+     * @return array{on_the_way: Collection<int, Order>, waiting: Collection<int, Order>}
      */
     private function groups(Collection $orders): array
     {
         return [
             'on_the_way' => $orders->where('status', Order::STATUS_SHIPPED)->values(),
             'waiting' => $orders->where('status', Order::STATUS_AWAITING_COLLECTION)->values(),
-            'collected' => $orders->where('status', Order::STATUS_DELIVERED)->sortByDesc(fn (Order $o) => $o->shipment?->collected_at)->values(),
         ];
     }
 }

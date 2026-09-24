@@ -427,6 +427,7 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::post('/commerce/orders/{order}/pack', [AdminOrderController::class, 'pack'])->name('commerce.orders.pack');
         Route::post('/commerce/orders/{order}/ship', [AdminOrderController::class, 'markShipped'])->name('commerce.orders.ship');
         Route::post('/commerce/orders/{order}/awaiting-collection', [AdminOrderController::class, 'markAwaitingCollection'])->name('commerce.orders.awaiting-collection');
+        Route::post('/commerce/orders/{order}/collection-code', [AdminOrderController::class, 'reissueCollectionCode'])->name('commerce.orders.collection-code');
         Route::post('/commerce/orders/{order}/deliver', [AdminOrderController::class, 'markDelivered'])->name('commerce.orders.deliver');
         Route::post('/commerce/orders/{order}/cancel', [AdminOrderController::class, 'cancel'])->name('commerce.orders.cancel');
         // Worklist of paid orders waiting to leave; dispatch itself is on the order page.

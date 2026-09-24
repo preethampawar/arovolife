@@ -271,6 +271,13 @@ final class OrderStateMachine
         }
 
         $this->db->transaction(function () use ($order, $actorUserId): void {
+            // Re-read under lock: two "arrived" clicks (centre and staff, or a
+            // double submit) must not both pass and issue two codes.
+            $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== Order::STATUS_SHIPPED) {
+                throw new RuntimeException("Order {$order->order_no} has already been recorded as arrived.");
+            }
+
             $arrivedAt = Carbon::now();
 
             $order->update(['status' => Order::STATUS_AWAITING_COLLECTION]);
@@ -308,9 +315,32 @@ final class OrderStateMachine
             throw new RuntimeException("Cannot mark delivered from status {$order->status}");
         }
 
+        // A collection order is delivered only by the handover: waiting at the
+        // centre, with the buyer-authenticated handover already recorded
+        // (CollectionHandoverService::recordCollection). Anything else would
+        // open the buyer's 30 days before they have the goods, or leave no
+        // handover record for the ADC bonus to be paid on.
+        if ($order->isCollection()) {
+            $collected = $order->status === Order::STATUS_AWAITING_COLLECTION
+                && Shipment::where('order_id', $order->id)->whereNotNull('collected_at')->exists();
+
+            if (! $collected) {
+                throw new RuntimeException(
+                    "Order {$order->order_no} is collected at a centre. It is delivered when the buyer collects it, against their collection code."
+                );
+            }
+        }
+
         $deliveredFrom = $order->status;
 
-        $coolingOff = $this->db->transaction(function () use ($order, $actorUserId): OrderCoolingOff {
+        $coolingOff = $this->db->transaction(function () use ($order, $actorUserId, $deliveredFrom): OrderCoolingOff {
+            // Re-read under lock: a courier-confirmed delivery and a manual one
+            // racing each other must not both open the clock.
+            $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== $deliveredFrom) {
+                throw new RuntimeException("Order {$order->order_no} is already {$locked->status}.");
+            }
+
             $deliveredAt = Carbon::now();
 
             $order->update([

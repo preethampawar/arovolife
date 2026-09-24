@@ -14,6 +14,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use JsonException;
 use Laravel\Pennant\Feature;
@@ -72,6 +73,12 @@ final class ShiprocketWebhookController extends Controller
         $statusId = $this->text($body['current_status_id'] ?? null);
         $shipment = $this->shipmentFor($awb, $this->text($body['order_id'] ?? null));
 
+        // Shiprocket posts updates for every parcel on the account, including
+        // ones not booked from here. Nothing to act on, so nothing is kept.
+        if ($shipment === null) {
+            return response()->json(['status' => 'ignored']);
+        }
+
         $eventId = hash('sha256', implode('|', [
             $this->text($body['sr_order_id'] ?? null),
             $this->text($body['shipment_id'] ?? null),
@@ -82,14 +89,16 @@ final class ShiprocketWebhookController extends Controller
 
         try {
             $event = ShipmentEvent::create([
-                'shipment_id' => $shipment?->id,
-                'order_id' => $shipment?->order_id,
+                'shipment_id' => $shipment->id,
+                'order_id' => $shipment->order_id,
                 'gateway' => Shipment::GATEWAY_SHIPROCKET,
                 'direction' => ShipmentEvent::DIRECTION_WEBHOOK,
                 'event_type' => 'tracking.'.($statusId === '' ? 'unknown' : mb_substr($statusId, 0, 40)),
                 'gateway_event_id' => $eventId,
-                'gateway_shipment_id' => $shipment?->gateway_shipment_id,
-                'signature_verified' => true,
+                'gateway_shipment_id' => $shipment->gateway_shipment_id,
+                // Nothing was signed: Shiprocket offers a static token, not an
+                // HMAC. The job's API re-read is what verifies the status.
+                'signature_verified' => false,
                 'payload' => $this->scrubber->scrub($body),
                 'created_at' => now(),
             ]);
@@ -97,8 +106,16 @@ final class ShiprocketWebhookController extends Controller
             return response()->json(['status' => 'duplicate']);
         }
 
-        if ($shipment !== null) {
+        // At most one API re-read per parcel per minute: the body is only a
+        // prompt, and a flood of prompts must not become a flood of calls on
+        // the account that also books parcels. An update inside the minute
+        // gets one delayed catch-up instead; the job reads the live status, so
+        // the catch-up sees this update and any after it. Nothing is lost.
+        $key = "fulfilment:shiprocket:track:{$shipment->id}";
+        if (Cache::add($key, true, 60)) {
             ProcessShiprocketWebhookJob::dispatch($event->id);
+        } elseif (Cache::add("{$key}:catch-up", true, 60)) {
+            ProcessShiprocketWebhookJob::dispatch($event->id)->delay(now()->addSeconds(61));
         }
 
         return response()->json(['status' => 'queued']);

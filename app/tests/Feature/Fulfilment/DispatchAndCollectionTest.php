@@ -18,6 +18,7 @@ use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Models\OrderCoolingOff;
 use App\Modules\Commerce\Notifications\OrderReadyForCollectionNotification;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\OrderStateMachine;
@@ -192,9 +193,10 @@ it('will not mark a home delivery as awaiting collection', function () {
 it('starts cooling-off when the buyer actually collects', function () {
     $order = paidOrderFor(dispatchCentre());
     app(DispatchService::class)->dispatch($order, null, 'Delhivery', 'AWB123', null);
-    app(OrderStateMachine::class)->markAwaitingCollection($order->fresh(), null);
+    $code = app(CollectionHandoverService::class)->acknowledgeArrival($order->fresh(), null);
 
-    $coolingOff = app(OrderStateMachine::class)->markDelivered($order->fresh(), null);
+    app(CollectionHandoverService::class)->recordCollection($order->fresh(), $code, null);
+    $coolingOff = OrderCoolingOff::where('order_id', $order->id)->sole();
 
     expect($order->fresh()->status)->toBe(Order::STATUS_DELIVERED)
         ->and($coolingOff->opened_at->diffInDays($coolingOff->ends_at))->toBeGreaterThanOrEqual(29);

@@ -200,3 +200,9 @@ it('tells the buyer the courier, the AWB and where to track it when the parcel s
             && $n->trackingUrl === 'https://shiprocket.co/tracking/AWB778899',
     );
 });
+
+it('keeps nothing for a parcel that was not booked from here', function () {
+    srwPost(['awb' => 'SOMEONE-ELSES'])->assertOk()->assertJson(['status' => 'ignored']);
+
+    expect(ShipmentEvent::where('direction', ShipmentEvent::DIRECTION_WEBHOOK)->count())->toBe(0);
+});

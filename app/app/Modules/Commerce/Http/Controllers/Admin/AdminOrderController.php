@@ -304,17 +304,23 @@ final class AdminOrderController extends Controller
             return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['collection' => $e->getMessage()]);
         }
 
-        // The buyer's collection code is stored only as an HMAC, so it cannot
-        // be read back from this page or from the database afterwards.
-        if ($code === null) {
-            return redirect()->route('admin.commerce.orders.show', $order)
-                ->with('status', 'Recorded as ready to collect.');
-        }
-
         // Still shown to the operator once: email is not instant and a buyer
         // standing at the counter should not be turned away over it.
         return redirect()->route('admin.commerce.orders.show', $order)
             ->with('status', "Recorded as ready to collect. The buyer has been emailed collection code {$code} — it will not be shown again.");
+    }
+
+    /** A fresh collection code for a parcel waiting at a centre, shown once. */
+    public function reissueCollectionCode(Order $order): RedirectResponse
+    {
+        try {
+            $code = app(CollectionHandoverService::class)->reissueCode($order, is_numeric(auth()->id()) ? (int) auth()->id() : null);
+        } catch (\RuntimeException $e) {
+            return redirect()->route('admin.commerce.orders.show', $order)->withErrors(['collection' => $e->getMessage()]);
+        }
+
+        return redirect()->route('admin.commerce.orders.show', $order)
+            ->with('status', "New collection code {$code} issued and emailed to the buyer. The old code no longer works, and it will not be shown again.");
     }
 
     public function markDelivered(Request $request, Order $order): RedirectResponse
@@ -323,7 +329,12 @@ final class AdminOrderController extends Controller
         // it: the handover record (collected_at) is what the ADC bonus is paid
         // on, and a bare "delivered" would leave the centre unpaid and the
         // handover unauthenticated.
-        if ($order->status === Order::STATUS_AWAITING_COLLECTION) {
+        if ($order->isCollection()) {
+            if ($order->status !== Order::STATUS_AWAITING_COLLECTION) {
+                return redirect()->route('admin.commerce.orders.show', $order)
+                    ->withErrors(['deliver' => 'A collection order is delivered only when the buyer collects it at the centre. Record its arrival first.']);
+            }
+
             $validated = $request->validate(['code' => ['required', 'digits:6']]);
 
             try {
