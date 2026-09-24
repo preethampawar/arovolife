@@ -150,12 +150,6 @@
 </div>
 @endif
 
-@if(session('error') || $errors->any())
-<div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-    {{ session('error') ?? $errors->first() }}
-</div>
-@endif
-
 @include('admin.compensation.payout-bank-files._next-steps')
 
 {{-- Manual NEFT: import the bank's response file ─────────────────────── --}}
