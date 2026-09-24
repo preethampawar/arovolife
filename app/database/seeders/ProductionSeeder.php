@@ -84,7 +84,7 @@ final class ProductionSeeder extends Seeder
 
         if ($existing !== null) {
             $this->command->info("Admin already exists ({$email}); leaving password and profile untouched.");
-            $existing->syncRoles(['admin']);
+            $existing->assignRole('admin');
 
             return;
         }
