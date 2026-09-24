@@ -23,6 +23,8 @@ final class PublicSeminarController extends Controller
             'pages' => $pages,
             'heading' => 'Seminars',
             'emptyMsg' => 'No seminars scheduled yet.',
+            'intro' => 'Seminars, trainings and events for customers and Direct Sellers.',
+            'icon' => 'calendar-days',
         ]);
     }
 }

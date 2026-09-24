@@ -23,6 +23,8 @@ final class PublicBlogController extends Controller
             'pages' => $pages,
             'heading' => 'Blogs',
             'emptyMsg' => 'No blog posts yet.',
+            'intro' => 'Articles on wellness, our products and responsible direct selling.',
+            'icon' => 'pen-line',
         ]);
     }
 }

@@ -23,6 +23,8 @@ final class PublicNewsController extends Controller
             'pages' => $pages,
             'heading' => 'News',
             'emptyMsg' => 'No news articles yet.',
+            'intro' => 'Announcements and platform updates from arovolife.',
+            'icon' => 'newspaper',
         ]);
     }
 }

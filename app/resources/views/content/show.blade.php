@@ -12,7 +12,8 @@
     @include('partials._font-size-fouc')
     @include('partials._google-analytics')
     <style>
-        .page-body h1 { font-size: 2rem; font-weight: 700; margin: 1.5rem 0 0.75rem; color: #111827; }
+        .page-body h1 { font-size: 1.625rem; font-weight: 700; margin: 1.75rem 0 0.75rem; color: #111827; }
+        .page-body > :first-child { margin-top: 0; }
         .page-body h2 { font-size: 1.5rem; font-weight: 700; margin: 1.25rem 0 0.5rem; color: #111827; }
         .page-body h3 { font-size: 1.2rem; font-weight: 600; margin: 1rem 0 0.5rem; color: #111827; }
         .page-body p  { margin: 0.75rem 0; line-height: 1.65; color: #374151; }
@@ -41,24 +42,45 @@
 
     @include('partials.public-topnav')
 
-    {{-- Content --}}
-    <main class="max-w-4xl mx-auto px-6 py-10">
+    @php
+        // News, blog and seminar posts link back to the listing they came from;
+        // policy pages have no listing, so they carry the brand eyebrow only.
+        $listing = [
+            'news' => ['label' => 'News', 'route' => 'public.news.index'],
+            'blog' => ['label' => 'Blogs', 'route' => 'public.blogs.index'],
+            'seminar' => ['label' => 'Seminars', 'route' => 'public.seminars.index'],
+        ][$page->type] ?? null;
+    @endphp
+
+    {{-- Content — same 6xl frame and centred header as the News / Blogs listing. --}}
+    <main class="max-w-6xl mx-auto px-6 py-12 sm:py-16">
+        <div class="text-center mb-8 sm:mb-10 max-w-3xl mx-auto">
+            @if($listing)
+                <a href="{{ route($listing['route']) }}" class="no-print inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:text-brand-800 uppercase tracking-wider mb-3">
+                    <x-lucide-arrow-left class="w-4 h-4" />
+                    {{ $listing['label'] }}
+                </a>
+            @else
+                <p class="no-print text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">arovolife</p>
+            @endif
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">{{ $page->title }}</h1>
+            @if($page->published_at)
+            <p class="text-sm text-gray-600 mt-3">Published {{ $page->published_at->format('d M Y') }}</p>
+            @endif
+        </div>
+
         {{-- Save-as-PDF path. These are the documents a consumer is most likely
              to want a copy of, and they printed with the site chrome and without
              the contact footer the printable-page convention requires (QA F37). --}}
-        <div class="no-print flex items-start justify-end gap-3 mb-4">
-            <p class="text-xs text-gray-600 mt-2.5">Choose <span class="font-medium">Save as PDF</span> in the dialog to keep a copy.</p>
+        <div class="no-print flex flex-wrap items-center justify-end gap-3 mb-4">
+            <p class="text-xs text-gray-600">Choose <span class="font-medium">Save as PDF</span> in the dialog to keep a copy.</p>
             <button type="button" onclick="window.print()"
                 class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-sm font-medium text-white transition-colors">
                 <x-lucide-upload class="w-4 h-4" />
                 Download / Print
             </button>
         </div>
-        <article class="bg-white rounded-2xl border border-gray-200 p-8 md:p-12">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ $page->title }}</h1>
-            @if($page->published_at)
-            <p class="text-xs text-gray-600 mb-8">Published {{ $page->published_at->format('d M Y') }}</p>
-            @endif
+        <article class="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-10 md:p-12">
             <div class="page-body">
                 {!! $page->body !!}
             </div>

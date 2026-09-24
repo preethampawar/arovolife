@@ -14,7 +14,7 @@
 
     @include('partials.public-topnav')
 
-    <div class="max-w-2xl mx-auto px-6 py-12 sm:py-16">
+    <div class="max-w-6xl mx-auto px-6 py-12 sm:py-16">
 
         <div class="text-center mb-8 lift-in" style="animation-delay: 60ms;">
             <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Get in touch</p>
@@ -23,6 +23,7 @@
             </h1>
         </div>
 
+        <div class="max-w-3xl mx-auto">
         @if($reason === 'referral_link_required')
             <div class="card-refined p-5 sm:p-6 mb-6 bg-amber-50 border border-amber-200 lift-in" style="animation-delay: 120ms;">
                 <p class="text-sm font-semibold text-amber-900 mb-1.5">A referral link is required to register</p>
@@ -76,6 +77,43 @@
                 </p>
             </div>
         @endif
+        </div>
+
+        <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] gap-6 lg:gap-8 items-start">
+
+        <aside class="card-refined p-7 sm:p-8 lg:sticky! lg:top-32 lift-in" style="animation-delay: 160ms;">
+            <h2 class="text-lg font-bold text-gray-900 mb-1">Customer Care</h2>
+            <p class="text-sm text-gray-600 mb-6 leading-relaxed">Prefer to call or email? Reach our team directly.</p>
+            <ul class="space-y-5">
+                <li class="flex gap-3.5">
+                    <span class="shrink-0 w-10 h-10 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center"><x-lucide-phone class="w-5 h-5" /></span>
+                    <div>
+                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold mb-0.5">Helpline</p>
+                        <a href="tel:+918886662949" class="text-sm font-semibold text-gray-900 hover:text-brand-700">+91 88866 62949</a>
+                    </div>
+                </li>
+                <li class="flex gap-3.5">
+                    <span class="shrink-0 w-10 h-10 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center"><x-lucide-mail class="w-5 h-5" /></span>
+                    <div>
+                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold mb-0.5">Email</p>
+                        <a href="mailto:support@arovolife.com" class="text-sm font-semibold text-gray-900 hover:text-brand-700">support@arovolife.com</a>
+                    </div>
+                </li>
+                <li class="flex gap-3.5">
+                    <span class="shrink-0 w-10 h-10 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center"><x-lucide-clock class="w-5 h-5" /></span>
+                    <div>
+                        <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold mb-0.5">Hours</p>
+                        <p class="text-sm text-gray-700 leading-relaxed">{{ config('arovolife.support_hours') }}</p>
+                    </div>
+                </li>
+            </ul>
+            <div class="mt-6 pt-5 border-t border-slate-200/60">
+                <p class="text-sm text-gray-600 leading-relaxed">
+                    Have a complaint?
+                    <a href="{{ route('content.show', 'grievance') }}" class="text-brand-700 hover:text-brand-800 font-medium underline-offset-4 hover:underline">Grievance Redressal →</a>
+                </p>
+            </div>
+        </aside>
 
         <div class="card-refined p-7 sm:p-8 lift-in" style="animation-delay: 200ms;">
 
@@ -176,7 +214,7 @@
                             <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">State</span>
                             <span class="text-[10px] text-sunrise-600 font-semibold uppercase tracking-wider">Required</span>
                         </label>
-                        <select id="state" name="state" required class="input-refined">
+                        <select id="state" name="state" required class="input-refined invalid:text-slate-400! [&>option]:text-slate-900!">
                             <option value="" disabled {{ old('state') === '' || old('state') === null ? 'selected' : '' }}>Pick your state…</option>
                             @foreach($states as $code => $name)
                                 <option value="{{ $code }}" {{ old('state') === $code ? 'selected' : '' }}>{{ $name }}</option>
@@ -193,7 +231,7 @@
                             value="{{ old('pin_code') }}"
                             placeholder="e.g. 500032"
                             autocomplete="postal-code"
-                            class="input-refined font-mono">
+                            class="input-refined">
                     </div>
                 </div>
 
@@ -202,7 +240,7 @@
                         <span class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold">Purpose</span>
                         <span class="text-[10px] text-sunrise-600 font-semibold uppercase tracking-wider">Required</span>
                     </label>
-                    <select id="purpose" name="purpose" required class="input-refined">
+                    <select id="purpose" name="purpose" required class="input-refined invalid:text-slate-400! [&>option]:text-slate-900!">
                         @php
                             // Pre-pick the most relevant purpose based on the
                             // reason the visitor arrived with. placement_taken
@@ -274,6 +312,7 @@
                 </p>
                 <span class="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 to-transparent"></span>
             </div>
+        </div>
         </div>
 
         <p class="mt-8 text-center text-[11px] text-slate-600 lift-in" style="animation-delay: 820ms;">
