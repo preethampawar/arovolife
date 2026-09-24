@@ -468,14 +468,16 @@ fresh process. It is read-only and can be run by hand at any time:
 | Database | `select 1` fails | — |
 | Cache | a write/read round-trip on the default store fails | — |
 | Migrations | any migration is pending | — |
-| Worker: otp / default / compensation | no `queue:work --queue=<name>` process on the host after the wait | `ps` unavailable |
+| Worker: otp / default / compensation | a runnable job has waited over 2 minutes and no `queue:work --queue=<name>` process is running | a job is waiting and cron has not started a worker yet |
 | Queue backlog | — | a job has waited over 15 minutes |
 | Failed jobs | — | any failure in the last 24 hours |
 | Scheduler | the per-minute heartbeat is older than 3 minutes | no heartbeat yet (first deploy of it, or a cache flush) |
 
-`--wait` keeps polling for workers because `queue:restart` only signals
-them to exit; Supervisord respawns within seconds, the staging flock'd
-crontab within a minute. A failing status check is reported as `⚠ service
+Both servers launch workers from a flock'd crontab with
+`--stop-when-empty`, so an idle queue has no worker process at all — that
+reads as OK ("idle"). The check fails only when work is waiting with nobody
+to take it. `--wait` keeps polling because `queue:restart` only signals
+workers to exit and cron respawns them within a minute. A failing status check is reported as `⚠ service
 status` and does **not** fail the deploy — the release is already live, so
 act on the table instead. Skip it with `--skip-status`; change the wait with
 `--status-wait=<seconds>`.

@@ -384,7 +384,7 @@ See also: `docs/runbooks/cloudways-deployment.md` for the full Cloudways workflo
 
 ### `app:status`
 
-Read-only service health table: release (env / commit / PHP), maintenance mode, database, cache round-trip, pending migrations, a `queue:work` process per queue (`otp`, `default`, `compensation`), queue backlog, failed jobs in the last 24h, and the scheduler heartbeat (stamped every minute by `routes/console.php`). Exits non-zero if any check FAILs. `--wait=<seconds>` polls for missing workers. Locally the workers live in their own containers, so run it inside `arovolife-queue` to see them. Details: `docs/runbooks/cloudways-deployment.md` §2.4.
+Read-only service health table: release (env / commit / PHP), maintenance mode, database, cache round-trip, pending migrations, per-queue worker health (`otp`, `default`, `compensation` — idle with no process is OK; a job waiting over 2 minutes with no worker fails), queue backlog, failed jobs in the last 24h, and the scheduler heartbeat (stamped every minute by `routes/console.php`). Exits non-zero if any check FAILs. `--wait=<seconds>` polls for missing workers. Details: `docs/runbooks/cloudways-deployment.md` §2.4.
 
 ```bash
 php artisan app:status

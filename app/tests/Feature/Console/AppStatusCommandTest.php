@@ -54,3 +54,21 @@ it('flags a queue job that has waited more than fifteen minutes', function () {
 
     $this->artisan('app:status')->expectsOutputToContain('compensation=1 (oldest 20 min)');
 });
+
+it('treats an idle queue with no worker as healthy', function () {
+    $this->artisan('app:status')->expectsOutputToContain('idle — no jobs waiting');
+});
+
+it('fails a queue whose job has waited past two minutes with no worker', function () {
+    DB::table('jobs')->insert([
+        'queue' => 'otp',
+        'payload' => '{}',
+        'attempts' => 0,
+        'available_at' => time() - 300,
+        'created_at' => time() - 300,
+    ]);
+
+    $this->artisan('app:status')
+        ->expectsOutputToContain('job waiting 300s with no worker')
+        ->assertFailed();
+});

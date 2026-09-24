@@ -128,10 +128,18 @@ final class AppStatusCommand extends Command
     }
 
     /**
-     * Looks for a live `queue:work … --queue=<name>` process per queue. Works
-     * for both launchers in use: Cloudways Supervisord (production) and the
-     * flock'd crontab (staging), which can take up to a minute to respawn a
-     * worker after queue:restart — hence the optional polling window.
+     * Per queue: is anything draining it? Staging and production both launch
+     * workers from a flock'd crontab with `--stop-when-empty`, so an idle
+     * queue legitimately has no process at all. The signal is therefore a
+     * waiting job with nobody to take it:
+     *
+     *   - a `queue:work --queue=<name>` process is running   → OK
+     *   - no process, no job ready to run                    → OK (idle)
+     *   - no process, oldest ready job ≤ 2 min old           → WARN (cron starts one within a minute)
+     *   - no process, oldest ready job  > 2 min old          → FAIL
+     *
+     * `--wait` keeps polling while any queue is short of OK, which covers the
+     * minute a queue:restart takes to come back under cron.
      */
     private function checkWorkers(int $wait): void
     {
@@ -139,24 +147,64 @@ final class AppStatusCommand extends Command
 
         do {
             $counts = $this->workerCounts();
+            $ready = $this->oldestReadyAges();
+            $states = [];
 
-            if ($counts === null || ! in_array(0, $counts, true) || time() >= $deadline) {
+            foreach (self::QUEUES as $queue) {
+                $states[$queue] = $this->workerState($queue, $counts, $ready);
+            }
+
+            $allOk = collect($states)->every(static fn (array $state): bool => $state[0] === 'OK');
+            if ($allOk || time() >= $deadline) {
                 break;
             }
 
             sleep(5);
         } while (true);
 
-        if ($counts === null) {
-            $this->caution('Queue workers', 'could not list processes (ps unavailable)');
+        foreach ($states as $queue => [$status, $detail]) {
+            $this->rows[] = ["Worker: {$queue}", $status, $detail];
+        }
+    }
 
-            return;
+    /**
+     * @param  array<string, int>|null  $counts
+     * @param  array<string, int>  $ready
+     * @return array{0: string, 1: string}
+     */
+    private function workerState(string $queue, ?array $counts, array $ready): array
+    {
+        $running = $counts[$queue] ?? 0;
+
+        if ($running > 0) {
+            return ['OK', "{$running} process(es) running"];
         }
 
-        foreach ($counts as $queue => $n) {
-            $n > 0
-                ? $this->pass("Worker: {$queue}", "{$n} process(es)")
-                : $this->failure("Worker: {$queue}", 'no queue:work process found for this queue');
+        $processes = $counts === null ? ' (process list unavailable)' : '';
+
+        if (! isset($ready[$queue])) {
+            return ['OK', 'idle — no jobs waiting'.$processes];
+        }
+
+        return $ready[$queue] <= 120
+            ? ['WARN', "job waiting {$ready[$queue]}s, no worker yet{$processes}"]
+            : ['FAIL', "job waiting {$ready[$queue]}s with no worker{$processes}"];
+    }
+
+    /** @return array<string, int> queue => seconds the oldest runnable, unreserved job has waited */
+    private function oldestReadyAges(): array
+    {
+        try {
+            return DB::table('jobs')
+                ->whereNull('reserved_at')
+                ->where('available_at', '<=', time())
+                ->groupBy('queue')
+                ->selectRaw('queue, min(available_at) as oldest')
+                ->pluck('oldest', 'queue')
+                ->map(static fn ($oldest): int => max(0, time() - (int) $oldest))
+                ->all();
+        } catch (Throwable) {
+            return [];
         }
     }
 
