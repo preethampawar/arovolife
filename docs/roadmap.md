@@ -560,7 +560,7 @@ All stock movements record regardless of flag state. No data loss; ledger is app
 ### Risks
 
 - **R-46** — closed 2026-09-17 with the franchise programme; the warehouse/transfer stock ledger stands on its own and meets DC-03.
-- **R-47** — fulfilment not wired (status: Open, re-scoped to the ADC; blocks offering collection at checkout and R-24 sign-off).
+- **R-47** — fulfilment wired end to end as of 2026-09-24 (manual + Shiprocket dispatch, tracking webhook, centre self-service, dwell alert; ADR-0017). Still open only on R-97: the privacy publish and 30-day notice before collection at a centre is switched on.
 
 See `docs/compliance/risk-register.md` for both.
 

@@ -37,6 +37,8 @@ Each action has a stable `key` used in routes and snooze rows. Severity is deriv
 | **Orders** | `orders.paid_not_packed` | Order paid, not yet packed | `commerce.order.manage` | WARNING | 24h | Admin order detail | No |
 | | `orders.packed_not_shipped` | Order packed, not yet shipped | `commerce.order.manage` | WARNING | 24h | Admin order detail | No |
 | | `orders.shipped_not_delivered` | Order shipped, not yet delivered | `commerce.order.manage` | WARNING | 7 days | Admin order detail | No |
+| | `orders.courier_exception` | Courier reports the parcel returning (RTO), lost, damaged, destroyed or cancelled | `commerce.order.manage` | WARNING | 24 hours | Admin order detail | No |
+| | `orders.at_centre_not_collected` | Parcel at a centre past `fulfilment.max_dwell_days`; arrange the return | `commerce.order.manage` | WARNING | the dwell limit | Admin order detail | No |
 | | `orders.unpaid_expiring` | Order placed but unpaid, expiry window closing | `commerce.order.manage` | INFO | — | Admin order detail | No |
 | | `orders.restock_not_reconciled` | Cancelled order with stock not yet reversed | `commerce.order.manage` | **CRITICAL** | — | Admin order detail + stock adjustment | No |
 | | `orders.invoice_missing` | Order paid, but no invoice issued | `commerce.order.manage` | **CRITICAL** | — | Admin order detail → generate invoice | **Yes** (statutory) |

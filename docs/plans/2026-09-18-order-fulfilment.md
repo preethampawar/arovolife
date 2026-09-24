@@ -721,3 +721,37 @@ re-acceptance surface is what clears it.
 
 Note the citation fix (**M5**): the current text cites DSA §9, which is PII
 Handling. The prohibited-channels clause is §5.2 and direct-to-consumer is §5.1.
+
+## Outcome — Slices 4–7 and 9 (2026-09-24)
+
+Built on `feat/fulfilment-slices-5-9` per `docs/plans/2026-09-24-fulfilment-slices-5-9.md`
+(user decisions D1–D4, all option A):
+
+- **Slice 4:** the Shiprocket gateway, which claims a booking and searches Shiprocket before creating one. It was stubbed first, then run against the sandbox.
+- **Slice 5:**
+  - Dispatch goes through `DispatchService` from the order page, with a Manual/Shiprocket picker.
+  - Manual requires a carrier (D1).
+  - The parcel-gap check runs before packing.
+  - A pending-booking guard, a dispatch queue, and a label link.
+- **Slice 6:**
+  - The tracking webhook (`/webhooks/courier/tracking`) with an API re-read.
+  - A confirmed DELIVERED auto-delivers a home delivery (D2).
+  - RTO or lost parcels are flagged in the Action Center.
+  - The buyer's email and order page carry the courier, the AWB and a tracking link.
+- **Slice 7:**
+  - A centre-owner consignment page behind R-97 (D3).
+  - `acknowledgeArrival` is the one path for the centre and the admin.
+  - The admin *Record collection* now requires the buyer's code.
+  - A dwell alert (D4).
+- **Slice 9:**
+  - Help: `order-management.md` and `status-reference.md`.
+  - Runbooks: `shiprocket.md` and `action-center.md`.
+  - ADR-0017; the R-47 note and the roadmap.
+
+**Deviations:**
+
+- **The centre routes bind the order (`{order:order_no}`), not the shipment.** Ownership reads `orders.arete_center_id`, and older parcels have no shipment row.
+- **The centre ability is `OrderPolicy::actAtCentre`,** not a new `ShipmentPolicy` (one policy per model).
+- **The fulfilment help lives in `order-management.md`** rather than a new help page.
+
+**Still gated:** collection at a centre stays off until R-97 (the privacy publish and the §13 notice).

@@ -71,10 +71,43 @@ that consumes real stock. If the pack turns out to be wrong, cancel the order
 
 ## Shipping and delivery
 
-**Mark as Shipped** records the carrier and tracking number and moves the
+**Mark as Shipped** sends the parcel out by one of two routes and moves the
 order to `shipped`. If an order is shipped directly from `paid` without an
 explicit pack step, packing happens automatically first, so a sale movement
 and pick list still exist behind it.
+
+| Route | When it is offered | What you type |
+|---|---|---|
+| **Manual** | Always | The courier's name (required) and the AWB / tracking number. |
+| **Shiprocket** | Only while Shiprocket is switched on and configured | Nothing: Shiprocket picks the courier and returns the AWB and a label link, shown on the order page. |
+
+**Shiprocket needs a weight and packed size for every product in the order.**
+When one is missing, the order page lists the products with a link to each, and
+the Shiprocket option is greyed out. Fix the product and reload. The check runs
+before packing, so a refused booking leaves the order `paid` with its stock
+untouched.
+
+**"This order is already booked with Shiprocket."** A Shiprocket booking was
+started but no AWB came back. Check the Shiprocket panel first: if the booking
+exists there, cancel it in Shiprocket before shipping by hand, then tick
+*"I have cancelled it in Shiprocket"*. Without the tick a manual dispatch is
+refused, so the same parcel is never sent twice.
+
+**Admin → Commerce → Dispatch queue** lists every paid or packed order waiting
+to go out, oldest first, and marks the ones Shiprocket cannot take yet.
+
+### Tracking after dispatch
+
+For a Shiprocket parcel, Shiprocket tells us about each movement. We never act
+on its message alone: we ask Shiprocket's API for the status before changing
+anything. When the API confirms **delivered**, a home-delivery order is marked
+delivered automatically and its cooling-off window opens, exactly as if you had
+pressed the button. A parcel the courier reports as **RTO** (returning), **lost**
+or **damaged** is not changed. It appears in the Action Center under
+*Courier exceptions* for you to chase, and leaves the *Shipped orders not
+delivered* list. The buyer's shipped email and their order page carry the
+courier, the AWB and a *Track parcel* link. A manual parcel gets no link,
+because we don't know that courier's tracking site.
 
 **Mark as Delivered** — labelled on the order screen as *"opens
 cooling-off"* — is exactly that: delivery is the event the 30-day statutory
@@ -189,8 +222,14 @@ and there is no delivery here.
 | Step | What it means | What you do |
 |---|---|---|
 | `shipped` | The parcel has been consigned **to the centre**. | Dispatch as normal; the consignee is the centre. |
-| `awaiting_collection` | The centre has it and has acknowledged holding it. | Press **Arrived at centre**. The screen shows the buyer's collection code **once** — pass it to them. It cannot be shown again. |
-| `delivered` | The buyer has collected it. | Press **Record collection** and enter the code the buyer presents. |
+| `awaiting_collection` | The centre has it and has acknowledged holding it. The buyer is emailed a collection code. | Normally the centre owner confirms this on their own page (*My centre → Parcels for my centre → It has arrived*). For a company centre, or on the owner's behalf, press **Arrived at centre**. The screen shows the code **once**, in case the buyer is standing at the counter. |
+| `delivered` | The buyer has collected it. | The centre owner enters the buyer's code on their page and presses **Hand over**. Staff can do the same with **Record collection**, which also asks for the buyer's code. |
+
+The centre owner's page shows only the order number, the buyer's first name, how
+many items there are and the dates: no phone number, address or amounts. The
+owner never sees the collection code. The page only exists while *collection at
+a centre* is switched on, and staff cannot use it while impersonating the owner:
+a receipt recorded that way would read as the owner's own act.
 
 ### The collection code
 
@@ -209,8 +248,9 @@ than looked up.
 15, matching the DSA §5.4 return window). The centre owner sees this number on
 their own centre page, because their declaration binds them to "the period
 arovolife publishes to me in writing" — so changing it changes what they have
-undertaken. Nothing returns a parcel automatically yet; the obligation is on
-the operator, and the number is what they are held to.
+undertaken. Nothing returns a parcel automatically. A parcel still waiting past
+the limit appears in the Action Center under *Parcels not collected from a
+centre*; arrange the return with the centre.
 
 ### Why the cooling-off clock starts late
 
