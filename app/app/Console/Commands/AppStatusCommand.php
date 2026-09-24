@@ -208,23 +208,48 @@ final class AppStatusCommand extends Command
         }
     }
 
-    /** @return array<string, int>|null */
+    /**
+     * Counts this application's `queue:work` PHP processes per queue.
+     *
+     * The staging box is shared with other Laravel apps whose workers also
+     * drain a queue called `default`, so a process only counts when its
+     * artisan script resolves to this app's own — either an absolute path
+     * (Supervisord) or a relative one run from this app's directory (cron).
+     * Launcher wrappers (`flock`, `sh -c`) carry the same arguments and are
+     * skipped by requiring PHP as the executable.
+     *
+     * @return array<string, int>|null
+     */
     private function workerCounts(): ?array
     {
-        $out = $this->shell(['ps', '-eo', 'args=']);
+        $out = $this->shell(['ps', '-eo', 'pid=,args=']);
 
         if ($out === null) {
             return null;
         }
 
         $counts = array_fill_keys(self::QUEUES, 0);
+        $ownArtisan = realpath(base_path('artisan'));
 
         foreach (explode("\n", $out) as $line) {
-            if (! str_contains($line, 'queue:work') || ! preg_match('/--queue[= ]([\w,-]+)/', $line, $m)) {
+            $args = preg_split('/\s+/', trim($line)) ?: [];
+            $pid = array_shift($args);
+
+            if (count($args) < 3 || preg_match('#(^|/)php[\d.]*$#', $args[0]) !== 1) {
                 continue;
             }
 
-            foreach (explode(',', $m[1]) as $queue) {
+            $position = array_search('queue:work', $args, true);
+            if ($position === false || $position < 2 || ! str_ends_with($args[1], 'artisan')) {
+                continue;
+            }
+
+            $artisan = str_starts_with($args[1], '/') ? $args[1] : @readlink("/proc/{$pid}/cwd").'/'.$args[1];
+            if ($ownArtisan === false || realpath($artisan) !== $ownArtisan) {
+                continue;
+            }
+
+            foreach ($this->queuesOf(array_slice($args, $position + 1)) as $queue) {
                 if (isset($counts[$queue])) {
                     $counts[$queue]++;
                 }
@@ -232,6 +257,29 @@ final class AppStatusCommand extends Command
         }
 
         return $counts;
+    }
+
+    /**
+     * The queues a worker drains: its `--queue` list, else its connection's
+     * configured default queue.
+     *
+     * @param  list<string>  $args  the arguments after `queue:work`
+     * @return list<string>
+     */
+    private function queuesOf(array $args): array
+    {
+        foreach ($args as $i => $arg) {
+            if (str_starts_with($arg, '--queue=')) {
+                return explode(',', substr($arg, 8));
+            }
+            if ($arg === '--queue' && isset($args[$i + 1])) {
+                return explode(',', $args[$i + 1]);
+            }
+        }
+
+        $connection = isset($args[0]) && ! str_starts_with($args[0], '-') ? $args[0] : (string) config('queue.default');
+
+        return [(string) config("queue.connections.{$connection}.queue", 'default')];
     }
 
     private function checkBacklog(): void
