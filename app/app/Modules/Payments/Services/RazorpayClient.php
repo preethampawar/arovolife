@@ -7,6 +7,7 @@ namespace App\Modules\Payments\Services;
 use App\Modules\Payments\Exceptions\RazorpayApiException;
 use App\Modules\Payments\Models\PaymentEvent;
 use App\Modules\Payments\Support\RazorpayPayloadScrubber;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
@@ -34,6 +35,9 @@ final class RazorpayClient
     public const MODE_TEST = 'test';
 
     public const MODE_LIVE = 'live';
+
+    /** Launch day (IST): from this moment production refuses test keys whatever the setting says. */
+    public const PRODUCTION_TEST_MODE_ENDS = '2026-11-10 00:00:00';
 
     private const KEY_PATTERN = '/^rzp_(test|live)_[A-Za-z0-9]{6,}$/';
 
@@ -63,7 +67,8 @@ final class RazorpayClient
     /**
      * Production takes only live keys; every other environment only test
      * keys. A test key on the live host would pass every payment check
-     * against money that does not exist and mark orders paid.
+     * against money that does not exist and mark orders paid — the single
+     * exception is the pre-launch window below.
      */
     public function modeMatchesEnvironment(): bool
     {
@@ -72,9 +77,30 @@ final class RazorpayClient
             return false;
         }
 
+        if (app()->environment('production')) {
+            return $mode === self::MODE_LIVE || $this->productionTestModeActive();
+        }
+
+        return $mode === self::MODE_TEST;
+    }
+
+    /**
+     * Pre-launch testing on the production host with test keys (user decision
+     * 2026-09-24, R-110): allowed only while
+     * `arovolife.payments.razorpay.allow_test_mode_in_production` is on AND
+     * the clock is before {@see self::PRODUCTION_TEST_MODE_ENDS}. The cut-off
+     * is a constant, not a setting, so launch cannot go out taking test
+     * payments by forgetting a flag: from launch day production refuses test
+     * keys again and checkout closes until live keys are in place. Every
+     * payment intent records its `mode`, so test-mode orders stay identifiable
+     * for the pre-launch wipe.
+     */
+    public function productionTestModeActive(): bool
+    {
         return app()->environment('production')
-            ? $mode === self::MODE_LIVE
-            : $mode === self::MODE_TEST;
+            && $this->mode() === self::MODE_TEST
+            && (bool) config('arovolife.payments.razorpay.allow_test_mode_in_production', false)
+            && CarbonImmutable::now()->lt(CarbonImmutable::parse(self::PRODUCTION_TEST_MODE_ENDS, 'Asia/Kolkata'));
     }
 
     private function keySecret(): string

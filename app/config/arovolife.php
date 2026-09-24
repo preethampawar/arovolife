@@ -123,6 +123,10 @@ return [
             'webhook_secret' => (string) env('RAZORPAY_WEBHOOK_SECRET', ''),
             'base_url' => (string) env('RAZORPAY_BASE_URL', 'https://api.razorpay.com/v1'),
             'timeout_seconds' => (int) env('RAZORPAY_TIMEOUT_SECONDS', 15),
+            // Pre-launch only: lets production take rzp_test_ keys until
+            // RazorpayClient::PRODUCTION_TEST_MODE_ENDS (launch day, IST),
+            // after which it has no effect. R-110.
+            'allow_test_mode_in_production' => (bool) env('RAZORPAY_ALLOW_TEST_MODE_IN_PRODUCTION', false),
         ],
 
         // RazorpayX Payouts — money going OUT to distributors. A separate

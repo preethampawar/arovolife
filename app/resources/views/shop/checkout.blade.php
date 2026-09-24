@@ -498,6 +498,9 @@
             Place Order
         </button>
         @if(($gatewayState ?? '') === \App\Modules\Payments\Services\PaymentGatewayResolver::STATE_RAZORPAY)
+            @if($razorpayTestMode ?? false)
+                <p class="text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-3 text-center">Pre-launch test payments — no real money moves. Pay with a Razorpay test card or test UPI.</p>
+            @endif
             <p class="text-xs text-gray-600 mt-3 text-center">You will be taken to a secure payment page. Payments are processed by Razorpay.</p>
         @elseif(($gatewayState ?? '') === \App\Modules\Payments\Services\PaymentGatewayResolver::STATE_STUB)
             <p class="text-xs text-gray-600 mt-3 text-center">Test gateway — no real money moves.</p>

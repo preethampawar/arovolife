@@ -27,6 +27,23 @@ All three secrets are read from config (`arovolife.payments.razorpay`), so
 run `php artisan config:cache` after changing them and restart the queue
 workers (`queue:restart`).
 
+### Pre-launch exception (R-110)
+
+`RAZORPAY_ALLOW_TEST_MODE_IN_PRODUCTION=true` lets **production** use `rzp_test_` keys until
+`RazorpayClient::PRODUCTION_TEST_MODE_ENDS` (2026-11-10 00:00 IST). From then on it has no effect:
+production refuses test keys again and checkout closes until live keys are configured. While it is
+in force, checkout shows a red "no real money moves" notice, and every intent carries `mode = test`,
+which identifies test orders. Launch gates (R-110):
+
+1. Until the wipe, RazorpayX payouts on production run on test keys or not at all, and **no payout
+   batch is approved** — no real money leaves for commissions earned on test money.
+2. The pre-launch wipe is a full transactional reset (orders, BV, pools, engine runs, wallet
+   ledger, payouts, invoices) with the invoice number series restarted — not a filter on `mode`.
+3. At go-live: live keys in, delete the override line, `config:cache`, `queue:restart`.
+4. arovolife.com stays unannounced until launch.
+
+Moving `PRODUCTION_TEST_MODE_ENDS` (e.g. a launch slip) needs its own reviewed commit that updates R-110.
+
 ## Gateway selection
 
 | razorpay flag | credentials | environment | result |

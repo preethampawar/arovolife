@@ -23,6 +23,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Inventory\Services\Exceptions\InsufficientStockException;
 use App\Modules\Payments\Services\PaymentConfirmationService;
 use App\Modules\Payments\Services\PaymentGatewayResolver;
+use App\Modules\Payments\Services\RazorpayClient;
 use App\Modules\Payments\Services\StubGateway;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Support\IndianStates;
@@ -55,6 +56,7 @@ final class CheckoutController extends Controller
         private readonly WalletService $walletService,
         private readonly RedeemPointsService $redeemPoints,
         private readonly OrderStateMachine $orderStateMachine,
+        private readonly RazorpayClient $razorpay,
     ) {}
 
     public function show(Request $request): View|RedirectResponse|Response
@@ -121,6 +123,7 @@ final class CheckoutController extends Controller
             'guestAllowed' => $guestAllowed,
             'onlineEnabled' => $this->onlineEnabled(),
             'gatewayState' => $this->gateways->state(),
+            'razorpayTestMode' => $this->razorpay->productionTestModeActive(),
             // A logged-in distributor's own purchase is always attributed to
             // them (AttributionService::resolveForCheckout precedence), so a
             // lingering ?ref cookie must not show a misleading banner.
