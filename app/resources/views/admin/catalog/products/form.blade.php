@@ -154,10 +154,17 @@
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
             <label class="block">
-                <span class="block text-xs text-gray-700 mb-1 font-medium">Weight (g) <x-help-tip text="Shipping weight in grams. Used to calculate delivery charges." /></span>
+                <span class="block text-xs text-gray-700 mb-1 font-medium">Weight (g) <x-help-tip text="Packed weight of one unit in grams. Sent to the courier to price the shipment; required before an order can go through Shiprocket." /></span>
                 <input type="number" step="1" min="0" name="weight_g" value="{{ old('weight_g', $isEdit ? $variant->weight_g : null) }}" placeholder="0"
                     class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
             </label>
+            @foreach (['length_mm' => 'Length (mm)', 'breadth_mm' => 'Breadth (mm)', 'height_mm' => 'Height (mm)'] as $dimField => $dimLabel)
+                <label class="block">
+                    <span class="block text-xs text-gray-700 mb-1 font-medium">{{ $dimLabel }} <x-help-tip text="Packed size of one unit in millimetres. Sent to the courier to price the shipment; required before an order can go through Shiprocket." /></span>
+                    <input type="number" step="1" min="1" max="5000" name="{{ $dimField }}" value="{{ old($dimField, $isEdit ? $variant->{$dimField} : null) }}"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </label>
+            @endforeach
             <label class="block">
                 <span class="block text-xs text-gray-700 mb-1 font-medium">Inventory <x-help-tip text="Track stock counts down on-hand per order; Don't track allows unlimited selling." /></span>
                 <select name="inventory_policy" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">

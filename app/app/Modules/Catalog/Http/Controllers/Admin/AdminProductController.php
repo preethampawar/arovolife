@@ -207,6 +207,9 @@ final class AdminProductController extends Controller
             // product content now lives in the product_attributes table.
             'attributes' => $variant->attributes ?? [],
             'weight_g' => (int) ($data['weight_g'] ?? 0),
+            'length_mm' => isset($data['length_mm']) ? (int) $data['length_mm'] : null,
+            'breadth_mm' => isset($data['breadth_mm']) ? (int) $data['breadth_mm'] : null,
+            'height_mm' => isset($data['height_mm']) ? (int) $data['height_mm'] : null,
             'mrp_paise' => $this->toPaise($data['mrp']),
             'sale_price_paise' => $this->toPaise($data['sale_price']),
             'cost_paise' => $this->toPaise($data['cost_price'] ?? 0),

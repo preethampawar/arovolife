@@ -51,6 +51,11 @@ final class ProductRequest extends FormRequest
             'bv' => ['nullable', 'numeric', 'min:0'],
             'gst_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'weight_g' => ['nullable', 'integer', 'min:0'],
+            // Packed size of one unit. Optional here; Shiprocket refuses an
+            // order whose products lack any of them.
+            'length_mm' => ['nullable', 'integer', 'min:1', 'max:5000'],
+            'breadth_mm' => ['nullable', 'integer', 'min:1', 'max:5000'],
+            'height_mm' => ['nullable', 'integer', 'min:1', 'max:5000'],
             'inventory_policy' => ['required', Rule::in(['track', 'no_track'])],
             // on_hand is a projection of the stock ledger now (inventory
             // plan H8); the form sets only the reorder level.

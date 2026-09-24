@@ -29,6 +29,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $distributor_price_paise
  * @property int $bv_paise
  * @property int $weight_g
+ * @property int|null $length_mm
+ * @property int|null $breadth_mm
+ * @property int|null $height_mm
  * @property int $gst_rate_bp
  * @property string $inventory_policy
  * @property string $status
@@ -39,7 +42,7 @@ final class ProductVariant extends Model
 
     protected $fillable = [
         'product_id', 'variant_sku', 'name', 'attributes',
-        'weight_g', 'mrp_paise', 'sale_price_paise', 'cost_paise',
+        'weight_g', 'length_mm', 'breadth_mm', 'height_mm', 'mrp_paise', 'sale_price_paise', 'cost_paise',
         'landing_price_paise', 'distributor_price_paise',
         'bv_paise', 'gst_rate_bp', 'inventory_policy', 'status',
     ];
@@ -55,6 +58,9 @@ final class ProductVariant extends Model
             'distributor_price_paise' => 'int',
             'bv_paise' => 'int',
             'weight_g' => 'int',
+            'length_mm' => 'int',
+            'breadth_mm' => 'int',
+            'height_mm' => 'int',
             'gst_rate_bp' => 'int',
         ];
     }

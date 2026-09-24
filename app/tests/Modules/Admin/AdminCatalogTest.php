@@ -334,6 +334,33 @@ it('ACAT-11: admin can update a product food_type to non_veg', function (): void
     expect($product->fresh()->isVeg())->toBeFalse();
 });
 
+it('ACAT-13: admin saves the packed size, and a blank field clears it', function (): void {
+    Storage::fake('s3');
+    $admin = acatAdmin();
+    $cat = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.catalog.products.store'), acatProductPayload($cat->id, [
+            'sku' => 'AV-DIMS', 'slug' => 'dims', 'length_mm' => '250', 'breadth_mm' => '100', 'height_mm' => '80',
+        ]))
+        ->assertRedirect();
+
+    $product = Product::where('sku', 'AV-DIMS')->first();
+    $variant = $product->primaryVariant();
+    expect([$variant->length_mm, $variant->breadth_mm, $variant->height_mm])->toBe([250, 100, 80]);
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->put(route('admin.catalog.products.update', $product), acatProductPayload($cat->id, [
+            'sku' => 'AV-DIMS', 'slug' => 'dims', 'length_mm' => '300', 'breadth_mm' => '', 'height_mm' => '80',
+        ]))
+        ->assertRedirect();
+
+    $variant = $product->fresh()->primaryVariant();
+    expect([$variant->length_mm, $variant->breadth_mm, $variant->height_mm])->toBe([300, null, 80]);
+});
+
 it('ACAT-06: a non-admin cannot reach the catalog admin', function (): void {
     $user = acatNonAdmin();
 
