@@ -149,6 +149,10 @@
         <div class="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700">
             <span class="font-medium text-gray-900">Tracking:</span>
             {{ $order->ship_carrier ?: 'Courier' }}@if($order->ship_tracking_no) — <span class="font-mono">{{ $order->ship_tracking_no }}</span>@endif
+            @php $trackingUrl = $order->isCollection() ? null : $order->shipment?->trackingUrl(); @endphp
+            @if($trackingUrl)
+            · <a href="{{ $trackingUrl }}" target="_blank" rel="noopener noreferrer" class="text-brand-700 underline">Track parcel</a>
+            @endif
         </div>
         @endif
     </div>

@@ -43,6 +43,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->preventRequestForgery(except: [
             'webhooks/razorpay',
             'webhooks/razorpay/payouts',
+            // Shiprocket sends a static token instead; see ShiprocketWebhookController.
+            'webhooks/courier/tracking',
         ]);
 
         $middleware->alias([

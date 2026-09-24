@@ -7,6 +7,7 @@ namespace App\Modules\Fulfilment\Models;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Compensation\Models\AreteCenter;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -74,6 +75,48 @@ final class Shipment extends Model
             'collected_by_user_id' => 'int',
             'handover_attempts' => 'int',
         ];
+    }
+
+    /**
+     * Courier wording that means the parcel will not reach the buyer as sent:
+     * a return, a loss, damage. Staff act on these (Action Center).
+     */
+    public const COURIER_EXCEPTIONS = ['LOST', 'DAMAGED', 'DESTROYED', 'CANCELED', 'CANCELLED'];
+
+    public function hasCourierException(): bool
+    {
+        $status = (string) $this->courier_status;
+
+        return str_starts_with($status, 'RTO') || in_array($status, self::COURIER_EXCEPTIONS, true);
+    }
+
+    /**
+     * Shipments the courier says are returning, lost or damaged — or already
+     * back. The SQL twin of `hasCourierException()`.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeWithCourierException(Builder $query): void
+    {
+        $query->where(function (Builder $q): void {
+            $q->where('status', self::STATUS_RETURNED)
+                ->orWhere('courier_status', 'like', 'RTO%')
+                ->orWhereIn('courier_status', self::COURIER_EXCEPTIONS);
+        });
+    }
+
+    /**
+     * The public page the buyer can follow the parcel on. Only for a courier
+     * we booked ourselves: a manual AWB belongs to a courier whose tracking
+     * site we do not know.
+     */
+    public function trackingUrl(): ?string
+    {
+        if ($this->gateway !== self::GATEWAY_SHIPROCKET || $this->awb_no === null || $this->awb_no === '') {
+            return null;
+        }
+
+        return 'https://shiprocket.co/tracking/'.rawurlencode($this->awb_no);
     }
 
     /** @return BelongsTo<Order, $this> */

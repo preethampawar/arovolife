@@ -24,5 +24,7 @@ final readonly class CourierShipment
         /** The gateway's own id for this shipment. Null for a manual dispatch — there is no remote record. */
         public ?string $gatewayShipmentId = null,
         public ?string $labelUrl = null,
+        /** The courier's own wording for where the parcel is ("RTO INITIATED", "LOST"), verbatim. */
+        public ?string $courierStatus = null,
     ) {}
 }

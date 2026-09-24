@@ -24,6 +24,10 @@ final class OrderStatusChangedNotification extends Notification implements Shoul
         public readonly string $orderNo,
         public readonly string $buyerName,
         public readonly string $statusLabel,
+        /** Set only for a home delivery that has just shipped. */
+        public readonly ?string $carrier = null,
+        public readonly ?string $awbNo = null,
+        public readonly ?string $trackingUrl = null,
     ) {}
 
     /** @return array<int, string> */
@@ -40,6 +44,9 @@ final class OrderStatusChangedNotification extends Notification implements Shoul
                 'orderNo' => $this->orderNo,
                 'buyerName' => $this->buyerName,
                 'statusLabel' => $this->statusLabel,
+                'carrier' => $this->carrier,
+                'awbNo' => $this->awbNo,
+                'trackingUrl' => $this->trackingUrl,
                 'orderUrl' => url('/orders/'.$this->orderNo),
             ]);
     }

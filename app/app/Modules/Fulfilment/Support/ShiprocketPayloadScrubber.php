@@ -33,6 +33,9 @@ final class ShiprocketPayloadScrubber
         'pickup_location', 'payment_method', 'sub_total', 'weight', 'length', 'breadth', 'height',
         'order_date', 'current_status', 'shipment_status', 'onboarding_completed_now',
         'count', 'track_status', 'is_return',
+        // Tracking webhook. `scans` is deliberately absent: its locations
+        // trace the parcel to the buyer's door.
+        'current_status_id', 'shipment_status_id', 'current_timestamp', 'sr_order_id', 'etd',
     ];
 
     /** Scalar keys kept only after sanitising, because they are free text. */

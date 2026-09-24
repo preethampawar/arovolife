@@ -8,6 +8,7 @@ use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Notifications\OrderStatusChangedNotification;
 use App\Modules\Commerce\Support\OrderBuyerNotifier;
+use App\Modules\Fulfilment\Models\Shipment;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -32,10 +33,19 @@ final class SendOrderStatusChangedMail implements ShouldQueue
             return;
         }
 
+        // A home delivery that has just shipped also says who carries it and
+        // how to follow it. A collection parcel goes to the centre, and the
+        // buyer hears from us when it is ready there, not while it travels.
+        $shipped = $event->newStatus === Order::STATUS_SHIPPED && ! $order->isCollection();
+        $shipment = $shipped ? Shipment::where('order_id', $order->id)->latest('id')->first() : null;
+
         $this->notifier->send($order, new OrderStatusChangedNotification(
             orderNo: $order->order_no,
             buyerName: (string) ($order->ship_name ?: 'there'),
             statusLabel: Str::headline($event->newStatus),
+            carrier: $shipped && $order->ship_carrier !== '' ? $order->ship_carrier : null,
+            awbNo: $shipped && $order->ship_tracking_no !== '' ? $order->ship_tracking_no : null,
+            trackingUrl: $shipment?->trackingUrl(),
         ));
     }
 

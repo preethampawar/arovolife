@@ -5,25 +5,27 @@ declare(strict_types=1);
 namespace App\Modules\ActionCenter\Providers\Orders;
 
 use App\Modules\ActionCenter\Providers\AbstractProvider;
-use App\Modules\ActionCenter\Services\ActionCenterSettings;
 use App\Modules\ActionCenter\Support\ActionGroup;
 use App\Modules\ActionCenter\Support\ActionItem;
 use App\Modules\ActionCenter\Support\Severity;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Fulfilment\Models\Shipment;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
- * Shipped but sitting with the carrier past the delivery chase window
- * (plan §4, Orders).
+ * Shipped orders the courier says are coming back, lost or damaged.
+ *
+ * The courier's word arrives through the tracking webhook and is re-read from
+ * its API before it is recorded (`shipments.courier_status`). Nothing moves
+ * the order on its own: whether to re-send, refund or chase the courier is a
+ * staff decision, so it is surfaced here the same day.
  */
-final class ShippedNotDeliveredProvider extends AbstractProvider
+final class CourierExceptionProvider extends AbstractProvider
 {
-    public function __construct(private readonly ActionCenterSettings $settings) {}
-
     public function key(): string
     {
-        return 'orders.shipped_not_delivered';
+        return 'orders.courier_exception';
     }
 
     public function group(): string
@@ -33,12 +35,12 @@ final class ShippedNotDeliveredProvider extends AbstractProvider
 
     public function label(): string
     {
-        return 'Shipped orders not delivered';
+        return 'Parcels returning, lost or damaged';
     }
 
     public function description(): string
     {
-        return 'Orders shipped but not confirmed delivered within the chase window. Follow up with the carrier.';
+        return 'The courier reports these parcels as returning to us, lost or damaged. Decide whether to re-send, refund or raise a claim.';
     }
 
     public function permission(): string
@@ -53,7 +55,7 @@ final class ShippedNotDeliveredProvider extends AbstractProvider
 
     public function slaHours(): int
     {
-        return $this->settings->deliveryChaseDays() * 24;
+        return 24;
     }
 
     public function subjectType(): string
@@ -75,17 +77,19 @@ final class ShippedNotDeliveredProvider extends AbstractProvider
     public function items(int $limit = 50): Collection
     {
         return $this->baseQuery()
+            ->with('shipment:id,order_id,courier_status,status')
             ->orderBy('orders.shipped_at')
             ->limit($limit)
-            ->get(['orders.id', 'orders.order_no', 'orders.shipped_at', 'orders.total_paise', 'orders.warehouse_code'])
+            ->get(['orders.id', 'orders.order_no', 'orders.shipped_at', 'orders.total_paise'])
             ->map(function (Order $order): ActionItem {
+                $said = $order->shipment->courier_status ?? 'returned';
                 $dueAt = $this->dueAt($order->shipped_at);
 
                 return new ActionItem(
                     subjectType: $this->subjectType(),
                     subjectId: (int) $order->id,
                     title: (string) $order->order_no,
-                    subtitle: 'Shipped '.$this->ageLabel($order->shipped_at).' ago, not delivered',
+                    subtitle: 'Courier says: '.$said,
                     occurredAt: $order->shipped_at ?? now(),
                     dueAt: $dueAt,
                     severity: $this->itemSeverity($dueAt),
@@ -93,7 +97,7 @@ final class ShippedNotDeliveredProvider extends AbstractProvider
                     meta: [
                         'order_no' => (string) $order->order_no,
                         'total_paise' => (int) $order->total_paise,
-                        'warehouse_code' => $order->warehouse_code,
+                        'courier_status' => $said,
                     ],
                 );
             })
@@ -105,11 +109,7 @@ final class ShippedNotDeliveredProvider extends AbstractProvider
     {
         $query = Order::query()
             ->where('orders.status', Order::STATUS_SHIPPED)
-            ->whereNotNull('orders.shipped_at')
-            ->where('orders.shipped_at', '<=', $this->slaCutoff())
-            // A parcel the courier reports returning or lost is not late; it
-            // is listed under CourierExceptionProvider instead.
-            ->whereDoesntHave('shipment', fn (Builder $shipment) => $shipment->scopes('withCourierException'));
+            ->whereHas('shipment', fn (Builder $shipment) => $shipment->where('gateway', '!=', Shipment::GATEWAY_MANUAL)->scopes('withCourierException'));
 
         $this->excludeSnoozed($query->getQuery(), 'orders.id');
 

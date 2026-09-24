@@ -87,6 +87,7 @@ use App\Modules\Content\Http\Controllers\Public\PublicFaqController;
 use App\Modules\Content\Http\Controllers\Public\PublicNewsController;
 use App\Modules\Content\Http\Controllers\Public\PublicSeminarController;
 use App\Modules\Fulfilment\Http\Controllers\Admin\AdminDispatchController;
+use App\Modules\Fulfilment\Http\Controllers\ShiprocketWebhookController;
 use App\Modules\Genealogy\Http\Controllers\LineChangeController;
 use App\Modules\Genealogy\Http\Controllers\TreeController;
 use App\Modules\Grievance\Http\Controllers\AdminGrievanceController;
@@ -1159,6 +1160,14 @@ Route::post('/webhooks/razorpay', RazorpayWebhookController::class)
 // answered 200 so Razorpay stops redelivering it.
 Route::post('/webhooks/razorpay/payouts', [RazorpayPayoutWebhookController::class, 'handle'])
     ->middleware('throttle:600,1')->name('webhooks.razorpay.payouts');
+
+// Courier tracking (Shiprocket). A static token in x-api-key is the only
+// authentication, so the job re-reads the status from Shiprocket's API before
+// acting. 404 while the flag is off or no token is set. The path must not
+// contain "shiprocket", "kartrocket", "sr" or "kr" — Shiprocket's panel
+// refuses such addresses.
+Route::post('/webhooks/courier/tracking', ShiprocketWebhookController::class)
+    ->middleware('throttle:600,1')->name('webhooks.courier.tracking');
 
 // ── Public Storefront (Commerce) ─────────────────────────────────────────────
 

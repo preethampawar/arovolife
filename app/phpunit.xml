@@ -49,5 +49,6 @@
         <env name="SHIPROCKET_EMAIL" value="" force="true"/>
         <env name="SHIPROCKET_PASSWORD" value="" force="true"/>
         <env name="SHIPROCKET_BASE_URL" value="" force="true"/>
+        <env name="SHIPROCKET_WEBHOOK_TOKEN" value="" force="true"/>
     </php>
 </phpunit>

@@ -182,10 +182,12 @@ final class ShiprocketGateway implements CourierGateway
             ? strtoupper(trim($track['current_status']))
             : '';
 
+        // Every RTO stage counts as returning: staff need to know the moment
+        // a return starts, not only once the parcel is back on the shelf.
         $status = match (true) {
             $current === '' => null,
             $current === 'DELIVERED' => Shipment::STATUS_DELIVERED,
-            $current === 'RTO DELIVERED' => Shipment::STATUS_RETURNED,
+            str_starts_with($current, 'RTO') => Shipment::STATUS_RETURNED,
             default => Shipment::STATUS_DISPATCHED,
         };
 
@@ -200,6 +202,7 @@ final class ShiprocketGateway implements CourierGateway
             awbNo: $shipment->awb_no,
             gatewayShipmentId: $shipment->gateway_shipment_id,
             labelUrl: $shipment->label_url,
+            courierStatus: mb_substr($current, 0, 40),
         );
     }
 
