@@ -673,7 +673,7 @@ final class AdminSettingsController extends Controller
                 'type' => 'enum',
                 'options' => [
                     ['value' => 'manual', 'label' => 'Manual courier', 'note' => 'Operator types the carrier name and AWB.'],
-                    ['value' => 'shiprocket', 'label' => 'Shiprocket', 'note' => 'Requires credentials in the environment; falls back to manual when unconfigured.'],
+                    ['value' => 'shiprocket', 'label' => 'Shiprocket', 'note' => 'Pre-selected only when Shiprocket is switched on and configured; otherwise the form pre-selects manual. The operator still chooses per order.'],
                 ],
                 'default' => 'manual',
             ],

@@ -14,6 +14,7 @@ use App\Modules\Fulfilment\Data\DispatchInstruction;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
 /**
@@ -37,9 +38,25 @@ final class DispatchService
     ) {}
 
     /**
-     * @param  string|null  $route  Gateway name the operator chose. Unavailable or
-     *                              unknown routes resolve to manual rather than
-     *                              throwing — see CourierGatewayResolver.
+     * The remote booking runs **outside** any database transaction, in three
+     * steps: pack (its own transaction), hand the parcel to the courier, then
+     * one transaction for the order change, the shipment row and the audit.
+     * Inside a single transaction, a courier failure would roll back the
+     * `shipment_events` rows that are the only evidence of what was asked, and
+     * a local failure after a successful booking would erase our record of a
+     * consignment that really exists. A gateway persists its own progress as
+     * it goes, so a retry resumes rather than booking twice.
+     *
+     * @param  string|null  $route  Gateway name the operator chose. Null means
+     *                              manual. A named route that is not available is
+     *                              refused, never silently swapped for manual.
+     * @param  bool  $confirmedRemoteCancelled  The operator has cancelled an earlier
+     *                                          courier booking for this parcel in the
+     *                                          courier's own panel and is now
+     *                                          dispatching by another route — or,
+     *                                          re-dispatching through the same
+     *                                          courier, has checked its panel and
+     *                                          an unanswered booking is not there.
      */
     public function dispatch(
         Order $order,
@@ -48,6 +65,7 @@ final class DispatchService
         ?string $awbNo = null,
         ?int $actorUserId = null,
         ?string $warehouseCode = null,
+        bool $confirmedRemoteCancelled = false,
     ): Shipment {
         if (! in_array($order->status, [Order::STATUS_PAID, Order::STATUS_READY_TO_SHIP], true)) {
             throw new RuntimeException("Cannot dispatch an order in status {$order->status}.");
@@ -56,16 +74,30 @@ final class DispatchService
         $consignee = $this->consigneeFor($order);
         $gateway = $this->routes->route($route);
 
-        return $this->db->transaction(function () use ($order, $consignee, $gateway, $carrierName, $awbNo, $actorUserId, $warehouseCode): Shipment {
-            // The shipment has to exist before a courier can be told about it,
-            // and packing is what creates it. markShipped() would also pack,
-            // but only after we needed the row.
+        if ($route !== null && $gateway->name() !== $route) {
+            // Handing the parcel to manual here would leave the operator
+            // believing a courier had been booked when none was.
+            throw new RuntimeException(
+                "The {$route} route is not available right now, so this order was not dispatched. "
+                .'Choose another route.'
+            );
+        }
+
+        $lock = Cache::lock('fulfilment:dispatch:order:'.$order->id, 300);
+        if (! $lock->get()) {
+            throw new RuntimeException("Order {$order->order_no} is already being dispatched. Refresh in a moment.");
+        }
+
+        try {
             if ($order->packed_at === null) {
+                // pack() opens its own transaction and locks the order.
                 $this->fulfilment->pack($order, $warehouseCode, $actorUserId);
                 $order->refresh();
             }
 
             $shipment = Shipment::where('order_id', $order->id)->firstOrFail();
+            $abandonedBooking = $this->guardAbandonedBooking($shipment, $gateway->name(), $confirmedRemoteCancelled);
+            $releasedUnansweredClaim = $this->releaseUnansweredClaim($shipment, $gateway->name(), $confirmedRemoteCancelled);
 
             $result = $gateway->dispatch(
                 $shipment,
@@ -73,39 +105,122 @@ final class DispatchService
                 'shipment:'.$shipment->id,
             );
 
-            // markShipped writes the order's own carrier/tracking columns and
-            // moves the shipment to dispatched, so the courier's answer is
-            // what lands there — never what the operator typed before the
-            // gateway had its say.
-            $this->orders->markShipped($order, $actorUserId, $result->carrierCode, $result->awbNo);
+            return $this->db->transaction(function () use ($order, $shipment, $consignee, $result, $actorUserId, $abandonedBooking, $releasedUnansweredClaim): Shipment {
+                // The courier call took time; the order may have been
+                // cancelled meanwhile. markShipped() checks the in-memory
+                // status, so read the locked row into the model first.
+                $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
+                $order->setRawAttributes($locked->getAttributes(), true);
 
-            $shipment->refresh()->update([
-                'gateway' => $result->gateway,
-                'gateway_shipment_id' => $result->gatewayShipmentId,
-                'label_url' => $result->labelUrl,
-                'arete_center_id' => $consignee->areteCenterId,
-                'consigned_at' => now(),
-            ]);
+                if (! in_array($order->status, [Order::STATUS_PAID, Order::STATUS_READY_TO_SHIP], true)) {
+                    throw new RuntimeException(
+                        "Order {$order->order_no} changed to {$order->status} while the courier was being booked. "
+                        .($result->gatewayShipmentId !== null
+                            ? "Cancel {$result->gateway} shipment {$result->gatewayShipmentId} in the courier's panel."
+                            : 'Nothing was booked.')
+                    );
+                }
 
-            AuditLog::create([
-                'actor_id' => $actorUserId,
-                'action' => 'order.dispatched',
-                'subject_type' => 'order',
-                'subject_id' => $order->id,
-                'details' => [
-                    'order_no' => $order->order_no,
-                    'gateway' => $result->gateway,
-                    'carrier' => $result->carrierCode,
-                    'awb_present' => $result->awbNo !== null,
-                    // Which journey this was, so a later reader does not have to
-                    // infer it from a centre id that may since have been nulled.
-                    'consigned_to' => $consignee->isCollection() ? 'arete_centre' : 'buyer',
+                // markShipped writes the order's own carrier/tracking columns and
+                // moves the shipment to dispatched, so the courier's answer is
+                // what lands there — never what the operator typed before the
+                // gateway had its say.
+                $this->orders->markShipped($order, $actorUserId, $result->carrierCode, $result->awbNo);
+
+                $shipment->refresh();
+                $update = [
+                    'label_url' => $result->labelUrl,
                     'arete_center_id' => $consignee->areteCenterId,
-                ],
-            ]);
+                    'consigned_at' => now(),
+                ];
+                if ($abandonedBooking === null) {
+                    $update['gateway'] = $result->gateway;
+                    $update['gateway_shipment_id'] = $result->gatewayShipmentId;
+                }
+                // Otherwise the row keeps the cancelled booking's gateway and
+                // id: they are the only link to a consignment that existed,
+                // and the carrier and AWB actually used are on the row already.
+                $shipment->update($update);
 
-            return $shipment->refresh();
-        });
+                AuditLog::create([
+                    'actor_id' => $actorUserId,
+                    'action' => 'order.dispatched',
+                    'subject_type' => 'order',
+                    'subject_id' => $order->id,
+                    'details' => [
+                        'order_no' => $order->order_no,
+                        'gateway' => $result->gateway,
+                        'carrier' => $result->carrierCode,
+                        'awb_present' => $result->awbNo !== null,
+                        // Which journey this was, so a later reader does not have to
+                        // infer it from a centre id that may since have been nulled.
+                        'consigned_to' => $consignee->isCollection() ? 'arete_centre' : 'buyer',
+                        'arete_center_id' => $consignee->areteCenterId,
+                        'remote_booking_cancelled_by_operator' => $abandonedBooking,
+                        'unanswered_booking_confirmed_absent_by_operator' => $releasedUnansweredClaim,
+                    ],
+                ]);
+
+                return $shipment->refresh();
+            });
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * A parcel already booked with a courier must not also be sent another
+     * way until that booking is cancelled: the booked courier still arrives,
+     * and on the live account it is still charged. The operator cancels it in
+     * the courier's panel and says so; we record that they did.
+     *
+     * A shipment claimed for a courier with no shipment id yet is treated the
+     * same way: that is a booking request that got no reply, and the courier
+     * may have booked it anyway.
+     *
+     * @return array{gateway: string, gateway_shipment_id: string|null}|null the booking being abandoned
+     */
+    private function guardAbandonedBooking(Shipment $shipment, string $route, bool $confirmedRemoteCancelled): ?array
+    {
+        if ($shipment->gateway === Shipment::GATEWAY_MANUAL || $shipment->gateway === $route) {
+            return null;
+        }
+
+        if (! $confirmedRemoteCancelled) {
+            $which = $shipment->gateway_shipment_id !== null
+                ? "is already booked with {$shipment->gateway} (shipment {$shipment->gateway_shipment_id})"
+                : "may already be booked with {$shipment->gateway} (an earlier booking request got no reply; search for order {$shipment->order?->order_no})";
+
+            throw new RuntimeException(
+                "This parcel {$which}. Cancel that booking in the {$shipment->gateway} panel first, "
+                .'then confirm you have cancelled it to dispatch another way.'
+            );
+        }
+
+        return ['gateway' => $shipment->gateway, 'gateway_shipment_id' => $shipment->gateway_shipment_id];
+    }
+
+    /**
+     * Re-dispatching through the same courier after a booking request that got
+     * no reply: the gateway refuses to create again until the operator has
+     * checked the courier's panel. Once they confirm it is not there, drop the
+     * claim so the gateway books afresh.
+     */
+    private function releaseUnansweredClaim(Shipment $shipment, string $route, bool $confirmedRemoteCancelled): bool
+    {
+        if (! $confirmedRemoteCancelled
+            || $shipment->gateway === Shipment::GATEWAY_MANUAL
+            || $shipment->gateway !== $route
+            || $shipment->gateway_shipment_id !== null) {
+            return false;
+        }
+
+        $released = Shipment::whereKey($shipment->id)
+            ->whereNull('gateway_shipment_id')
+            ->update(['gateway' => Shipment::GATEWAY_MANUAL]) === 1;
+        $shipment->refresh();
+
+        return $released;
     }
 
     private function consigneeFor(Order $order): Consignee

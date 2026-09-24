@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $qty
  * @property int $order_id
  * @property int $product_variant_id
+ * @property string $product_name_snapshot
+ * @property string $variant_sku_snapshot
  * @property string $hsn_code_snapshot
  * @property int $gst_rate_bp
  * @property int $taxable_value_paise

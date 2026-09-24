@@ -142,6 +142,23 @@ return [
         ],
     ],
 
+    'fulfilment' => [
+        // Shiprocket API user. Secrets only — business levers (on/off, pickup
+        // location, default route) live in the settings table, behind the
+        // ShiprocketFulfilmentFeature flag. The host decides the mode:
+        // production accepts only apiv2.shiprocket.in, every other environment
+        // only api-sandbox.shiprocket.in, so a staging build can never book a
+        // real courier against the company's wallet.
+        'shiprocket' => [
+            'email' => (string) env('SHIPROCKET_EMAIL', ''),
+            'password' => (string) env('SHIPROCKET_PASSWORD', ''),
+            'base_url' => (string) env('SHIPROCKET_BASE_URL', 'https://api-sandbox.shiprocket.in/v1/external'),
+            // Tracking webhook token (Slice 6). Blank = webhook refused.
+            'webhook_token' => (string) env('SHIPROCKET_WEBHOOK_TOKEN', ''),
+            'timeout_seconds' => (int) env('SHIPROCKET_TIMEOUT_SECONDS', 20),
+        ],
+    ],
+
     'recompute' => [
         'enabled' => (bool) env('COMP_RECOMPUTE_ENABLED', false),
 

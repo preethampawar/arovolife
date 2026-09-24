@@ -44,5 +44,10 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <!-- Real Shiprocket API users live in the dev .env. A test must never
+             see them: it would book against the sandbox, or log in with them. -->
+        <env name="SHIPROCKET_EMAIL" value="" force="true"/>
+        <env name="SHIPROCKET_PASSWORD" value="" force="true"/>
+        <env name="SHIPROCKET_BASE_URL" value="" force="true"/>
     </php>
 </phpunit>

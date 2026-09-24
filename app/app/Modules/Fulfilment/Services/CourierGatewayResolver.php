@@ -7,6 +7,8 @@ namespace App\Modules\Fulfilment\Services;
 use App\Modules\Fulfilment\Contracts\CourierGateway;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Fulfilment\Support\FulfilmentSettings;
+use App\Modules\Shared\Features\ShiprocketFulfilmentFeature;
+use Laravel\Pennant\Feature;
 
 /**
  * Which couriers an operator may hand a parcel to, and which one is offered
@@ -22,12 +24,16 @@ use App\Modules\Fulfilment\Support\FulfilmentSettings;
  * integration is down would strand real parcels for no safety gain.
  *
  * The operator always chooses per order (plan AD-8). `preferred()` only decides
- * what the dispatch form highlights.
+ * what the dispatch form highlights. The fallback in `route()` is for a caller
+ * that expressed no real preference; `DispatchService` refuses outright when an
+ * operator explicitly asked for a courier that is not available, so an order is
+ * never hand-dispatched while the operator believes a courier booked it.
  */
 final class CourierGatewayResolver
 {
     public function __construct(
         private readonly ManualCourier $manual,
+        private readonly ShiprocketGateway $shiprocket,
         private readonly FulfilmentSettings $settings,
     ) {}
 
@@ -45,8 +51,15 @@ final class CourierGatewayResolver
     {
         $routes = [Shipment::GATEWAY_MANUAL => $this->manual];
 
-        // Shiprocket joins here in Slice 4. Until there is an account, manual
-        // is not merely the fallback — it is the whole list.
+        // Three separate gates, each owned by someone different: the flag
+        // (developer: does this code path exist at all), the setting (the
+        // business: do we use it), and permitted() (the environment: are
+        // there credentials for the right host and a pickup to book from).
+        if (Feature::for(null)->active(ShiprocketFulfilmentFeature::class)
+            && $this->settings->shiprocketEnabled()
+            && $this->shiprocket->permitted()) {
+            $routes[Shipment::GATEWAY_SHIPROCKET] = $this->shiprocket;
+        }
 
         return $routes;
     }
@@ -61,9 +74,9 @@ final class CourierGatewayResolver
      * The gateway to dispatch through.
      *
      * An unavailable or unknown request resolves to manual rather than
-     * throwing: the caller is an operator with a parcel in their hand, and the
-     * useful answer is "you will have to write the AWB yourself", not an error
-     * page.
+     * throwing. Callers that must not swap routes silently compare the
+     * result's name with what they asked for — DispatchService refuses the
+     * dispatch when they differ.
      */
     public function route(?string $requested = null): CourierGateway
     {
