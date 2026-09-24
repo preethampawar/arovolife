@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Models;
 
+use App\Modules\Catalog\Support\CatalogImageUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * @property int $id
@@ -64,9 +64,9 @@ final class ProductCategory extends Model
      */
     public function imageUrl(): ?string
     {
-        // Private s3 bucket → signed, time-limited URL (a plain ->url() 403s).
+        // Private s3 bucket → CDN URL when configured, else a signed URL.
         return $this->image_s3_key !== null
-            ? Storage::disk('s3')->temporaryUrl($this->image_s3_key, now()->addDay())
+            ? CatalogImageUrl::for($this->image_s3_key)
             : null;
     }
 
@@ -81,7 +81,7 @@ final class ProductCategory extends Model
         }
 
         return $this->banner_s3_key !== null
-            ? Storage::disk('s3')->temporaryUrl($this->banner_s3_key, now()->addDay())
+            ? CatalogImageUrl::for($this->banner_s3_key)
             : null;
     }
 }

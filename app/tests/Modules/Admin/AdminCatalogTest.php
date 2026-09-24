@@ -378,3 +378,17 @@ it('ACAT-12: the product form loads Trix from the bundled asset, never unpkg', f
         ->assertDontSee('unpkg.com')
         ->assertSee('assets/trix-', false);
 });
+
+it('ACAT-14: with the CDN set, trix-upload returns the stable CDN URL the editor will save', function (): void {
+    Storage::fake('s3');
+    config(['arovolife.media.catalog_cdn_url' => 'https://cdn.example.com']);
+    $admin = acatAdmin();
+
+    $response = $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.catalog.trix-upload'), ['file' => UploadedFile::fake()->image('inline.png', 400, 400)]);
+
+    $key = $response->assertOk()->json('key');
+    expect($key)->toStartWith('products/inline/');
+    expect($response->json('url'))->toBe('https://cdn.example.com/'.$key);
+});

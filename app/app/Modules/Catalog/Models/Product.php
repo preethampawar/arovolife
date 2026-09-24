@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Models;
 
+use App\Modules\Catalog\Support\CatalogImageUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $category_id
  * @property string|null $category
  * @property string $slug
+ * @property string|null $description_html
  */
 final class Product extends Model
 {
@@ -119,5 +121,15 @@ final class Product extends Model
     public function isPublished(): bool
     {
         return $this->status === self::STATUS_ACTIVE;
+    }
+
+    /**
+     * The stored (purified) description HTML with every inline catalogue
+     * image re-pointed at a live URL — the editor saved a signed URL that
+     * expires a day after upload.
+     */
+    public function descriptionHtmlForDisplay(): string
+    {
+        return CatalogImageUrl::rewriteStoredHtml((string) $this->description_html);
     }
 }

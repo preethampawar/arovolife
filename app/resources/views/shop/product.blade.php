@@ -260,10 +260,11 @@
             @endif
             {{-- value_html was HTMLPurifier-sanitised (the `products` profile)
                  at write time, so it is safe to render verbatim (may include
-                 a nutritional-facts table or inline image). --}}
+                 a nutritional-facts table or inline image). Display only swaps
+                 stored S3 image URLs for live ones (CatalogImageUrl). --}}
             <div class="prose prose-sm max-w-none text-gray-700 leading-relaxed
                         prose-table:w-full prose-table:text-sm prose-th:bg-gray-50 prose-th:text-left
-                        prose-th:px-3 prose-th:py-2 prose-td:px-3 prose-td:py-2 prose-td:border prose-th:border prose-td:border-gray-200 prose-th:border-gray-200">{!! $attr->value_html !!}</div>
+                        prose-th:px-3 prose-th:py-2 prose-td:px-3 prose-td:py-2 prose-td:border prose-th:border prose-td:border-gray-200 prose-th:border-gray-200">{!! $attr->valueHtmlForDisplay() !!}</div>
         </div>
         @endforeach
     </div>
@@ -276,8 +277,9 @@
     <h2 class="text-xl font-bold text-gray-900 mb-4">Product details</h2>
     @if($product->description_html)
         {{-- Stored already HTMLPurifier-sanitized (the `products` profile) at
-             write time, so it is safe to render. --}}
-        <div class="prose prose-sm max-w-none text-gray-700 leading-relaxed">{!! $product->description_html !!}</div>
+             write time, so it is safe to render; display only swaps stored S3
+             image URLs for live ones (CatalogImageUrl). --}}
+        <div class="prose prose-sm max-w-none text-gray-700 leading-relaxed">{!! $product->descriptionHtmlForDisplay() !!}</div>
     @else
         <p class="text-sm text-gray-600 leading-relaxed">{{ $product->description }}</p>
     @endif

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Models;
 
+use App\Modules\Catalog\Support\CatalogImageUrl;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * A storefront carousel banner. The image is EITHER an uploaded S3 object
@@ -59,9 +59,9 @@ final class Banner extends Model
         }
 
         // Catalog images live on the PRIVATE s3 bucket (no public ACL/policy),
-        // so they're served via a signed, time-limited URL — same as KYC/ID
-        // photos. A plain ->url() would 403 in the browser.
-        return $this->s3_key !== null ? Storage::disk('s3')->temporaryUrl($this->s3_key, now()->addDay()) : '';
+        // so they're served from the CDN when configured, else via a signed,
+        // time-limited URL. A plain ->url() would 403 in the browser.
+        return $this->s3_key !== null ? CatalogImageUrl::for($this->s3_key) : '';
     }
 
     public function hasImage(): bool

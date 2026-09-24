@@ -250,3 +250,26 @@ it('SCAT-07: the All-products view segregates products by category, capped at 5,
         ->assertOk()
         ->assertSee('Segmented Item 6');
 });
+
+it('SCAT-08: stored description and attribute images with an expired signed URL render from the CDN', function (): void {
+    Storage::fake('s3');
+    config([
+        'filesystems.disks.s3.bucket' => 'arovolife-prod',
+        'arovolife.media.catalog_cdn_url' => 'https://cdn.example.com',
+    ]);
+    scatEnableStorefront();
+    $health = ProductCategory::create(['slug' => 'health-care', 'name' => 'Health Care', 'sort' => 1, 'status' => 'active']);
+    $expired = fn (string $key): string => 'https://arovolife-prod.s3.ap-south-1.amazonaws.com/'.$key
+        .'?X-Amz-Algorithm=AWS4-HMAC-SHA256&amp;X-Amz-Expires=86400&amp;X-Amz-Signature=deadbeef';
+    $descKey = 'products/inline/1b4e28ba-2fa1-11d2-883f-0016d3cca427.png';
+    $attrKey = 'products/inline/6fa459ea-ee8a-3ca4-894e-db77e160355e.png';
+    $product = scatProduct('AV-CDN', 'cdn-prod', $health, [
+        'description_html' => '<p>Body</p><img src="'.$expired($descKey).'" alt="d">',
+    ]);
+    ProductAttribute::create(['product_id' => $product->id, 'label' => 'Nutrition', 'value_html' => '<img src="'.$expired($attrKey).'" alt="n">', 'sort' => 1]);
+
+    $this->get(route('shop.product', 'cdn-prod'))->assertOk()
+        ->assertSee('src="https://cdn.example.com/'.$descKey.'"', false)
+        ->assertSee('src="https://cdn.example.com/'.$attrKey.'"', false)
+        ->assertDontSee('X-Amz-Signature=deadbeef', false);
+});

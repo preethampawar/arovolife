@@ -195,4 +195,15 @@ return [
     'scale' => [
         'database' => trim((string) env('COMP_SCALE_DATABASE', '')),
     ],
+
+    /*
+    | Catalogue images (products, categories, banners) are served from this CDN
+    | base URL when set — production: the CloudFront distribution in front of
+    | the private bucket. Empty keeps the 1-day signed S3 URLs. Private uploads
+    | (KYC, ID photos, …) are never served from it. See CatalogImageUrl and
+    | docs/plans/2026-09-24-cloudfront-catalog-cdn.md.
+    */
+    'media' => [
+        'catalog_cdn_url' => trim((string) env('CATALOG_CDN_URL', '')),
+    ],
 ];

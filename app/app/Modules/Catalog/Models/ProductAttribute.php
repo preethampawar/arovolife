@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Models;
 
+use App\Modules\Catalog\Support\CatalogImageUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * storage, caution, directions, …). The value is sanitised WYSIWYG HTML so it
  * can hold a formatted table or an inline image (e.g. a nutritional-facts
  * table). Rows render on the product detail page ordered by {@see $sort}.
+ *
+ * @property string|null $value_html
  */
 final class ProductAttribute extends Model
 {
@@ -32,5 +35,11 @@ final class ProductAttribute extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /** The stored value HTML with inline catalogue images re-pointed at a live URL. */
+    public function valueHtmlForDisplay(): string
+    {
+        return CatalogImageUrl::rewriteStoredHtml((string) $this->value_html);
     }
 }

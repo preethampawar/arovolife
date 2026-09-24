@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Models;
 
+use App\Modules\Catalog\Support\CatalogImageUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 final class ProductImage extends Model
 {
@@ -45,7 +45,7 @@ final class ProductImage extends Model
             return $this->external_url;
         }
 
-        // Private s3 bucket → signed, time-limited URL (a plain ->url() 403s).
-        return $this->s3_key !== null ? Storage::disk('s3')->temporaryUrl($this->s3_key, now()->addDay()) : '';
+        // Private s3 bucket → CDN URL when configured, else a signed URL.
+        return $this->s3_key !== null ? CatalogImageUrl::for($this->s3_key) : '';
     }
 }
