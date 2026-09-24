@@ -109,6 +109,17 @@ delivered* list. The buyer's shipped email and their order page carry the
 courier, the AWB and a *Track parcel* link. A manual parcel gets no link,
 because we don't know that courier's tracking site.
 
+**Check courier status** — if a Shiprocket parcel's status looks stale (the
+update from Shiprocket never arrived), press *Check courier status* under the
+shipment line on the order page. It asks Shiprocket's API for the status now and
+applies it by exactly the same rules as above: a confirmed delivery marks a
+home-delivery order delivered and opens its cooling-off window; a return is
+flagged in the Action Center; anything else just updates *courier says*. A
+collection order is never delivered this way. If Shiprocket cannot be reached,
+nothing changes. The button shows only for Shiprocket parcels still with the
+courier, and every check is recorded in the audit log under your name. If
+Shiprocket itself is wrong, use **Mark as Delivered** below.
+
 **Mark as Delivered** — labelled on the order screen as *"opens
 cooling-off"* — is exactly that: delivery is the event the 30-day statutory
 cooling-off clock starts from, not the order date or the ship date. See

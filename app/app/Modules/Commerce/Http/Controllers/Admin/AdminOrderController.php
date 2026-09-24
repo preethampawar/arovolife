@@ -6,10 +6,13 @@ namespace App\Modules\Commerce\Http\Controllers\Admin;
 
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Fulfilment\Models\Shipment;
 use App\Modules\Fulfilment\Services\CollectionHandoverService;
 use App\Modules\Fulfilment\Services\CourierGatewayResolver;
+use App\Modules\Fulfilment\Exceptions\ShiprocketApiException;
+use App\Modules\Fulfilment\Services\CourierTrackingSync;
 use App\Modules\Fulfilment\Services\DispatchService;
 use App\Modules\Fulfilment\Services\ManualCourier;
 use App\Modules\Fulfilment\Services\ShiprocketGateway;
@@ -18,11 +21,13 @@ use App\Modules\Inventory\Services\InventorySettings;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Shared\Features\OfflineOrdersFeature;
+use App\Modules\Shared\Features\ShiprocketFulfilmentFeature;
 use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Tax\Models\Invoice;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -209,7 +214,18 @@ final class AdminOrderController extends Controller
             'packWarehouses' => Warehouse::query()->fulfilling()->orderBy('name')->get(),
             'defaultWarehouseCode' => $this->inventorySettings->defaultWarehouseCode(),
             'offlineOrdersOn' => Feature::for(null)->active(OfflineOrdersFeature::class),
+            'canCheckTracking' => $this->trackable($order, $shipment),
         ]);
+    }
+
+    /** A Shiprocket-booked parcel the courier still has, while the gateway flag is on. */
+    private function trackable(Order $order, ?Shipment $shipment): bool
+    {
+        return $shipment !== null
+            && $shipment->gateway === Shipment::GATEWAY_SHIPROCKET
+            && $shipment->gateway_shipment_id !== null
+            && in_array($order->status, [Order::STATUS_SHIPPED, Order::STATUS_AWAITING_COLLECTION], true)
+            && Feature::for(null)->active(ShiprocketFulfilmentFeature::class);
     }
 
     /** Inventory plan H7: pick FEFO batches for a paid order and mark it packed. */
@@ -321,6 +337,63 @@ final class AdminOrderController extends Controller
 
         return redirect()->route('admin.commerce.orders.show', $order)
             ->with('status', "New collection code {$code} issued and emailed to the buyer. The old code no longer works, and it will not be shown again.");
+    }
+
+    /**
+     * Ask Shiprocket for the parcel's status now, for when a tracking webhook
+     * never arrived. It goes through the same API-verified path as the webhook,
+     * so a DELIVERED here opens cooling-off exactly as the webhook would.
+     */
+    public function checkTracking(Order $order): RedirectResponse
+    {
+        $shipment = Shipment::where('order_id', $order->id)->latest('id')->first();
+        if ($shipment === null || ! $this->trackable($order, $shipment)) {
+            return redirect()->route('admin.commerce.orders.show', $order)
+                ->withErrors(['tracking' => 'This order has no Shiprocket parcel in transit to check.']);
+        }
+
+        $actorId = is_numeric(auth()->id()) ? (int) auth()->id() : null;
+
+        $audit = fn (string $outcome, ?string $courierSays): AuditLog => AuditLog::create([
+            'actor_id' => $actorId,
+            'action' => 'shipment.tracking_checked',
+            'subject_type' => 'order',
+            'subject_id' => $order->id,
+            'details' => ['order_no' => $order->order_no, 'outcome' => $outcome, 'courier_status' => $courierSays],
+        ]);
+
+        try {
+            $outcome = app(CourierTrackingSync::class)->sync($shipment, $actorId, ['trigger' => 'staff_check']);
+        } catch (ShiprocketApiException|ConnectionException $e) {
+            Log::warning('shiprocket tracking check failed', ['order_id' => $order->id, 'error' => mb_substr($e->getMessage(), 0, 200)]);
+            $audit('error: shiprocket unreachable', null);
+
+            return redirect()->route('admin.commerce.orders.show', $order)
+                ->withErrors(['tracking' => 'Shiprocket could not be reached. Nothing was changed; try again in a few minutes.']);
+        } catch (\Throwable $e) {
+            Log::error('shiprocket tracking check could not be applied', ['order_id' => $order->id, 'exception' => $e::class, 'error' => mb_substr($e->getMessage(), 0, 200)]);
+            $audit('error: not applied', null);
+
+            return redirect()->route('admin.commerce.orders.show', $order)
+                ->withErrors(['tracking' => 'The check could not be applied. Nothing was changed; try again, or tell the developer if it keeps happening.']);
+        }
+
+        $courierSays = $shipment->courier_status;
+        $audit($outcome, $courierSays);
+
+        $message = match ($outcome) {
+            CourierTrackingSync::OUTCOME_DELIVERED => 'Shiprocket confirms the parcel was delivered. The order is now delivered and the buyer\'s 30-day cooling-off has started.',
+            CourierTrackingSync::OUTCOME_DELIVERED_NO_CHANGE => match (true) {
+                $order->isCollection() && $order->fresh()?->status === Order::STATUS_AWAITING_COLLECTION => 'Shiprocket says the parcel reached the centre, and its arrival is already recorded. It is delivered when the buyer collects it with their code.',
+                $order->isCollection() => 'Shiprocket says the parcel reached the centre. Record its arrival once the centre confirms it.',
+                default => 'Shiprocket says delivered; the order was already past shipped, so nothing changed.',
+            },
+            CourierTrackingSync::OUTCOME_RETURNING => "The courier is returning this parcel ({$courierSays}). It is listed in the Action Center.",
+            CourierTrackingSync::OUTCOME_IN_TRANSIT => "Still in transit. The courier says: {$courierSays}.",
+            default => 'Shiprocket has no tracking status for this parcel yet. Try again later.',
+        };
+
+        return redirect()->route('admin.commerce.orders.show', $order)->with('status', $message);
     }
 
     public function markDelivered(Request $request, Order $order): RedirectResponse

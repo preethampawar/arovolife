@@ -69,7 +69,7 @@ pickup address in the Shiprocket panel (Settings → Pickup addresses).
 - Only an allow-list of fields is stored (`ShiprocketPayloadScrubber`). Scan
   locations and buyer details are never kept.
 - Duplicates are keyed on sha256(`sr_order_id|shipment_id|awb|current_status_id|current_timestamp`).
-- `ProcessShiprocketWebhookJob` (queue `default`, 3 tries) calls `track()` and records `shipments.courier_status`. Then:
+- `ProcessShiprocketWebhookJob` (queue `default`, 3 tries) hands the parcel to `CourierTrackingSync`, which calls `track()` and records `shipments.courier_status`. The staff **Check courier status** button uses the same service. Then:
   - **DELIVERED** on a home delivery that is still `shipped` → `markDelivered`, under an order lock, audited `order.delivered_by_courier`.
   - **A collection order is never delivered by the courier.** It becomes delivered at the handover, against the buyer's code.
   - **RTO…** → the shipment becomes `returned_to_origin`. The order is left alone.
@@ -97,4 +97,4 @@ packs, so raise the product dimensions rather than changing the code.
 | Sandbox stops at "AWB not assigned" | The sandbox has limited AWB stock. This is expected on staging; it exercises the pending-booking path above. |
 | Shiprocket option greyed out | The product parcel details are missing. The order page links each product. |
 | Webhook 401 in the panel's test | The token doesn't match `.env`. Did you run `config:clear`? |
-| Delivered in the panel but not on our side | Check `shipment_events` (direction `webhook`) and the failed jobs. The job re-reads the API; if the API has not caught up yet, the retry (60 s / 5 min / 15 min) will. |
+| Delivered in the panel but not on our side | Press **Check courier status** on the order page: it re-reads the API through `CourierTrackingSync`, the same path as the webhook job (audited `shipment.tracking_checked`; a delivery is audited `order.delivered_by_courier` with the staff actor and `trigger: staff_check`). If webhooks never arrive at all, check `shipment_events` (direction `webhook`) and the failed jobs. |

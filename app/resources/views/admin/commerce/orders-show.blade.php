@@ -268,6 +268,19 @@
                 @if($shipment->courier_status) · courier says <span class="font-medium">{{ $shipment->courier_status }}</span>@endif
                 @if($shipment->label_url && str_starts_with($shipment->label_url, 'https://')) · <a href="{{ $shipment->label_url }}" target="_blank" rel="noopener noreferrer" class="text-brand-700 underline">Shipping label</a>@endif
                 @endif
+                @if($canCheckTracking)
+                <form method="POST" action="{{ route('admin.commerce.orders.tracking', $order) }}" class="mt-3"
+                      data-confirm="Ask Shiprocket for this parcel's status now?"
+                      data-confirm-title="Check courier status"
+                      data-confirm-impact="If Shiprocket confirms the parcel was delivered to the buyer's address, the order is marked delivered and the buyer's 30-day cooling-off starts. A parcel being returned is flagged in the Action Center.">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                        <x-lucide-refresh-cw class="w-3.5 h-3.5" /> Check courier status
+                    </button>
+                    <x-help-tip text="Use this when the tracking update has not arrived on its own. It reads the status straight from Shiprocket; it never changes anything Shiprocket has not confirmed." />
+                </form>
+                @endif
+                @error('tracking')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
                 @else
                 No shipment recorded for this order.
                 @endif

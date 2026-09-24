@@ -50,6 +50,12 @@ properties had to hold:
    - A queued job then re-reads the status from Shiprocket's API. Only an
      API-confirmed DELIVERED can mark a home delivery delivered, and it does so
      under an order lock.
+   - *Amended 2026-09-24:* staff can trigger the same re-read from the order
+     page (**Check courier status**, `commerce.order.manage`, throttled 10 a
+     minute) for when a webhook never arrives. Both paths go through
+     `CourierTrackingSync`; staff cannot supply a status. Every check is
+     audited `shipment.tracking_checked`, and a delivery it finds is audited
+     `order.delivered_by_courier` with the staff actor and `trigger: staff_check`.
    - A collection order is never delivered by the courier. It becomes delivered
      at the handover, against the buyer's collection code.
 5. **Exceptions are flagged, never auto-resolved.**

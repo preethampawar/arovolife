@@ -258,11 +258,6 @@ parameters:
 			count: 1
 			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
 
-		-
-			message: '#^Parameter \#2 \$actorUserId of method App\\Modules\\Commerce\\Services\\OrderStateMachine\:\:markShipped\(\) expects int\|null, int\|string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Modules/Commerce/Http/Controllers/Admin/AdminOrderController.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$code\.$#'
