@@ -671,64 +671,82 @@
     </section>
 
     {{-- Compliance commitment banner (replaces "Absolute Skincare set") --}}
-    <section class="relative bg-gradient-to-br from-brand-600 via-brand-500 to-brand-700 text-white overflow-hidden">
-        <div class="absolute -top-20 -right-20 w-[400px] h-[400px] bg-white/10 rounded-full blur-3xl"></div>
-        <div class="absolute -bottom-20 -left-20 w-[350px] h-[350px] bg-sunrise-400/20 rounded-full blur-3xl"></div>
+    <section class="relative bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 text-white overflow-hidden">
+        <div class="absolute -top-24 -right-24 w-[420px] h-[420px] bg-brand-500/25 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-24 -left-24 w-[380px] h-[380px] bg-sunrise-500/15 rounded-full blur-3xl"></div>
 
         <div class="relative max-w-7xl mx-auto px-6 py-16 md:py-20">
-            <div class="text-center mb-10">
-                <h2 class="text-3xl md:text-4xl font-bold mb-2">Our Compliance Commitment</h2>
-                <p class="text-lg text-white font-semibold mb-3">Integrity in Every Action. Transparency in Every Relationship.</p>
-                <p class="text-brand-50 mb-3">Every promise is backed by code and audit.</p>
-                <div class="max-w-3xl mx-auto space-y-3">
-                    <p class="text-brand-50">At arovolife, compliance is more than a legal requirement—it is a fundamental part of how we build trust, protect people and create a responsible direct selling ecosystem.</p>
-                    <p class="text-brand-50">We are committed to conducting our business with clarity, accountability and respect for applicable laws, regulations and ethical standards. From registration and product communication to data protection, contracts and business practices, our goal is to ensure that every interaction is responsible and transparent.</p>
+            <div class="text-center mb-12">
+                <span class="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-sunrise-500/15 border border-sunrise-400/40 text-sunrise-300 text-xs font-semibold uppercase tracking-wider">
+                    <x-lucide-shield-check class="w-4 h-4" />
+                    Trust &amp; Compliance
+                </span>
+                <h2 class="text-3xl md:text-4xl font-bold mb-3">Our Compliance Commitment</h2>
+                <p class="text-lg text-sunrise-300 font-semibold mb-3">Integrity in Every Action. Transparency in Every Relationship.</p>
+                <p class="text-white/90 font-medium mb-5">Every promise is backed by code and audit.</p>
+                <div class="mx-auto mb-5 h-1 w-16 rounded-full bg-gradient-to-r from-brand-400 to-sunrise-500"></div>
+                <div class="max-w-3xl mx-auto space-y-3 leading-relaxed">
+                    <p class="text-brand-100">At arovolife, compliance is more than a legal requirement—it is a fundamental part of how we build trust, protect people and create a responsible direct selling ecosystem.</p>
+                    <p class="text-brand-100">We are committed to conducting our business with clarity, accountability and respect for applicable laws, regulations and ethical standards. From registration and product communication to data protection, contracts and business practices, our goal is to ensure that every interaction is responsible and transparent.</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
                 @foreach([
-                    ['DSR 2021',     'Direct Selling Rules compliant'],
-                    ['DPDP 2023',    'Digital Personal Data Protection Act'],
-                    ['IT Act §10A',  'Electronic contracts as binding'],
-                    ['Audit Trail',  'Every admin action logged'],
+                    ['DSR 2021',     'Direct Selling Rules compliant',       'scale'],
+                    ['DPDP 2023',    'Digital Personal Data Protection Act', 'lock-keyhole'],
+                    ['IT Act §10A',  'Electronic contracts as binding',      'file-pen-line'],
+                    ['Audit Trail',  'Every admin action logged',            'history'],
                 ] as $item)
-                <div class="bg-white/10 backdrop-blur rounded-xl border border-white/20 p-5">
-                    <p class="text-sm uppercase tracking-wider text-brand-100 mb-1 font-medium">Statute</p>
-                    <p class="font-bold text-lg">{{ $item[0] }}</p>
-                    <p class="text-sm text-brand-50 mt-1">{{ $item[1] }}</p>
+                <div class="rounded-xl bg-white/[0.07] border border-white/15 border-t-4 border-t-sunrise-500 p-5 transition hover:bg-white/[0.12] hover:-translate-y-0.5">
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="text-xs uppercase tracking-wider text-sunrise-300 font-semibold">Statute</p>
+                        <span class="flex items-center justify-center w-9 h-9 rounded-lg bg-sunrise-500/15 text-sunrise-300">
+                            {{ svg('lucide-'.$item[2], 'w-5 h-5') }}
+                        </span>
+                    </div>
+                    <p class="font-bold text-xl">{{ $item[0] }}</p>
+                    <p class="text-sm text-brand-100 mt-1">{{ $item[1] }}</p>
                 </div>
                 @endforeach
             </div>
 
-            <p class="text-lg text-white font-semibold text-center mt-12 mb-5">Our Commitment to Responsible Business</p>
+            <h3 class="text-xl md:text-2xl text-white font-bold text-center mt-16 mb-6">Our Commitment to Responsible Business</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                 @foreach([
-                    ['Direct Selling Rules',              'We strive to operate in alignment with the applicable Direct Selling framework, with a clear focus on genuine product sales, fair practices and responsible representation.'],
-                    ['Data & Privacy Protection',         'We respect personal information and aim to handle customer and direct seller data responsibly, securely and in accordance with applicable privacy requirements.'],
-                    ['Clear Agreements & Policies',       'Our direct seller relationship is supported by documented terms, policies and procedures designed to create clarity around rights, responsibilities and business conduct.'],
-                    ['Transparent Records & Audit Trail', 'We maintain structured records and processes to support accountability, traceability and responsible administration across our business operations.'],
-                    ['Ethical Product Communication',     'We encourage accurate, responsible and compliant product communication without misleading claims, exaggerated promises or inappropriate representations.'],
-                    ['Continuous Review',                 'Compliance is an ongoing responsibility. We aim to review and strengthen our processes as laws, standards and business requirements evolve.'],
+                    ['Direct Selling Rules',              'We strive to operate in alignment with the applicable Direct Selling framework, with a clear focus on genuine product sales, fair practices and responsible representation.', 'handshake'],
+                    ['Data & Privacy Protection',         'We respect personal information and aim to handle customer and direct seller data responsibly, securely and in accordance with applicable privacy requirements.', 'shield-check'],
+                    ['Clear Agreements & Policies',       'Our direct seller relationship is supported by documented terms, policies and procedures designed to create clarity around rights, responsibilities and business conduct.', 'file-text'],
+                    ['Transparent Records & Audit Trail', 'We maintain structured records and processes to support accountability, traceability and responsible administration across our business operations.', 'clipboard-list'],
+                    ['Ethical Product Communication',     'We encourage accurate, responsible and compliant product communication without misleading claims, exaggerated promises or inappropriate representations.', 'message-square-check'],
+                    ['Continuous Review',                 'Compliance is an ongoing responsibility. We aim to review and strengthen our processes as laws, standards and business requirements evolve.', 'refresh-cw'],
                 ] as $item)
-                <div class="bg-white/10 backdrop-blur rounded-xl border border-white/20 p-5">
-                    <p class="text-sm uppercase tracking-wider text-brand-100 mb-1 font-medium">Commitment</p>
-                    <p class="font-bold text-lg">{{ $item[0] }}</p>
-                    <p class="text-sm text-brand-50 mt-1">{{ $item[1] }}</p>
+                <div class="flex gap-4 rounded-xl bg-white/[0.05] border border-white/10 p-5 transition hover:bg-white/[0.10] hover:border-brand-400/40">
+                    <span class="shrink-0 flex items-center justify-center w-11 h-11 rounded-full bg-brand-500/20 text-brand-300 ring-1 ring-brand-400/30">
+                        {{ svg('lucide-'.$item[2], 'w-5 h-5') }}
+                    </span>
+                    <div>
+                        <p class="font-bold text-lg text-white">{{ $item[0] }}</p>
+                        <p class="text-sm text-brand-100 mt-1 leading-relaxed">{{ $item[1] }}</p>
+                    </div>
                 </div>
                 @endforeach
             </div>
 
-            <div class="text-center mt-10 max-w-3xl mx-auto">
-                <p class="text-lg text-white font-semibold mb-2">Our Promise</p>
-                <p class="text-brand-50 mb-4">To build arovolife on a foundation of trust—where customers are respected, direct sellers are informed, business practices are transparent and every relationship is guided by integrity.</p>
+            <div class="mt-14 max-w-3xl mx-auto rounded-2xl bg-white/[0.06] border border-white/15 border-l-4 border-l-sunrise-500 p-6 md:p-8 text-center">
+                <p class="inline-flex items-center gap-2 text-lg text-sunrise-300 font-bold mb-2">
+                    <x-lucide-badge-check class="w-5 h-5" />
+                    Our Promise
+                </p>
+                <p class="text-brand-100 mb-4 leading-relaxed">To build arovolife on a foundation of trust—where customers are respected, direct sellers are informed, business practices are transparent and every relationship is guided by integrity.</p>
                 <p class="font-semibold text-white">arovolife — Trust Built by Principle. Progress Built with Responsibility.</p>
             </div>
 
             <div class="text-center mt-10">
                 <a href="{{ route('content.show', 'terms') }}"
-                   class="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-brand-700 hover:bg-brand-50 text-sm font-semibold transition-colors">
-                    Read the Direct Seller Agreement →
+                   class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-sunrise-500 text-white hover:bg-sunrise-600 text-sm font-semibold shadow-lg shadow-sunrise-500/20 transition-colors">
+                    Read the Direct Seller Agreement
+                    <x-lucide-arrow-right class="w-4 h-4" />
                 </a>
             </div>
         </div>
