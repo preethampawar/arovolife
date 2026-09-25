@@ -52,10 +52,8 @@ npm-debug.log
 yarn-error.log
 composer.phar
 
-# --- Claude Code local overrides ---
-.claude/local/
-.claude/*.local.*
-.claude/scheduled_tasks.lock
+# --- Claude Code project config (kept local, never deployed) ---
+.claude/
 
 # --- Test / browser-automation artifacts (throwaway) ---
 app/test-results/
