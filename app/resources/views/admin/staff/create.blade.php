@@ -77,13 +77,9 @@
             Pick at least one. Separation of duties (R-17) is enforced in code: finance staff cannot freeze
             accounts and compliance staff cannot record payments.
         </p>
-        <div class="space-y-2">
+        <div class="space-y-3">
             @foreach($roles as $role)
-            <label class="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" name="roles[]" value="{{ $role }}" data-field-label="Role: {{ $role }}"
-                    @checked(in_array($role, old('roles', []), true))>
-                <span class="font-mono text-xs">{{ $role }}</span>
-            </label>
+                @include('admin.staff._role-option', ['role' => $role, 'checked' => old('roles', [])])
             @endforeach
         </div>
         @error('roles') <p class="text-xs text-red-600 mt-2">{{ $message }}</p> @enderror

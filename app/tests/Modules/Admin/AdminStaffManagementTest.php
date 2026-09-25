@@ -216,3 +216,13 @@ it('STAFF-10: the console command refuses an unknown role', function () {
 
     expect(User::where('email', 'nope@arovolife.test')->exists())->toBeFalse();
 });
+
+it('STAFF-11: the create form explains what each role can and cannot do', function () {
+    $this->actingAs(staffActor())
+        ->get(route('admin.staff.create'))
+        ->assertOk()
+        ->assertSeeText('Review and decide KYC submissions')
+        ->assertSeeText('Run payout batches, import bank responses and retry failed transfers')
+        ->assertSeeText('Freeze, unfreeze and terminate distributor accounts')
+        ->assertSeeText('Approve a payout batch for payment');
+});

@@ -48,13 +48,9 @@
         @csrf
         <h3 class="font-semibold text-gray-800 mb-1">Roles</h3>
         <p class="text-xs text-gray-600 mb-4">Ticked roles replace the current set. At least one is required.</p>
-        <div class="space-y-2 mb-4">
+        <div class="space-y-3 mb-4">
             @foreach($roles as $role)
-            <label class="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" name="roles[]" value="{{ $role }}" data-field-label="Role: {{ $role }}"
-                    @checked(in_array($role, old('roles', $assigned), true))>
-                <span class="font-mono text-xs">{{ $role }}</span>
-            </label>
+                @include('admin.staff._role-option', ['role' => $role, 'checked' => old('roles', $assigned)])
             @endforeach
         </div>
         @error('roles') <p class="text-xs text-red-600 mb-3">{{ $message }}</p> @enderror
