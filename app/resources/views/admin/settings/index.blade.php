@@ -44,19 +44,60 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
 </div>
 @endif
 
-<div class="max-w-3xl space-y-4">
+<div class="max-w-6xl lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8 lg:items-start">
+
+{{-- Jump-to index (wide screens) --}}
+<nav aria-label="Settings groups" class="hidden lg:block lg:sticky lg:top-28 max-h-[calc(100vh-8rem)] overflow-y-auto">
+    <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2 px-3">Jump to</p>
+    <ul class="space-y-0.5" data-settings-index>
+        @foreach($grouped as $groupKey => $group)
+        <li data-index-for="{{ $groupKey }}">
+            <a href="#settings-group-{{ $groupKey }}" data-index-link
+               class="flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                <span class="truncate">{{ $group['meta']['label'] }}</span>
+                <span class="shrink-0 text-xs text-gray-400 tabular-nums" data-index-count>{{ count($group['items']) }}</span>
+            </a>
+        </li>
+        @endforeach
+    </ul>
+</nav>
+
+<div class="space-y-4 min-w-0">
+
+    {{-- Search + expand/collapse toolbar --}}
+    <div class="sticky top-24 z-10 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div class="relative flex-1">
+                <x-lucide-search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input type="search" id="settings-search" data-settings-search autocomplete="off"
+                       placeholder="Search settings — e.g. cooling-off, payout, grievance, fee"
+                       aria-label="Search settings"
+                       class="w-full rounded-xl border border-gray-300 bg-white pl-9 pr-3 py-2.5 text-sm focus:border-brand-500 focus:ring-brand-500">
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button type="button" data-settings-expand="open"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                    <x-lucide-chevrons-up-down class="w-3.5 h-3.5" /> Expand all
+                </button>
+                <button type="button" data-settings-expand="close"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                    <x-lucide-chevrons-down-up class="w-3.5 h-3.5" /> Collapse all
+                </button>
+            </div>
+        </div>
+        <p class="text-xs text-gray-500 mt-2" data-settings-summary aria-live="polite">
+            {{ collect($grouped)->sum(fn ($g) => count($g['items'])) }} settings in {{ count($grouped) }} groups
+        </p>
+    </div>
+
+    <div class="hidden rounded-2xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-sm text-gray-500" data-settings-empty>
+        No settings match your search.
+    </div>
 
     @foreach($grouped as $groupKey => $group)
-    @php
-        $groupHasError = collect($group['items'])->contains(function($item) use ($errors) {
-            $errorKey = $item['meta']['type'] === 'json' ? 'state_age_minimums' : 'value';
-            return $errors->has($errorKey) && session('saved_key') === $item['key'];
-        });
-        $groupHasSaved = collect($group['items'])->contains(fn($item) => session('saved_key') === $item['key']);
-        $autoOpen = $groupHasError || $groupHasSaved;
-    @endphp
-
-    <details {{ $autoOpen ? 'open' : '' }} class="group bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <details open id="settings-group-{{ $groupKey }}" data-settings-group="{{ $groupKey }}"
+             data-group-search="{{ Str::lower($group['meta']['label'].' '.($group['meta']['description'] ?? '')) }}"
+             class="group bg-white rounded-2xl border border-gray-200 overflow-hidden scroll-mt-44">
         <summary class="flex items-center justify-between px-5 py-4 cursor-pointer select-none list-none hover:bg-gray-50 transition-colors">
             <div>
                 <h2 class="text-base font-semibold text-gray-900">{{ $group['meta']['label'] }}</h2>
@@ -65,7 +106,7 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
                 @endif
             </div>
             <div class="flex items-center gap-2 ml-4 shrink-0">
-                <span class="text-xs text-gray-400">{{ count($group['items']) }} {{ Str::plural('setting', count($group['items'])) }}</span>
+                <span class="text-xs text-gray-400" data-group-count>{{ count($group['items']) }} {{ Str::plural('setting', count($group['items'])) }}</span>
                 <x-lucide-chevron-down class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" />
             </div>
         </summary>
@@ -84,6 +125,7 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
                 @endphp
 
                 <div data-setting-card data-setting-key="{{ $key }}"
+                     data-search="{{ Str::lower($meta['label'].' '.($meta['description'] ?? '').' '.($meta['impact'] ?? '')) }}"
                      class="px-5 py-4 {{ $readOnly ? 'bg-gray-50/50' : 'bg-white' }}">
 
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -91,11 +133,16 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-1.5 flex-wrap">
                                 <label for="{{ $fieldId }}" class="text-sm font-medium text-gray-900 leading-tight">{{ $meta['label'] }}</label>
-                                <x-help-tip :text="($meta['impact'] ?? null) ? $meta['description'] . ' — ' . $meta['impact'] : $meta['description']" />
+                                @if(!empty($meta['impact']))
+                                    <x-help-tip :text="$meta['impact']" />
+                                @endif
                                 @if($readOnly)
                                     <span class="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800">Read-only</span>
                                 @endif
                             </div>
+                            @if(!empty($meta['description']))
+                                <p class="text-xs text-gray-500 mt-1 leading-snug">{{ $meta['description'] }}</p>
+                            @endif
                             @if($readOnly && !empty($meta['read_only_reason']))
                                 <p class="text-xs text-amber-700 mt-1">{{ $meta['read_only_reason'] }}</p>
                             @endif
@@ -258,6 +305,7 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
     </details>
     @endif
 </div>
+</div>
 
 @push('scripts')
 <script>
@@ -271,6 +319,97 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
         if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
     @endif
+
+    (() => {
+        const search = document.querySelector('[data-settings-search]');
+        const groups = [...document.querySelectorAll('[data-settings-group]')];
+        const summary = document.querySelector('[data-settings-summary]');
+        const empty = document.querySelector('[data-settings-empty]');
+        const initialSummary = summary ? summary.textContent.trim() : '';
+
+        const applyFilter = () => {
+            const terms = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+            let totalShown = 0;
+            let groupsShown = 0;
+
+            groups.forEach((group) => {
+                const groupText = group.dataset.groupSearch || '';
+                const cards = [...group.querySelectorAll('[data-setting-card]')];
+                let shown = 0;
+
+                cards.forEach((card) => {
+                    const text = groupText + ' ' + (card.dataset.search || '');
+                    const match = terms.every((t) => text.includes(t));
+                    card.hidden = !match;
+                    if (match) shown++;
+                });
+
+                group.hidden = shown === 0;
+                if (terms.length && shown > 0) group.open = true;
+
+                const indexItem = document.querySelector(`[data-index-for="${group.dataset.settingsGroup}"]`);
+                if (indexItem) {
+                    indexItem.hidden = shown === 0;
+                    const count = indexItem.querySelector('[data-index-count]');
+                    if (count) count.textContent = shown;
+                }
+
+                totalShown += shown;
+                if (shown > 0) groupsShown++;
+            });
+
+            if (summary) {
+                summary.textContent = terms.length
+                    ? `${totalShown} matching ${totalShown === 1 ? 'setting' : 'settings'} in ${groupsShown} ${groupsShown === 1 ? 'group' : 'groups'}`
+                    : initialSummary;
+            }
+            if (empty) empty.classList.toggle('hidden', totalShown > 0);
+        };
+
+        if (search) {
+            search.addEventListener('input', applyFilter);
+            search.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') { search.value = ''; applyFilter(); }
+            });
+        }
+
+        // "/" focuses search unless the user is already typing somewhere.
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== '/' || !search) return;
+            const tag = (document.activeElement?.tagName || '').toLowerCase();
+            if (['input', 'textarea', 'select'].includes(tag) || document.activeElement?.isContentEditable) return;
+            e.preventDefault();
+            search.focus();
+        });
+
+        document.querySelectorAll('[data-settings-expand]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const open = btn.dataset.settingsExpand === 'open';
+                groups.forEach((g) => { if (!g.hidden) g.open = open; });
+            });
+        });
+
+        // Jump-to links open the target group before scrolling to it.
+        document.querySelectorAll('[data-index-link]').forEach((link) => {
+            link.addEventListener('click', () => {
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) target.open = true;
+            });
+        });
+
+        // Highlight the group currently in view in the jump-to index.
+        if ('IntersectionObserver' in window) {
+            const links = new Map([...document.querySelectorAll('[data-index-link]')].map((a) => [a.getAttribute('href').slice(1), a]));
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) return;
+                    links.forEach((a) => a.classList.remove('bg-brand-50', 'text-brand-700', 'font-semibold'));
+                    links.get(entry.target.id)?.classList.add('bg-brand-50', 'text-brand-700', 'font-semibold');
+                });
+            }, { rootMargin: '-35% 0px -60% 0px' });
+            groups.forEach((g) => observer.observe(g));
+        }
+    })();
 
     document.querySelectorAll('[data-toggle-switch]').forEach((btn) => {
         if (btn.disabled) return;

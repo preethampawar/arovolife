@@ -79,6 +79,25 @@ it('AS-01: GET /admin/settings renders friendly section headers, not just a raw 
     $response->assertSee('Raw settings table');
 });
 
+it('AS-01b: every group renders open with a search box and a jump-to index', function (): void {
+    $this->actingAs(asvSeedAdmin());
+    asvSeedSetting('commerce.cooling_off.days', '30');
+
+    $html = $this->get('/admin/settings')
+        ->assertOk()
+        ->assertSee('data-settings-search', false)
+        ->assertSee('Jump to')
+        ->assertSee('href="#settings-group-', false)
+        ->getContent();
+
+    // No group is rendered collapsed.
+    preg_match_all('/<details\\b[^>]*data-settings-group[^>]*>/', $html, $groups);
+    expect($groups[0])->not->toBeEmpty();
+    foreach ($groups[0] as $tag) {
+        expect($tag)->toContain(' open ');
+    }
+});
+
 it('AS-02: toggling a boolean setting via POST flips the stored value', function (): void {
     $admin = asvSeedAdmin();
     $this->actingAs($admin);
