@@ -38,6 +38,18 @@ final class SettingsSeeder extends Seeder
             ],
         ], ['key'], ['value', 'version', 'updated_at']);
 
+        $this->seedAdditiveDefaults();
+    }
+
+    /**
+     * The compensation-plan scalars and security defaults on their own — every
+     * key insert-if-missing — for ProductionSeeder, which must not run the
+     * legacy delete or the state-age upsert above.
+     */
+    public function seedAdditiveDefaults(): void
+    {
+        $now = now()->format('Y-m-d H:i:s.v');
+
         $this->seedCompensationPlanScalars($now);
         $this->seedSecuritySettings($now);
     }

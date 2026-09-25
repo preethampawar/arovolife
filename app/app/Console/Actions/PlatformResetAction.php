@@ -15,6 +15,7 @@ use Database\Seeders\CommerceFeatureFlagSeeder;
 use Database\Seeders\ContentPageSeeder;
 use Database\Seeders\LedgerAccountSeeder;
 use Database\Seeders\ProductCatalogSeeder;
+use Database\Seeders\ProductionSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Database\Seeders\SettingsSeeder;
 use Illuminate\Database\DatabaseManager;
@@ -118,11 +119,20 @@ final class PlatformResetAction
         $log('Resetting derived counters (coupons.used_count, inventory reserved)...');
         $this->purchaseReset->resetDerivedColumns();
 
-        $log('Re-seeding platform metadata (roles, admin, settings, content, ledger, flags)...');
-        $this->seedPlatformMetadata();
+        if (app()->isProduction()) {
+            // Production re-seeds through ProductionSeeder alone: env-provided
+            // admin, no demo catalogue, create-if-missing settings, the plan
+            // tables and the launch flag defaults, and the reserved block with
+            // fresh sign-ins (CSV under storage/app/private/reserved-credentials/).
+            $log('Re-seeding production defaults and the reserved company accounts (ProductionSeeder)...');
+            Artisan::call('db:seed', ['--class' => ProductionSeeder::class, '--force' => true]);
+        } else {
+            $log('Re-seeding platform metadata (roles, admin, settings, content, ledger, flags)...');
+            $this->seedPlatformMetadata();
 
-        $log('Building the 31 reserved distributor tree...');
-        $this->buildReservedTree();
+            $log('Building the 31 reserved distributor tree...');
+            $this->buildReservedTree();
+        }
 
         $log('Writing platform.reset audit-log entry...');
         AuditLog::create([

@@ -12,10 +12,29 @@ use App\Modules\Content\Models\ContentPage;
 use App\Modules\Genealogy\Support\ReservedAdns;
 use App\Modules\Identity\Models\User;
 use App\Modules\Ledger\Models\LedgerAccount;
+use App\Modules\Shared\Features\ActionCenterFeature;
+use App\Modules\Shared\Features\AnnouncementsFeature;
+use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
+use App\Modules\Shared\Features\DistributorRequestsFeature;
+use App\Modules\Shared\Features\FaqLibraryFeature;
+use App\Modules\Shared\Features\FortuneBonusFeature;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
+use App\Modules\Shared\Features\InventoryFeature;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\MessagingFeature;
+use App\Modules\Shared\Features\OfflineOrdersFeature;
+use App\Modules\Shared\Features\PurchaseOffersFeature;
+use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Pennant\Feature;
 use Spatie\Permission\Models\Role;
 
 /**
@@ -50,6 +69,8 @@ final class ProductionSeeder extends Seeder
             $this->seedReservedTree();
             $this->seedSettings();
             $this->seedFeatureFlags();
+            $this->seedCompensationPlan();
+            $this->seedPennantFlags();
             $this->seedContentPages();
             $this->seedLedgerAccounts();
             $this->seedProductCatalog();
@@ -219,7 +240,7 @@ final class ProductionSeeder extends Seeder
             'placement.spillover.strategy' => 'breadth_balanced', // ADR-0007 — fill strategy when spillover is on
             'commerce.storefront.enabled' => 'true',
             'commerce.checkout.enabled' => 'true',
-            'commerce.guest_checkout.enabled' => 'true',
+            'commerce.guest_checkout.enabled' => 'false', // members-only buying (Atomy parity)
             'commerce.attribution.window_days' => '30',
             'commerce.attribution.logged_in_overrides_ref' => 'true',
             'commerce.cooling_off.days' => '30',
@@ -242,14 +263,84 @@ final class ProductionSeeder extends Seeder
 
             'payments.gateway.razorpay.enabled' => 'false',
             'payments.gateway.stub.enabled' => 'false',
+            'payments.razorpay.refund_speed' => 'normal',
 
             'comp.gsb.min_bv_paise' => '60000',   // 600 BV — minimum for any bonus to credit wallet
 
-            'payout.min_threshold_paise' => '50000',
+            'payout.min_threshold_paise' => '10000',  // ₹100 (client amendment 2026-06-26)
             'payout.neft_min_bv_paise' => '300000',  // 3,000 BV (Retailer) — minimum for NEFT bank transfer
         ];
 
         $this->insertSettingsIfMissing($defaults);
+    }
+
+    /**
+     * The compensation plan reference tables (GSB slabs, rank tiers, Fortune
+     * levels and tiers, lifetime awards) and the plan scalars. The plan
+     * seeders upsert, so each runs only while its table is still empty —
+     * an admin-edited plan is never reset by a re-run.
+     */
+    private function seedCompensationPlan(): void
+    {
+        $tables = [
+            'rank_tiers' => RankTiersSeeder::class,
+            'gsb_slabs' => GsbSlabsSeeder::class,
+            'fortune_bonus_levels' => FortuneBonusLevelsSeeder::class,
+            'fortune_bonus_tiers' => FortuneBonusTiersSeeder::class,
+            'lifetime_award_rewards' => LifetimeAwardRewardsSeeder::class,
+        ];
+
+        foreach ($tables as $table => $seeder) {
+            if (DB::table($table)->doesntExist()) {
+                $this->call($seeder);
+            }
+        }
+
+        $settings = $this->resolve(SettingsSeeder::class);
+        assert($settings instanceof SettingsSeeder);
+        $settings->seedAdditiveDefaults();
+    }
+
+    /**
+     * Launch defaults for the Pennant feature flags: every bonus engine and
+     * operations module ON (client decision 2026-09-25, GSB and Fortune
+     * included), Purchase Offers OFF. Inventory and the Action Centre stay OFF
+     * — neither is finished. A flag that already has a global value is left
+     * alone, so a re-run never undoes an admin toggle. Flags not listed keep
+     * their class default.
+     */
+    private function seedPennantFlags(): void
+    {
+        $defaults = [
+            GenosSalesBonusFeature::class => true,
+            GsbDailyPoolPricingFeature::class => true,
+            MentorshipBonusFeature::class => true,
+            RepurchaseEngineFeature::class => true,
+            GrowthBoosterBonusFeature::class => true,
+            RankBonusFeature::class => true,
+            LifetimeAwardsFeature::class => true,
+            FortuneBonusFeature::class => true,
+            AreteDevelopmentCenterBonusFeature::class => true,
+            AreteCenterApplicationsFeature::class => true,
+            DistributorRequestsFeature::class => true,
+            OfflineOrdersFeature::class => true,
+            MessagingFeature::class => true,
+            AnnouncementsFeature::class => true,
+            FaqLibraryFeature::class => true,
+            PurchaseOffersFeature::class => false,
+            InventoryFeature::class => false,
+            ActionCenterFeature::class => false,
+        ];
+
+        $stored = DB::table('features')
+            ->where('scope', '__laravel_null')
+            ->whereIn('name', array_keys($defaults))
+            ->pluck('name')
+            ->all();
+
+        foreach (array_diff_key($defaults, array_flip($stored)) as $class => $on) {
+            $on ? Feature::for(null)->activate($class) : Feature::for(null)->deactivate($class);
+        }
     }
 
     /** @param  array<string, string>  $defaults */

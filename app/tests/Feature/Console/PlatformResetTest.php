@@ -7,9 +7,12 @@ use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Genealogy\Support\ReservedAdns;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\PurchaseOffersFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
 
@@ -90,4 +93,17 @@ it('refuses to run inside the nightly engine window', function () {
         ->assertExitCode(1);
 
     expect(Distributor::query()->whereKey($dist->id)->exists())->toBeTrue();
+});
+
+it('re-seeds through ProductionSeeder on production — no demo admin, plan and launch flags in place', function () {
+    app()->detectEnvironment(fn (): string => 'production');
+
+    $this->artisan('platform:reset', ['--force' => true])->assertExitCode(0);
+
+    expect(Distributor::query()->count())->toBe(63)
+        ->and(User::query()->where('email', 'admin@arovolife.test')->exists())->toBeFalse()
+        ->and(DB::table('gsb_slabs')->count())->toBe(7)
+        ->and(DB::table('settings')->where('key', 'comp.gsb.pool_rate_bp')->value('value'))->toBe('4500')
+        ->and(Feature::for(null)->active(GenosSalesBonusFeature::class))->toBeTrue()
+        ->and(Feature::for(null)->active(PurchaseOffersFeature::class))->toBeFalse();
 });
