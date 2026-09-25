@@ -48,6 +48,7 @@ final class LoginController extends Controller
         $loginInput = trim($credentials['login']);
         $isEmailInput = str_contains($loginInput, '@');
         $email = $loginInput;
+        $chosen = null;
 
         if (! $isEmailInput) {
             $matches = Distributor::query()
@@ -131,13 +132,23 @@ final class LoginController extends Controller
                 ->withErrors(['login' => "Too many failed login attempts. Try again in {$seconds} seconds."]);
         }
 
-        // Pre-flight: if the user exists but has never set their own password
-        // (e.g. spouse account from a couple registration), refuse login and
-        // tell them to use the activation link they received by email.
+        // Pre-flight: if the user exists but has never set their own password,
+        // refuse login. Only a couple spouse is ever emailed an activation
+        // link; every other never-set account (e.g. the reserved company
+        // accounts) needs a password issued by an admin, and pointing those
+        // at an email that was never sent sends the reader the wrong way.
         if ($candidate !== null && $candidate->password_set_at === null) {
+            // A couple spouse is the distributor row a primary points at.
+            $isCoupleSpouse = $chosen !== null
+                && Distributor::query()->where('spouse_distributor_id', $chosen->id)->exists();
+
+            $message = $isCoupleSpouse
+                ? 'Your account has not been activated yet. Please use the activation link sent to your email, or contact support@arovolife.com.'
+                : 'A password has not been set up for this account yet. Please contact support@arovolife.com to have one issued.';
+
             return back()
                 ->withInput($request->only('login'))
-                ->withErrors(['login' => 'Your account has not been activated yet. Please use the activation link sent to your email, or contact support@arovolife.com.']);
+                ->withErrors(['login' => $message]);
         }
 
         if (Auth::attempt(['email' => $email, 'password' => $credentials['password']], $request->boolean('remember'))) {

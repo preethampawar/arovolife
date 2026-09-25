@@ -225,3 +225,19 @@ it('APR-03: stale password no longer works after reset', function () {
         ->assertSessionHasErrors('login');
     expect(auth()->check())->toBeFalse();
 });
+
+it('tells a solo account with no password yet to contact support, not to look for an activation email', function () {
+    // The reserved company accounts are seeded exactly like this: active,
+    // with a random password and password_set_at NULL. No activation email
+    // is ever sent for them, so the spouse wording would mislead.
+    [$user, $adn] = aprlMakeDistributor('neverset', 'Unknown-Random-Pass-1', '444555777');
+    $user->forceFill(['password_set_at' => null])->save();
+
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->from('/login')
+        ->post('/login', ['login' => $adn, 'password' => 'anything', 'primary' => '1'])
+        ->assertRedirect('/login')
+        ->assertSessionHasErrors(['login' => 'A password has not been set up for this account yet. Please contact support@arovolife.com to have one issued.']);
+
+    $this->assertGuest();
+});
