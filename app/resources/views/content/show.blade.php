@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $page->title }} — arovolife</title>
+    @include('partials._favicons')
     @if($page->meta_description)
     <meta name="description" content="{{ $page->meta_description }}">
     @endif

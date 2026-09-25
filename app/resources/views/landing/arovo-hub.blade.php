@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arovo Hub — arovolife</title>
+    @include('partials._favicons')
     <meta name="description" content="Explore arovolife's hub — health services, social contribution, online shopping and online courses.">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials._theme-fouc')

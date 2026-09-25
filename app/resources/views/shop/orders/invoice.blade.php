@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $isTaxInvoice ? 'Tax invoice '.$invoice->invoice_no : 'Order summary '.$order->order_no }} — arovolife</title>
+    @include('partials._favicons')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         .inv-sheet, .inv-sheet * {

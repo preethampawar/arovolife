@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Admin') — arovolife Admin</title>
+    @include('partials._favicons')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials._font-size-fouc')
     {{-- Admin dark/light theme: restore the saved choice before first paint. --}}

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>About arovolife — Direct Selling, Done Right</title>
+    @include('partials._favicons')
     <meta name="description" content="Born in India, 2026 — arovolife is a customer-first direct selling company offering best-in-class nutraceutical and personal-care products with industry-leading distributor growth pathways.">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials._theme-fouc')

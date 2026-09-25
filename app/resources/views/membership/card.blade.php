@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Membership card — arovolife</title>
+    @include('partials._favicons')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         /* Print: front on page 1, back on page 2. The toolbar / chrome is

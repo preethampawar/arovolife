@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>arovolife — Direct Selling, Done Right</title>
+    @include('partials._favicons')
     <meta name="description" content="arovolife is a direct-selling company compliant with India's DSR 2021. Free to register, 30-day cooling-off, no income projections.">
     @vite(['resources/css/app.css'])
     @include('partials._theme-fouc')
