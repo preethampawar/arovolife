@@ -28,6 +28,14 @@ return [
             'phone' => env('PROD_ADMIN_PHONE', '+910000000000'),
         ],
 
+        // Reserved company accounts that have never had a password are
+        // issued one by ProductionSeeder, with a plus-address on this base
+        // (name+<ADN>@domain). Defaults to the production admin's email;
+        // unset both to leave the accounts without a sign-in.
+        'reserved' => [
+            'email_base' => env('RESERVED_ACCOUNTS_EMAIL_BASE', env('PROD_ADMIN_EMAIL')),
+        ],
+
         'compliance' => [
             'state_age_minimums' => env('COMPLIANCE_STATE_AGE_MINIMUMS', '{"MH":21}'),
         ],

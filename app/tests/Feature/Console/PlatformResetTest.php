@@ -24,7 +24,7 @@ afterEach(function (): void {
     Carbon::setTestNow();
 });
 
-it('wipes everything and rebuilds only the 31 reserved company distributors (levels 0-4)', function () {
+it('wipes everything and rebuilds only the 63 reserved company distributors (levels 0-5)', function () {
     // A regular (non-reserved) distributor with purchase + bonus data.
     $dist = Distributor::factory()->create();
     BvLedgerEntry::create([
@@ -43,10 +43,10 @@ it('wipes everything and rebuilds only the 31 reserved company distributors (lev
 
     $this->artisan('platform:reset', ['--force' => true])->assertExitCode(0);
 
-    // Exactly the 31 reserved distributors remain, at depths 0-4, with the
+    // Exactly the 63 reserved distributors remain, at depths 0-5, with the
     // canonical company ADN block.
-    expect(Distributor::query()->count())->toBe(31)
-        ->and(Distributor::query()->max('depth'))->toBe(4)
+    expect(Distributor::query()->count())->toBe(63)
+        ->and(Distributor::query()->max('depth'))->toBe(5)
         ->and(Distributor::query()->pluck('adn')->sort()->values()->all())
         ->toBe(collect(ReservedAdns::all())->sort()->values()->all());
 
@@ -55,20 +55,20 @@ it('wipes everything and rebuilds only the 31 reserved company distributors (lev
         ->and(DB::table('wallet_ledger_entries')->count())->toBe(0)
         ->and(DB::table('customers')->count())->toBe(0);
 
-    // Users: 31 reserved + the re-seeded admin, who keeps the admin role.
-    expect(User::query()->count())->toBe(32);
+    // Users: 63 reserved + the re-seeded admin, who keeps the admin role.
+    expect(User::query()->count())->toBe(64);
     $admin = User::query()->where('email', 'admin@arovolife.test')->firstOrFail();
     expect($admin->hasRole('admin'))->toBeTrue();
 
-    // The closure table matches a complete 31-node binary tree:
-    // 31 self-rows + (2*1 + 4*2 + 8*3 + 16*4) ancestor rows = 129.
-    expect(DB::table('genealogy_closure')->count())->toBe(129);
+    // The closure table matches a complete 63-node binary tree:
+    // 63 self-rows + (2*1 + 4*2 + 8*3 + 16*4 + 32*5) ancestor rows = 321.
+    expect(DB::table('genealogy_closure')->count())->toBe(321);
 
-    // Sponsorship: 30 horizontal edges — every reserved child is sponsored by
+    // Sponsorship: 62 horizontal edges — every reserved child is sponsored by
     // its direct binary-tree parent; the root gets NO row (a self-edge would
     // make the company root its own direct referral).
     $rootId = Distributor::query()->where('depth', 0)->value('id');
-    expect(DB::table('sponsorship')->count())->toBe(30)
+    expect(DB::table('sponsorship')->count())->toBe(62)
         ->and(DB::table('sponsorship')->whereColumn('sponsor_id', 'distributor_id')->count())->toBe(0)
         ->and(DB::table('sponsorship')->where('distributor_id', $rootId)->count())->toBe(0)
         ->and(
@@ -76,7 +76,7 @@ it('wipes everything and rebuilds only the 31 reserved company distributors (lev
                 ->join('distributors', 'distributors.id', '=', 'sponsorship.distributor_id')
                 ->whereColumn('sponsorship.sponsor_id', 'distributors.placement_parent_id')
                 ->count()
-        )->toBe(30);
+        )->toBe(62);
 
     // The reset is audit-logged (audit_log itself was truncated first).
     expect(DB::table('audit_log')->where('action', 'platform.reset')->count())->toBe(1);

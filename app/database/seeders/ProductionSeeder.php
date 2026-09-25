@@ -15,6 +15,7 @@ use App\Modules\Ledger\Models\LedgerAccount;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 
 /**
@@ -104,8 +105,8 @@ final class ProductionSeeder extends Seeder
     }
 
     /**
-     * Seed the 31 reserved company distributors (root ADN 444555666 — see
-     * {@see ReservedAdns}) that permanently occupy tree levels 0-4, exactly
+     * Seed the reserved company distributors (root ADN 444555666 — see
+     * {@see ReservedAdns}) that permanently occupy tree levels 0-5, exactly
      * as `platform:reset` builds them. This replaces the earlier single
      * ad-hoc PROD_ROOT_EMAIL root (ADN 111222333): the company accounts are
      * production accounts (client decision 2026-08-31, R-66), so a fresh
@@ -114,13 +115,17 @@ final class ProductionSeeder extends Seeder
      *
      * Idempotent:
      *
-     *  - fresh install (no distributors)  → build the full 31-account block;
+     *  - fresh install (no distributors)  → build the full block;
      *  - block already present            → backfill any sponsorship edges
-     *    missing from environments seeded before 2026-08-31 (R-66), and
-     *    otherwise touch nothing;
+     *    missing from environments seeded before 2026-08-31 (R-66), then add
+     *    any reserved node a newer ReservedAdns list introduced (a new level),
+     *    only where its tree slot is still free;
      *  - non-reserved distributors exist without the block → warn and skip;
      *    grafting the block into an already-populated tree is a manual
      *    decision, never a seeder side effect.
+     *
+     * Then every reserved account that has never had a password is issued
+     * one (see {@see issueReservedCredentials()}).
      */
     private function seedReservedTree(): void
     {
@@ -132,17 +137,61 @@ final class ProductionSeeder extends Seeder
                 $this->command->info("Backfilled {$inserted} missing sponsorship rows for the reserved company accounts.");
             }
 
+            $extended = $action->extendMissingNodes();
+            if ($extended['added'] > 0) {
+                $this->command->info("Added {$extended['added']} reserved company accounts to complete the reserved block.");
+            }
+            if ($extended['blocked'] !== []) {
+                $this->command->warn(count($extended['blocked']).' reserved company accounts were not added because their tree position is already taken by another distributor (manual review): '.implode(', ', $extended['blocked']));
+            }
+        } elseif (DB::table('distributors')->exists()) {
+            $this->command->warn('Distributors exist but the reserved company accounts are absent — skipping the reserved block (manual review; see R-66).');
+
+            return;
+        } else {
+            $action->buildFresh();
+            $this->command->info('Seeded the '.count(ReservedAdns::all()).' reserved company distributors (root ADN '.ReservedAdns::ROOT.'). Share /register?ref='.ReservedAdns::ROOT.' with the first recruits.');
+        }
+
+        $this->issueReservedCredentials($action);
+    }
+
+    /**
+     * Give every never-activated reserved account a plus-addressed email on
+     * `arovolife.seeder.reserved.email_base` and a random password, and write
+     * the list (ADN, email, password) to a private file on the local disk —
+     * never to the console, a log or the audit trail. Unset base = skipped.
+     */
+    private function issueReservedCredentials(SeedReservedTreeAction $action): void
+    {
+        $base = trim((string) config('arovolife.seeder.reserved.email_base', ''));
+        if ($base === '') {
             return;
         }
 
-        if (DB::table('distributors')->exists()) {
-            $this->command->warn('Distributors exist but the 31 reserved company accounts are absent — skipping the reserved block (manual review; see R-66).');
+        $result = $action->issueCredentials($base);
 
+        if ($result['skipped'] !== []) {
+            $this->command->warn('Sign-in details not issued for '.implode(', ', $result['skipped']).': the plus-address is already used by another account.');
+        }
+
+        if ($result['issued'] === []) {
             return;
         }
 
-        $action->buildFresh();
-        $this->command->info('Seeded the 31 reserved company distributors (root ADN '.ReservedAdns::ROOT.') with 30 sponsorship edges. Share /register?ref='.ReservedAdns::ROOT.' with the first recruits.');
+        // Plain join is safe: ADNs are digits, the emails are ours and the
+        // password alphabet has no comma, quote or newline.
+        $lines = ['ADN,Email,Password'];
+        foreach ($result['issued'] as $row) {
+            $lines[] = implode(',', [$row['adn'], $row['email'], $row['password']]);
+        }
+
+        $path = 'reserved-credentials/'.now()->format('Ymd-His').'.csv';
+        $disk = Storage::disk('local');
+        $disk->put($path, implode("\n", $lines)."\n", 'private');
+        @chmod($disk->path($path), 0600);
+
+        $this->command->info('Issued sign-in details for '.count($result['issued'])." reserved company accounts. The list is in storage/app/private/{$path} — copy it off the server, then delete it.");
     }
 
     /**
