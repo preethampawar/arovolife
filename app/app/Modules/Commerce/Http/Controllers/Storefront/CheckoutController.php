@@ -116,6 +116,9 @@ final class CheckoutController extends Controller
 
         return view('shop.checkout', [
             'cart' => $cart,
+            // Lines placement would refuse: listed on the page and Place
+            // Order disabled until the buyer removes or reduces them.
+            'stockShortfalls' => $this->cartService->stockShortfalls($cart),
             'couponDiscount' => $couponDiscount,
             'shippingPaise' => $this->shipping->feePaise($cart->subtotalPaise()),
             // The checkout summary swaps between these two live when the buyer

@@ -13,6 +13,15 @@
 </div>
 @endif
 
+@if(! empty($stockShortfalls))
+<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3" data-stock-shortfalls>
+    <ul class="text-sm text-red-700 space-y-1 list-disc list-inside">
+        @foreach($stockShortfalls as $shortfall)<li>{{ $shortfall['message'] }}</li>@endforeach
+    </ul>
+    <a href="{{ route('shop.cart') }}" class="inline-block mt-2 text-sm font-semibold text-red-800 underline">Go to your cart</a>
+</div>
+@endif
+
 @if($refAdn)
 <div class="mb-4 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-brand-700">
     <strong>Referred by:</strong> {{ $refAdn }}
@@ -493,8 +502,8 @@
         </div>
         @endforeach
 
-        <button type="submit"
-           class="block w-full text-center py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors">
+        <button type="submit" @disabled(! empty($stockShortfalls))
+           class="block w-full text-center py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand-700">
             Place Order
         </button>
         @if(($gatewayState ?? '') === \App\Modules\Payments\Services\PaymentGatewayResolver::STATE_RAZORPAY)

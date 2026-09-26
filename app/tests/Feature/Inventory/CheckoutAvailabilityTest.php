@@ -13,6 +13,7 @@ use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Identity\Models\User;
@@ -24,6 +25,7 @@ use App\Modules\Inventory\Services\StockLedger;
 use App\Modules\Shared\Features\InventoryFeature;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
@@ -78,7 +80,7 @@ it('with InventoryFeature on, placing more than available fails with a readable 
     $variant = cavVariant(3);
 
     expect(fn () => cavPlace($variant, 5))
-        ->toThrow(InsufficientStockException::class, "Only 3 left of {$variant->product->name}.");
+        ->toThrow(InsufficientStockException::class, "Only 3 left of {$variant->product->name}, reduce the quantity to continue.");
 
     $level = InventoryLevel::where('product_variant_id', $variant->id)->sole();
     expect(Order::count())->toBe(0)
@@ -112,4 +114,51 @@ it('the cart clamps to available only while the flag is on', function (): void {
     $item = $carts->addItem($cart, $variant->id, 1);
     expect($item->qty)->toBe(2)
         ->and(session('stock_notice'))->toBe("Only 2 available of {$variant->product->name}.");
+});
+
+it('an out-of-stock line is refused at placement with a message that says what to do', function (): void {
+    Feature::for(null)->activate(InventoryFeature::class);
+    $variant = cavVariant(0);
+
+    expect(fn () => cavPlace($variant, 3))
+        ->toThrow(InsufficientStockException::class, "{$variant->product->name} is out of stock. Remove it from your cart to continue.");
+});
+
+it('the cart and checkout pages flag a line that cannot be filled and checkout disables Place Order', function (): void {
+    Feature::for(null)->activate(InventoryFeature::class);
+    DB::table('settings')->updateOrInsert(['key' => 'commerce.checkout.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
+    DB::table('settings')->updateOrInsert(['key' => 'commerce.guest_checkout.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
+    $gone = cavVariant(0);
+    $short = cavVariant(2);
+    $cart = Cart::create(['anonymous_key' => 'cavp'.uniqid(), 'expires_at' => now()->addDay()]);
+    CartItem::create(['cart_id' => $cart->id, 'product_variant_id' => $gone->id, 'qty' => 3, 'unit_price_paise' => 100000, 'bv_paise' => 0, 'gst_rate_bp' => 1800]);
+    CartItem::create(['cart_id' => $cart->id, 'product_variant_id' => $short->id, 'qty' => 5, 'unit_price_paise' => 100000, 'bv_paise' => 0, 'gst_rate_bp' => 1800]);
+
+    $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->get(route('shop.cart'))
+        ->assertOk()
+        ->assertSee('Out of stock')
+        ->assertSee('Only 2 left');
+
+    $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->get(route('shop.checkout'))
+        ->assertOk()
+        ->assertSee("{$gone->product->name} is out of stock. Remove it from your cart to continue.")
+        ->assertSee("Only 2 left of {$short->product->name}, reduce the quantity to continue.")
+        ->assertSee('<button type="submit" disabled', false);
+});
+
+it('a cart that can be filled shows no stock warning and Place Order stays enabled', function (): void {
+    Feature::for(null)->activate(InventoryFeature::class);
+    DB::table('settings')->updateOrInsert(['key' => 'commerce.checkout.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
+    DB::table('settings')->updateOrInsert(['key' => 'commerce.guest_checkout.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
+    $variant = cavVariant(5);
+    $cart = Cart::create(['anonymous_key' => 'cavq'.uniqid(), 'expires_at' => now()->addDay()]);
+    CartItem::create(['cart_id' => $cart->id, 'product_variant_id' => $variant->id, 'qty' => 2, 'unit_price_paise' => 100000, 'bv_paise' => 0, 'gst_rate_bp' => 1800]);
+
+    $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->get(route('shop.checkout'))
+        ->assertOk()
+        ->assertDontSee('data-stock-shortfalls', false)
+        ->assertDontSee('<button type="submit" disabled', false);
 });

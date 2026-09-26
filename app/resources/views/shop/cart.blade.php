@@ -51,6 +51,11 @@
             <div class="flex-1">
                 <a href="{{ route('shop.product', $item->variant->product->slug) }}" class="font-semibold text-gray-900 hover:text-brand-800">{{ $item->variant->product->name }}</a>
                 <p class="text-xs text-gray-600 mt-0.5 font-mono">SKU {{ $item->variant->variant_sku }}</p>
+                @if(isset($stockShortfalls[$item->id]))
+                <p class="mt-1 inline-flex items-center rounded-full bg-red-50 border border-red-200 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                    {{ $stockShortfalls[$item->id]['available'] > 0 ? 'Only '.$stockShortfalls[$item->id]['available'].' left' : 'Out of stock' }}
+                </p>
+                @endif
                 <p class="text-sm font-semibold text-gray-900 mt-1">₹{{ \App\Modules\Shared\Support\IndianNumber::format($item->unit_price_paise / 100, 2) }}</p>
                 {{-- Per-product BV under the price — distributor-only, a factual
                      point value, never an earnings figure (hard rule #3). --}}

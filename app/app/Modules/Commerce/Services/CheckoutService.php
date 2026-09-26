@@ -335,7 +335,7 @@ final class CheckoutService
                     if ($this->fulfilment->availabilityEnforced()) {
                         $available = $this->stockLedger->available($variant->id);
                         if ($available < $ci->qty) {
-                            throw new InsufficientStockException(sprintf('Only %d left of %s.', max(0, $available), $variant->product->name));
+                            throw InsufficientStockException::forCheckout($variant->product->name, max(0, $available));
                         }
                     }
                     $level->increment('reserved', $ci->qty);

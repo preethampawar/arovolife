@@ -53,6 +53,7 @@ final class CartController extends Controller
 
         return view('shop.cart', [
             'cart' => $cart,
+            'stockShortfalls' => $this->cartService->stockShortfalls($cart),
             'couponDiscount' => $couponDiscount,
             'shippingPaise' => $this->shipping->feePaise($subtotalPaise),
             'amountToFreeShippingPaise' => $this->shipping->amountToFreeShippingPaise($subtotalPaise),

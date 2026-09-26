@@ -10,6 +10,7 @@ use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Services\DTOs\CouponResult;
 use App\Modules\Identity\Models\User;
+use App\Modules\Inventory\Services\Exceptions\InsufficientStockException;
 use App\Modules\Inventory\Services\OrderFulfilmentService;
 use App\Modules\Inventory\Services\StockLedger;
 use Illuminate\Http\Request;
@@ -210,6 +211,40 @@ final class CartService
             : "{$name} is out of stock.");
 
         return $available > 0 ? $available : $qty;
+    }
+
+    /**
+     * The lines checkout (H1) would refuse right now, keyed by cart item id,
+     * with the available count and the buyer-facing message. Empty while
+     * enforcement is off. Lets the cart and checkout pages say so up front
+     * instead of the buyer finding out from a refused Place Order.
+     *
+     * @return array<int, array{available: int, message: string}>
+     */
+    public function stockShortfalls(Cart $cart): array
+    {
+        if (! $this->fulfilment->availabilityEnforced()) {
+            return [];
+        }
+
+        $shortfalls = [];
+        foreach ($cart->items as $item) {
+            /** @var CartItem $item */
+            $variant = $item->variant;
+            if ($variant === null || $variant->inventory_policy !== 'track') {
+                continue;
+            }
+
+            $available = max(0, $this->stockLedger->available($variant->id));
+            if ($available < $item->qty) {
+                $shortfalls[$item->id] = [
+                    'available' => $available,
+                    'message' => InsufficientStockException::checkoutMessage($variant->product->name ?? $variant->variant_sku, $available),
+                ];
+            }
+        }
+
+        return $shortfalls;
     }
 
     public function remove(CartItem $item): void
