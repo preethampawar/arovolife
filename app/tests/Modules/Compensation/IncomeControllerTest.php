@@ -12,6 +12,7 @@ use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RankProgressSnapshotFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -1373,4 +1374,31 @@ it('keeps the payout-week and 8th-of-month cadence off every distributor surface
         ->assertSee('Wednesday-to-Tuesday')
         ->assertSee('Covers earnings through');
     $this->get(route('my-business'))->assertOk()->assertSee('Wednesday-to-Tuesday');
+});
+
+it('shows the rank progress note with the snapshot date only while the snapshot flag is on', function (): void {
+    Feature::for(null)->activate(RankBonusFeature::class);
+    ['user' => $user] = incomeDistributor();
+    $this->actingAs($user);
+
+    $yesterday = Carbon::yesterday('Asia/Kolkata');
+    DB::table('rank_provisional_standings')->insert([
+        'distributor_id' => 999999, 'month_start' => $yesterday->copy()->startOfMonth()->toDateString(),
+        'rank_number' => 1, 'as_of_date' => $yesterday->toDateString(), 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $this->get(route('income.rank-bonus'))
+        ->assertOk()
+        ->assertDontSee('This is not a rank');
+
+    Feature::for(null)->activate(RankProgressSnapshotFeature::class);
+
+    // A never-ranked distributor is measured on this month's live Genos BV
+    // (Rank 1), not on the snapshot, so the note carries no snapshot date.
+    $this->get(route('income.rank-bonus'))
+        ->assertOk()
+        ->assertSee('Progress so far this month.')
+        ->assertDontSee('Progress as of the end of')
+        ->assertSee('This is not a rank')
+        ->assertSee('can go down if orders are cancelled or refunded');
 });

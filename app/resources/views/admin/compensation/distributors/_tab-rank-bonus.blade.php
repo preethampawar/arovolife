@@ -6,6 +6,35 @@
 </div>
 @enddeveloper
 
+{{-- This month so far — the rank progress snapshot (flag-gated; absent when
+     off). Provisional and read-only: the highest rank here is shown to
+     admins only, never to the distributor (hard rule 3). --}}
+@if(!empty($provisional))
+<x-ui.card class="mb-5">
+    <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+            <p class="text-sm font-semibold text-gray-900 flex items-center gap-1">
+                This month so far (provisional{{ $provisional['asOf'] ? ', as of '.$provisional['asOf']->format('j M') : '' }})
+                <x-help-tip text="Measured nightly at 02:30 with the monthly rank check's own rules, up to the last settled day. Records no rank and feeds no bonus, pool, offer, announcement or termination decision. The distributor sees the conditions below but never a provisional rank." />
+            </p>
+            <p class="text-xs text-gray-600 mt-0.5">Read-only. Ranks are recorded only by the monthly check on the 1st.</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 px-4 py-2.5 text-center min-w-[160px]">
+            <p class="text-[11px] uppercase tracking-wider text-gray-600">Highest provisional rank</p>
+            <p class="text-base font-bold text-indigo-700 mt-1">
+                {{ $provisional['highestRank'] !== null ? ($rankNames[$provisional['highestRank']] ?? 'Rank '.$provisional['highestRank']) : 'None yet' }}
+            </p>
+            <span class="inline-flex mt-1 px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-medium">Provisional</span>
+        </div>
+    </div>
+    @if($provisional['status']->nextRank !== null)
+        @include('income._rank-conditions', ['rankStatus' => $provisional['status'], 'audience' => 'admin'])
+    @else
+        @include('income._rank-progress-note', ['rankStatus' => $provisional['status']])
+    @endif
+</x-ui.card>
+@endif
+
 {{-- Rank Bonus results --}}
 <x-ui.card flush class="mb-5">
     @if(empty($rows) || $rows->isEmpty())

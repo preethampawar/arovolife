@@ -30,6 +30,7 @@ use App\Modules\Compensation\Console\Commands\PayoutReopenStuckBatchCommand;
 use App\Modules\Compensation\Console\Commands\PurgeExpiredPayoutBankFilesCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
+use App\Modules\Compensation\Console\Commands\RankProvisionalStandingsCommand;
 use App\Modules\Compensation\Console\Commands\RebuildMonthCommand;
 use App\Modules\Compensation\Console\Commands\RebuildNightCommand;
 use App\Modules\Compensation\Console\Commands\RebuildPayoutCommand;
@@ -177,6 +178,7 @@ class AppServiceProvider extends ServiceProvider
                 GbbMonthlyRunCommand::class,
                 RankBonusRunCommand::class,
                 RankCheckCommand::class,
+                RankProvisionalStandingsCommand::class,
                 FortuneBonusRunCommand::class,
                 FortuneBonusEnrollCommand::class,
                 FortuneStagingE2ESeedCommand::class,

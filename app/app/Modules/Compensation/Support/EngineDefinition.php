@@ -56,6 +56,12 @@ final readonly class EngineDefinition
      *                               rebuild surface itself is behind `role:developer`. A flag rather
      *                               than a hand-written list of keys in the view, for the reason
      *                               {@see EngineRegistry::rootOrchestratorKeys()} gives.
+     * @param  bool  $latestOnly  True for an engine whose output is only ever its LATEST period — the
+     *                            rank progress snapshot, a read-model each run replaces and nothing
+     *                            downstream reads. A later success therefore resolves an earlier
+     *                            failure (like a root orchestrator, see
+     *                            EngineStatusService::unresolvedFailureQuery()), and the recompute
+     *                            replay skips it: firing it per replayed day would be pure cost.
      */
     public function __construct(
         public string $key,
@@ -75,6 +81,7 @@ final readonly class EngineDefinition
         public ?string $orchestratedBy = null,
         public bool $isOrchestrator = false,
         public bool $developerOnly = false,
+        public bool $latestOnly = false,
     ) {}
 
     /**

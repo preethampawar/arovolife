@@ -219,6 +219,16 @@ final class TeamStatsService
     }
 
     /**
+     * The same membership as {@see scopedIds()}, as a subquery selecting
+     * `d.id` — for callers that intersect a whole leg with another table in
+     * one statement instead of loading every id of a large leg into PHP.
+     */
+    public function scopedIdQuery(Distributor $distributor, string $scope): Builder
+    {
+        return $this->scopedQuery($distributor, $scope)->select('d.id');
+    }
+
+    /**
      * The single source of truth — every downline / referral question
      * about a distributor flows through here. Returns a builder seeded
      * at `distributors as d` joined to `users as u`, with the WHERE/JOIN

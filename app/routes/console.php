@@ -9,6 +9,7 @@ use App\Modules\Compensation\Console\Commands\EngineHealthDigestCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
 use App\Modules\Compensation\Console\Commands\PurgeExpiredPayoutBankFilesCommand;
+use App\Modules\Compensation\Console\Commands\RankProvisionalStandingsCommand;
 use App\Modules\Compensation\Console\Commands\WeeklyRunCommand;
 use App\Modules\Compensation\Services\Recompute\RecomputeGuard;
 use App\Modules\Compensation\Services\Recompute\RecomputeState;
@@ -108,6 +109,22 @@ Schedule::command(MonthlyRunCommand::class)
     ->withoutOverlapping()
     ->when(static fn (): bool => $compensationEnginesMayRun()
         && app(MonthlyRunPlanner::class)->isDue(Carbon::today('Asia/Kolkata')))
+    ->runInBackground();
+
+// Rank progress snapshot — 02:30, for yesterday. Deliberately NOT a step of
+// the nightly run: it moves no money and nothing that does reads it, so its
+// failure must never fail the night or hold back the weekly/monthly runs that
+// wait on it. 02:30 sits after the 00:05 night normally finishes and before
+// the 03:00 weekly run; the command itself refuses a day whose cut-off has not
+// succeeded. The date is passed explicitly — RecordEngineRun files the run
+// under the `--date` it is given, and only a YYYY-MM-DD value parses.
+Schedule::command(RankProvisionalStandingsCommand::class, [
+    '--date' => Carbon::yesterday('Asia/Kolkata')->toDateString(),
+])
+    ->dailyAt('02:30')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->when($compensationEnginesMayRun)
     ->runInBackground();
 
 // ── The nightly reset (dev and staging only) ─────────────────────────────────
