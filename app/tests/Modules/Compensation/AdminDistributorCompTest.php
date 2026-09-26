@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RankProgressSnapshotFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -363,4 +365,31 @@ it('lists the days each repurchase cycle forfeited on the Repurchase tab', funct
         ->assertSee('24 Aug 2026 → 26 Aug 2026')
         ->assertSee('27 Sep 2026 → ongoing')
         ->assertDontSee('24 Jul 2026 → 23 Jul 2026');
+});
+
+it('shows admins a labelled, read-only provisional standing only while the snapshot flag is on', function (): void {
+    Feature::for(null)->activate(RankBonusFeature::class);
+    $admin = compAdmin();
+    $distributorId = compDistributor();
+    $month = Carbon::today('Asia/Kolkata')->startOfMonth();
+
+    DB::table('rank_provisional_standings')->insert([
+        'distributor_id' => $distributorId, 'month_start' => $month->toDateString(), 'rank_number' => 1,
+        'as_of_date' => $month->toDateString(), 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $url = route('admin.compensation.distributors.show', [$distributorId, 'tab' => 'rank-bonus']);
+
+    $this->actingAs($admin)->get($url)->assertOk()->assertDontSee('This month so far');
+
+    Feature::for(null)->activate(RankProgressSnapshotFeature::class);
+
+    $rankOne = app(CompensationPlanSettingsService::class)->rankName(1);
+
+    $this->actingAs($admin)->get($url)
+        ->assertOk()
+        ->assertSee('This month so far (provisional, as of '.$month->format('j M').')')
+        ->assertSee('Highest provisional rank')
+        ->assertSee($rankOne)
+        ->assertSee('This is not a rank');
 });

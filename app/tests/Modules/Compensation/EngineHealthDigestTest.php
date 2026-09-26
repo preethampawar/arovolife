@@ -31,6 +31,7 @@ const HEALTHY_PERIODS = [
     'gsb.weekly-payout' => '2026-09-08',
     'gbb.monthly' => '2026-08-01',
     'rank.check' => '2026-08-01',
+    'rank.provisional-standings' => '2026-09-07', // fires 02:30 today for yesterday
     'rank.bonus' => '2026-08-01',
     'adc.bonus' => '2026-08-01',
     'offers.monthly' => '2026-08-01',
@@ -217,6 +218,7 @@ it('does not report a fire instant that has not arrived yet', function (): void 
     $earlier = [
         'repurchase.evaluate' => '2026-09-07',
         'gsb.daily-cutoff' => '2026-09-06',
+        'rank.provisional-standings' => '2026-09-06',
         'gsb.weekly-payout' => '2026-09-01',
         'gbb.monthly' => '2026-08-01',
         'rank.check' => '2026-08-01',

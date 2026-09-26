@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services\DTOs;
 
+use Illuminate\Support\Carbon;
+
 /**
  * A distributor's own rank standing: the rank they currently hold, the highest
  * they have ever achieved, how many times each rank was achieved, and — for
@@ -44,6 +46,17 @@ final readonly class RankStatus
          * engine is off).
          */
         public int $forfeitedDaysThisMonth = 0,
+        /**
+         * True while the rank progress snapshot is switched on: the views then
+         * show the "as of" note — progress is not a rank and can go down if
+         * orders are cancelled or refunded.
+         */
+        public bool $progressSnapshotOn = false,
+        /**
+         * The settled day the snapshot measures up to (Rank 3–9 partner
+         * counts). Null with the snapshot on means none has run yet this month.
+         */
+        public ?Carbon $progressAsOf = null,
     ) {}
 
     /**
@@ -55,6 +68,26 @@ final readonly class RankStatus
     {
         foreach ($this->nextRequirements as $requirement) {
             if ($requirement->unit === 'bv' && str_contains($requirement->label, 'Genos BV this month')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * True when the next rank's partner counts come from the progress
+     * snapshot — the only figures on the page that stop at the snapshot's
+     * settled day. Ranks 1–2 read this month's Genos BV live.
+     */
+    public function showsSnapshotCounts(): bool
+    {
+        if ($this->progressAsOf === null) {
+            return false;
+        }
+
+        foreach ($this->nextRequirements as $requirement) {
+            if ($requirement->unit === 'people') {
                 return true;
             }
         }

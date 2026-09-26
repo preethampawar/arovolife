@@ -324,9 +324,12 @@ final class EngineReplayService
         foreach (EngineRegistry::all() as $definition) {
             // Orchestrators are skipped: the replay drives the individual
             // engines directly, so running the close as well would invoke every
-            // one of its steps a second time.
+            // one of its steps a second time. Latest-only engines (the rank
+            // progress snapshot) write only a read-model the next scheduled run
+            // rebuilds, so replaying them per day would be pure cost.
             if ($definition->cadence->isScheduled()
                 && ! $definition->isOrchestrator
+                && ! $definition->latestOnly
                 && $definition->cadence->runsOn($day)
                 && $this->isSelected($definition)) {
                 $due[] = $definition;

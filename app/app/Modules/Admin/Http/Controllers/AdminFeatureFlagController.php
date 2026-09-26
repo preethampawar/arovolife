@@ -24,6 +24,7 @@ use App\Modules\Shared\Features\MessagingFeature;
 use App\Modules\Shared\Features\OfflineOrdersFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RankProgressSnapshotFeature;
 use App\Modules\Shared\Features\RegistrationKillswitch;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use App\Modules\Shared\Features\ShiprocketFulfilmentFeature;
@@ -112,6 +113,13 @@ final class AdminFeatureFlagController extends Controller
                 'class' => RankBonusFeature::class,
                 'label' => 'Rank Bonus (Phase 5)',
                 'description' => 'Enables the 21% rank bonus pool split across 9 ranks (Silver → Elite Diamond). Paid monthly on the 8th. Requires rank qualification engine and 1+2 rule tracking.',
+                'owner' => 'developer',
+            ],
+            'compensation.rank_progress_snapshot' => [
+                'class' => RankProgressSnapshotFeature::class,
+                'label' => 'Rank progress snapshot',
+                'requires' => ['compensation.rank_bonus'],
+                'description' => 'Runs a nightly (02:30) progress snapshot of who meets each rank\'s conditions so far this month, so distributors see live Rank 3–9 partner counts with an "as of" note and admins see a provisional standing on the distributor compensation page. Records no rank and feeds no bonus. Off = pages show recorded ranks only.',
                 'owner' => 'developer',
             ],
             'compensation.lifetime_awards' => [

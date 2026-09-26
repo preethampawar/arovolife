@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\DTOs\RankEvaluation;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -53,12 +54,13 @@ final class RankQualificationService
      * Ranks 3-9 never read group BV, so they are unaffected.
      *
      * @param  int[]|null  $distributorIds  restrict to these distributors (null = everyone with BV in the month)
+     * @param  Carbon|null  $through  count days up to and including this date only (null = the whole month)
      * @return array<int, array{left: int, right: int}>
      */
-    public function countedGenosBvForMonth(Carbon $month, ?array $distributorIds = null): array
+    public function countedGenosBvForMonth(Carbon $month, ?array $distributorIds = null, ?Carbon $through = null): array
     {
         $monthStart = $month->copy()->startOfMonth();
-        $monthEnd = $month->copy()->endOfMonth();
+        $monthEnd = $this->monthEndThrough($month, $through);
 
         $query = DB::table('group_bv_daily')
             ->whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
@@ -133,7 +135,6 @@ final class RankQualificationService
     public function checkForMonth(Carbon $month, int $occurrenceNumber = 1): array
     {
         $monthStart = $month->copy()->startOfMonth()->toDateString();
-        $monthEnd = $month->copy()->endOfMonth()->toDateString();
 
         $counts = array_fill_keys(
             ['rank_1_count', 'rank_2_count', 'rank_3_count', 'rank_4_count',
@@ -142,72 +143,41 @@ final class RankQualificationService
             0,
         );
 
-        $personalBvMap = $this->buildPersonalBvMap();
-        // This-month personal purchase BV feeds the Ranks 1 & 2 weaker-leg top-up.
-        $monthlyPersonalBvMap = $this->buildMonthlyPersonalBvMap($monthStart, $monthEnd);
-        // Genos BV net of the days the distributor was failed — measured once
-        // for the month and read by both rank 1 and rank 2.
-        $countedGenosBvMap = $this->countedGenosBvForMonth($month);
+        // Measure first, then record: the evaluation is the whole rule set and
+        // writes nothing, so the rank progress snapshot reads exactly what this
+        // run would record.
+        $evaluation = $this->evaluateMonth($month, $occurrenceNumber);
 
-        $rank1Ids = $this->checkRanks1And2(
-            rank: 1,
-            monthStart: $monthStart,
-            occurrenceNumber: $occurrenceNumber,
-            countedGenosBvMap: $countedGenosBvMap,
-            personalBvMap: $personalBvMap,
-            monthlyPersonalBvMap: $monthlyPersonalBvMap,
-        );
-        $counts['rank_1_count'] = count($rank1Ids);
+        foreach (range(1, 9) as $rank) {
+            $ids = $evaluation->qualifierIds[$rank] ?? [];
 
-        $rank2Ids = $this->checkRanks1And2(
-            rank: 2,
-            monthStart: $monthStart,
-            occurrenceNumber: $occurrenceNumber,
-            countedGenosBvMap: $countedGenosBvMap,
-            personalBvMap: $personalBvMap,
-            monthlyPersonalBvMap: $monthlyPersonalBvMap,
-        );
-        $counts['rank_2_count'] = count($rank2Ids);
+            foreach ($ids as $distributorId) {
+                $bv = $rank <= 2 ? $evaluation->countedGenosBv[$distributorId] : null;
 
-        if ($occurrenceNumber === 1) {
-            // No carry-forward is created: the "1+2 rule" is retired (KP
-            // 2026-08-05, replaced by AO-GO). Reaching Rank 2 still voids any
-            // pending Rank-1 carry surviving from before the retirement.
-            $this->voidRank1CarryForwardsForRank2Qualifiers($rank2Ids, $monthStart);
-        }
-
-        $cascadeMap = [
-            3 => 2,
-            4 => 3,
-            5 => 4,
-            6 => 5,
-            7 => 6,
-            8 => 7,
-            9 => 8,
-        ];
-
-        $rankQualifierIds = [1 => $rank1Ids, 2 => $rank2Ids];
-
-        foreach (range(3, 9) as $rank) {
-            $requiredLowerRank = $cascadeMap[$rank];
-            $lowerRankQualifierIds = $rankQualifierIds[$requiredLowerRank] ?? [];
-
-            if (empty($lowerRankQualifierIds)) {
-                $rankQualifierIds[$rank] = [];
-
-                continue;
+                RankQualification::updateOrCreate(
+                    [
+                        'distributor_id' => $distributorId,
+                        'rank_number' => $rank,
+                        'month_start' => $monthStart,
+                        'occurrence_in_month' => $occurrenceNumber,
+                    ],
+                    [
+                        'left_genos_bv_paise' => $bv['left'] ?? null,
+                        'right_genos_bv_paise' => $bv['right'] ?? null,
+                        'is_carry_forward' => false,
+                        'status' => RankQualification::STATUS_QUALIFIED,
+                    ],
+                );
             }
 
-            $newIds = $this->checkHigherRank(
-                rank: $rank,
-                lowerRankQualifierIds: $lowerRankQualifierIds,
-                monthStart: $monthStart,
-                occurrenceNumber: $occurrenceNumber,
-                personalBvMap: $personalBvMap,
-            );
+            if ($rank === 2 && $occurrenceNumber === 1) {
+                // No carry-forward is created: the "1+2 rule" is retired (KP
+                // 2026-08-05, replaced by AO-GO). Reaching Rank 2 still voids any
+                // pending Rank-1 carry surviving from before the retirement.
+                $this->voidRank1CarryForwardsForRank2Qualifiers($ids, $monthStart);
+            }
 
-            $rankQualifierIds[$rank] = $newIds;
-            $counts['rank_'.$rank.'_count'] = count($newIds);
+            $counts['rank_'.$rank.'_count'] = count($ids);
         }
 
         $counts['total_qualifications'] = array_sum(array_filter(
@@ -220,14 +190,77 @@ final class RankQualificationService
     }
 
     /**
+     * Who meets each rank's conditions for the month — the complete rule set
+     * of {@see checkForMonth()}, writing nothing.
+     *
+     * `$through` bounds every BV figure to days up to and including that date
+     * (the progress snapshot passes the last settled day); null measures the
+     * whole month, as the monthly run does.
+     *
+     * The Q-Period gate for ranks 3–9 reads prior-rank achievements. The
+     * monthly run used to write this month's lower-rank rows before reading
+     * them; {@see qPeriodCounts()} reproduces that count without the write.
+     */
+    public function evaluateMonth(Carbon $month, int $occurrenceNumber = 1, ?Carbon $through = null): RankEvaluation
+    {
+        $monthStart = $month->copy()->startOfMonth()->toDateString();
+        $monthEnd = $this->monthEndThrough($month, $through);
+
+        $personalBvMap = $this->buildPersonalBvMap($through === null ? null : $monthEnd);
+        // This-month personal purchase BV feeds the Ranks 1 & 2 weaker-leg top-up.
+        $monthlyPersonalBvMap = $this->buildMonthlyPersonalBvMap($monthStart, $monthEnd->toDateString());
+        // Genos BV net of the days the distributor was failed — measured once
+        // for the month and read by both rank 1 and rank 2.
+        $countedGenosBvMap = $this->countedGenosBvForMonth($month, null, $through);
+
+        /** @var array<int, array<int, int>> $rankQualifierIds */
+        $rankQualifierIds = [];
+
+        foreach ([1, 2] as $rank) {
+            $rankQualifierIds[$rank] = $this->checkRanks1And2(
+                rank: $rank,
+                countedGenosBvMap: $countedGenosBvMap,
+                personalBvMap: $personalBvMap,
+                monthlyPersonalBvMap: $monthlyPersonalBvMap,
+            );
+        }
+
+        foreach (range(3, 9) as $rank) {
+            $lowerRankQualifierIds = $rankQualifierIds[$rank - 1] ?? [];
+
+            $rankQualifierIds[$rank] = $lowerRankQualifierIds === [] ? [] : $this->checkHigherRank(
+                rank: $rank,
+                lowerRankQualifierIds: $lowerRankQualifierIds,
+                monthStart: $monthStart,
+                occurrenceNumber: $occurrenceNumber,
+                personalBvMap: $personalBvMap,
+            );
+        }
+
+        return new RankEvaluation($rankQualifierIds, $countedGenosBvMap);
+    }
+
+    /** The month's last day, or `$through` when it falls earlier. */
+    private function monthEndThrough(Carbon $month, ?Carbon $through): Carbon
+    {
+        $monthEnd = $month->copy()->endOfMonth();
+
+        return ($through !== null && $through->lessThan($monthEnd))
+            ? $through->copy()->endOfDay()
+            : $monthEnd;
+    }
+
+    /**
      * Build lifetime personal BV map: distributor_id => sum(bv_paise) for type='accrual'.
      *
+     * @param  Carbon|null  $upTo  only accruals effective on or before this day (null = all)
      * @return array<int, int>
      */
-    private function buildPersonalBvMap(): array
+    private function buildPersonalBvMap(?Carbon $upTo = null): array
     {
         $rows = DB::table('bv_ledger_entries')
             ->where('type', 'accrual')
+            ->when($upTo !== null, fn ($q) => $q->where('effective_at', '<=', $upTo->copy()->endOfDay()))
             ->select('distributor_id', DB::raw('SUM(bv_paise) as total_bv'))
             ->groupBy('distributor_id')
             ->get();
@@ -278,8 +311,6 @@ final class RankQualificationService
      */
     private function checkRanks1And2(
         int $rank,
-        string $monthStart,
-        int $occurrenceNumber,
         array $countedGenosBvMap,
         array $personalBvMap,
         array $monthlyPersonalBvMap,
@@ -314,21 +345,6 @@ final class RankQualificationService
             if ($effectiveLeft < $groupBvRequired || $effectiveRight < $groupBvRequired) {
                 continue;
             }
-
-            RankQualification::updateOrCreate(
-                [
-                    'distributor_id' => $distributorId,
-                    'rank_number' => $rank,
-                    'month_start' => $monthStart,
-                    'occurrence_in_month' => $occurrenceNumber,
-                ],
-                [
-                    'left_genos_bv_paise' => $leftBv,
-                    'right_genos_bv_paise' => $rightBv,
-                    'is_carry_forward' => false,
-                    'status' => RankQualification::STATUS_QUALIFIED,
-                ],
-            );
 
             $qualifiedIds[] = $distributorId;
         }
@@ -387,11 +403,16 @@ final class RankQualificationService
             $sideCountMap[$ancestorId][$side]++;
         }
 
-        // The candidate's own prior-rank Q-Period: lower-rank rows for THIS
-        // month were already written by the cascade, so the current month
-        // counts toward the gate.
+        // The candidate's own prior-rank Q-Period, with this run's lower-rank
+        // qualifiers counted as if already recorded (see qPeriodCounts()).
         $qPeriodRequired = $this->plan->rankPypRequired($rank - 1);
-        $qPeriodCounts = $this->qPeriodCounts(array_keys($sideCountMap), $rank - 1, $monthStart);
+        $qPeriodCounts = $this->qPeriodCounts(
+            array_keys($sideCountMap),
+            $rank - 1,
+            $monthStart,
+            $occurrenceNumber,
+            $lowerRankQualifierIds,
+        );
 
         $qualifiedIds = [];
 
@@ -406,21 +427,6 @@ final class RankQualificationService
             if (($qPeriodCounts[$distributorId] ?? 0) < $qPeriodRequired) {
                 continue;
             }
-
-            RankQualification::updateOrCreate(
-                [
-                    'distributor_id' => $distributorId,
-                    'rank_number' => $rank,
-                    'month_start' => $monthStart,
-                    'occurrence_in_month' => $occurrenceNumber,
-                ],
-                [
-                    'left_genos_bv_paise' => null,
-                    'right_genos_bv_paise' => null,
-                    'is_carry_forward' => false,
-                    'status' => RankQualification::STATUS_QUALIFIED,
-                ],
-            );
 
             $qualifiedIds[] = $distributorId;
         }
@@ -439,11 +445,28 @@ final class RankQualificationService
      * rank opens permanently. (Supersedes the tentative Option B shipped
      * 2026-08-05, which counted distinct months.)
      *
+     * The monthly run records a rank's qualifiers before the next rank reads
+     * this count, so this run's (month, occurrence) row always counted: for a
+     * distributor this run qualifies at $rank it becomes an achieved row, and
+     * for anyone else a row already there from an earlier run of the same
+     * occurrence is left as it is and counts only if achieved. Evaluating
+     * without writing, the count is therefore:
+     *
+     *   achieved rows up to the month, excluding (month, occurrence)
+     *   + 1 if this run qualifies them at $rank, or an achieved
+     *       (month, occurrence) row already exists.
+     *
      * @param  int[]  $distributorIds
+     * @param  int[]  $qualifiedThisRun  this run's qualifiers at $rank
      * @return array<int, int>
      */
-    private function qPeriodCounts(array $distributorIds, int $rank, string $uptoMonthStart): array
-    {
+    private function qPeriodCounts(
+        array $distributorIds,
+        int $rank,
+        string $uptoMonthStart,
+        int $occurrenceNumber,
+        array $qualifiedThisRun,
+    ): array {
         if ($distributorIds === []) {
             return [];
         }
@@ -454,12 +477,26 @@ final class RankQualificationService
             ->where('month_start', '<=', $uptoMonthStart)
             ->toBase()
             ->groupBy('distributor_id')
-            ->selectRaw('distributor_id, COUNT(*) as achieved_months')
+            ->selectRaw(
+                'distributor_id, '
+                .'SUM(CASE WHEN month_start = ? AND occurrence_in_month = ? THEN 0 ELSE 1 END) as prior, '
+                .'MAX(CASE WHEN month_start = ? AND occurrence_in_month = ? THEN 1 ELSE 0 END) as this_run',
+                [$uptoMonthStart, $occurrenceNumber, $uptoMonthStart, $occurrenceNumber],
+            )
             ->get();
 
         $map = [];
+        $hasThisRunRow = [];
         foreach ($rows as $row) {
-            $map[(int) $row->distributor_id] = (int) $row->achieved_months;
+            $map[(int) $row->distributor_id] = (int) $row->prior + (int) $row->this_run;
+            $hasThisRunRow[(int) $row->distributor_id] = (int) $row->this_run === 1;
+        }
+
+        foreach (array_intersect($distributorIds, $qualifiedThisRun) as $distributorId) {
+            // Already counted when an achieved (month, occurrence) row exists.
+            if (! ($hasThisRunRow[(int) $distributorId] ?? false)) {
+                $map[(int) $distributorId] = ($map[(int) $distributorId] ?? 0) + 1;
+            }
         }
 
         return $map;

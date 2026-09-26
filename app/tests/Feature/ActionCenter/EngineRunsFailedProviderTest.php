@@ -23,6 +23,7 @@ const ENGINE_RUNS_FAILED_HEALTHY_PERIODS = [
     'gsb.weekly-payout' => '2026-09-08',
     'gbb.monthly' => '2026-08-01',
     'rank.check' => '2026-08-01',
+    'rank.provisional-standings' => '2026-09-07',
     'rank.bonus' => '2026-08-01',
     'adc.bonus' => '2026-08-01',
     'offers.monthly' => '2026-08-01',

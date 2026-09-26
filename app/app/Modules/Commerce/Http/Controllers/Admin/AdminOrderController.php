@@ -8,6 +8,7 @@ use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Fulfilment\Data\CourierQuote;
 use App\Modules\Fulfilment\Exceptions\ShiprocketApiException;
 use App\Modules\Fulfilment\Models\Shipment;
@@ -391,11 +392,15 @@ final class AdminOrderController extends Controller
 
         $actorId = is_numeric(auth()->id()) ? (int) auth()->id() : null;
 
+        // A check records what the courier said, not a change of its own (the
+        // sync audits any status it applies), so there is no before-state.
         $audit = fn (string $outcome, ?string $courierSays): AuditLog => AuditLog::create([
             'actor_id' => $actorId,
             'action' => 'shipment.tracking_checked',
             'subject_type' => 'order',
             'subject_id' => $order->id,
+            'before_hash' => null,
+            'after_hash' => AuditDigests::of(['outcome' => $outcome, 'courier_status' => $courierSays]),
             'details' => ['order_no' => $order->order_no, 'outcome' => $outcome, 'courier_status' => $courierSays],
         ]);
 

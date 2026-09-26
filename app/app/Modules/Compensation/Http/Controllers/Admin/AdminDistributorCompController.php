@@ -20,8 +20,11 @@ use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Services\AogoOfferService;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
+use App\Modules\Compensation\Services\DTOs\RankStatus;
 use App\Modules\Compensation\Services\GenosBvLedgerService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
+use App\Modules\Compensation\Services\RankProvisionalStandingService;
+use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Compensation\Services\RepurchaseCycleService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compensation\Support\RepurchaseWalletStatus;
@@ -33,6 +36,7 @@ use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RankProgressSnapshotFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
@@ -170,6 +174,7 @@ final class AdminDistributorCompController extends Controller
                 'aogoStatus' => app(AogoOfferService::class)
                     ->eligibilityFor((int) $distributor->id, Carbon::today('Asia/Kolkata')),
                 'rankNames' => $this->plan->rankNames(),
+                'provisional' => $this->provisionalStanding($distributor),
             ],
             'fortune-bonus' => [
                 'rows' => FortuneBonusResult::where('distributor_id', $distributor->id)
@@ -217,6 +222,30 @@ final class AdminDistributorCompController extends Controller
             'to' => $request->query('to'),
             'status' => $request->query('status'),
         ], $tabData));
+    }
+
+    /**
+     * This month so far, for the admin: the same next-rank conditions the
+     * distributor sees plus the highest rank whose conditions the snapshot
+     * says they meet. Provisional and read-only — never shown to the
+     * distributor as a rank (hard rule 3). Null while the snapshot flag is off.
+     *
+     * @return array{status: RankStatus, highestRank: ?int, asOf: ?Carbon}|null
+     */
+    private function provisionalStanding(Distributor $distributor): ?array
+    {
+        if (! Feature::for(null)->active(RankProgressSnapshotFeature::class)) {
+            return null;
+        }
+
+        $month = Carbon::today('Asia/Kolkata')->startOfMonth();
+        $standings = app(RankProvisionalStandingService::class);
+
+        return [
+            'status' => app(RankStatusService::class)->forDistributor($distributor),
+            'highestRank' => $standings->highestFor((int) $distributor->id, $month),
+            'asOf' => $standings->asOf($month),
+        ];
     }
 
     private function fetchAuditRows(int $distributorId): LengthAwarePaginator|Collection

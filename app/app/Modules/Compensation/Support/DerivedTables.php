@@ -75,6 +75,9 @@ final class DerivedTables
         'rank_monthly_pools',
         'rank_aogo_grants',
         'rank_qualifications',
+        // Progress read-model rebuilt nightly from the same BV; a survivor
+        // would show a pre-wipe "as of" until the next 02:30 run.
+        'rank_provisional_standings',
         'lifetime_award_milestones',
         'fortune_bonus_results',
         'fortune_bonus_participants',
@@ -142,6 +145,7 @@ final class DerivedTables
         'rank_monthly_pools' => ['column' => 'month_start', 'granularity' => 'month'],
         'rank_aogo_grants' => ['column' => 'month_start', 'granularity' => 'month'],
         'rank_qualifications' => ['column' => 'month_start', 'granularity' => 'month'],
+        'rank_provisional_standings' => ['column' => 'month_start', 'granularity' => 'month'],
         'lifetime_award_milestones' => ['column' => 'triggered_month', 'granularity' => 'month'],
         'fortune_bonus_results' => ['column' => 'month_start', 'granularity' => 'month'],
         'fortune_bonus_participants' => ['column' => 'month_start', 'granularity' => 'month'],

@@ -83,12 +83,12 @@ it('has exactly one registry entry per compensation console command', function (
     expect($registered)->toBe($commandClasses);
 });
 
-it('registers twenty engines with unique keys and signatures', function (): void {
+it('registers twenty-one engines with unique keys and signatures', function (): void {
     $all = EngineRegistry::all();
 
-    expect($all)->toHaveCount(20);
+    expect($all)->toHaveCount(21);
     expect(array_keys($all))->toBe(EngineRegistry::keys());
-    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(20);
+    expect(collect($all)->pluck('commandSignature')->unique())->toHaveCount(21);
 });
 
 it('keeps the four developer rebuilds out of the scheduler and off the admin cards', function (): void {

@@ -423,7 +423,10 @@ final class EngineStatusService
      */
     private function unresolvedFailureQuery(Carbon $since): Builder
     {
-        $rootKeys = EngineRegistry::rootOrchestratorKeys();
+        // Latest-only engines (the rank progress snapshot) heal like a root
+        // orchestrator: once a later run succeeds, the earlier period is
+        // superseded and re-running it would only roll the read-model back.
+        $rootKeys = [...EngineRegistry::rootOrchestratorKeys(), ...EngineRegistry::latestOnlyKeys()];
 
         return EngineRun::query()
             ->where('status', EngineRun::STATUS_FAILED)

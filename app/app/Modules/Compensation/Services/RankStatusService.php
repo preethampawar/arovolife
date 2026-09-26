@@ -10,9 +10,11 @@ use App\Modules\Compensation\Services\DTOs\RankRequirement;
 use App\Modules\Compensation\Services\DTOs\RankStatus;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Services\TeamStatsService;
+use App\Modules\Shared\Features\RankProgressSnapshotFeature;
 use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 /**
  * Builds a distributor's own rank standing for the distributor-facing surfaces
@@ -41,6 +43,7 @@ final class RankStatusService
         private readonly RankRequalificationGateService $requalificationGate,
         private readonly RankQualificationService $rankQualification,
         private readonly IncomeEligibilityService $incomeEligibility,
+        private readonly RankProvisionalStandingService $provisionalStandings,
     ) {}
 
     public function forDistributor(Distributor $distributor): RankStatus
@@ -62,6 +65,13 @@ final class RankStatusService
 
         $nextRank = $this->nextRank($highestRank);
 
+        // The progress snapshot feeds only the Rank 3–9 partner counts below —
+        // never currentRank / highestRank / thisMonthRank, which stay recorded
+        // ranks (a provisional rank shown to a distributor would imply a rank,
+        // and a Rank Bonus, not earned — hard rule 3).
+        $progressSnapshotOn = Feature::for(null)->active(RankProgressSnapshotFeature::class);
+        $progressAsOf = $progressSnapshotOn ? $this->provisionalStandings->asOf($monthStart) : null;
+
         $requalificationConditionsMet = null;
         if ($currentRank !== null && ($achievementCounts[$currentRank] ?? 0) > 1) {
             $requalificationConditionsMet = $this->requalificationGate->passesSoFar(
@@ -79,11 +89,13 @@ final class RankStatusService
             nextRank: $nextRank,
             nextRequirements: $nextRank === null
                 ? []
-                : $this->requirementsFor($distributor, $nextRank, $monthStart, $achievementCounts),
+                : $this->requirementsFor($distributor, $nextRank, $monthStart, $achievementCounts, $progressAsOf),
             qualifiedThisMonth: $thisMonthRank !== null,
             thisMonthRank: $thisMonthRank,
             requalificationConditionsMet: $requalificationConditionsMet,
             forfeitedDaysThisMonth: $this->forfeitedDaysThisMonth($distributorId, $monthStart),
+            progressSnapshotOn: $progressSnapshotOn,
+            progressAsOf: $progressAsOf,
         );
     }
 
@@ -217,6 +229,7 @@ final class RankStatusService
         int $rank,
         Carbon $monthStart,
         array $achievementCounts,
+        ?Carbon $progressAsOf = null,
     ): array {
         $distributorId = (int) $distributor->id;
         $requirements = [];
@@ -277,22 +290,19 @@ final class RankStatusService
         );
 
         $perSide = $this->plan->rankStructuralQualifiersPerSide($rank);
-        [$leftQualifiers, $rightQualifiers] = $this->legQualifierCounts($distributor, $lowerRank, $monthStart);
+        [$leftQualifiers, $rightQualifiers] = $this->legQualifierCounts($distributor, $lowerRank, $monthStart, $progressAsOf);
 
-        $requirements[] = new RankRequirement(
-            label: $lowerRankName.' partners — Left Genos',
-            current: $leftQualifiers,
-            required: $perSide,
-            unit: 'people',
-            note: 'Members of your Left group who achieved '.$lowerRankName.' this month.',
-        );
-        $requirements[] = new RankRequirement(
-            label: $lowerRankName.' partners — Right Genos',
-            current: $rightQualifiers,
-            required: $perSide,
-            unit: 'people',
-            note: 'Members of your Right group who achieved '.$lowerRankName.' this month.',
-        );
+        foreach (['Left' => $leftQualifiers, 'Right' => $rightQualifiers] as $side => $count) {
+            $requirements[] = new RankRequirement(
+                label: $lowerRankName.' partners — '.$side.' Genos',
+                current: $count,
+                required: $perSide,
+                unit: 'people',
+                note: $progressAsOf !== null
+                    ? 'Members of your '.$side.' group who meet '.$lowerRankName.'\'s conditions so far this month. A count only — not a rank.'
+                    : 'Members of your '.$side.' group who achieved '.$lowerRankName.' this month.',
+            );
+        }
 
         return $requirements;
     }
@@ -373,8 +383,15 @@ final class RankStatusService
      *
      * @return array{0: int, 1: int}
      */
-    private function legQualifierCounts(Distributor $distributor, int $rank, Carbon $monthStart): array
+    private function legQualifierCounts(Distributor $distributor, int $rank, Carbon $monthStart, ?Carbon $progressAsOf = null): array
     {
+        if ($progressAsOf !== null) {
+            return [
+                $this->legMeetingCount($distributor, 'left', $rank, $monthStart),
+                $this->legMeetingCount($distributor, 'right', $rank, $monthStart),
+            ];
+        }
+
         $counts = [];
 
         foreach (['left', 'right'] as $side) {
@@ -389,6 +406,34 @@ final class RankStatusService
         }
 
         return [$counts[0], $counts[1]];
+    }
+
+    /**
+     * Members of one Genos group meeting the rank's conditions so far this
+     * month: the progress snapshot, plus any rank already recorded for the
+     * month (a mid-month occurrence), each member counted once. One statement
+     * over the leg subquery — a top-of-tree leg is most of the platform.
+     */
+    private function legMeetingCount(Distributor $distributor, string $side, int $rank, Carbon $monthStart): int
+    {
+        $leg = $this->teamStats->scopedIdQuery($distributor, $side);
+        $month = $monthStart->toDateString();
+
+        $recorded = RankQualification::query()->achieved()
+            ->where('rank_number', $rank)
+            ->where('month_start', $month)
+            ->whereIn('distributor_id', $leg)
+            ->toBase()
+            ->select('distributor_id');
+
+        $meeting = DB::table('rank_provisional_standings')
+            ->where('rank_number', $rank)
+            ->where('month_start', $month)
+            ->whereIn('distributor_id', $this->teamStats->scopedIdQuery($distributor, $side))
+            ->select('distributor_id')
+            ->union($recorded);
+
+        return (int) DB::query()->fromSub($meeting, 'm')->count();
     }
 
     private function bvLabel(int $paise): string

@@ -18,6 +18,7 @@ use App\Modules\Compensation\Console\Commands\MonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
 use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
 use App\Modules\Compensation\Console\Commands\RankCheckCommand;
+use App\Modules\Compensation\Console\Commands\RankProvisionalStandingsCommand;
 use App\Modules\Compensation\Console\Commands\RebuildMonthCommand;
 use App\Modules\Compensation\Console\Commands\RebuildNightCommand;
 use App\Modules\Compensation\Console\Commands\RebuildPayoutCommand;
@@ -30,6 +31,7 @@ use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RankProgressSnapshotFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use InvalidArgumentException;
 
@@ -103,6 +105,17 @@ final class EngineRegistry
         }
 
         return self::RETIRED_LABELS[$key] ?? $key;
+    }
+
+    /**
+     * Engines whose output is only their latest period — a later success
+     * resolves an earlier failure. See EngineDefinition::$latestOnly.
+     *
+     * @return list<string>
+     */
+    public static function latestOnlyKeys(): array
+    {
+        return array_keys(array_filter(self::all(), static fn (EngineDefinition $d): bool => $d->latestOnly));
     }
 
     /**
@@ -278,6 +291,28 @@ final class EngineRegistry
                 // the explicit --month the close passes.
                 defaultPeriod: 'prev-month',
                 orchestratedBy: 'compensation.monthly-close',
+            ),
+
+            new EngineDefinition(
+                key: 'rank.provisional-standings',
+                label: 'Rank Progress Snapshot',
+                description: "Measures who meets each rank's conditions so far this month, up to the last settled day, with the monthly Rank Qualification Check's own rules — and records NO rank. Impact: replaces the rank progress snapshot that the distributor's rank progress and the admin's provisional standing read; no money moves and no bonus, pool, offer, announcement or termination reads it. Refuses a day whose GSB cut-off has not succeeded. Safe to re-run: each run replaces the snapshot.",
+                periodType: EnginePeriodType::Date,
+                commandClass: RankProvisionalStandingsCommand::class,
+                commandSignature: 'rank:provisional-standings',
+                periodOption: '--date',
+                // The cut-off is checked inside the command, not declared as an
+                // edge: a dependency would let a manual trigger run the cut-off,
+                // and this engine must never be the reason money moves.
+                dependencies: [],
+                featureFlagClass: RankProgressSnapshotFeature::class,
+                reportRouteName: null,
+                // Scheduled on its own, outside the nightly chain: after the
+                // 00:05 run has normally finished, before the 03:00 weekly run.
+                cadence: EngineCadence::dailyForPreviousDay('02:30'),
+                defaultPeriod: 'today',
+                requiresClosedPeriod: true,
+                latestOnly: true,
             ),
 
             new EngineDefinition(
