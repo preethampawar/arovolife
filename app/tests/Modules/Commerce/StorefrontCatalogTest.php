@@ -177,6 +177,9 @@ it('SCAT-03: product detail renders sorted rich attributes, gallery, category an
     $response->assertSee('Product information');                 // attribute section heading
     $response->assertDontSee('550 BV');                          // BV hidden from anonymous visitors (compliance: no implied income)
     $response->assertDontSee('Distributor price');               // after-login pricing hidden from public
+    $response->assertSee('₹1,200.00');                           // the public sees MRP
+    $response->assertDontSee('₹700.00');                         // never the distributor price
+    $response->assertDontSee('₹999.00');                         // nor the sale price
     $response->assertDontSee('Easy Purchase');                   // share affordance is distributor-only
     $response->assertSee('Health Care');                         // category from master
     $response->assertSee('Arovolife Labs');                      // manufacturer in product-facts table
@@ -197,8 +200,8 @@ it('SCAT-04: a logged-in distributor sees the distributor price, BV and the Easy
 
     $response = $this->actingAs($dist)->get(route('shop.product', 'dp-prod'))->assertOk();
     $response->assertSee('Your distributor price');              // after-login pricing visible
-    $response->assertSee('charged at checkout');                 // and it is the price charged (F55)
     $response->assertSee('₹700.00');                             // distributor_price_paise 70000
+    $response->assertDontSee('₹1,200.00');                       // MRP never shown to a distributor
     $response->assertSee('550 BV');                              // BV visible to distributor
     $response->assertSee('Easy Purchase');                       // share affordance visible
     $response->assertSee('ref=AV12345678', false);               // referral link carries this ADN

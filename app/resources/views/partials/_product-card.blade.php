@@ -3,6 +3,7 @@
      Renders nothing if the product has no active variant. --}}
 @php
     $variant = $product->primaryVariant();
+    $isDistributor = auth()->user()?->distributor !== null;
     $cardImage = $product->galleryImages->first()?->url() ?? $product->image_url;
     $catLabel = $product->productCategory?->name ?? ($product->category ? str_replace('-', ' ', $product->category) : null);
 @endphp
@@ -16,11 +17,6 @@
             <div class="text-center {{ $tone['iconColor'] }}">
                 <x-lucide-image class="w-12 h-12 mx-auto mb-2 opacity-70" />
             </div>
-        @endif
-        @if($variant->hasDiscount())
-            <span class="absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-600 text-white shadow-md">
-                −{{ $variant->discountPercent() }}%
-            </span>
         @endif
         @if($catLabel)
             <span class="absolute top-2 right-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider {{ $tone['badgeBg'] }} {{ $tone['badgeTxt'] }} backdrop-blur-sm shadow-sm">
@@ -41,10 +37,7 @@
         {{-- Price row + Add-to-Cart icon --}}
         <div class="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-100 mt-auto">
             <div class="flex items-baseline gap-1.5 min-w-0">
-                <span class="text-base font-bold text-gray-900">{{ $variant->displayPrice() }}</span>
-                @if($variant->hasDiscount())
-                    <span class="text-xs text-gray-600 line-through">{{ $variant->displayMrp() }}</span>
-                @endif
+                <span class="text-base font-bold text-gray-900">{{ $variant->displayPriceForTier($isDistributor) }}</span>
             </div>
             <form method="POST" action="{{ route('shop.cart.add') }}" class="shrink-0" data-add-to-cart>
                 @csrf

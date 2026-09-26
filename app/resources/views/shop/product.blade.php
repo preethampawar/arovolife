@@ -117,11 +117,13 @@
 
         @if($variant !== null)
         <div class="flex items-baseline flex-wrap gap-3 mb-3">
-            <span class="text-3xl font-bold text-gray-900">{{ $variant->displayPrice() }}</span>
-            @if($variant->hasDiscount())
-            <span class="text-lg text-gray-600 line-through">{{ $variant->displayMrp() }}</span>
-            <span class="text-sm font-semibold text-green-700 bg-green-50 px-2.5 py-1 rounded">{{ $variant->discountPercent() }}% off</span>
+            {{-- One price per viewer: a signed-in distributor sees only the
+                 distributor price (MRP where none is set); everyone else sees
+                 MRP. This is the price charged at checkout. --}}
+            @if($distributor && $variant->hasDistributorPrice())
+            <span class="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Your distributor price</span>
             @endif
+            <span class="text-3xl font-bold text-gray-900">{{ $variant->displayPriceForTier((bool) $distributor) }}</span>
             @if($variant->bv_paise > 0 && $distributor)
             {{-- BV shown ONLY to logged-in distributors — a factual point value
                  used by the compensation plan, never an earnings projection.
@@ -132,18 +134,6 @@
             </span>
             @endif
         </div>
-
-        @if($distributor && $variant->hasDistributorPrice())
-        {{-- After-login distributor price tier — a factual catalogue price for
-             distributors, shown only once authenticated. Not an earnings figure.
-             This is the price actually charged to a signed-in Direct Seller
-             (client decision 2026-09-11, QA F55), so the line says so. --}}
-        <div class="flex items-baseline flex-wrap gap-2 mb-3 -mt-1">
-            <span class="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Your distributor price</span>
-            <span class="text-xl font-bold text-emerald-700">{{ $variant->displayDistributorPrice() }}</span>
-            <span class="text-xs text-emerald-700">— charged at checkout</span>
-        </div>
-        @endif
 
         <p class="text-xs text-gray-600 mb-6">Inclusive of all taxes. HSN: {{ $product->hsn_code }}</p>
 

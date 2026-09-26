@@ -6,7 +6,11 @@ declare(strict_types=1);
  * F55: the product page showed a logged-in Direct Seller a "distributor price"
  * that no cart, order or invoice ever charged — the member was billed the sale
  * price. The client's decision (2026-09-11) is that members pay the distributor
- * price where the catalogue sets one. Guests and MRP are unchanged.
+ * price where the catalogue sets one.
+ *
+ * 2026-09-26 (client): everyone who is not a signed-in Direct Seller sees and
+ * pays MRP; a Direct Seller sees and pays the distributor price, or MRP when
+ * none is set. A cart built at the other tier is emptied, not re-priced.
  *
  * F56: COD stays off. `payments.cod.enabled` exists as a staging settings row
  * but nothing in the code has ever read it, and checkout offers online only.
@@ -76,7 +80,7 @@ function dpUser(bool $distributor): User
     return $user->fresh();
 }
 
-/** A variant at ₹549 sale / ₹450 distributor, unless $distributorPaise says otherwise. */
+/** A variant at ₹650 MRP / ₹549 sale / ₹450 distributor, unless $distributorPaise says otherwise. */
 function dpVariant(int $distributorPaise = 45000): ProductVariant
 {
     $n = random_int(10000, 99999);
@@ -96,11 +100,11 @@ function dpCart(): Cart
     return Cart::create(['anonymous_key' => 'dp'.random_int(10000, 99999), 'expires_at' => now()->addDay()]);
 }
 
-it('F55-01: a guest pays the sale price', function (): void {
+it('F55-01: a guest pays MRP', function (): void {
     $variant = dpVariant();
     $item = app(CartService::class)->addItem(dpCart(), $variant->id, 1, null);
 
-    expect($item->unit_price_paise)->toBe(54900);
+    expect($item->unit_price_paise)->toBe(65000);
 });
 
 it('F55-02: a logged-in Direct Seller pays the distributor price', function (): void {
@@ -110,25 +114,25 @@ it('F55-02: a logged-in Direct Seller pays the distributor price', function (): 
     expect($item->unit_price_paise)->toBe(45000);
 });
 
-it('F55-03: a signed-in customer who is not a Direct Seller still pays the sale price', function (): void {
+it('F55-03: a signed-in customer who is not a Direct Seller pays MRP', function (): void {
     $variant = dpVariant();
     $item = app(CartService::class)->addItem(dpCart(), $variant->id, 1, dpUser(false));
 
-    expect($item->unit_price_paise)->toBe(54900);
+    expect($item->unit_price_paise)->toBe(65000);
 });
 
-it('F55-04: a variant with no distributor price is unaffected', function (): void {
+it('F55-04: a variant with no distributor price falls back to MRP for a Direct Seller', function (): void {
     $variant = dpVariant(distributorPaise: 0);
     $item = app(CartService::class)->addItem(dpCart(), $variant->id, 1, dpUser(true));
 
-    expect($item->unit_price_paise)->toBe(54900);
+    expect($item->unit_price_paise)->toBe(65000);
 });
 
-it('F55-05: a cart built as a guest is repriced when the Direct Seller signs in', function (): void {
+it('F55-05: a cart built as a guest is emptied when a Direct Seller signs in', function (): void {
     $variant = dpVariant();
     $cart = dpCart();
     $item = app(CartService::class)->addItem($cart, $variant->id, 2, null);
-    expect($item->unit_price_paise)->toBe(54900);
+    expect($item->unit_price_paise)->toBe(65000);
 
     // The member signs in and opens the cart — the same path checkout takes.
     $this->actingAs(dpUser(true))
@@ -136,7 +140,34 @@ it('F55-05: a cart built as a guest is repriced when the Direct Seller signs in'
         ->get(route('shop.cart'))
         ->assertOk();
 
-    expect((int) CartItem::findOrFail($item->id)->unit_price_paise)->toBe(45000);
+    expect(CartItem::where('cart_id', $cart->id)->count())->toBe(0)
+        ->and(session('cart_notice'))->toContain('signed in as a distributor');
+});
+
+it('F55-07: a guest cart with only no-distributor-price lines survives a Direct Seller sign-in', function (): void {
+    $variant = dpVariant(distributorPaise: 0);
+    $cart = dpCart();
+    app(CartService::class)->addItem($cart, $variant->id, 1, null);
+
+    $this->actingAs(dpUser(true))
+        ->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->get(route('shop.cart'))
+        ->assertOk();
+
+    expect(CartItem::where('cart_id', $cart->id)->count())->toBe(1);
+});
+
+it('F55-08: a signed-in non-distributor keeps the guest cart', function (): void {
+    $variant = dpVariant();
+    $cart = dpCart();
+    app(CartService::class)->addItem($cart, $variant->id, 1, null);
+
+    $this->actingAs(dpUser(false))
+        ->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->get(route('shop.cart'))
+        ->assertOk();
+
+    expect(CartItem::where('cart_id', $cart->id)->count())->toBe(1);
 });
 
 it('F55-06: the order, its line and its BV follow the price actually charged', function (): void {

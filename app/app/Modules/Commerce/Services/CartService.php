@@ -28,10 +28,10 @@ final class CartService
     {
         $cart = $this->findCart($request);
         if ($cart !== null) {
-            // A guest builds the cart, then signs in to check out — the price
-            // tier has to follow them, or the member is charged the price the
-            // product page told them they would not pay (QA F55).
-            $this->repriceForBuyer($cart, $request->user());
+            // A guest builds the cart at MRP, then signs in as a distributor
+            // (or the reverse) — the cart is emptied rather than re-priced
+            // (client decision 2026-09-26).
+            $this->clearIfBuiltAtOtherTier($cart, $request->user());
 
             return $cart;
         }
@@ -86,8 +86,15 @@ final class CartService
     public function itemCount(Request $request): int
     {
         $cart = $this->findCart($request);
+        if ($cart === null) {
+            return 0;
+        }
 
-        return $cart === null ? 0 : (int) $cart->items()->sum('qty');
+        // The nav badge is usually the first thing a freshly signed-in visitor
+        // renders, so the tier check runs here too — never a stale count.
+        $this->clearIfBuiltAtOtherTier($cart, $request->user());
+
+        return (int) $cart->items()->sum('qty');
     }
 
     public function addItem(Cart $cart, int $variantId, int $qty = 1, ?User $buyer = null): CartItem
@@ -113,13 +120,9 @@ final class CartService
     }
 
     /**
-     * The unit price this buyer pays for this variant.
-     *
-     * A logged-in Direct Seller pays the distributor price wherever the
-     * catalogue sets one below the sale price — the tier their product page
-     * already shows them (client decision 2026-09-11, QA F55). Everyone else
-     * pays the sale price. BV is unaffected: it is a property of the SKU, not
-     * of the price paid.
+     * The unit price this buyer pays for this variant: the distributor price
+     * for a logged-in Direct Seller (MRP where none is set), MRP for everyone
+     * else. BV is unaffected: it is a property of the SKU, not of the price.
      */
     public function unitPricePaise(ProductVariant $variant, ?User $buyer): int
     {
@@ -127,14 +130,16 @@ final class CartService
     }
 
     /**
-     * Move every line of an existing cart onto the price tier this buyer is
-     * entitled to, so what the cart charges is what the catalogue shows them.
+     * Empty the cart when it was built at the other price tier — a guest cart
+     * at MRP now opened by a signed-in distributor, or the reverse. The two
+     * tiers show different prices, so the cart is cleared rather than
+     * silently re-priced (client decision 2026-09-26).
      *
-     * Deliberately narrow: a line is only ever flipped between the two known
-     * catalogue tiers. A line whose snapshot matches neither — the catalogue
-     * price moved after it was added — keeps the price the buyer was quoted.
+     * Only a line priced at the other catalogue tier counts. A line whose
+     * snapshot matches neither tier — the catalogue price moved after it was
+     * added — keeps the price the buyer was quoted.
      */
-    public function repriceForBuyer(Cart $cart, ?User $buyer): void
+    public function clearIfBuiltAtOtherTier(Cart $cart, ?User $buyer): void
     {
         $lines = CartItem::query()->where('cart_id', $cart->id)->get();
         if ($lines->isEmpty()) {
@@ -146,22 +151,27 @@ final class CartService
             ->get()
             ->keyBy('id');
 
-        foreach ($lines as $item) {
+        $isDistributor = $buyer?->distributor !== null;
+
+        $otherTier = $lines->contains(function (CartItem $item) use ($variants, $isDistributor): bool {
             $variant = $variants->get($item->product_variant_id);
             if ($variant === null || ! $variant->hasDistributorPrice()) {
-                continue;
+                return false;
             }
 
-            $tiers = [$variant->priceForTierPaise(false), $variant->priceForTierPaise(true)];
-            $target = $this->unitPricePaise($variant, $buyer);
-            $current = (int) $item->getAttribute('unit_price_paise');
+            return (int) $item->getAttribute('unit_price_paise') === $variant->priceForTierPaise(! $isDistributor);
+        });
 
-            if ($current !== $target && in_array($current, $tiers, true)) {
-                $item->setAttribute('unit_price_paise', $target);
-                $item->save();
-                $cart->unsetRelation('items');
-            }
+        if (! $otherTier) {
+            return;
         }
+
+        CartItem::query()->where('cart_id', $cart->id)->delete();
+        $cart->unsetRelation('items');
+
+        session()->flash('cart_notice', $isDistributor
+            ? 'Your cart was emptied because you signed in as a distributor. Distributor prices differ from the public price, so please add the items again.'
+            : 'Your cart was emptied because the price shown to you has changed. Please add the items again.');
     }
 
     public function updateQty(CartItem $item, int $qty): void

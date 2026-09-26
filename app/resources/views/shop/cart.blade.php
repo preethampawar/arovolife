@@ -21,6 +21,9 @@
     @endif
 </div>
 
+@if(session('cart_notice'))
+<div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{{ session('cart_notice') }}</div>
+@endif
 @if(session('stock_notice'))
 <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{{ session('stock_notice') }}</div>
 @endif

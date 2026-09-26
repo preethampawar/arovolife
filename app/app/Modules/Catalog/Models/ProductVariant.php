@@ -77,58 +77,34 @@ final class ProductVariant extends Model
         return $this->hasOne(InventoryLevel::class, 'product_variant_id');
     }
 
-    public function displayPrice(): string
-    {
-        return IndianNumber::rupees($this->sale_price_paise);
-    }
-
-    public function displayMrp(): string
-    {
-        return IndianNumber::rupees($this->mrp_paise);
-    }
-
     /**
      * The distributor price tier — shown ONLY to authenticated distributors
      * (after-login pricing). It is a factual catalogue price, never an
-     * earnings figure (hard rule #3).
+     * earnings figure (hard rule #3). Never above MRP.
      */
     public function hasDistributorPrice(): bool
     {
-        return $this->distributor_price_paise > 0 && $this->distributor_price_paise < $this->sale_price_paise;
-    }
-
-    public function displayDistributorPrice(): string
-    {
-        return IndianNumber::rupees($this->distributor_price_paise);
+        return $this->distributor_price_paise > 0 && $this->distributor_price_paise < $this->mrp_paise;
     }
 
     /**
      * The price paid for one unit at the buyer's tier.
      *
-     * A logged-in Direct Seller pays the distributor price wherever the
-     * catalogue sets one below the sale price — the tier their product page
-     * already shows them (client decision 2026-09-11, QA F55). Everyone else
-     * pays the sale price. BV is untouched: it is a property of the SKU, not
-     * of the price paid.
+     * A logged-in Direct Seller sees and pays the distributor price; everyone
+     * else sees and pays MRP. A SKU with no distributor price falls back to
+     * MRP for distributors too (client decision 2026-09-26). The sale price
+     * is not used on the storefront. BV is untouched: it is a property of the
+     * SKU, not of the price paid.
      */
     public function priceForTierPaise(bool $isDistributor): int
     {
         return ($isDistributor && $this->hasDistributorPrice())
             ? $this->distributor_price_paise
-            : $this->sale_price_paise;
+            : $this->mrp_paise;
     }
 
-    public function hasDiscount(): bool
+    public function displayPriceForTier(bool $isDistributor): string
     {
-        return $this->sale_price_paise < $this->mrp_paise;
-    }
-
-    public function discountPercent(): int
-    {
-        if ($this->mrp_paise === 0) {
-            return 0;
-        }
-
-        return (int) round((1 - $this->sale_price_paise / $this->mrp_paise) * 100);
+        return IndianNumber::rupees($this->priceForTierPaise($isDistributor));
     }
 }
