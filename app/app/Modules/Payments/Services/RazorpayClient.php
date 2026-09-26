@@ -326,18 +326,23 @@ final class RazorpayClient
             ->withHeaders($headers);
 
         if ($idempotent) {
-            // Retry only on transport failure or a gateway-side 5xx. A 4xx is
-            // the gateway's answer and repeating the question will not change it.
-            $pending = $pending->retry(3, 300, function (Throwable $e): bool {
+            // Retry on transport failure, a gateway-side 5xx or a rate limit.
+            // Any other 4xx is the gateway's answer and repeating the question
+            // will not change it.
+            return $pending->retry([300, 1000, 2000], 0, function (Throwable $e): bool {
                 if ($e instanceof ConnectionException) {
                     return true;
                 }
 
-                return $e instanceof RequestException && $e->response->serverError();
+                return $e instanceof RequestException
+                    && ($e->response->serverError() || $e->response->tooManyRequests());
             }, throw: false);
         }
 
-        return $pending;
+        // A non-idempotent call retries only a 429: Razorpay rejects a
+        // rate-limited request before acting on it, so it is safe to repeat.
+        // A timeout or 5xx may have been acted on and is never repeated here.
+        return $pending->retry([1000, 2000], 0, fn (Throwable $e): bool => $e instanceof RequestException && $e->response->tooManyRequests(), throw: false);
     }
 
     /** @param  array<string, mixed>  $payload */

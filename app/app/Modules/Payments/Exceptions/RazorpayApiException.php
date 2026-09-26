@@ -23,6 +23,12 @@ final class RazorpayApiException extends RuntimeException
         parent::__construct($message, 0, $previous);
     }
 
+    /** Razorpay throttled the call (HTTP 429) — busy, not a rejection. */
+    public function isRateLimited(): bool
+    {
+        return $this->httpStatus === 429;
+    }
+
     /** Razorpay's duplicate-receipt rejection, when receipt validation is on. */
     public function isDuplicateReceipt(): bool
     {

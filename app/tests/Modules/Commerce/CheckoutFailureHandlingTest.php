@@ -9,6 +9,7 @@ use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Services\AttributionService;
+use App\Modules\Payments\Exceptions\RazorpayApiException;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Tax\Models\Invoice;
 use Database\Seeders\LedgerAccountSeeder;
@@ -119,4 +120,60 @@ it('EH-H3c: an invoice failure does not fail the paid order — the buyer still 
     expect($order)->not->toBeNull();
     expect($order->status)->toBe(Order::STATUS_PAID);
     expect(Invoice::where('order_id', $order->id)->exists())->toBeFalse();
+});
+
+it('EH-H3d: after a payment-setup failure the cart is restored and the buyer sees the error on checkout', function (): void {
+    $cart = cfhCart();
+    $variantId = (int) $cart->items()->value('product_variant_id');
+
+    PaymentIntent::creating(function (): void {
+        throw new RuntimeException('simulated gateway failure');
+    });
+
+    // Placement deletes the cart. Without restoring it, the checkout page
+    // bounced an empty cart to the shop and the flashed error was lost.
+    $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('shop.checkout.place'), cfhPayload())
+        ->assertRedirect(route('shop.checkout'))
+        ->assertSessionHasErrors('checkout');
+
+    expect((int) CartItem::where('product_variant_id', $variantId)->sum('qty'))->toBe(1);
+
+});
+
+it('EH-H3f: the buyer who hits a payment-setup failure lands on checkout and sees the error', function (): void {
+    $cart = cfhCart();
+
+    PaymentIntent::creating(function (): void {
+        throw new RuntimeException('simulated gateway failure');
+    });
+
+    $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->followingRedirects()
+        ->post(route('shop.checkout.place'), cfhPayload())
+        ->assertOk()
+        ->assertSee('Your payment could not be started');
+});
+
+it('EH-H3e: a gateway rate limit (429) tells the buyer the payment service is busy', function (): void {
+    $cart = cfhCart();
+
+    PaymentIntent::creating(function (): void {
+        throw new RazorpayApiException(
+            'Razorpay orders.fetch_by_receipt failed: HTTP 429 BAD_REQUEST_ERROR: Too many requests',
+            httpStatus: 429,
+            gatewayCode: 'BAD_REQUEST_ERROR',
+            gatewayDescription: 'Too many requests',
+        );
+    });
+
+    $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('shop.checkout.place'), cfhPayload())
+        ->assertRedirect(route('shop.checkout'))
+        ->assertSessionHasErrors(['checkout' => 'The payment service is busy right now. Your order was not placed and you have not been charged. Your cart is saved, please try again in a minute.']);
+
+    expect(Order::latest('id')->first()->status)->toBe(Order::STATUS_CANCELLED);
 });

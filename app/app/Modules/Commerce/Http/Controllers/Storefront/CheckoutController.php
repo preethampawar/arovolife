@@ -7,6 +7,7 @@ namespace App\Modules\Commerce\Http\Controllers\Storefront;
 use App\Modules\Commerce\Http\Rules\ServiceablePincode;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Commerce\Models\SharedCart;
 use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
@@ -21,6 +22,7 @@ use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Inventory\Services\Exceptions\InsufficientStockException;
+use App\Modules\Payments\Exceptions\RazorpayApiException;
 use App\Modules\Payments\Services\PaymentConfirmationService;
 use App\Modules\Payments\Services\PaymentGatewayResolver;
 use App\Modules\Payments\Services\RazorpayClient;
@@ -390,7 +392,7 @@ final class CheckoutController extends Controller
             try {
                 $this->confirmation->confirmZeroCash($order, Auth::id() === null ? null : (int) Auth::id());
             } catch (Throwable $e) {
-                return $this->cancelAfterPaymentFailure($order, 'zero_cash_confirmation_failed', $e);
+                return $this->cancelAfterPaymentFailure($request, $order, 'zero_cash_confirmation_failed', $e);
             }
 
             return redirect()->route('shop.confirmation', $order->order_no);
@@ -398,13 +400,13 @@ final class CheckoutController extends Controller
 
         $gateway = $this->gateways->active();
         if ($gateway === null) {
-            return $this->cancelAfterPaymentFailure($order, 'no_gateway', new \RuntimeException('No payment gateway is available'));
+            return $this->cancelAfterPaymentFailure($request, $order, 'no_gateway', new \RuntimeException('No payment gateway is available'));
         }
 
         try {
             $intent = $gateway->createIntent($order, 'order:'.$order->id);
         } catch (Throwable $e) {
-            return $this->cancelAfterPaymentFailure($order, 'payment_setup_failed', $e);
+            return $this->cancelAfterPaymentFailure($request, $order, 'payment_setup_failed', $e);
         }
 
         if ($gateway instanceof StubGateway) {
@@ -413,7 +415,7 @@ final class CheckoutController extends Controller
             try {
                 $gateway->capture($intent);
             } catch (Throwable $e) {
-                return $this->cancelAfterPaymentFailure($order, 'payment_failed', $e);
+                return $this->cancelAfterPaymentFailure($request, $order, 'payment_failed', $e);
             }
 
             return redirect()->route('shop.confirmation', $order->order_no);
@@ -431,7 +433,7 @@ final class CheckoutController extends Controller
      * reserved inventory, restores points and credit, reverses the placement
      * ledger entry and audit-logs the cancellation.
      */
-    private function cancelAfterPaymentFailure(Order $order, string $reason, Throwable $e): RedirectResponse
+    private function cancelAfterPaymentFailure(Request $request, Order $order, string $reason, Throwable $e): RedirectResponse
     {
         Log::error('Checkout: payment could not start after order placement — cancelling order', [
             'order_id' => $order->id,
@@ -450,9 +452,49 @@ final class CheckoutController extends Controller
             ]);
         }
 
-        return back()->withErrors([
-            'checkout' => 'Your payment could not be started and the order was not confirmed. You have not been charged — please try again.',
-        ])->withInput();
+        // Placement deleted the cart. Without it the checkout page bounces an
+        // empty cart to the shop and the error below is never seen.
+        $this->restoreCart($request, $order);
+
+        $message = $this->isRateLimited($e)
+            ? 'The payment service is busy right now. Your order was not placed and you have not been charged. Your cart is saved, please try again in a minute.'
+            : 'Your payment could not be started and the order was not confirmed. You have not been charged — please try again.';
+
+        return redirect()->route('shop.checkout')
+            ->withErrors(['checkout' => $message])
+            ->withInput();
+    }
+
+    /** Put the cancelled order's lines back in the buyer's cart, at today's price and stock. */
+    private function restoreCart(Request $request, Order $order): void
+    {
+        $cart = $this->cartService->currentCart($request);
+
+        /** @var OrderItem $item */
+        foreach ($order->items as $item) {
+            try {
+                $this->cartService->addItem($cart, (int) $item->product_variant_id, (int) $item->qty, $request->user());
+            } catch (Throwable $e) {
+                // A line that can no longer be bought (product withdrawn) is
+                // left out; the buyer still gets the rest back.
+                Log::warning('Checkout: could not restore a cart line after payment failure', [
+                    'order_id' => $order->id,
+                    'product_variant_id' => $item->product_variant_id,
+                    'exception' => $e,
+                ]);
+            }
+        }
+    }
+
+    private function isRateLimited(Throwable $e): bool
+    {
+        for ($current = $e; $current !== null; $current = $current->getPrevious()) {
+            if ($current instanceof RazorpayApiException && $current->isRateLimited()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** A failure here must not fail a placed order; ops can regenerate. */

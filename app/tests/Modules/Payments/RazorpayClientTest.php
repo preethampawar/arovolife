@@ -111,6 +111,38 @@ it('PAY-C04: an idempotent GET retries a 5xx and never retries a 4xx', function 
     Http::assertSentCount(3); // exactly one more — the 400 was not retried
 });
 
+it('PAY-C12: a 429 is retried with backoff, on the receipt lookup and on order creation', function () {
+    Http::fake([
+        'api.razorpay.com/v1/orders?*' => Http::sequence()
+            ->push(['error' => ['code' => 'BAD_REQUEST_ERROR', 'description' => 'Too many requests']], 429)
+            ->push(['items' => []], 200),
+        'api.razorpay.com/v1/orders' => Http::sequence()
+            ->push(['error' => ['code' => 'BAD_REQUEST_ERROR', 'description' => 'Too many requests']], 429)
+            ->push(['id' => 'order_ok', 'status' => 'created'], 200),
+    ]);
+
+    $client = app(RazorpayClient::class);
+
+    expect($client->fetchOrderByReceipt('ORD-429'))->toBeNull();
+    expect($client->createOrder(118000, 'ORD-429', [], 'optimum')['id'])->toBe('order_ok');
+    Http::assertSentCount(4); // each 429 once, then its 200
+});
+
+it('PAY-C13: a 429 that never clears throws a rate-limited exception', function () {
+    Http::fake(['api.razorpay.com/v1/orders' => Http::response(
+        ['error' => ['code' => 'BAD_REQUEST_ERROR', 'description' => 'Too many requests']], 429,
+    )]);
+
+    $caught = null;
+    try {
+        app(RazorpayClient::class)->createOrder(118000, 'ORD-429B', [], 'optimum');
+    } catch (RazorpayApiException $e) {
+        $caught = $e;
+    }
+
+    expect($caught?->isRateLimited())->toBeTrue();
+});
+
 it('PAY-C05: createRefund carries the idempotency header and receipt', function () {
     Http::fake(['api.razorpay.com/v1/payments/pay_1/refund' => Http::response(['id' => 'rfnd_1', 'status' => 'processed', 'amount' => 500], 200)]);
 
