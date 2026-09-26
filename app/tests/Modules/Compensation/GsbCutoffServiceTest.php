@@ -126,6 +126,25 @@ it('returns no_match when group BV does not reach any slab', function () {
     expect($cf->power_side)->toBe('L');
 });
 
+it('carries forward the power side minus the slab threshold, not minus the whole weaker side', function () {
+    $dist = makeDistributorWithBv(300_000);  // Retailer — title caps the match at slab 1
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 20_000_000,   // 2,00,000 BV
+        'right_bv_paise' => 10_000_000,  // 1,00,000 BV — weaker, far above the 15K threshold
+    ]);
+
+    $result = app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::today());
+
+    expect($result->slab)->toBe(1);
+    // 2,00,000 − 15,000 = 1,85,000 BV (under the 4,50,000 cap); power − whole weaker would give 1,00,000.
+    $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    expect($cf->power_side_bv_paise)->toBe(18_500_000);
+    expect($cf->power_side)->toBe('L');
+    expect($cf->slab1_weaker_bv_paise)->toBe(0);
+});
+
 it('credits slab 1 when weaker side meets 15,000 BV threshold', function () {
     $dist = makeDistributorWithBv(300_000);  // Retailer
     GroupBvDaily::create([
@@ -149,9 +168,9 @@ it('credits slab 1 when weaker side meets 15,000 BV threshold', function () {
     expect($result->repurchase_deduction_paise)->toBe(20_000);
     expect($result->net_gsb_paise)->toBe(180_000);
 
-    // Power CF = stronger (2,000,000) - weaker (1,600,000) = 400,000
+    // Power CF = stronger (2,000,000) - threshold (1,500,000) = 500,000
     $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
-    expect($cf->power_side_bv_paise)->toBe(400_000);
+    expect($cf->power_side_bv_paise)->toBe(500_000);
     expect($cf->power_side)->toBe('L');
     expect($cf->slab1_weaker_bv_paise)->toBe(0);  // reset after match
 });
@@ -272,8 +291,8 @@ it('frozen run advances carry-forward so unfreeze does not double-credit', funct
     $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
     // slab1 CF must be reset to 0 so it doesn't re-accumulate while frozen.
     expect($cf->slab1_weaker_bv_paise)->toBe(0);
-    // Power CF should be set (stronger - weaker = 2,000,000 - 1,600,000 = 400,000).
-    expect($cf->power_side_bv_paise)->toBe(400_000);
+    // Power CF should be set (stronger - threshold = 2,000,000 - 1,500,000 = 500,000).
+    expect($cf->power_side_bv_paise)->toBe(500_000);
 
     // Unfreeze the distributor.
     $dist->update(['gsb_frozen_at' => null]);
@@ -642,9 +661,9 @@ it('applies the equal-sides tie-break: Left is the power side, Right settles to 
     expect($result->score)->toBe(8);
 
     $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
-    // Tie ⇒ Left stronger: power CF = 1,600K − 1,600K = 0 on 'L'; Right consumed.
+    // Tie ⇒ Left stronger: power CF = 1,600K − 1,500K = 100K on 'L'; Right consumed.
     expect($cf->power_side)->toBe('L');
-    expect($cf->power_side_bv_paise)->toBe(0);
+    expect($cf->power_side_bv_paise)->toBe(100_000);
     expect($cf->slab1_weaker_bv_paise)->toBe(0);
 });
 
