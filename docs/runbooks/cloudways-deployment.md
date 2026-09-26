@@ -571,8 +571,11 @@ tail -F /home/master/applications/<app>/public_html/app/storage/logs/deploy.log
 
 1. Open the environment URL and sign in.
 2. If the commit changed a held content page, publish it deliberately:
-   `php artisan content:publish <slug>` — the deploy never publishes held
-   pages.
+   `php artisan content:publish <slug>` — the deploy never *rewrites* a
+   published page. It does publish a consent page (terms, ethics,
+   compensation, privacy) that is still a draft or missing
+   (`content:publish … --if-unpublished`), because registration refuses
+   while any of them is unpublished.
 3. Re-run the health report any time: `php artisan app:status` (production:
    `php8.4 artisan app:status`).
 

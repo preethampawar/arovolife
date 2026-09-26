@@ -7,6 +7,8 @@ declare(strict_types=1);
  *
  *   PUB-01  republishes only the named page
  *   PUB-02  refuses a slug it does not know
+ *   PUB-03  --if-unpublished publishes a draft page
+ *   PUB-04  --if-unpublished never rewrites a published page
  */
 
 use App\Modules\Compliance\Models\AuditLog;
@@ -42,5 +44,41 @@ it('PUB-01: republishes only the named page and leaves the others untouched', fu
 it('PUB-02: refuses a slug it does not know', function (): void {
     $this->artisan('content:publish', ['slug' => ['not-a-page']])->assertExitCode(1);
 
+    expect(AuditLog::where('action', 'content_page.republished')->count())->toBe(0);
+});
+
+it('PUB-03: --if-unpublished publishes a draft or missing page', function (): void {
+    ContentPage::create([
+        'slug' => 'compensation',
+        'title' => 'Compensation',
+        'body' => 'Draft body.',
+        'status' => 'draft',
+    ]);
+
+    $this->artisan('content:publish', ['slug' => ['compensation', 'privacy'], '--if-unpublished' => true])
+        ->assertExitCode(0);
+
+    expect(ContentPage::where('slug', 'compensation')->value('status'))->toBe(ContentPage::STATUS_PUBLISHED)
+        ->and(ContentPage::where('slug', 'compensation')->value('body'))->not->toBe('Draft body.')
+        ->and(ContentPage::where('slug', 'privacy')->value('status'))->toBe(ContentPage::STATUS_PUBLISHED);
+
+    expect(AuditLog::where('action', 'content_page.republished')->count())->toBe(1);
+});
+
+it('PUB-04: --if-unpublished never rewrites a published page', function (): void {
+    $notified = 'Text served with the §6.2 notice.';
+
+    ContentPage::create([
+        'slug' => 'compensation',
+        'title' => 'Compensation',
+        'body' => $notified,
+        'status' => ContentPage::STATUS_PUBLISHED,
+        'published_at' => now()->subMonth(),
+    ]);
+
+    $this->artisan('content:publish', ['slug' => ['compensation'], '--if-unpublished' => true])
+        ->assertExitCode(0);
+
+    expect(ContentPage::where('slug', 'compensation')->value('body'))->toBe($notified);
     expect(AuditLog::where('action', 'content_page.republished')->count())->toBe(0);
 });

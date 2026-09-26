@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Content\Console\Commands;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Content\Models\ContentPage;
 use Database\Seeders\ContentPageSeeder;
 use Illuminate\Console\Command;
 
@@ -21,10 +22,18 @@ use Illuminate\Console\Command;
  * So a deploy names the page it means to publish. Each run is audit-logged,
  * because publishing a policy page is a change to what the company has told
  * its distributors.
+ *
+ * `--if-unpublished` publishes only the named pages that are missing or still
+ * a draft, and never rewrites a published one. `app:deploy` runs it for the
+ * consent pages: registration refuses while any of them is unpublished
+ * (ConsentDocuments), and a freshly seeded environment holds `compensation`
+ * as a draft — while an environment whose page is already live keeps its
+ * notified text.
  */
 final class PublishContentPageCommand extends Command
 {
-    protected $signature = 'content:publish {slug* : One or more page slugs to republish}';
+    protected $signature = 'content:publish {slug* : One or more page slugs to republish}
+        {--if-unpublished : Only publish pages that are missing or not yet published}';
 
     protected $description = 'Republish named policy pages from their markdown source.';
 
@@ -40,6 +49,21 @@ final class PublishContentPageCommand extends Command
             $this->error('Unknown page(s): '.implode(', ', $unknown).'. Known: '.implode(', ', $known).'.');
 
             return self::FAILURE;
+        }
+
+        if ($this->option('if-unpublished')) {
+            $published = ContentPage::query()
+                ->whereIn('slug', $slugs)
+                ->where('status', ContentPage::STATUS_PUBLISHED)
+                ->pluck('slug')
+                ->all();
+            $slugs = array_values(array_diff($slugs, $published));
+
+            if ($slugs === []) {
+                $this->info('All named pages are already published; nothing written.');
+
+                return self::SUCCESS;
+            }
         }
 
         $seeder = new ContentPageSeeder;

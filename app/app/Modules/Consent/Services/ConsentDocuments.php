@@ -39,6 +39,16 @@ final class ConsentDocuments
         'privacy' => 'privacy',
     ];
 
+    /**
+     * The content page slugs registration needs published.
+     *
+     * @return list<string>
+     */
+    public static function slugs(): array
+    {
+        return array_values(self::PAGES);
+    }
+
     /** @var array<string, array{version: string, hash: string, page_id: int}>|null */
     private ?array $cache = null;
 

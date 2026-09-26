@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Modules\Consent\Services\ConsentDocuments;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
@@ -101,6 +102,14 @@ final class DeployCommand extends Command
             if (! $this->option('skip-seed') && ! $this->failed) {
                 $this->stepHard('db:seed ProductionSeeder', function (): void {
                     $this->artisanFresh('db:seed', '--class=ProductionSeeder', '--force');
+                });
+
+                // The seeder holds `compensation` as a draft, and registration
+                // refuses while any consent page is unpublished — a fresh or
+                // wiped environment 500s at /register/complete until this runs.
+                // First publish only: a live page is never rewritten here.
+                $this->stepHard('publish consent pages', function (): void {
+                    $this->artisanFresh('content:publish', ...[...ConsentDocuments::slugs(), '--if-unpublished']);
                 });
             } elseif ($this->option('skip-seed')) {
                 $this->logBoth('  ↷ ProductionSeeder skipped');
