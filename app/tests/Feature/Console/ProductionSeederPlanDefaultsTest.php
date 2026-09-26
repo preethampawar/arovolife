@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Shared\Features\ActionCenterFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
@@ -35,6 +36,7 @@ it('seeds the compensation plan tables and plan settings on a fresh database', f
         ->and($settings['comp.admin_charge.applies_to_awards'])->toBe('false')
         ->and($settings['payout.min_threshold_paise'])->toBe('10000')
         ->and($settings['commerce.guest_checkout.enabled'])->toBe('false')
+        ->and($settings['notifications.engine_health_email'])->toBe('preetham.pawar@gmail.com')
         ->and($settings['security.registration_throttle_requests'])->toBe('60');
 });
 
@@ -47,7 +49,8 @@ it('turns every bonus flag on and purchase offers off on a fresh database', func
         ->and(Feature::for(null)->active(RankBonusFeature::class))->toBeTrue()
         ->and(Feature::for(null)->active(RankProgressSnapshotFeature::class))->toBeTrue()
         ->and(Feature::for(null)->active(PurchaseOffersFeature::class))->toBeFalse()
-        ->and(Feature::for(null)->active(InventoryFeature::class))->toBeFalse();
+        ->and(Feature::for(null)->active(InventoryFeature::class))->toBeTrue()
+        ->and(Feature::for(null)->active(ActionCenterFeature::class))->toBeTrue();
 });
 
 it('never overwrites an edited plan, setting or flag on a re-run', function () {

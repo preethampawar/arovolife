@@ -261,6 +261,7 @@ final class ProductionSeeder extends Seeder
             'compliance.crawler.enabled' => 'false',
             'notifications.email_on_status_change' => 'true',
             'notifications.admin_order_email' => 'orders@arovolife.com', // placeholder — set real mailbox before launch
+            'notifications.engine_health_email' => 'preetham.pawar@gmail.com', // developer's address — point at the ops mailbox before launch
 
             'payments.gateway.razorpay.enabled' => 'false',
             'payments.gateway.stub.enabled' => 'false',
@@ -305,9 +306,9 @@ final class ProductionSeeder extends Seeder
     /**
      * Launch defaults for the Pennant feature flags: every bonus engine and
      * operations module ON (client decision 2026-09-25, GSB and Fortune
-     * included), Purchase Offers OFF. Inventory and the Action Centre stay OFF
-     * — neither is finished. The rank progress snapshot is ON (user decision
-     * 2026-09-26, R-111). A flag that already has a global value is left
+     * included), Purchase Offers OFF. Inventory, the Action Centre and the
+     * rank progress snapshot are ON (user decision 2026-09-26; R-111 for the
+     * snapshot). A flag that already has a global value is left
      * alone, so a re-run never undoes an admin toggle. Flags not listed keep
      * their class default.
      */
@@ -331,8 +332,8 @@ final class ProductionSeeder extends Seeder
             FaqLibraryFeature::class => true,
             RankProgressSnapshotFeature::class => true,
             PurchaseOffersFeature::class => false,
-            InventoryFeature::class => false,
-            ActionCenterFeature::class => false,
+            InventoryFeature::class => true,
+            ActionCenterFeature::class => true,
         ];
 
         $stored = DB::table('features')
