@@ -29,6 +29,7 @@ use App\Modules\Shared\Features\MessagingFeature;
 use App\Modules\Shared\Features\OfflineOrdersFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RankProgressSnapshotFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -305,7 +306,8 @@ final class ProductionSeeder extends Seeder
      * Launch defaults for the Pennant feature flags: every bonus engine and
      * operations module ON (client decision 2026-09-25, GSB and Fortune
      * included), Purchase Offers OFF. Inventory and the Action Centre stay OFF
-     * — neither is finished. A flag that already has a global value is left
+     * — neither is finished. The rank progress snapshot is ON (user decision
+     * 2026-09-26, R-111). A flag that already has a global value is left
      * alone, so a re-run never undoes an admin toggle. Flags not listed keep
      * their class default.
      */
@@ -327,6 +329,7 @@ final class ProductionSeeder extends Seeder
             MessagingFeature::class => true,
             AnnouncementsFeature::class => true,
             FaqLibraryFeature::class => true,
+            RankProgressSnapshotFeature::class => true,
             PurchaseOffersFeature::class => false,
             InventoryFeature::class => false,
             ActionCenterFeature::class => false,

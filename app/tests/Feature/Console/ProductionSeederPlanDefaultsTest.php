@@ -8,6 +8,7 @@ use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
 use App\Modules\Shared\Features\InventoryFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RankProgressSnapshotFeature;
 use Database\Seeders\ProductionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -44,6 +45,7 @@ it('turns every bonus flag on and purchase offers off on a fresh database', func
         ->and(Feature::for(null)->active(GsbDailyPoolPricingFeature::class))->toBeTrue()
         ->and(Feature::for(null)->active(FortuneBonusFeature::class))->toBeTrue()
         ->and(Feature::for(null)->active(RankBonusFeature::class))->toBeTrue()
+        ->and(Feature::for(null)->active(RankProgressSnapshotFeature::class))->toBeTrue()
         ->and(Feature::for(null)->active(PurchaseOffersFeature::class))->toBeFalse()
         ->and(Feature::for(null)->active(InventoryFeature::class))->toBeFalse();
 });
