@@ -34,7 +34,15 @@
                 </span>
             </div>
             <div class="w-full bg-gray-100 rounded-full h-1.5">
-                <div class="{{ $requirement->met() ? 'bg-green-500' : 'bg-brand-700' }} h-1.5 rounded-full" style="width:{{ $requirement->percent() }}%"></div>
+                @php
+                    // Left/Right Genos rows take the side palette (Left blue, Right green).
+                    $barClasses = match (true) {
+                        str_starts_with($requirement->label, 'Left ') => \App\Modules\Genealogy\Support\GenosSideColors::for('L')['bar'],
+                        str_starts_with($requirement->label, 'Right ') => \App\Modules\Genealogy\Support\GenosSideColors::for('R')['bar'],
+                        default => $requirement->met() ? 'bg-green-500' : 'bg-brand-700',
+                    };
+                @endphp
+                <div class="{{ $barClasses }} h-1.5 rounded-full" style="width:{{ $requirement->percent() }}%"></div>
             </div>
         </div>
         @endforeach
