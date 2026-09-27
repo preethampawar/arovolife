@@ -182,15 +182,20 @@
     </div>
     @endif
 
-    {{-- Group 4 — team size and today's Genos BV (Left before Right) --}}
+    {{-- Group 4 — team size + today's paid self orders, and today's Genos BV (Left before Right) --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="{{ $cardClasses }}">
+        <div data-team-card="left" class="rounded-2xl border p-5 shadow-sm {{ $gl['card'] }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Left Genos total team</p>
-                <x-help-tip text="Everyone placed anywhere in the Left side of your Genos, at any depth below you. It counts placements, not purchases." />
+                <x-help-tip text="Everyone placed anywhere in the Left side of your Genos, at any depth below you, and how many paid orders they placed for themselves today." />
             </div>
-            <p class="{{ $statValueClasses }}">{{ Number::format($teamCounts['left_team'] ?? 0, 0) }}</p>
-            <p class="text-xs text-gray-600 mt-1">Left side, all depths</p>
+            <p class="flex items-center gap-2 text-2xl font-bold text-gray-900"
+               aria-label="{{ $teamCounts['left_team'] ?? 0 }} members, {{ $ordersToday['left'] }} orders today">
+                <span>{{ \App\Modules\Shared\Support\IndianNumber::format($teamCounts['left_team'] ?? 0, 0) }}</span>
+                <x-lucide-arrow-right class="w-5 h-5 {{ $gl['text'] }}" aria-hidden="true" />
+                <span>{{ \App\Modules\Shared\Support\IndianNumber::format($ordersToday['left'], 0) }}</span>
+            </p>
+            <p class="text-xs text-gray-600 mt-1">members → orders today</p>
         </div>
         <div class="{{ $cardClasses }}">
             <div class="flex items-center justify-between mb-1">
@@ -208,13 +213,18 @@
             <p class="{{ $statValueClasses }}">{{ Number::format($rightTodayBv, 0) }}</p>
             <p class="text-xs text-gray-600 mt-1">{{ $eligibilityNote }}</p>
         </div>
-        <div class="{{ $cardClasses }}">
-            <div class="flex items-center justify-between mb-1">
+        <div data-team-card="right" class="rounded-2xl border p-5 shadow-sm text-right {{ $gr['card'] }}">
+            <div class="flex items-center justify-between flex-row-reverse mb-1">
                 <p class="{{ $statLabelClasses }}">Right Genos total team</p>
-                <x-help-tip text="Everyone placed anywhere in the Right side of your Genos, at any depth below you. It counts placements, not purchases." />
+                <x-help-tip text="Everyone placed anywhere in the Right side of your Genos, at any depth below you, and how many paid orders they placed for themselves today." />
             </div>
-            <p class="{{ $statValueClasses }}">{{ Number::format($teamCounts['right_team'] ?? 0, 0) }}</p>
-            <p class="text-xs text-gray-600 mt-1">Right side, all depths</p>
+            <p class="flex items-center justify-end gap-2 text-2xl font-bold text-gray-900"
+               aria-label="{{ $teamCounts['right_team'] ?? 0 }} members, {{ $ordersToday['right'] }} orders today">
+                <span>{{ \App\Modules\Shared\Support\IndianNumber::format($ordersToday['right'], 0) }}</span>
+                <x-lucide-arrow-left class="w-5 h-5 {{ $gr['text'] }}" aria-hidden="true" />
+                <span>{{ \App\Modules\Shared\Support\IndianNumber::format($teamCounts['right_team'] ?? 0, 0) }}</span>
+            </p>
+            <p class="text-xs text-gray-600 mt-1">orders today ← members</p>
         </div>
     </div>
 

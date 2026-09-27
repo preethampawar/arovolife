@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Identity\Services;
 
+use App\Modules\Commerce\Models\Order;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Carbon;
 
 /**
  * Canonical team-stats aggregation.
@@ -226,6 +228,37 @@ final class TeamStatsService
     public function scopedIdQuery(Distributor $distributor, string $scope): Builder
     {
         return $this->scopedQuery($distributor, $scope)->select('d.id');
+    }
+
+    /**
+     * Paid self-consumption orders placed TODAY (Asia/Kolkata) by team members
+     * on each side of the Genos. Aggregate counts only — no money, no
+     * individual rows (client, 2026-09-28; hard rule 3 allows own-subtree
+     * aggregates). Refund-requested/inspection orders still count: they were
+     * paid and are not refunded yet.
+     *
+     * @return array{left: int, right: int}
+     */
+    public function ordersTodayBySide(Distributor $distributor, ?Carbon $now = null): array
+    {
+        $ist = ($now ?? now())->copy()->setTimezone('Asia/Kolkata');
+        $from = $ist->copy()->startOfDay()->setTimezone((string) config('app.timezone'));
+        $to = $ist->copy()->endOfDay()->setTimezone((string) config('app.timezone'));
+
+        $count = fn (string $scope): int => $this->db->table('orders as o')
+            ->whereIn('o.attributed_distributor_id', $this->scopedIdQuery($distributor, $scope))
+            ->where('o.self_consumption', true)
+            ->whereNotIn('o.status', [
+                Order::STATUS_DRAFT,
+                Order::STATUS_PLACED,
+                Order::STATUS_CANCELLED,
+                Order::STATUS_REFUND_APPROVED,
+                Order::STATUS_REFUNDED,
+            ])
+            ->whereBetween('o.paid_at', [$from, $to])
+            ->count();
+
+        return ['left' => $count('left'), 'right' => $count('right')];
     }
 
     /**
