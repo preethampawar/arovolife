@@ -144,3 +144,11 @@ it('a running cycle with BV met asks for the wallet at ₹0 instead of claiming 
     expect($html)->toContain('Repurchase BV met. Keep your repurchase wallet at ₹0 on 9 Oct 2026 to complete the cycle.')
         ->not->toContain('Today\'s business counts toward your bonuses');
 });
+
+it('gives no notice for an order paid before the current cycle began', function () {
+    rnCycle($this->d['id'], '2026-09-28', '2026-10-27', RepurchaseCycle::STATUS_ACTIVE);
+    $order = Order::find(uiPaidSelfOrder($this->d['id'], 60_000, Carbon::parse('2026-09-27 23:50', 'Asia/Kolkata')));
+    uiPaidSelfOrder($this->d['id'], 60_000, Carbon::parse('2026-09-28 09:00', 'Asia/Kolkata'));
+
+    expect(app(RepurchaseOrderNotice::class)->for($order, $this->today))->toBeNull();
+});

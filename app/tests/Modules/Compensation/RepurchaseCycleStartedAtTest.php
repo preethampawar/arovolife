@@ -36,3 +36,21 @@ it('the card line shows start and end with times and the window length', functio
         ->toContain("endDate?->format('j M Y')")->toContain('11:59 PM')
         ->not->toContain('last day counts');
 });
+
+it('the dashboard card reads the first-reach anchor from the ledger only once', function () {
+    $d = uiDistributor();
+    uiPaidSelfOrder($d['id'], 60000, Carbon::parse('2026-07-07 14:32:00'));
+    RepurchaseCycle::create([
+        'distributor_id' => $d['id'], 'cycle_start_date' => '2026-07-07', 'due_date' => '2026-08-06',
+        'required_bv_paise' => 60000, 'completed_bv_paise' => 0, 'status' => RepurchaseCycle::STATUS_ACTIVE,
+    ]);
+
+    DB::enableQueryLog();
+    $card = app(RepurchaseCycleService::class)->cardFor($d['id'], Carbon::parse('2026-07-20'));
+    $anchorScans = collect(DB::getQueryLog())
+        ->filter(fn ($q) => str_contains($q['query'], 'bv_ledger_entries') && str_contains(strtolower($q['query']), 'order by'))
+        ->count();
+
+    expect($card->startedAt?->format('H:i'))->toBe('14:32')
+        ->and($anchorScans)->toBe(1);
+});

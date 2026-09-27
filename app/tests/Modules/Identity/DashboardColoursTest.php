@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 it('every quick action has its own colour family', function () {
@@ -19,4 +20,12 @@ it('income snapshot cards carry distinct tones', function () {
 it('fortune bonus not-qualified chip is red', function () {
     $src = file_get_contents(resource_path('views/dashboard/_fortune-bonus.blade.php'));
     expect($src)->toMatch('/bg-red-50[^"]*"[^>]*>\s*<x-lucide-circle-x[^>]*\/>\s*Not qualified yet/s');
+});
+
+it('every quick-action label colour has a dark-theme remap', function () {
+    $css = file_get_contents(resource_path('css/app.css'));
+    preg_match_all("/'label' => '(text-[a-z]+-900)'/", file_get_contents(resource_path('views/dashboard/_quick-actions.blade.php')), $m);
+    foreach (array_unique($m[1]) as $class) {
+        expect($css)->toContain("html.dark .{$class} ");
+    }
 });

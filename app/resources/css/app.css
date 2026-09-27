@@ -1270,3 +1270,4 @@ html.dark .from-amber-50 { --tw-gradient-from: #2a2012; }
 html.dark .from-red-50 { --tw-gradient-from: #2a1517; }
 html.dark .from-violet-50 { --tw-gradient-from: #1d1d3a; }
 html.dark .hover\:bg-white\/70:hover { background-color: rgb(31 39 49 / 0.7); }
+html.dark .text-teal-900 { color: #b3ecec; }

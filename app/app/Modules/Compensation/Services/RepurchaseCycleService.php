@@ -513,7 +513,8 @@ final class RepurchaseCycleService
         // obligation exists yet. Check the anchor rather than the cycle alone:
         // a cycle row can exist from an earlier evaluation while the anchor is
         // what decides whether an obligation is owed at all.
-        if ($cycle === null || $this->repurchaseAnchor($distributorId) === null) {
+        $anchor = $this->repurchaseAnchor($distributorId);
+        if ($cycle === null || $anchor === null) {
             return RepurchaseCycleCard::notQualified($personalBvPaise, $qualifyBvPaise);
         }
 
@@ -523,7 +524,7 @@ final class RepurchaseCycleService
             ? $this->walletBalanceAt($distributorId, $today->copy()->endOfDay())
             : null;
 
-        return RepurchaseCycleCard::fromCycle($cycle, $today, $personalBvPaise, $qualifyBvPaise, $liveWalletPaise, startedAt: $this->cycleStartedAt($cycle));
+        return RepurchaseCycleCard::fromCycle($cycle, $today, $personalBvPaise, $qualifyBvPaise, $liveWalletPaise, startedAt: $this->cycleStartedAt($cycle, $anchor));
     }
 
     /**
@@ -537,11 +538,12 @@ final class RepurchaseCycleService
      *    it; a documented approximation when two purchases land the same day).
      *  - Any other cycle rolls straight on from the last one: 00:00 on its start.
      */
-    public function cycleStartedAt(RepurchaseCycle $cycle): Carbon
+    public function cycleStartedAt(RepurchaseCycle $cycle, ?Carbon $anchor = null): Carbon
     {
         $start = $cycle->cycle_start_date->copy()->startOfDay();
 
-        $firstReach = $this->bvLedger->firstReachedBvPaiseAt($cycle->distributor_id, $this->plan->gsbMinBvPaise());
+        // Callers that already hold the anchor pass it in: it is a full ledger scan.
+        $firstReach = $anchor ?? $this->repurchaseAnchor($cycle->distributor_id);
         if ($firstReach !== null && $firstReach->isSameDay($start)) {
             return $firstReach;
         }

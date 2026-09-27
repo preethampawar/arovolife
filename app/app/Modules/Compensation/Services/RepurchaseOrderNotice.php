@@ -43,7 +43,9 @@ final class RepurchaseOrderNotice
         $paidDay = Carbon::instance($order->paid_at)->setTimezone('Asia/Kolkata')->startOfDay();
 
         $cycle = $this->cycles->currentCycle((int) $distributorId);
-        if ($cycle === null) {
+        // An order paid before this cycle opened (the nightly run rolled the
+        // cycle after payment) did not change this cycle's standing.
+        if ($cycle === null || $paidDay->lt($cycle->cycle_start_date->copy()->startOfDay())) {
             return null;
         }
 
