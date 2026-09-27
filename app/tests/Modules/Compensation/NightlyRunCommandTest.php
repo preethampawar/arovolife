@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Services\EngineHealthService;
 use App\Modules\Compensation\Services\EngineStatusService;
+use App\Modules\Compensation\Support\CompensationQueueBacklog;
 use App\Modules\Compensation\Support\NightlyRunAlert;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -13,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithConsoleEvents;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 use Tests\Support\StubEngineStepCommand;
 
@@ -415,5 +417,47 @@ it('does not refuse on the sight of its own running row', function (): void {
     seedComputedCutoffs('2026-09-17', '2026-09-17');
 
     expect(Artisan::call('compensation:nightly-run'))->toBe(0);
+    expect(StubEngineStepCommand::$calls)->not->toBe([]);
+});
+
+it('holds the night back while compensation jobs are still queued, and says so on the run row', function (): void {
+    Carbon::setTestNow('2026-09-19 00:05:00');
+    app()->instance(CompensationQueueBacklog::class, new CompensationQueueBacklog(maxWaitSeconds: 0, pollSeconds: 0));
+    DB::table('jobs')->insert([
+        'queue' => 'compensation', 'payload' => '{}', 'attempts' => 0,
+        'reserved_at' => null, 'available_at' => time(), 'created_at' => time(),
+    ]);
+
+    expect(Artisan::call('compensation:nightly-run'))->toBe(1);
+    expect(StubEngineStepCommand::$calls)->toBe([]);
+
+    $run = EngineRun::where('engine_key', 'compensation.nightly-run')->sole();
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED)
+        ->and($run->error)->toContain('compensation queue')
+        ->and($run->error)->toContain('backfills');
+});
+
+it('is not held back by a job on another queue', function (): void {
+    Carbon::setTestNow('2026-09-19 00:05:00');
+    seedComputedCutoffs('2026-09-17', '2026-09-17');
+    app()->instance(CompensationQueueBacklog::class, new CompensationQueueBacklog(maxWaitSeconds: 0, pollSeconds: 0));
+    DB::table('jobs')->insert([
+        'queue' => 'default', 'payload' => '{}', 'attempts' => 0,
+        'reserved_at' => null, 'available_at' => time(), 'created_at' => time(),
+    ]);
+
+    expect(Artisan::call('compensation:nightly-run'))->toBe(0);
+});
+
+it('runs under --force even with jobs queued', function (): void {
+    Carbon::setTestNow('2026-09-19 00:05:00');
+    seedComputedCutoffs('2026-09-17', '2026-09-17');
+    app()->instance(CompensationQueueBacklog::class, new CompensationQueueBacklog(maxWaitSeconds: 0, pollSeconds: 0));
+    DB::table('jobs')->insert([
+        'queue' => 'compensation', 'payload' => '{}', 'attempts' => 0,
+        'reserved_at' => null, 'available_at' => time(), 'created_at' => time(),
+    ]);
+
+    expect(Artisan::call('compensation:nightly-run', ['--force' => true]))->toBe(0);
     expect(StubEngineStepCommand::$calls)->not->toBe([]);
 });

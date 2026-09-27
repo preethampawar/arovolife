@@ -72,8 +72,10 @@ $compensationEnginesMayRun = static fn (): bool => app(RecomputeState::class)->s
 //
 // 00:05 rather than 23:59: the cut-off prices the day that has just ended, and
 // an order paid at 23:58 whose PropagateGroupBvJob lands a moment later must
-// still count. The night starts five minutes in so queued propagation can land;
-// results are still recorded against the day the BV belongs to.
+// still count. The night starts five minutes in so queued propagation can land,
+// and the run itself waits for the compensation queue to drain before it prices
+// anything (`CompensationQueueBacklog`); results are still recorded against the
+// day the BV belongs to.
 Schedule::command(NightlyRunCommand::class)
     ->dailyAt('00:05')
     ->timezone('Asia/Kolkata')
