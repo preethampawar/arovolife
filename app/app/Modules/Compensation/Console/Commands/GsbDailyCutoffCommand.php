@@ -209,22 +209,30 @@ final class GsbDailyCutoffCommand extends Command
                 $owedDate = $oldestOpen->cutoff_date->toDateString();
 
                 if ($owedDate !== $date->toDateString()) {
-                    $this->error(sprintf(
+                    // --force lifts the evaluate gate, so the owed day is only
+                    // safe to settle by name once it is re-evaluated (M1).
+                    $refusal = sprintf(
                         'ADN %s has a deferred cut-off for %s that is still open. Settling %s first would advance their '
                         .'carry-forward past it and lose the owed day. The next full run backfills it automatically; '
-                        .'to settle it now, run that day first (php artisan gsb:daily-cutoff --date=%s --distributor=%d --force).',
+                        .'to settle it now, re-evaluate them by name first (php artisan repurchase:evaluate --date=%s '
+                        .'--distributor=%d), then run that day (php artisan gsb:daily-cutoff --date=%s --distributor=%d --force).',
                         $adn,
                         $owedDate,
                         $date->toDateString(),
                         $owedDate,
                         $singleId,
-                    ));
+                        $owedDate,
+                        $singleId,
+                    );
+
+                    $this->error($refusal);
+                    $this->recordByNameRefusal($singleId, $adn, $owedDate, $date, $refusal);
 
                     return self::FAILURE;
                 }
 
                 if (! $this->option('force')) {
-                    $this->error(sprintf(
+                    $refusal = sprintf(
                         "ADN %s has a deferred cut-off for %s that tonight's full run will backfill automatically. "
                         .'To settle it now, re-evaluate them by name first (php artisan repurchase:evaluate --date=%s '
                         .'--distributor=%d) and pass --force.',
@@ -232,7 +240,10 @@ final class GsbDailyCutoffCommand extends Command
                         $owedDate,
                         Carbon::today()->toDateString(),
                         $singleId,
-                    ));
+                    );
+
+                    $this->error($refusal);
+                    $this->recordByNameRefusal($singleId, $adn, $owedDate, $date, $refusal);
 
                     return self::FAILURE;
                 }
@@ -671,6 +682,38 @@ final class GsbDailyCutoffCommand extends Command
     }
 
     /**
+     * A by-name run refused over an open deferral (M2): a log line and an
+     * audit row in the shape of the admin Retry refusal, with no actor — the
+     * CLI has none. Application logs rotate; the audit log is retained.
+     */
+    private function recordByNameRefusal(int $distributorId, string $adn, string $owedDate, Carbon $date, string $refusal): void
+    {
+        Log::warning('gsb.cutoff.refused_open_deferral', [
+            'distributor_id' => $distributorId,
+            'adn' => $adn,
+            'owed_date' => $owedDate,
+            'date' => $date->toDateString(),
+            'forced' => (bool) $this->option('force'),
+        ]);
+
+        AuditLog::create([
+            'actor_id' => null,
+            'action' => 'compensation.cutoff.by_name_refused',
+            'subject_type' => 'distributor',
+            'subject_id' => $distributorId,
+            'before_hash' => null,
+            'after_hash' => null,
+            'details' => [
+                'adn' => $adn,
+                'owed_date' => $owedDate,
+                'date' => $date->toDateString(),
+                'forced' => (bool) $this->option('force'),
+                'refusal' => $refusal,
+            ],
+        ]);
+    }
+
+    /**
      * What the last `repurchase:evaluate` run that covers $date reported.
      *
      * Returns the failure count, the ADNs it named and a line to append to the
@@ -699,9 +742,11 @@ final class GsbDailyCutoffCommand extends Command
         $classes = is_array($summary['failure_classes'] ?? null) ? $summary['failure_classes'] : [];
         $cap = (int) ($summary['skip_cap'] ?? config('arovolife.compensation.evaluate_skip_cap', 500));
 
-        $why = $failed > $cap
-            ? sprintf('That is more than the %d the run may skip', $cap)
-            : 'Every failure is the same exception class — a fault in the run, not in the data';
+        $why = match (true) {
+            $cap === 0 => 'Skip-and-continue is off (the skip cap is 0)',
+            $failed > $cap => sprintf('That is more than the %d the run may skip', $cap),
+            default => 'Every failure is the same exception class — a fault in the run, not in the data',
+        };
 
         return [
             'failed' => $failed,

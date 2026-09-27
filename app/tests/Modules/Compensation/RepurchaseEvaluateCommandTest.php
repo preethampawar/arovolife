@@ -200,6 +200,28 @@ it('fails closed when ten or more failures share one exception class', function 
         ->and($run->summary['reason'])->toContain('same class');
 });
 
+it('fails closed on a single failure when the skip cap is 0, as before E5 (L2)', function (): void {
+    config(['arovolife.compensation.evaluate_skip_cap' => 0]);
+    expect(RepurchaseEvaluateCommand::effectiveSkipCap(1_000_000))->toBe(0);
+
+    distributorWithAnchor('2026-07-07');
+    $broken = distributorWithAnchor('2026-07-13');
+
+    RepurchaseCycle::creating(function (RepurchaseCycle $cycle) use ($broken): void {
+        if ((int) $cycle->distributor_id === $broken->id) {
+            throw new RuntimeException('simulated per-distributor failure');
+        }
+    });
+
+    expect(Artisan::call('repurchase:evaluate', ['--date' => '2026-07-30']))->toBe(1);
+
+    $run = lastEvaluateRun();
+    expect($run->summary['outcome'])->toBe(RepurchaseEvaluateCommand::OUTCOME_FAILED_PARTIAL)
+        ->and($run->summary['failed_distributor_ids'])->toBe([])
+        ->and($run->summary['skip_cap'])->toBe(0)
+        ->and($run->summary['reason'])->toContain('Skip-and-continue is off');
+});
+
 it('refuses while another evaluation run is in flight', function (): void {
     Carbon::setTestNow('2026-07-30 00:05:00');
     EngineRun::create([

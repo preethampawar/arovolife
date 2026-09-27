@@ -189,7 +189,8 @@ return [
         // The most distributors one repurchase evaluation may skip and still
         // succeed; the effective cap is the smaller of this and 1% of the
         // roster, never below 10 (RepurchaseEvaluateCommand::effectiveSkipCap).
-        // Above it the run is a fault, not data, and fails closed.
+        // Above it the run is a fault, not data, and fails closed. 0 turns
+        // skip-and-continue off: any failure fails the run closed.
         'evaluate_skip_cap' => (int) env('COMP_EVALUATE_SKIP_CAP', 500),
     ],
 

@@ -255,6 +255,14 @@ final class RepurchaseEvaluateCommand extends Command
                     $asOf->toDateString(),
                     $failed,
                 ),
+                $cap === 0 => sprintf(
+                    'Evaluated %d distributor(s) as of %s; %d could not be evaluated. Skip-and-continue is off (the '
+                        .'skip cap is 0), so any failure fails the run. The GSB cut-off refuses until it is fixed and '
+                        .'the evaluation re-run.',
+                    $evaluated,
+                    $asOf->toDateString(),
+                    $failed,
+                ),
                 $singleClass => sprintf(
                     'Evaluated %d distributor(s) as of %s; %d could not be evaluated and every failure is the same class '
                         .'(%s) — a fault in the run, not in the data. The GSB cut-off refuses until it is fixed and the '
@@ -290,10 +298,17 @@ final class RepurchaseEvaluateCommand extends Command
      * smaller of the configured cap and 1% of the roster it looked at, never
      * below ten. A flat cap larger than the network would let a systemic fault
      * pass as a handful of bad rows.
+     *
+     * A configured 0 turns skip-and-continue off (L2): the cap is 0, so the
+     * first failure fails the run closed, as before E5.
      */
     public static function effectiveSkipCap(int $lookedAt): int
     {
         $configured = max(0, (int) config('arovolife.compensation.evaluate_skip_cap', 500));
+
+        if ($configured === 0) {
+            return 0;
+        }
 
         return max(self::SKIP_CAP_FLOOR, min($configured, intdiv(max(0, $lookedAt), 100)));
     }

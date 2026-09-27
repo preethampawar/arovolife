@@ -758,3 +758,32 @@ it('stops the night before any settle when a deferral row cannot be written (M5)
     // The pool was frozen before the stop; a re-run reuses it.
     expect(GsbDailyPool::whereDate('cutoff_date', '2026-08-25')->count())->toBe(1);
 });
+
+it('tells the operator to re-evaluate before settling an owed day by name, and audits both refusals (M1, M2)', function (): void {
+    $achiever = deferAchieverOn25th();
+    Log::spy();
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-26', '--distributor' => (string) $achiever->id, '--force' => true]))->toBe(1);
+    $later = Artisan::output();
+
+    $evaluateAt = strpos($later, "repurchase:evaluate --date=2026-08-25 --distributor={$achiever->id}");
+    $cutoffAt = strpos($later, "gsb:daily-cutoff --date=2026-08-25 --distributor={$achiever->id} --force");
+    expect($evaluateAt)->not->toBeFalse()
+        ->and($cutoffAt)->not->toBeFalse()
+        ->and($evaluateAt)->toBeLessThan($cutoffAt);
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25', '--distributor' => (string) $achiever->id]))->toBe(1);
+
+    $audits = AuditLog::where('action', 'compensation.cutoff.by_name_refused')->orderBy('id')->get();
+    expect($audits)->toHaveCount(2)
+        ->and($audits->pluck('actor_id')->all())->toBe([null, null])
+        ->and($audits->pluck('subject_id')->all())->toBe([$achiever->id, $achiever->id])
+        ->and($audits[0]->details)->toMatchArray(['adn' => $achiever->adn, 'owed_date' => '2026-08-25', 'date' => '2026-08-26', 'forced' => true])
+        ->and($audits[1]->details)->toMatchArray(['adn' => $achiever->adn, 'owed_date' => '2026-08-25', 'date' => '2026-08-25', 'forced' => false]);
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message, array $context = []): bool => $message === 'gsb.cutoff.refused_open_deferral'
+            && $context['distributor_id'] === $achiever->id
+            && $context['owed_date'] === '2026-08-25')
+        ->twice();
+});
