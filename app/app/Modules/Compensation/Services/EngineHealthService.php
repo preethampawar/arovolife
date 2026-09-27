@@ -487,6 +487,7 @@ final class EngineHealthService
         $oldest = $rows->first()->cutoff_date;
 
         return [[
+            'kind' => 'superseded',
             'engine' => 'GSB daily cut-off',
             'key' => 'gsb.daily-cutoff',
             'headline' => sprintf('Superseded owed days — check the later row is right (%d)', $rows->count()),
@@ -552,6 +553,7 @@ final class EngineHealthService
         $oldest = $rows->first()->cutoff_date;
 
         return [[
+            'kind' => 'over_reservation',
             'engine' => 'GSB daily cut-off',
             'key' => 'gsb.daily-cutoff',
             'headline' => sprintf('%d deferred GSB cut-off(s) backfilled over the reservation', $rows->count()),
@@ -634,6 +636,7 @@ final class EngineHealthService
         }
 
         return [[
+            'kind' => 'open',
             'engine' => 'GSB daily cut-off',
             'key' => 'gsb.daily-cutoff',
             'headline' => sprintf(

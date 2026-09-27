@@ -31,9 +31,13 @@
         ['label' => 'Stuck runs', 'count' => count($report->stuck)],
         ['label' => 'Premature freezes', 'count' => count($report->prematureFreezes)],
         ['label' => 'Chain alerts', 'count' => count($report->chainAlerts)],
-        // Owed days, not digest items: the bucket groups every open row into
-        // one item, so counting items would read 1 for any number of them.
-        ['label' => 'Deferred cut-offs', 'count' => array_sum(array_column($report->deferredCutoffs, 'count'))],
+        // Open owed days, not digest items: the bucket groups every open row
+        // into one item, and also carries resolved over-reservation and
+        // superseded notices that are not owed days at all.
+        ['label' => 'Deferred cut-offs', 'count' => array_sum(array_column(
+            array_filter($report->deferredCutoffs, fn (array $item): bool => ($item['kind'] ?? 'open') === 'open'),
+            'count',
+        ))],
     ];
 
     $alertTotal = array_sum(array_column($buckets, 'count'));

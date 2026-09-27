@@ -219,7 +219,7 @@ final class GsbDailyCutoffCommand extends Command
                         $adn,
                         $owedDate,
                         $date->toDateString(),
-                        $owedDate,
+                        Carbon::today()->toDateString(),
                         $singleId,
                         $owedDate,
                         $singleId,
@@ -574,16 +574,7 @@ final class GsbDailyCutoffCommand extends Command
                 $this->cutoff->price($computation, $pool, $poolPricingActive);
                 $result = $this->cutoff->settle($computation);
 
-                // A --force by-name run past the refusal above settled a
-                // deferred day: the row that now exists is its resolution. So
-                // does a full re-run that settled someone it no longer defers.
-                if ($result->status !== GsbCutoffResult::STATUS_FAILED) {
-                    if ($singleId !== null) {
-                        $this->resolveDeferral($distributorId, $date, $result, GsbCutoffDeferral::RESOLUTION_MANUAL);
-                    } elseif (isset($openForTonight[$distributorId])) {
-                        $this->resolveDeferral($distributorId, $date, $result, GsbCutoffDeferral::RESOLUTION_BACKFILLED);
-                    }
-                }
+                $paidPoints = 0;
 
                 if ($result->status === GsbCutoffResult::STATUS_CREDITED) {
                     $credited++;
@@ -599,6 +590,7 @@ final class GsbDailyCutoffCommand extends Command
                             if ($accrual !== null) {
                                 $accruals[] = $accrual;
                                 $msbTotalPoints += $accrual->points;
+                                $paidPoints = $accrual->points;
                             }
                         } catch (\Throwable $e) {
                             $mbFailed++;
@@ -613,6 +605,28 @@ final class GsbDailyCutoffCommand extends Command
                 } elseif ($result->status === GsbCutoffResult::STATUS_FAILED) {
                     $failed++;
                     Log::error('gsb.cutoff.failed', ['distributor_id' => $distributorId, 'reason' => $result->failure_reason]);
+                }
+
+                // A --force by-name run past the refusal above settled a
+                // deferred day: the row that now exists is its resolution. So
+                // does a full re-run that settled someone it no longer defers
+                // (L4). Both record paid against reserved, as the backfill does
+                // (N2) — after the accrual, so the sponsor's points are known.
+                if ($result->status !== GsbCutoffResult::STATUS_FAILED
+                    && ($singleId !== null || isset($openForTonight[$distributorId]))) {
+                    $owed = GsbCutoffDeferral::open()
+                        ->where('distributor_id', $distributorId)
+                        ->whereDate('cutoff_date', $date->toDateString())
+                        ->first();
+
+                    if ($owed !== null) {
+                        $this->closeDeferral(
+                            $owed,
+                            $result,
+                            $singleId !== null ? GsbCutoffDeferral::RESOLUTION_MANUAL : GsbCutoffDeferral::RESOLUTION_BACKFILLED,
+                            $paidPoints,
+                        );
+                    }
                 }
             } catch (\Throwable $e) {
                 $failed++;
@@ -934,7 +948,6 @@ final class GsbDailyCutoffCommand extends Command
                 continue;
             }
 
-            $paidGross = $result->status === GsbCutoffResult::STATUS_CREDITED ? (int) $result->gross_gsb_paise : 0;
             $paidPoints = 0;
 
             // The GSB day is settled whatever MB does next; an MB failure is
@@ -958,20 +971,7 @@ final class GsbDailyCutoffCommand extends Command
                 }
             }
 
-            $exceeded = $paidGross > $deferral->reserved_gsb_paise || $paidPoints > $deferral->reserved_msb_points;
-
-            $deferral->update([
-                'resolved_at' => Carbon::now(),
-                'resolution' => GsbCutoffDeferral::RESOLUTION_BACKFILLED,
-                'gsb_cutoff_result_id' => $result->id,
-                'paid_gsb_paise' => $paidGross,
-                'paid_msb_points' => $paidPoints,
-                'exceeded_reservation_at' => $exceeded ? Carbon::now() : null,
-            ]);
-
-            if ($exceeded) {
-                $this->recordBackfillExcess($deferral, $paidGross, $paidPoints);
-            }
+            $this->closeDeferral($deferral, $result, GsbCutoffDeferral::RESOLUTION_BACKFILLED, $paidPoints);
 
             $settled++;
         }
@@ -1022,6 +1022,7 @@ final class GsbDailyCutoffCommand extends Command
             'distributor_id' => $deferral->distributor_id,
             'adn' => (string) Distributor::whereKey($deferral->distributor_id)->value('adn'),
             'cutoff_date' => $deferral->cutoff_date->toDateString(),
+            'resolution' => $deferral->resolution,
             'reserved_gsb_paise' => $deferral->reserved_gsb_paise,
             'paid_gsb_paise' => $paidGross,
             'reserved_msb_points' => $deferral->reserved_msb_points,
@@ -1044,19 +1045,29 @@ final class GsbDailyCutoffCommand extends Command
     }
 
     /**
-     * Close an open deferral for ($distributorId, $date) against the result
-     * row a settle produced. A no-op when there is none.
+     * Close an owed day against the result row a settle produced, recording
+     * what it paid beside what its night reserved. Every resolution that
+     * settles goes through here — the backfill, a same-night full re-run and a
+     * --force by-name run (N2) — so an excess is never recorded on one path
+     * and missed on another.
      */
-    private function resolveDeferral(int $distributorId, Carbon $date, GsbCutoffResult $result, string $resolution): void
+    private function closeDeferral(GsbCutoffDeferral $deferral, GsbCutoffResult $result, string $resolution, int $paidPoints): void
     {
-        GsbCutoffDeferral::open()
-            ->where('distributor_id', $distributorId)
-            ->whereDate('cutoff_date', $date->toDateString())
-            ->update([
-                'resolved_at' => Carbon::now(),
-                'resolution' => $resolution,
-                'gsb_cutoff_result_id' => $result->id,
-            ]);
+        $paidGross = $result->status === GsbCutoffResult::STATUS_CREDITED ? (int) $result->gross_gsb_paise : 0;
+        $exceeded = $paidGross > $deferral->reserved_gsb_paise || $paidPoints > $deferral->reserved_msb_points;
+
+        $deferral->update([
+            'resolved_at' => Carbon::now(),
+            'resolution' => $resolution,
+            'gsb_cutoff_result_id' => $result->id,
+            'paid_gsb_paise' => $paidGross,
+            'paid_msb_points' => $paidPoints,
+            'exceeded_reservation_at' => $exceeded ? Carbon::now() : null,
+        ]);
+
+        if ($exceeded) {
+            $this->recordBackfillExcess($deferral, $paidGross, $paidPoints);
+        }
     }
 
     /**

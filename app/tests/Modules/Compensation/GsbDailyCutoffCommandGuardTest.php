@@ -766,7 +766,7 @@ it('tells the operator to re-evaluate before settling an owed day by name, and a
     expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-26', '--distributor' => (string) $achiever->id, '--force' => true]))->toBe(1);
     $later = Artisan::output();
 
-    $evaluateAt = strpos($later, "repurchase:evaluate --date=2026-08-25 --distributor={$achiever->id}");
+    $evaluateAt = strpos($later, "repurchase:evaluate --date=2026-08-27 --distributor={$achiever->id}");
     $cutoffAt = strpos($later, "gsb:daily-cutoff --date=2026-08-25 --distributor={$achiever->id} --force");
     expect($evaluateAt)->not->toBeFalse()
         ->and($cutoffAt)->not->toBeFalse()
@@ -801,4 +801,45 @@ it('resolves a deferral the same night when a full re-run settles a distributor 
     expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED)
         ->and($deferral->resolution)->toBe(GsbCutoffDeferral::RESOLUTION_BACKFILLED)
         ->and($deferral->gsb_cutoff_result_id)->toBe($result->id);
+});
+
+it('records paid against reserved when a same-night re-run settles an owed day, and audits an excess (N2)', function (): void {
+    $achiever = deferAchieverOn25th();
+
+    // A zero reservation — the shape a deferred distributor whose computation
+    // threw on the first run is left with.
+    GsbCutoffDeferral::where('distributor_id', $achiever->id)->update(['reserved_slab' => null, 'reserved_gsb_paise' => 0, 'reserved_msb_points' => 0]);
+
+    seedEvaluateRun('2026-08-26', '2026-08-27 00:20:00');
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(0);
+
+    $result = GsbCutoffResult::where('distributor_id', $achiever->id)->whereDate('cutoff_date', '2026-08-25')->sole();
+    $deferral = GsbCutoffDeferral::where('distributor_id', $achiever->id)->sole();
+
+    expect($deferral->resolution)->toBe(GsbCutoffDeferral::RESOLUTION_BACKFILLED)
+        ->and($deferral->paid_gsb_paise)->toBe($result->gross_gsb_paise)
+        ->and($deferral->paid_msb_points)->toBe(15)
+        ->and($deferral->exceeded_reservation_at)->not->toBeNull();
+
+    expect(AuditLog::where('action', 'gsb.cutoff.backfill_exceeds_reservation')->sole()->details)->toMatchArray([
+        'distributor_id' => $achiever->id,
+        'cutoff_date' => '2026-08-25',
+        'resolution' => GsbCutoffDeferral::RESOLUTION_BACKFILLED,
+        'reserved_gsb_paise' => 0,
+        'paid_gsb_paise' => $result->gross_gsb_paise,
+    ]);
+});
+
+it('records paid figures when a --force by-name run settles an owed day (N2)', function (): void {
+    $achiever = deferAchieverOn25th();
+    $reserved = GsbCutoffDeferral::where('distributor_id', $achiever->id)->sole();
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25', '--distributor' => (string) $achiever->id, '--force' => true]))->toBe(0);
+
+    $deferral = $reserved->fresh();
+    expect($deferral->resolution)->toBe(GsbCutoffDeferral::RESOLUTION_MANUAL)
+        ->and($deferral->paid_gsb_paise)->toBe($reserved->reserved_gsb_paise)
+        ->and($deferral->paid_msb_points)->toBe($reserved->reserved_msb_points)
+        ->and($deferral->exceeded_reservation_at)->toBeNull()
+        ->and(AuditLog::where('action', 'gsb.cutoff.backfill_exceeds_reservation')->exists())->toBeFalse();
 });

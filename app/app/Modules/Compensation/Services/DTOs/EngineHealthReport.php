@@ -17,7 +17,7 @@ namespace App\Modules\Compensation\Services\DTOs;
  * @phpstan-type StuckItem array{engine: string, key: string, period: string, period_value: string, started_at: string, steps: list<string>}
  * @phpstan-type PrematureFreezeItem array{engine: string, key: string, period: string, period_value: string, frozen_at: string, detected_at: string, steps: list<string>}
  * @phpstan-type ChainAlertItem array{kind: string, headline: string, date: string, recorded_at: string, steps: list<string>}
- * @phpstan-type DeferredCutoffsItem array{engine: string, key: string, headline: string, period: string, period_value: string, count: int, oldest: string, adns: list<string>, ages: array<string, int>, steps: list<string>}
+ * @phpstan-type DeferredCutoffsItem array{kind: 'open'|'over_reservation'|'superseded', engine: string, key: string, headline: string, period: string, period_value: string, count: int, oldest: string, adns: list<string>, ages: array<string, int>, steps: list<string>}
  */
 final readonly class EngineHealthReport
 {
