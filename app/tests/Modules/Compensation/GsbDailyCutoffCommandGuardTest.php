@@ -259,3 +259,39 @@ it('records a SKIPPED run when a later cut-off has already passed the day, and t
         ->and(app(EngineStatusService::class)->completedCutoffDatesBetween($day, $day))
         ->toBe([$day->toDateString()]);
 });
+
+it('refuses while another cut-off run is in flight, as a skipped run', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    seedEvaluateRun('2026-08-26');
+    Carbon::setTestNow('2026-08-26 00:10:00');
+
+    EngineRun::create([
+        'engine_key' => 'gsb.daily-cutoff',
+        'period_start' => '2026-08-25',
+        'status' => EngineRun::STATUS_RUNNING,
+        'trigger' => EngineRun::TRIGGER_MANUAL,
+        'started_at' => Carbon::parse('2026-08-26 00:06:00'),
+    ]);
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(1)
+        ->and(Artisan::output())->toContain('still in flight')
+        ->and(GsbCutoffResult::count())->toBe(0);
+
+    $own = EngineRun::where('engine_key', 'gsb.daily-cutoff')->where('trigger', EngineRun::TRIGGER_CONSOLE)->latest('id')->first();
+    expect($own->status)->toBe(EngineRun::STATUS_SKIPPED)
+        ->and($own->error)->toContain('still in flight');
+});
+
+it('--force does not lift the in-flight guard', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    Carbon::setTestNow('2026-08-26 00:10:00');
+    EngineRun::create([
+        'engine_key' => 'gsb.daily-cutoff',
+        'period_start' => '2026-08-25',
+        'status' => EngineRun::STATUS_RUNNING,
+        'trigger' => EngineRun::TRIGGER_MANUAL,
+        'started_at' => Carbon::parse('2026-08-26 00:06:00'),
+    ]);
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25', '--force' => true]))->toBe(1);
+});

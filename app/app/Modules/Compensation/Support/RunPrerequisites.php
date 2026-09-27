@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Support;
 
+use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Services\EngineStatusService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -138,6 +139,70 @@ final class RunPrerequisites
                 'run_engine_key' => $registryKey,
                 'rebuild_engine_key' => $key,
                 'date' => $night->toDateString(),
+                'reason' => $reason,
+            ]);
+
+            return $reason;
+        }
+
+        return null;
+    }
+
+    /**
+     * Null unless one of $keys has a run in flight other than $exceptRunId.
+     *
+     * `withoutOverlapping()` is per scheduled command; a manual trigger runs
+     * the same leaf through RunEngineChainJob in another process, and nothing
+     * serialised the two (E3, 2026-09-26 review). The unique index stops a
+     * double credit; what it cannot stop is the rolling carry-forward store
+     * being advanced twice. The caller chooses the key set: an orchestrator
+     * asks about itself and its steps, a leaf about itself only (its
+     * orchestrator's row is running by design), the admin trigger about the
+     * target and everything above and below it.
+     *
+     * The re-run line carries the period when the caller has a run row of its
+     * own ($exceptRunId) to read it from; otherwise it names the command only.
+     *
+     * Returns a COMPLETE message, like {@see rebuildInFlightRefusal()}.
+     *
+     * @param  list<string>  $keys
+     */
+    public function inFlightRefusal(array $keys, ?int $exceptRunId, string $heldBackKey): ?string
+    {
+        foreach ($keys as $key) {
+            if (! $this->status->hasRunInFlight($key, $exceptRunId)) {
+                continue;
+            }
+
+            $running = EngineRun::query()
+                ->where('engine_key', $key)
+                ->where('status', EngineRun::STATUS_RUNNING)
+                ->where('started_at', '>=', Carbon::now()->subMinutes(EngineRun::STALE_AFTER_MINUTES))
+                ->when($exceptRunId !== null, fn ($q) => $q->whereKeyNot($exceptRunId))
+                ->latest('started_at')
+                ->first();
+
+            $held = EngineRegistry::get($heldBackKey);
+            $own = $exceptRunId !== null ? EngineRun::query()->find($exceptRunId) : null;
+            $rerun = $own instanceof EngineRun
+                ? sprintf('%s %s=%s', $held->commandSignature, $held->periodOption, $held->formatPeriod($own->period_start))
+                : $held->commandSignature;
+
+            $reason = sprintf(
+                'A %s run started at %s is still in flight (run #%d), so %s was held back rather than write the '
+                ."same rows beside it.\nWait for it to finish — the Engine Runs page shows it running — then re-run: "
+                .'php artisan %s',
+                EngineRegistry::get($key)->label,
+                $running?->started_at?->format('H:i') ?? '?',
+                $running->id ?? 0,
+                $held->label,
+                $rerun,
+            );
+
+            Log::warning('compensation.scheduler.deferred_for_concurrent_run', [
+                'held_back_engine_key' => $heldBackKey,
+                'running_engine_key' => $key,
+                'running_run_id' => $running?->id,
                 'reason' => $reason,
             ]);
 

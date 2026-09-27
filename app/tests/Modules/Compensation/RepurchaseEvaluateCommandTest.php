@@ -9,6 +9,7 @@ use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
@@ -150,4 +151,20 @@ it('records a failed_partial summary naming the failed ADNs and the exception cl
         // The class, never the message: an exception message can carry
         // anything the data put in it.
         ->and($run->summary['failure_classes'])->toBe([RuntimeException::class]);
+});
+
+it('refuses while another evaluation run is in flight', function (): void {
+    Carbon::setTestNow('2026-07-30 00:05:00');
+    EngineRun::create([
+        'engine_key' => 'repurchase.evaluate',
+        'period_start' => '2026-07-30',
+        'status' => EngineRun::STATUS_RUNNING,
+        'trigger' => EngineRun::TRIGGER_MANUAL,
+        'started_at' => Carbon::parse('2026-07-30 00:02:00'),
+    ]);
+    distributorWithAnchor('2026-07-07');
+
+    expect(Artisan::call('repurchase:evaluate', ['--date' => '2026-07-30']))->toBe(1)
+        ->and(Artisan::output())->toContain('still in flight')
+        ->and(RepurchaseCycle::count())->toBe(0);
 });

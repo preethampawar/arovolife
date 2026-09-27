@@ -79,7 +79,7 @@ trait OrchestratesEngineSteps
     }
 
     /**
-     * Three checks, once for the whole run rather than once per engine, and all
+     * Four checks, once for the whole run rather than once per engine, and all
      * of them BEFORE the run touches an engine or writes anything derived.
      *
      * 1. The recompute gate. These commands are also typed by hand — they are
@@ -92,6 +92,10 @@ trait OrchestratesEngineSteps
      * 3. A developer rebuild in flight. It writes the same rolling per-
      *    distributor stores this run does, and no mutex covers both
      *    ({@see RunPrerequisites::rebuildInFlightRefusal()}).
+     * 4. A run of this orchestrator, or of any step it owns, still in flight —
+     *    a manual trigger from the Engine Runs page, in another process
+     *    ({@see RunPrerequisites::inFlightRefusal()}). Its own `running` row is
+     *    excepted: the recorder writes it before handle() runs.
      *
      * Each refusal becomes a `skipped` run row carrying the reason, through
      * {@see abortRun()} — never a silent non-start.
@@ -108,6 +112,16 @@ trait OrchestratesEngineSteps
 
         if (($stale = WorkerFreshness::staleReason()) !== null) {
             return $stale;
+        }
+
+        $concurrent = app(RunPrerequisites::class)->inFlightRefusal(
+            [$registryKey, ...EngineRegistry::descendantKeys($registryKey)],
+            app(EngineRunContext::class)->activeRunId(),
+            $registryKey,
+        );
+
+        if ($concurrent !== null) {
+            return $concurrent;
         }
 
         return app(RunPrerequisites::class)->rebuildInFlightRefusal($night, $registryKey);

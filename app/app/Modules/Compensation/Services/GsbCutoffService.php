@@ -567,6 +567,25 @@ final class GsbCutoffService
             });
         }
 
+        // Everything from the top-up to the result row commits together (E2).
+        // Until 2026-09-27 the top-up and the no-match branch ran outside any
+        // transaction: a crash between advancing the store and writing the row
+        // left no row to rewind from, and the next run advanced the store a
+        // second time. The frozen and credited branches keep their own inner
+        // transactions — nested, they become savepoints, and the credited
+        // branch's catch still records a FAILED row inside this one.
+        return DB::transaction(fn (): GsbCutoffResult => $this->settleMatchable($computation, $existing));
+    }
+
+    /**
+     * The top-up, the carry-forward store and the no-match / frozen / credited
+     * branches — always inside settle()'s transaction, never called directly.
+     */
+    private function settleMatchable(GsbCutoffComputation $computation, ?GsbCutoffResult $existing): GsbCutoffResult
+    {
+        $distributorId = $computation->distributorId;
+        $date = $computation->date;
+
         // Apply the simulated personal-BV top-up — exactly the orders the
         // computation counted, so the settled accumulator matches the match.
         if ($computation->topupBvPaise > 0 && $computation->topupSide !== null) {

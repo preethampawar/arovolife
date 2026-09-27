@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Console\Commands\Concerns\OrchestratesEngineSteps;
 use App\Modules\Compensation\Services\EngineStatusService;
+use App\Modules\Compensation\Support\CompensationQueueBacklog;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\NightlyRunAlert;
 use Illuminate\Console\Command;
@@ -29,6 +30,9 @@ use Illuminate\Support\Carbon;
  *   1. `repurchase:evaluate --date=<tonight>`  — every night.
  *   2. `gsb:daily-cutoff --date=<yesterday>`   — every night, preceded by any
  *                                                night that was missed.
+ *
+ * Before step 1 the run waits, up to twenty minutes, for the compensation
+ * queue to empty — BV still queued belongs to the day about to be cut off.
  *
  * A PERIOD IS JUDGED ONLY AFTER IT HAS ENDED. Step 1 is dated tonight precisely
  * so it has seen the whole of every day this run is about to cut off, which is
@@ -104,6 +108,34 @@ final class NightlyRunCommand extends Command
             }
 
             $this->warn("Preflight refused but --force was passed:\n{$refusal}");
+        }
+
+        // The queue, after the preflight and before any engine: BV still in
+        // flight belongs to the day about to be cut off (E4). The weekly and
+        // monthly runs sweep entries earned days ago and do not wait.
+        $backlog = app(CompensationQueueBacklog::class);
+        $remaining = $backlog->waitUntilDrained(function (int $depth, int $waited): void {
+            $this->line(sprintf('  %d job(s) still on the compensation queue after %ds — waiting.', $depth, $waited));
+        });
+
+        if ($remaining > 0) {
+            $reason = sprintf(
+                '%d job(s) were still on the compensation queue after waiting %d minute(s), so the nightly run was '
+                ."held back: BV they carry belongs to %s, and a day's pools are frozen once.\nCheck the "
+                .'compensation worker (php artisan app:status). Nothing is lost: the next nightly run backfills '
+                .'%s, or run it by hand once the queue is empty: php artisan compensation:nightly-run --date=%s',
+                $remaining,
+                intdiv($backlog->maxWaitSeconds(), 60),
+                $night->copy()->subDay()->format('d M Y'),
+                $night->format('d M Y'),
+                $night->toDateString(),
+            );
+
+            if (! $this->option('force')) {
+                return $this->abortRun($night, 'preflight', $reason);
+            }
+
+            $this->warn("Queue not drained but --force was passed:\n{$reason}");
         }
 
         $steps = $this->stepsFor($night);

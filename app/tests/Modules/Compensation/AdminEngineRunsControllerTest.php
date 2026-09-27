@@ -147,13 +147,14 @@ it('never shows a rebuild engine card, whatever the role', function (): void {
 });
 
 it('hides flag-off engines from the index entirely, including their dependency chips', function (): void {
-    // Every flag defaults to off, so only the always-on Monthly Payout Batch
-    // remains — and its "Runs first" chips must not name the hidden engines
-    // either. A disabled feature leaves no trace.
+    // Every flag defaults to off. The Monthly Payout Batch declares the
+    // compensation master flag since E1 (2026-09-26 review), exactly as the
+    // weekly payout does, so its card is hidden too — and no chip anywhere
+    // names a hidden engine. A disabled feature leaves no trace.
     $this->actingAs(engineRunsUser('admin'))
         ->get(route('admin.compensation.engine-runs.index'))
         ->assertOk()
-        ->assertSee('Monthly Payout Batch')
+        ->assertDontSee('Monthly Payout Batch')
         ->assertDontSee('GSB Daily Cut-off (incl. MSB)')
         ->assertDontSee('Growth Booster Bonus')
         ->assertDontSee('Fortune Bonus Enrolment')
@@ -341,6 +342,29 @@ it('refuses to trigger an engine whose feature flag is off', function (): void {
             'reason' => 'Flag is off — this must be refused.',
         ])->assertSessionHasErrors('engine');
 
+    Queue::assertNothingPushed();
+});
+
+it('refuses to trigger an engine while its orchestrator is in flight', function (): void {
+    Queue::fake();
+    Feature::activate(GenosSalesBonusFeature::class);
+    EngineRun::create([
+        'engine_key' => 'compensation.nightly-run',
+        'period_start' => now()->toDateString(),
+        'status' => EngineRun::STATUS_RUNNING,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => now()->subMinutes(2),
+    ]);
+
+    $response = $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gsb.daily-cutoff',
+            'period' => now()->subDay()->toDateString(),
+            'reason' => 'Nightly run is in flight — this must be refused.',
+        ]);
+
+    $response->assertSessionHasErrors('engine');
+    expect(session('errors')->first('engine'))->toContain('still in flight');
     Queue::assertNothingPushed();
 });
 

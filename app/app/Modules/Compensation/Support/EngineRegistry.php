@@ -173,6 +173,48 @@ final class EngineRegistry
         return $keys;
     }
 
+    /**
+     * Every engine this orchestrator runs, transitively — the monthly run owns
+     * two orchestrators that own the monthly leaves. Registry order.
+     *
+     * @return list<string>
+     */
+    public static function descendantKeys(string $orchestratorKey): array
+    {
+        $keys = [];
+
+        foreach (self::all() as $key => $definition) {
+            if ($definition->orchestratedBy === null || $key === $orchestratorKey) {
+                continue;
+            }
+
+            if (in_array($orchestratorKey, self::ancestorKeys($key), true)) {
+                $keys[] = $key;
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * The orchestrator that runs this engine, then its orchestrator, up to the
+     * root. Empty for a root and for an engine the scheduler fires directly.
+     *
+     * @return list<string>
+     */
+    public static function ancestorKeys(string $key): array
+    {
+        $keys = [];
+        $parent = self::get($key)->orchestratedBy;
+
+        while ($parent !== null) {
+            $keys[] = $parent;
+            $parent = self::get($parent)->orchestratedBy;
+        }
+
+        return $keys;
+    }
+
     /** Reverse lookup for the console listener: artisan name → definition. */
     public static function findBySignature(string $signature): ?EngineDefinition
     {
@@ -428,7 +470,10 @@ final class EngineRegistry
                     ['key' => 'fortune.payout'],
                     ['key' => 'adc.bonus'],
                 ],
-                featureFlagClass: null,
+                // The compensation master flag, exactly as the weekly payout declares it:
+                // the command no-ops on it, and only the registry can tell RecordEngineRun
+                // that the 0-exit was a no-op to record as skipped, not a run (E1).
+                featureFlagClass: GenosSalesBonusFeature::class,
                 reportRouteName: 'admin.compensation.weekly-payouts.index',
                 // The 8th, not the 1st: crediting closes on the 1st and payment
                 // waits a week, so a bad month can be caught before it reaches a
