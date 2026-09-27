@@ -293,8 +293,11 @@ final class GsbDailyCutoffCommand extends Command
         // computed on top of it (H1). A distributor still owed an earlier day
         // after this — their backfill threw — is deferred again tonight rather
         // than settled past it.
+        $backfillMbFailed = 0;
+
         if ($singleId === null) {
             $backfill = $this->backfillDeferrals($date, array_keys($deferredIds), $poolPricingActive, $mentorshipActive);
+            $backfillMbFailed = $backfill['mb_failed'];
 
             if ($backfill['settled'] + $backfill['failed'] + $backfill['left_open'] > 0) {
                 $this->line(sprintf(
@@ -319,7 +322,9 @@ final class GsbDailyCutoffCommand extends Command
         $total = (clone $query)->count();
         $credited = 0;
         $failed = 0;
-        $mbFailed = 0;
+        // A backfilled day whose MB failed fails the run exactly as a nightly
+        // MB failure does (M4) — the owed day itself is still resolved.
+        $mbFailed = $backfillMbFailed;
         $skipped = 0;
         $outOfOrder = 0;
 
@@ -752,7 +757,7 @@ final class GsbDailyCutoffCommand extends Command
      * would advance the store past the day still owed.
      *
      * @param  list<int>  $stillDeferredIds
-     * @return array{settled: int, failed: int, left_open: int}
+     * @return array{settled: int, failed: int, left_open: int, mb_failed: int}
      */
     private function backfillDeferrals(Carbon $tonightDate, array $stillDeferredIds, bool $poolPricingActive, bool $mentorshipActive): array
     {
@@ -765,6 +770,7 @@ final class GsbDailyCutoffCommand extends Command
         $settled = 0;
         $failed = 0;
         $leftOpen = 0;
+        $mbFailed = 0;
         $still = array_fill_keys($stillDeferredIds, true);
 
         /** @var array<int, true> $blocked distributors whose earlier owed day failed tonight */
@@ -799,15 +805,18 @@ final class GsbDailyCutoffCommand extends Command
             } catch (CutoffReplayedOutOfOrder) {
                 // A later row already advanced the store — an operator ran them
                 // by name, or an older fault. The row that exists is the truth;
-                // looping on it every night would help nobody.
+                // looping on it every night would help nobody. Superseded, not
+                // quietly manual (M3): the day closes with no result row of its
+                // own, so it is audited and the digest shows it for a week.
                 Log::warning('gsb.cutoff.deferral_already_passed', [
                     'distributor_id' => $distributorId,
                     'cutoff_date' => $day->toDateString(),
                 ]);
                 $deferral->update([
                     'resolved_at' => Carbon::now(),
-                    'resolution' => GsbCutoffDeferral::RESOLUTION_MANUAL,
+                    'resolution' => GsbCutoffDeferral::RESOLUTION_SUPERSEDED,
                 ]);
+                $this->recordSuperseded($deferral);
 
                 continue;
             } catch (\Throwable $e) {
@@ -849,6 +858,7 @@ final class GsbDailyCutoffCommand extends Command
                         $this->mentorship->creditAccrual($accrual, $this->msbPoolService->poolForDate($day));
                     }
                 } catch (\Throwable $e) {
+                    $mbFailed++;
                     Log::error('mb.credit.exception', [
                         'sponsee_id' => $distributorId,
                         'cutoff_date' => $day->toDateString(),
@@ -876,7 +886,37 @@ final class GsbDailyCutoffCommand extends Command
             $settled++;
         }
 
-        return ['settled' => $settled, 'failed' => $failed, 'left_open' => $leftOpen];
+        return ['settled' => $settled, 'failed' => $failed, 'left_open' => $leftOpen, 'mb_failed' => $mbFailed];
+    }
+
+    /**
+     * An owed day a later cut-off already passed, resolved as superseded: the
+     * audit row names the later row the store now stands on, so someone can
+     * check it paid what the owed day should have folded into it.
+     */
+    private function recordSuperseded(GsbCutoffDeferral $deferral): void
+    {
+        $laterRowDate = GsbCutoffResult::where('distributor_id', $deferral->distributor_id)
+            ->whereDate('cutoff_date', '>', $deferral->cutoff_date->toDateString())
+            ->orderBy('cutoff_date')
+            ->first()
+            ?->cutoff_date
+            ->toDateString();
+
+        AuditLog::create([
+            'actor_id' => null,
+            'action' => 'gsb.cutoff.deferral_superseded',
+            'subject_type' => 'gsb_cutoff_deferral',
+            'subject_id' => $deferral->id,
+            'before_hash' => null,
+            'after_hash' => null,
+            'details' => [
+                'distributor_id' => $deferral->distributor_id,
+                'adn' => (string) Distributor::whereKey($deferral->distributor_id)->value('adn'),
+                'cutoff_date' => $deferral->cutoff_date->toDateString(),
+                'later_row_date' => $laterRowDate,
+            ],
+        ]);
     }
 
     /**

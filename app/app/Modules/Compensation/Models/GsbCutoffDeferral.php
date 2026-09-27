@@ -47,6 +47,15 @@ final class GsbCutoffDeferral extends Model
 
     public const RESOLUTION_MANUAL = 'manual';
 
+    /**
+     * The backfill found a later cut-off had already advanced the store: the
+     * day closes with no result row of its own, audited and shown for a week.
+     */
+    public const RESOLUTION_SUPERSEDED = 'superseded';
+
+    /** Closed by a human decision (`gsb:write-off-deferral`), never automatic. */
+    public const RESOLUTION_WRITTEN_OFF = 'written_off';
+
     protected $fillable = [
         'distributor_id', 'cutoff_date', 'cause', 'evaluate_run_id',
         'reserved_slab', 'reserved_gsb_paise', 'reserved_msb_points',
@@ -89,6 +98,18 @@ final class GsbCutoffDeferral extends Model
     public function scopeExceededSince(Builder $query, Carbon $since): Builder
     {
         return $query->where('exceeded_reservation_at', '>=', $since);
+    }
+
+    /**
+     * Resolved as superseded on or after $since.
+     *
+     * @param  Builder<GsbCutoffDeferral>  $query
+     * @return Builder<GsbCutoffDeferral>
+     */
+    public function scopeSupersededSince(Builder $query, Carbon $since): Builder
+    {
+        return $query->where('resolution', self::RESOLUTION_SUPERSEDED)
+            ->where('resolved_at', '>=', $since);
     }
 
     /** @return BelongsTo<Distributor, $this> */

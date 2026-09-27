@@ -685,3 +685,45 @@ it('records what a backfill paid without flagging it when it stays inside the re
         ->and($deferral->exceeded_reservation_at)->toBeNull()
         ->and(AuditLog::where('action', 'gsb.cutoff.backfill_exceeds_reservation')->exists())->toBeFalse();
 });
+
+it('counts a backfilled day\'s MB failure and fails the run, while the owed day still resolves (M4)', function (): void {
+    $achiever = deferAchieverOn25th();
+    MentorshipBonusResult::creating(function (MentorshipBonusResult $row) use ($achiever): void {
+        if ((int) $row->sponsee_id === (int) $achiever->id) {
+            throw new RuntimeException('simulated MB failure');
+        }
+    });
+    seedEvaluateRun('2026-08-27', '2026-08-27 00:05:00');
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-26']))->toBe(1)
+        ->and(Artisan::output())->toContain('mb-failed: 2');
+
+    // Both the backfilled 25th and tonight's 26th are credited; each MB threw.
+    $deferral = GsbCutoffDeferral::where('distributor_id', $achiever->id)->sole();
+    expect($deferral->resolution)->toBe(GsbCutoffDeferral::RESOLUTION_BACKFILLED)
+        ->and($deferral->gsb_cutoff_result_id)->not->toBeNull()
+        ->and(EngineRun::where('engine_key', 'gsb.daily-cutoff')->latest('id')->value('status'))->toBe(EngineRun::STATUS_FAILED);
+});
+
+it('resolves an owed day a later by-name row already passed as superseded, and audits it (M3)', function (): void {
+    $achiever = deferAchieverOn25th();
+
+    // The 26th settled for them directly — an older fault, or a by-name run
+    // from before the refusal existed. The store now stands past the 25th.
+    app(GsbCutoffService::class)->runForDistributor($achiever->id, Carbon::parse('2026-08-26'));
+
+    Carbon::setTestNow('2026-08-28 00:30:00');
+    seedEvaluateRun('2026-08-28', '2026-08-28 00:05:00');
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-27']))->toBe(0);
+
+    $deferral = GsbCutoffDeferral::where('distributor_id', $achiever->id)->sole();
+    expect($deferral->resolution)->toBe(GsbCutoffDeferral::RESOLUTION_SUPERSEDED)
+        ->and($deferral->gsb_cutoff_result_id)->toBeNull();
+
+    expect(AuditLog::where('action', 'gsb.cutoff.deferral_superseded')->sole()->details)->toMatchArray([
+        'distributor_id' => $achiever->id,
+        'adn' => $achiever->adn,
+        'cutoff_date' => '2026-08-25',
+        'later_row_date' => '2026-08-26',
+    ]);
+});

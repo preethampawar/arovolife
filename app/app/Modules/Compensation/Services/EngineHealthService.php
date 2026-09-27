@@ -452,7 +452,56 @@ final class EngineHealthService
         return [
             ...$this->openDeferredCutoffs($now),
             ...$this->backfillsOverReservation($now),
+            ...$this->supersededOwedDays($now),
         ];
+    }
+
+    /**
+     * Owed days the backfill resolved as superseded in the last seven days — a
+     * later cut-off had already advanced the store, so the day closed with no
+     * result row of its own (M3). Grouped as one item.
+     *
+     * @return list<DeferredCutoffsItem>
+     */
+    private function supersededOwedDays(Carbon $now): array
+    {
+        $rows = GsbCutoffDeferral::supersededSince($now->copy()->subDays(7))
+            ->join('distributors', 'distributors.id', '=', 'gsb_cutoff_deferrals.distributor_id')
+            ->orderBy('gsb_cutoff_deferrals.cutoff_date')
+            ->orderBy('gsb_cutoff_deferrals.distributor_id')
+            ->get(['gsb_cutoff_deferrals.*', 'distributors.adn']);
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $adns = [];
+        $days = [];
+
+        foreach ($rows as $row) {
+            $adn = (string) $row->getAttribute('adn');
+            $adns[$adn] = true;
+            $days[] = sprintf('ADN %s, %s', $adn, $row->cutoff_date->format('d M Y'));
+        }
+
+        $oldest = $rows->first()->cutoff_date;
+
+        return [[
+            'engine' => 'GSB daily cut-off',
+            'key' => 'gsb.daily-cutoff',
+            'headline' => sprintf('Superseded owed days — check the later row is right (%d)', $rows->count()),
+            'period' => $oldest->format('d M Y'),
+            'period_value' => $oldest->toDateString(),
+            'count' => $rows->count(),
+            'oldest' => $oldest->format('d M Y'),
+            'adns' => array_map(strval(...), array_keys($adns)),
+            'ages' => [],
+            'steps' => [
+                sprintf('A later cut-off had already passed these owed days, so they closed with no result of their own: %s.', implode('; ', $days)),
+                'Open each distributor\'s GSB history and check the next day\'s row: the owed day\'s group BV was never matched on its own. The audit log holds each one as gsb.cutoff.deferral_superseded, with the later row\'s date.',
+                'If the later row is wrong, send this email to the developer — correcting it is a rebuild, not a re-run.',
+            ],
+        ]];
     }
 
     /**

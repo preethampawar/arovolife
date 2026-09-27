@@ -662,3 +662,25 @@ it('stops naming an over-reservation backfill after a day', function (): void {
 
     expect(app(EngineHealthService::class)->report(Carbon::now())->deferredCutoffs)->toBe([]);
 });
+
+it('lists a superseded owed day for a week after it closed (M3)', function (): void {
+    seedHealthyRuns();
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active', 'adn' => '100000080']);
+    $old = Distributor::factory()->create(['status' => 'active', 'adn' => '100000081']);
+    GsbCutoffDeferral::create([
+        'distributor_id' => $d->id, 'cutoff_date' => '2026-09-02', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+        'resolved_at' => now()->subDays(3), 'resolution' => GsbCutoffDeferral::RESOLUTION_SUPERSEDED,
+    ]);
+    GsbCutoffDeferral::create([
+        'distributor_id' => $old->id, 'cutoff_date' => '2026-08-20', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+        'resolved_at' => now()->subDays(8), 'resolution' => GsbCutoffDeferral::RESOLUTION_SUPERSEDED,
+    ]);
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    expect(digestText(sentDigest()))
+        ->toContain('Superseded owed days — check the later row is right')
+        ->toContain('ADN 100000080, 02 Sep 2026')
+        ->not->toContain('100000081');
+});
