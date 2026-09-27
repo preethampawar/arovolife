@@ -1,8 +1,11 @@
 <?php
 
+use App\Modules\Commerce\Models\Customer;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use Database\Seeders\ContentPageSeeder;
 use Database\Seeders\FortuneBonusLevelsSeeder;
 use Database\Seeders\FortuneBonusTiersSeeder;
@@ -10,8 +13,11 @@ use Database\Seeders\GsbSlabsSeeder;
 use Database\Seeders\LifetimeAwardRewardsSeeder;
 use Database\Seeders\RankTiersSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /*
@@ -277,11 +283,11 @@ function fakeCatalogDisk(): void
 */
 function uiDistributor(array $attrs = []): array
 {
-    $user = \App\Modules\Identity\Models\User::create([
+    $user = User::create([
         'full_name' => $attrs['full_name'] ?? 'Ui Tester',
         'email' => 'ui-'.uniqid().'@example.com',
         'phone_e164' => '+91944'.str_pad((string) random_int(0, 9999999), 7, '0', STR_PAD_LEFT),
-        'password_hash' => \Illuminate\Support\Facades\Hash::make('ui-test-pwd-2026'),
+        'password_hash' => Hash::make('ui-test-pwd-2026'),
         'password_set_at' => now(),
         'status' => 'active',
         'email_verified_at' => now(),
@@ -290,7 +296,7 @@ function uiDistributor(array $attrs = []): array
     disableTestForeignKeys();
     try {
         $now = now()->format('Y-m-d H:i:s.v');
-        $id = \Illuminate\Support\Facades\DB::table('distributors')->insertGetId([
+        $id = DB::table('distributors')->insertGetId([
             'user_id' => $user->id,
             'adn' => (string) random_int(100000000, 999999999),
             'pan_hash' => random_bytes(32),
@@ -309,12 +315,12 @@ function uiDistributor(array $attrs = []): array
             'created_at' => $now,
             'updated_at' => $now,
         ]);
-        \Illuminate\Support\Facades\DB::table('distributors')->where('id', $id)
+        DB::table('distributors')->where('id', $id)
             ->update(['sponsor_id' => $id, 'placement_parent_id' => $id]);
     } finally {
         enableTestForeignKeys();
     }
-    \Illuminate\Support\Facades\DB::table('genealogy_closure')
+    DB::table('genealogy_closure')
         ->insert(['ancestor_id' => $id, 'descendant_id' => $id, 'depth' => 0]);
 
     return ['user' => $user, 'id' => $id];
@@ -322,25 +328,25 @@ function uiDistributor(array $attrs = []): array
 
 function uiPlaceUnder(int $parentId, string $side, int $childId): void
 {
-    \Illuminate\Support\Facades\DB::table('distributors')->where('id', $childId)
+    DB::table('distributors')->where('id', $childId)
         ->update(['placement_parent_id' => $parentId, 'placement_side' => $side, 'sponsor_id' => $parentId]);
 
-    $rows = \Illuminate\Support\Facades\DB::table('genealogy_closure')
+    $rows = DB::table('genealogy_closure')
         ->where('descendant_id', $parentId)->get(['ancestor_id', 'depth']);
     foreach ($rows as $row) {
-        \Illuminate\Support\Facades\DB::table('genealogy_closure')->insert([
+        DB::table('genealogy_closure')->insert([
             'ancestor_id' => $row->ancestor_id, 'descendant_id' => $childId, 'depth' => $row->depth + 1,
         ]);
     }
 }
 
-function uiPaidSelfOrder(int $distributorId, int $bvPaise, \Illuminate\Support\Carbon $paidAt, string $status = 'paid'): int
+function uiPaidSelfOrder(int $distributorId, int $bvPaise, Carbon $paidAt, string $status = 'paid'): int
 {
     disableTestForeignKeys();
     try {
-        $orderId = \Illuminate\Support\Facades\DB::table('orders')->insertGetId([
+        $orderId = DB::table('orders')->insertGetId([
             'order_no' => 'UI'.random_int(10000000, 99999999),
-            'idempotency_key' => (string) \Illuminate\Support\Str::uuid(),
+            'idempotency_key' => (string) Str::uuid(),
             'customer_id' => 0,
             'attributed_distributor_id' => $distributorId,
             'attribution_source' => 'logged_in',
@@ -357,7 +363,7 @@ function uiPaidSelfOrder(int $distributorId, int $bvPaise, \Illuminate\Support\C
     } finally {
         enableTestForeignKeys();
     }
-    \Illuminate\Support\Facades\DB::table('bv_ledger_entries')->insert([
+    DB::table('bv_ledger_entries')->insert([
         'distributor_id' => $distributorId,
         'order_id' => $orderId,
         'type' => 'accrual',
@@ -373,7 +379,7 @@ function uiPaidSelfOrder(int $distributorId, int $bvPaise, \Illuminate\Support\C
 /** Put $paise into a distributor's repurchase wallet (balance = deductions − usages). */
 function uiRepurchaseWallet(int $distributorId, int $paise): void
 {
-    \App\Modules\Compensation\Models\WalletLedgerEntry::create([
+    WalletLedgerEntry::create([
         'distributor_id' => $distributorId,
         'type' => 'repurchase_deduction',
         'amount_paise' => $paise,
@@ -384,9 +390,9 @@ function uiRepurchaseWallet(int $distributorId, int $paise): void
 }
 
 /** A Customer row owned by $user, so CheckoutController::ownsOrder() is true for orders pointing at it. */
-function uiCustomerFor(\App\Modules\Identity\Models\User $user, int $distributorId): int
+function uiCustomerFor(User $user, int $distributorId): int
 {
-    return \App\Modules\Commerce\Models\Customer::create([
+    return Customer::create([
         'user_id' => $user->id,
         'distributor_id' => $distributorId,
         'display_name' => $user->full_name,
