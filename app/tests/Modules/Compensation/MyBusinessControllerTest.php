@@ -235,9 +235,10 @@ it('shows the carry-forward decomposition, todays genos bv and team counts', fun
         ->assertSee('Power side')
         // Right is weaker, so it holds the side-less slab-1 accumulator.
         ->assertSee('Weaker side')
-        ->assertSee('+ 600 BV slab-1 weaker carry over')
-        // No slab has ever matched, so carry forward (post-match remainder) is 0.
-        ->assertSee('No slab matched yet')
+        // The slab-1 weaker carry over is named in the weaker side's help tip.
+        ->assertSee('It includes 600 BV of slab-1 weaker carry over.')
+        // Carry cards show numbers only (client, 2026-09-28).
+        ->assertDontSee('No slab matched yet')
         ->assertSee('as of last page load')
         ->assertDontSee('@if', false)
         ->assertDontSee('@endif', false);
@@ -304,18 +305,17 @@ it('shows carry forward as the remainder of the last slab match only', function 
         'status' => GsbCutoffResult::STATUS_CREDITED,
     ]);
 
-    $expectedDate = Carbon::yesterday('Asia/Kolkata')->format('d M Y');
 
     $this->get(route('my-business'))
         ->assertOk()
-        // Left kept the 6,000 BV remainder; Right was reset by the match.
-        ->assertSee('Remaining after your last slab match ('.$expectedDate.')', false)
-        ->assertSee('Reset at your last slab match ('.$expectedDate.')', false)
+        // Left kept the 6,000 BV remainder; the cards show numbers only.
         ->assertSee('6,000')
+        ->assertDontSee('Remaining after your last slab match', false)
+        ->assertDontSee('Reset at your last slab match', false)
         ->assertDontSee('No slab matched yet');
 });
 
-it('hints that carry over and carry forward coincide when nothing new has arrived since the last match (F54)', function (): void {
+it('reads 0 carried-over right after a match instead of repeating the carry forward (client, 2026-09-28)', function (): void {
     ['user' => $user, 'distributorId' => $rootId] = myBusinessDistributor();
     $this->actingAs($user);
 
@@ -341,9 +341,13 @@ it('hints that carry over and carry forward coincide when nothing new has arrive
         'status' => GsbCutoffResult::STATUS_CREDITED,
     ]);
 
-    $this->get(route('my-business'))
+    $html = $this->get(route('my-business'))
         ->assertOk()
-        ->assertSee('No new business on this side since your last match — same as your carry forward.');
+        ->assertDontSee('No new business on this side since your last match')
+        ->getContent();
+
+    // Carried-over Left shows business since the match only: 6,000 − 6,000 = 0.
+    expect($html)->toMatch('/Carried-over Left Genos BV.*?<p class="text-2xl font-bold text-gray-900">0<\/p>/s');
 });
 
 it('shows zero genos figures on my business below the personal bv minimum', function (): void {

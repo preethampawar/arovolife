@@ -40,6 +40,10 @@
     // (hidden until one exists). Everything pending is on the info icon.
     $leftCarriedBv = (int) round(($slabProgress?->carriedLeftPaise() ?? 0) / 100);
     $rightCarriedBv = (int) round(($slabProgress?->carriedRightPaise() ?? 0) / 100);
+    $leftSinceMatchBv = \App\Modules\Compensation\Support\CarryOverDisplay::sinceLastMatch($leftCarriedBv, $leftCarryForwardBv);
+    $rightSinceMatchBv = \App\Modules\Compensation\Support\CarryOverDisplay::sinceLastMatch($rightCarriedBv, $rightCarryForwardBv);
+    $gl = \App\Modules\Genealogy\Support\GenosSideColors::for('L');
+    $gr = \App\Modules\Genealogy\Support\GenosSideColors::for('R');
     $settledPowerSide = $slabProgress?->settledPowerSide();
     $settledWeakerSide = $slabProgress?->settledWeakerSide() ?? 'R';
     $pendingTip = static function (string $side, int $todayBv) use ($pendingPersonalBv): string {
@@ -73,13 +77,6 @@
 
     $badgeTipSuffix = ' The badge shows whether this was your power side (the higher of the two) or your weaker side at the last 23:59 cut-off — only the weaker side is matched against the slab table. It is hidden until a cut-off has decided the sides.';
 
-    // F54: when carry forward and carried-over Genos BV are the same number,
-    // the two "carry over vs carry forward" cards look identical with nothing
-    // explaining why — hint that no new business has arrived on that side
-    // since the last match.
-    $leftUnchangedSinceMatch = $lastMatch !== null && $leftCarriedBv === $leftCarryForwardBv;
-    $rightUnchangedSinceMatch = $lastMatch !== null && $rightCarriedBv === $rightCarryForwardBv;
-
     $cardClasses = 'bg-white rounded-2xl border border-gray-200 p-5';
     $statLabelClasses = 'text-xs text-gray-600 font-medium';
     $statValueClasses = 'text-2xl font-bold text-gray-900';
@@ -111,7 +108,7 @@
                 <x-help-tip :light="true" text="Your title comes from the personal purchase ladder — it moves up as your lifetime personal BV grows. Below 3,000 BV of personal purchases no title is held yet, which is shown as 'No title yet'." />
             </p>
         </div>
-        <div class="bg-gradient-to-br from-brand-600 to-brand-800 rounded-2xl p-5 text-white sm:col-span-3">
+        <div class="bg-gradient-to-br from-emerald-500 to-green-700 rounded-2xl p-5 text-white sm:col-span-3">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-white/80 font-medium">Next payout — Tuesday, {{ $nextPayout->format('d M Y') }}</p>
                 <x-help-tip :light="true" :text="($payoutCadencePublished
@@ -142,67 +139,45 @@
     {{-- Group 3 — carry forward / carry over row (Left before Right; GSB matching mechanics) --}}
     @if($gsbOn)
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <div class="{{ $cardClasses }}">
+        <div class="rounded-2xl border p-5 shadow-sm {{ $gl['card'] }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Left carry forward</p>
                 <x-help-tip text="The BV remaining on your Left side after your last slab match — when a slab pays, the weaker side resets to 0 and the power side's remaining BV is carried forward. Until your first slab matches this is 0: BV building up before a match is carry over, shown in the Carried-over cards.{{ $eligibilityTipSuffix }}" />
             </div>
-            <p class="{{ $statValueClasses }}">{{ Number::format($leftCarryForwardBv, 0) }}</p>
-            @if($lastMatch !== null)
-                <p class="text-xs text-gray-600 mt-1">{{ $leftCarryForwardBv > 0 ? 'Remaining after your last slab match' : 'Reset at your last slab match' }} ({{ $lastMatch->cutoff_date->format('d M Y') }})</p>
-            @else
-                <p class="text-xs text-gray-600 mt-1">No slab matched yet</p>
-            @endif
+            <p class="{{ $statValueClasses }}">{{ \App\Modules\Shared\Support\IndianNumber::format($leftCarryForwardBv, 0) }}</p>
         </div>
-        <div class="{{ $cardClasses }}">
+        <div class="rounded-2xl border p-5 shadow-sm {{ $gl['card'] }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Carried-over Left Genos BV</p>
-                <x-help-tip text="The BV carried over on your Left side, as it stood after the last 23:59 cut-off — business that occurs before matching is carry over, and it is never lost; it keeps accumulating until a slab is matched. Today's Left Genos BV and your own purchase BV are not added until tonight's cut-off — the info icon below shows what is pending.{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
+                <x-help-tip text="Business added on your Left side since your last slab match, as it stood after the last 23:59 cut-off. Together with your carry forward, it counts toward your next slab match.{{ ($slabProgress !== null && $settledWeakerSide === 'L' && $slabProgress->slab1WeakerCfPaise > 0) ? ' It includes '.\App\Modules\Shared\Support\IndianNumber::format($slabProgress->slab1WeakerCfPaise / 100, 0).' BV of slab-1 weaker carry over.' : '' }}{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
             </div>
-            <p class="{{ $statValueClasses }}">{{ Number::format($leftCarriedBv, 0) }}</p>
+            <p class="{{ $statValueClasses }}">{{ \App\Modules\Shared\Support\IndianNumber::format($leftSinceMatchBv, 0) }}</p>
             @if($settledPowerSide !== null)
                 <p class="mt-1">
                     <span class="{{ $settledPowerSide === 'L' ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $settledPowerSide === 'L' ? 'Power side' : 'Weaker side' }}</span>
                 </p>
             @endif
             <p class="text-xs text-gray-600 mt-1 flex items-center gap-1">As of the last 23:59 cut-off <x-help-tip :text="$pendingTip('Left', $leftTodayBv)" /></p>
-            @if($slabProgress !== null && $settledWeakerSide === 'L' && $slabProgress->slab1WeakerCfPaise > 0)
-                <p class="text-xs text-gray-600 mt-1">+ {{ Number::format($slabProgress->slab1WeakerCfPaise / 100, 0) }} BV slab-1 weaker carry over</p>
-            @endif
-            @if($leftUnchangedSinceMatch)
-                <p class="text-xs text-gray-500 mt-1">No new business on this side since your last match — same as your carry forward.</p>
-            @endif
         </div>
-        <div class="{{ $cardClasses }}">
+        <div class="rounded-2xl border p-5 shadow-sm {{ $gr['card'] }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Carried-over Right Genos BV</p>
-                <x-help-tip text="The BV carried over on your Right side, as it stood after the last 23:59 cut-off — business that occurs before matching is carry over, and it is never lost; it keeps accumulating until a slab is matched. Today's Right Genos BV and your own purchase BV are not added until tonight's cut-off — the info icon below shows what is pending.{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
+                <x-help-tip text="Business added on your Right side since your last slab match, as it stood after the last 23:59 cut-off. Together with your carry forward, it counts toward your next slab match.{{ ($slabProgress !== null && $settledWeakerSide === 'R' && $slabProgress->slab1WeakerCfPaise > 0) ? ' It includes '.\App\Modules\Shared\Support\IndianNumber::format($slabProgress->slab1WeakerCfPaise / 100, 0).' BV of slab-1 weaker carry over.' : '' }}{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
             </div>
-            <p class="{{ $statValueClasses }}">{{ Number::format($rightCarriedBv, 0) }}</p>
+            <p class="{{ $statValueClasses }}">{{ \App\Modules\Shared\Support\IndianNumber::format($rightSinceMatchBv, 0) }}</p>
             @if($settledPowerSide !== null)
                 <p class="mt-1">
                     <span class="{{ $settledPowerSide === 'R' ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $settledPowerSide === 'R' ? 'Power side' : 'Weaker side' }}</span>
                 </p>
             @endif
             <p class="text-xs text-gray-600 mt-1 flex items-center gap-1">As of the last 23:59 cut-off <x-help-tip :text="$pendingTip('Right', $rightTodayBv)" /></p>
-            @if($slabProgress !== null && $settledWeakerSide === 'R' && $slabProgress->slab1WeakerCfPaise > 0)
-                <p class="text-xs text-gray-600 mt-1">+ {{ Number::format($slabProgress->slab1WeakerCfPaise / 100, 0) }} BV slab-1 weaker carry over</p>
-            @endif
-            @if($rightUnchangedSinceMatch)
-                <p class="text-xs text-gray-500 mt-1">No new business on this side since your last match — same as your carry forward.</p>
-            @endif
         </div>
-        <div class="{{ $cardClasses }}">
+        <div class="rounded-2xl border p-5 shadow-sm {{ $gr['card'] }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Right carry forward</p>
                 <x-help-tip text="The BV remaining on your Right side after your last slab match — when a slab pays, the weaker side resets to 0 and the power side's remaining BV is carried forward. Until your first slab matches this is 0: BV building up before a match is carry over, shown in the Carried-over cards.{{ $eligibilityTipSuffix }}" />
             </div>
-            <p class="{{ $statValueClasses }}">{{ Number::format($rightCarryForwardBv, 0) }}</p>
-            @if($lastMatch !== null)
-                <p class="text-xs text-gray-600 mt-1">{{ $rightCarryForwardBv > 0 ? 'Remaining after your last slab match' : 'Reset at your last slab match' }} ({{ $lastMatch->cutoff_date->format('d M Y') }})</p>
-            @else
-                <p class="text-xs text-gray-600 mt-1">No slab matched yet</p>
-            @endif
+            <p class="{{ $statValueClasses }}">{{ \App\Modules\Shared\Support\IndianNumber::format($rightCarryForwardBv, 0) }}</p>
         </div>
     </div>
     @endif
