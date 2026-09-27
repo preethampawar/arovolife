@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Sends exactly one line item to RazorpayX, shared by the batch dispatch job
- * and the retry job so the two can never drift.
+ * Sends exactly one line item to RazorpayX, shared by the per-line dispatch
+ * job and the retry job so the two can never drift.
  *
  * Never throws: a failure is recorded on the line item and swallowed, because
  * one distributor's bad IFSC must not strand the other four hundred payouts
@@ -255,6 +255,31 @@ final class RazorpayPayoutDispatchService
             ],
             'ip' => app()->runningInConsole() ? null : request()->ip(),
         ]);
+    }
+
+    /**
+     * A line job was killed (timeout, worker restart) before Razorpay
+     * answered. The line is still `pending` with no payout id, which nothing
+     * would ever pick up again; `failed` puts it in front of the auto-retry
+     * sweep and "Send again", both safe because every send asks Razorpay for
+     * the line's reference first.
+     *
+     * @return bool whether the line was held (false when it had moved on)
+     */
+    public function holdInterrupted(PayoutLineItem $line, ?int $actorId): bool
+    {
+        $fresh = PayoutLineItem::find($line->id);
+        if ($fresh === null
+            || $fresh->status !== PayoutLineItem::STATUS_PENDING
+            || ($fresh->razorpay_payout_id !== null && $fresh->razorpay_payout_id !== '')) {
+            return false;
+        }
+
+        $this->hold($fresh, PayoutLineItem::STATUS_FAILED,
+            'The transfer job was interrupted before Razorpay answered. The next send checks Razorpay for this transfer first.',
+            $actorId, 'job_interrupted');
+
+        return true;
     }
 
     /**

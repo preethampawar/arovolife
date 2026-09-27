@@ -589,7 +589,7 @@ Every action leaves an `audit_log` row. In Compliance → Audit log, look for:
 | `payout.batch.approved` | Who approved it, under which gateway, for how much. |
 | `payout.batch.self_approval_refused` | An approver was refused their own batch: who tried, and who created it. |
 | `payout.batch.bank_file_exported` | Who downloaded the bank file, for which batch, how many lines, how many were already in an earlier file, the stored file's id, and a SHA-256 of the exact bytes. |
-| `payout.batch.dispatched` | How many line items were sent, how many failed on the way out. |
+| `payout.batch.dispatched` | How many line items were queued for sending — each line is then sent by its own job and audited as `payout.line_item.dispatched` or `payout.line_item.dispatch_failed`. |
 | `payout.batch.reconciled` | A bank response import: file name, rows, matched, transferred, failed, and the stored file's id. |
 | `payout.bank_file.downloaded` | Someone downloading a stored bank file (never its contents). |
 | `payout.bank_file.purged` | The nightly job deleting a stored file after its retention period. |
