@@ -418,3 +418,39 @@ it('leaves lines Razorpay itself failed out of the bulk resend, and names them',
     Queue::assertPushed(RetryRazorpayPayoutJob::class, 1);
     expect($dead->fresh()->razorpay_payout_id)->toBe('pout_bulk000000001');
 });
+
+// ── R-112: no bank file beside Razorpay ─────────────────────────────────
+
+it('refuses the NEFT bank file while the gateway is Razorpay, and hides the button', function (): void {
+    useRazorpay();
+    [$batch] = reconcileFixture('ADN2901');
+    $batch->forceFill(['status' => PayoutBatch::STATUS_DISPATCHED])->save();
+    $finance = financeUser();
+
+    $this->actingAs($finance)
+        ->from(route('admin.compensation.weekly-payouts.show', $batch))
+        ->get(route('admin.compensation.weekly-payouts.neft', $batch))
+        ->assertRedirect(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertSessionHas('error');
+
+    expect(PayoutBankFile::count())->toBe(0);
+
+    $this->actingAs($finance)
+        ->get(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertOk()
+        ->assertDontSee('Download bank file (NEFT)');
+});
+
+it('never puts a line Razorpay already holds in a bank file after switching to Manual NEFT', function (): void {
+    [$batch, $unsent] = reconcileFixture('ADN2902');
+    $batch->forceFill(['status' => PayoutBatch::STATUS_PARTIALLY_FAILED])->save();
+    extraLine($batch, 'ADN2903')->forceFill(['razorpay_payout_id' => 'pout_live'])->save();
+
+    $csv = $this->actingAs(financeUser())
+        ->get(route('admin.compensation.weekly-payouts.neft', $batch))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($csv)->toContain('ADN2902')
+        ->and($csv)->not->toContain('ADN2903');
+});

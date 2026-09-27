@@ -264,6 +264,11 @@ ignored.
 
 ## The bank file (NEFT)
 
+The bank file exists only in **Manual NEFT** mode. While the gateway is Razorpay
+the download is hidden and refused — Razorpay sends every line itself, and a
+bank file handed over as well could pay a distributor twice. A line Razorpay
+already holds is never put in a bank file, even after switching to Manual NEFT.
+
 The download is the instruction the bank acts on, so it carries what a bank
 needs to execute a transfer — not a reconciliation sheet:
 
