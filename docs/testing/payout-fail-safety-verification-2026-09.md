@@ -10,7 +10,8 @@ Plan: `docs/plans/payout-fail-safety-2026-09-27.md`. Merged to `main` as `661552
 | 2 | same | production | ✅ exit 0 — same message |
 | 3 | Deploy status: scheduler ticking, compensation worker, no failed jobs since deploy | staging | ✅ scheduler 62 s, no failed jobs in 24 h. "Worker: compensation 2 processes" = the idle Cloudways Redis supervisor worker + the one flock'd database worker (`/tmp/arovolife-q-compensation.lock`); only the database worker takes payout jobs |
 | 3 | same | production | ✅ scheduler 43 s, workers idle, 0 failed jobs |
-| 4 | Razorpay end to end (fan-out, `kill -9` mid-batch, auto-retry adoption, Send again lookup order, failed-batch rebuild, Action Center items) | staging | ⏳ pending — staging gateway is `manual_neft` and RazorpayX is not configured (`razorpayReady() = false`) |
+| 4a | Razorpay end to end (fan-out, `kill -9` mid-batch, auto-retry adoption, Send again lookup order, Action Center items) | staging | ⏸ deferred — user decision 2026-09-27: run once Batches 2–4 are complete. Staging gateway is `manual_neft` and RazorpayX is not configured; these paths are pinned by tests only until then |
+| 4b | Failed-batch rebuild: batch 15 (weekly, 2026-09-22, `pending`, never approved, 0 lines) forced to `failed`, then `compensation:weekly-run --date=2026-09-22` | staging | ⏳ pending — needs the user to run the staging write (blocked for the agent) |
 | 5 | 08:00 engine health digest reports nothing new as stuck | staging / production | ⏳ pending — next digest 2026-09-28 08:00 IST |
 | 6 | Production read-only: `schedule:list`, `payouts:reconcile --dry-run`, deploy status | production | ✅ see rows 1–3 |
 
