@@ -8,6 +8,7 @@ use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Services\RepurchaseCycleService;
 use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Compensation\Support\RunPrerequisites;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Console\Command;
@@ -87,6 +88,24 @@ final class RepurchaseEvaluateCommand extends Command
             $asOf = Carbon::createFromFormat('Y-m-d', $rawDate)->startOfDay();
         } else {
             $asOf = Carbon::today();
+        }
+
+        // One evaluation at a time (E3). A manual trigger from the Engine Runs
+        // page runs this same command on the queue worker while the scheduled
+        // night may be running it here, and both would roll the same cycles.
+        // A `--distributor` run has no row of its own and still refuses while a
+        // full run is in flight.
+        $concurrent = app(RunPrerequisites::class)->inFlightRefusal(
+            ['repurchase.evaluate'],
+            app(EngineRunContext::class)->activeRunId(),
+            'repurchase.evaluate',
+        );
+
+        if ($concurrent !== null) {
+            $this->error($concurrent);
+            app(EngineRunContext::class)->noteSkipped($concurrent);
+
+            return self::FAILURE;
         }
 
         $query = Distributor::query()

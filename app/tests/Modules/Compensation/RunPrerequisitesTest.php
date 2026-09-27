@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\RunPrerequisites;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -114,4 +115,34 @@ it('refuses when a Tuesday is owed and the weekly run never ran', function (): v
         ->toContain('a Tuesday batch (2026-09-15) is owed');
 
     expect(PayoutBatch::query()->count())->toBe(0);
+});
+
+it('refuses while any of the named engines has a run in flight, except the caller\'s own', function (): void {
+    Carbon::setTestNow('2026-09-19 00:05:00');
+    $own = seedRunRow('compensation.nightly-run', '2026-09-19', EngineRun::STATUS_RUNNING, '2026-09-19 00:05:00');
+    seedRunRow('gsb.daily-cutoff', '2026-09-18', EngineRun::STATUS_RUNNING, '2026-09-19 00:01:00');
+
+    $refusal = app(RunPrerequisites::class)->inFlightRefusal(
+        ['compensation.nightly-run', 'repurchase.evaluate', 'gsb.daily-cutoff'],
+        $own->id,
+        'compensation.nightly-run',
+    );
+
+    expect($refusal)->toContain(EngineRegistry::get('gsb.daily-cutoff')->label)
+        ->and($refusal)->toContain('held back')
+        ->and($refusal)->toContain('php artisan compensation:nightly-run --date=2026-09-19');
+});
+
+it('ignores a running row older than the stale cut', function (): void {
+    Carbon::setTestNow('2026-09-19 00:05:00');
+    seedRunRow('gsb.daily-cutoff', '2026-09-18', EngineRun::STATUS_RUNNING, '2026-09-18 21:00:00');
+
+    expect(app(RunPrerequisites::class)->inFlightRefusal(['gsb.daily-cutoff'], null, 'gsb.daily-cutoff'))->toBeNull();
+});
+
+it('lists an orchestrator\'s steps transitively, and its ancestors upward', function (): void {
+    expect(EngineRegistry::descendantKeys('compensation.nightly-run'))->toBe(['repurchase.evaluate', 'gsb.daily-cutoff'])
+        ->and(EngineRegistry::descendantKeys('compensation.monthly-run'))->toContain('gbb.monthly', 'payout.monthly')
+        ->and(EngineRegistry::ancestorKeys('payout.monthly'))->toBe(['compensation.monthly-payout-close', 'compensation.monthly-run'])
+        ->and(EngineRegistry::ancestorKeys('compensation.nightly-run'))->toBe([]);
 });

@@ -173,6 +173,48 @@ final class EngineRegistry
         return $keys;
     }
 
+    /**
+     * Every engine this orchestrator runs, transitively — the monthly run owns
+     * two orchestrators that own the monthly leaves. Registry order.
+     *
+     * @return list<string>
+     */
+    public static function descendantKeys(string $orchestratorKey): array
+    {
+        $keys = [];
+
+        foreach (self::all() as $key => $definition) {
+            if ($definition->orchestratedBy === null || $key === $orchestratorKey) {
+                continue;
+            }
+
+            if (in_array($orchestratorKey, self::ancestorKeys($key), true)) {
+                $keys[] = $key;
+            }
+        }
+
+        return $keys;
+    }
+
+    /**
+     * The orchestrator that runs this engine, then its orchestrator, up to the
+     * root. Empty for a root and for an engine the scheduler fires directly.
+     *
+     * @return list<string>
+     */
+    public static function ancestorKeys(string $key): array
+    {
+        $keys = [];
+        $parent = self::get($key)->orchestratedBy;
+
+        while ($parent !== null) {
+            $keys[] = $parent;
+            $parent = self::get($parent)->orchestratedBy;
+        }
+
+        return $keys;
+    }
+
     /** Reverse lookup for the console listener: artisan name → definition. */
     public static function findBySignature(string $signature): ?EngineDefinition
     {

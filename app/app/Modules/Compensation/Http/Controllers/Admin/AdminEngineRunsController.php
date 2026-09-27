@@ -29,6 +29,7 @@ use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\FrozenPayoutGuard;
+use App\Modules\Compensation\Support\RunPrerequisites;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Support\IndianNumber;
@@ -1046,6 +1047,21 @@ final class AdminEngineRunsController extends Controller
         if ($engine->featureFlagClass !== null && ! Feature::for(null)->active($engine->featureFlagClass)) {
             throw ValidationException::withMessages([
                 'engine' => "{$engine->label} cannot run while its feature flag is off.",
+            ]);
+        }
+
+        // The scheduled run of this engine, or of the run that owns it, may be
+        // on it right now; the leaf would refuse anyway, but as a skipped row on
+        // the page a minute later — say it here, before the job is queued (E3).
+        $concurrent = app(RunPrerequisites::class)->inFlightRefusal(
+            [$engine->key, ...EngineRegistry::ancestorKeys($engine->key), ...EngineRegistry::descendantKeys($engine->key)],
+            null,
+            $engine->key,
+        );
+
+        if ($concurrent !== null) {
+            throw ValidationException::withMessages([
+                'engine' => Str::before($concurrent, "\n").' Wait for it to finish, then trigger again.',
             ]);
         }
 

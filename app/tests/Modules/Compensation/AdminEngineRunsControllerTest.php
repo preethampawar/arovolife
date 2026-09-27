@@ -345,6 +345,29 @@ it('refuses to trigger an engine whose feature flag is off', function (): void {
     Queue::assertNothingPushed();
 });
 
+it('refuses to trigger an engine while its orchestrator is in flight', function (): void {
+    Queue::fake();
+    Feature::activate(GenosSalesBonusFeature::class);
+    EngineRun::create([
+        'engine_key' => 'compensation.nightly-run',
+        'period_start' => now()->toDateString(),
+        'status' => EngineRun::STATUS_RUNNING,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => now()->subMinutes(2),
+    ]);
+
+    $response = $this->actingAs(engineRunsUser('admin'))
+        ->post(route('admin.compensation.engine-runs.trigger'), [
+            'engine' => 'gsb.daily-cutoff',
+            'period' => now()->subDay()->toDateString(),
+            'reason' => 'Nightly run is in flight — this must be refused.',
+        ]);
+
+    $response->assertSessionHasErrors('engine');
+    expect(session('errors')->first('engine'))->toContain('still in flight');
+    Queue::assertNothingPushed();
+});
+
 it('forbids triggering without the finance.record permission', function (): void {
     Queue::fake();
     Feature::activate(RankBonusFeature::class);

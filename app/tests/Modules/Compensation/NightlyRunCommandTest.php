@@ -387,3 +387,33 @@ it('runs normally once the rebuild has finished', function (): void {
     expect(Artisan::call('compensation:nightly-run'))->toBe(0);
     expect(StubEngineStepCommand::$calls)->not->toBe([]);
 });
+
+it('holds the run back while a manually triggered cut-off is in flight, and says so on the run row', function (): void {
+    Carbon::setTestNow('2026-09-19 00:05:00');
+
+    EngineRun::create([
+        'engine_key' => 'gsb.daily-cutoff',
+        'period_start' => '2026-09-18',
+        'status' => EngineRun::STATUS_RUNNING,
+        'trigger' => EngineRun::TRIGGER_MANUAL,
+        'started_at' => Carbon::parse('2026-09-19 00:03:00'),
+    ]);
+
+    expect(Artisan::call('compensation:nightly-run'))->toBe(1);
+    expect(StubEngineStepCommand::$calls)->toBe([]);
+
+    $run = EngineRun::where('engine_key', 'compensation.nightly-run')->sole();
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED)
+        ->and($run->error)->toContain('still in flight')
+        ->and($run->error)->toContain('held back');
+});
+
+it('does not refuse on the sight of its own running row', function (): void {
+    // The recorder writes the nightly run's own `running` row before handle()
+    // runs; the preflight must except it or every night refuses itself.
+    Carbon::setTestNow('2026-09-19 00:05:00');
+    seedComputedCutoffs('2026-09-17', '2026-09-17');
+
+    expect(Artisan::call('compensation:nightly-run'))->toBe(0);
+    expect(StubEngineStepCommand::$calls)->not->toBe([]);
+});

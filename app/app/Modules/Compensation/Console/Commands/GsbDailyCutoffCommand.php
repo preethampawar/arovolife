@@ -17,6 +17,7 @@ use App\Modules\Compensation\Services\MentorshipBonusService;
 use App\Modules\Compensation\Services\MsbDailyPoolService;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\OpenMonthGuard;
+use App\Modules\Compensation\Support\RunPrerequisites;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
@@ -115,6 +116,25 @@ final class GsbDailyCutoffCommand extends Command
                 'The %s GSB cut-off was refused: the day has not ended.',
                 $date->toDateString(),
             ));
+
+            return self::FAILURE;
+        }
+
+        // One cut-off at a time (E3). A manual trigger from the Engine Runs
+        // page runs this same command on the queue worker while the scheduled
+        // night may be running it here; the unique index stops a double credit,
+        // not a double advance of the carry-forward store. `--force` does not
+        // lift this: a concurrent run is never right. A `--distributor` retry
+        // has no row of its own and still refuses while a full run is in flight.
+        $concurrent = app(RunPrerequisites::class)->inFlightRefusal(
+            ['gsb.daily-cutoff'],
+            app(EngineRunContext::class)->activeRunId(),
+            'gsb.daily-cutoff',
+        );
+
+        if ($concurrent !== null) {
+            $this->error($concurrent);
+            app(EngineRunContext::class)->noteSkipped($concurrent);
 
             return self::FAILURE;
         }
