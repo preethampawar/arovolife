@@ -9,7 +9,7 @@
     <div data-nav-position="{{ $navSide }}"
          class="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs {{ $navIsLeft ? 'border-sky-200 bg-sky-50' : 'border-indigo-200 bg-indigo-50' }}">
         <span class="font-medium text-gray-600">Position</span>
-        <span class="font-semibold {{ $navIsLeft ? 'text-sky-700' : 'text-indigo-700' }}">{{ $navIsLeft ? '← Left' : '→ Right' }} group</span>
+        <span class="font-semibold {{ $navIsLeft ? 'text-sky-700' : 'text-indigo-700' }}">{{ $navIsLeft ? '← Left' : '→ Right' }} Genos</span>
     </div>
 @endif
 
@@ -19,15 +19,16 @@
     <nav class="space-y-0.5">
         @foreach($items as $item)
             @php
-                $active = request()->routeIs($item['route'])
-                    || (isset($item['prefix']) && request()->routeIs($item['prefix'].'*'));
+                $active = (request()->routeIs($item['route'])
+                        || (isset($item['prefix']) && request()->routeIs($item['prefix'].'*')))
+                    && ! (isset($item['exclude']) && request()->routeIs($item['exclude'].'*'));
             @endphp
             <a href="{{ route($item['route']) }}"
                @if($active) aria-current="page" @endif
                class="relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors
                       {{ $active
                          ? 'bg-brand-100/70 text-brand-800 font-semibold shadow-sm'
-                         : 'text-gray-700 hover:bg-white/80 hover:text-gray-900 font-medium' }}">
+                         : 'text-gray-700 hover:bg-brand-100 hover:text-brand-800 font-medium' }}">
                 @if($active)
                 <span class="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-brand-600"></span>
                 @endif
