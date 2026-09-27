@@ -213,9 +213,10 @@ final class PayoutLineSettlementService
      * Ask Razorpay where a transfer stands — the remedy for a webhook that
      * never arrived. Always writes an audit row, even when nothing changed.
      *
+     * @param  int|null  $actorId  null when the system asked (`payouts:reconcile`)
      * @return string what happened: transferred, failed, or the in-flight state
      */
-    public function checkWithRazorpay(PayoutLineItem $line, int $actorId): string
+    public function checkWithRazorpay(PayoutLineItem $line, ?int $actorId): string
     {
         if (! $this->settings->isRazorpay()) {
             throw new PayoutLineActionRefused('Check with Razorpay is only available while the payout gateway is Razorpay.');
@@ -288,7 +289,7 @@ final class PayoutLineSettlementService
      *
      * @param  callable(PayoutLineItem): array<string, mixed>  $change  returns the audit details
      */
-    private function transition(PayoutLineItem $line, int $actorId, string $action, callable $change): PayoutLineItem
+    private function transition(PayoutLineItem $line, ?int $actorId, string $action, callable $change): PayoutLineItem
     {
         try {
             $locked = $this->lockAndChange($line, $actorId, $action, $change);
@@ -312,7 +313,7 @@ final class PayoutLineSettlementService
      *
      * @param  callable(PayoutLineItem): array<string, mixed>  $change
      */
-    private function lockAndChange(PayoutLineItem $line, int $actorId, string $action, callable $change): PayoutLineItem
+    private function lockAndChange(PayoutLineItem $line, ?int $actorId, string $action, callable $change): PayoutLineItem
     {
         return DB::transaction(function () use ($line, $actorId, $action, $change): PayoutLineItem {
             /** @var PayoutLineItem $locked */

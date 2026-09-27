@@ -223,8 +223,10 @@ batch of nothing but holds no longer reads as "₹0.00 to 0 distributor(s)".
 Pressing **Approve & dispatch to bank** does four things:
 
 1. Moves the batch to `dispatched` and records who approved it and when.
-2. Queues a job on the `compensation` queue, which sends each line item to
-   RazorpayX one at a time.
+2. Queues a job on the `compensation` queue, which queues one job per line
+   item; each line job sends its line to RazorpayX. A line job that is killed
+   (a worker restart, a timeout) marks its line `failed` with *The transfer job
+   was interrupted before Razorpay answered*, and the 11:00 retry picks it up.
 3. For each distributor, creates (or reuses) a *contact* and a *fund account*
    from their bank details, then creates the *payout*. The line item stores the
    payout id, contact id, fund account id, the rail used, and the dispatch time
@@ -412,9 +414,32 @@ limit (default 3). It never touches a line whose transfer Razorpay reported
 failed or reversed — that needs a person to check the cause — and it does
 nothing in Manual NEFT mode.
 
-A retry never sends a second transfer for a payout Razorpay already has: each
-attempt carries a deterministic idempotency key, and a line item that already
-holds a live payout id is skipped outright.
+A retry never sends a second transfer for a payout Razorpay already has.
+Before every send — first attempt, retry or **Send again** — Razorpay is asked
+whether it already holds a payout for this line (by its `AROVOPAY-` reference).
+A live or settled one is adopted instead of sent again; only one Razorpay
+reports as rejected, cancelled, reversed or failed is replaced. If Razorpay
+cannot answer that question, nothing is sent and the line is marked `failed`
+with *Razorpay could not confirm whether this transfer already exists*.
+
+### Transfers waiting on the bank
+
+`payouts:reconcile` runs at 09:30 and 16:30 IST (Razorpay mode only). It is
+the backstop for the webhook, not a replacement:
+
+- A line Razorpay accepted more than 6 hours ago that is still `pending` is
+  checked with Razorpay — exactly what **Check with Razorpay** does on one line.
+- A payable line of a `dispatched` batch approved more than 6 hours ago that
+  was never sent (no payout id) is queued again.
+
+Two Action Center items under **Money** show what it could not finish:
+
+- **Payouts waiting on the bank** (warning) — accepted by Razorpay over a day
+  ago, still no confirmation. Use **Check with Razorpay** on the line; if it
+  settles, check the webhook subscription.
+- **Approved payouts never sent** (critical) — a line of a batch approved over
+  an hour ago that never reached Razorpay. The next reconcile queues it; the
+  item clears once it is sent.
 
 `bank_decrypt_failed` lines are deliberately never retried — the stored bank
 details cannot be read at all, and only re-capturing them fixes it.
