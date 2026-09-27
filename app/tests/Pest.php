@@ -347,7 +347,14 @@ function uiPaidSelfOrder(int $distributorId, int $bvPaise, Carbon $paidAt, strin
         $orderId = DB::table('orders')->insertGetId([
             'order_no' => 'UI'.random_int(10000000, 99999999),
             'idempotency_key' => (string) Str::uuid(),
-            'customer_id' => 0,
+            // One customers row per distributor (uniq_customers_distributor).
+            'customer_id' => DB::table('customers')->where('distributor_id', $distributorId)->value('id')
+                ?? DB::table('customers')->insertGetId([
+                    'distributor_id' => $distributorId,
+                    'display_name' => 'Ui Buyer',
+                    'created_at' => $paidAt,
+                    'updated_at' => $paidAt,
+                ]),
             'attributed_distributor_id' => $distributorId,
             'attribution_source' => 'logged_in',
             'payment_method' => 'online',
@@ -392,9 +399,8 @@ function uiRepurchaseWallet(int $distributorId, int $paise): void
 /** A Customer row owned by $user, so CheckoutController::ownsOrder() is true for orders pointing at it. */
 function uiCustomerFor(User $user, int $distributorId): int
 {
-    return Customer::create([
-        'user_id' => $user->id,
-        'distributor_id' => $distributorId,
-        'display_name' => $user->full_name,
-    ])->id;
+    return Customer::updateOrCreate(
+        ['distributor_id' => $distributorId],
+        ['user_id' => $user->id, 'display_name' => $user->full_name],
+    )->id;
 }

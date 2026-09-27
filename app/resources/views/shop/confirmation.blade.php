@@ -76,4 +76,27 @@
     </div>
 </div>
 
+@if(! empty($repurchaseNotice))
+<div data-repurchase-notice class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/40 p-4" role="dialog" aria-modal="true" aria-labelledby="repurchase-notice-title">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl text-center">
+        <span class="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-700">
+            <x-lucide-circle-check class="w-7 h-7" />
+        </span>
+        <h2 id="repurchase-notice-title" class="text-lg font-bold text-gray-900 mb-2">Repurchase update</h2>
+        <p class="text-sm text-gray-700">{{ $repurchaseNotice['message'] }}</p>
+        <button type="button" data-repurchase-notice-close autofocus
+                class="mt-5 inline-flex items-center justify-center rounded-lg bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-700">OK</button>
+    </div>
+</div>
+<script>
+(function () {
+    const box = document.querySelector('[data-repurchase-notice]');
+    if (! box) return;
+    const close = () => box.remove();
+    box.querySelector('[data-repurchase-notice-close]').addEventListener('click', close);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+    box.addEventListener('keydown', (e) => { if (e.key === 'Tab') { e.preventDefault(); box.querySelector('[data-repurchase-notice-close]').focus(); } });
+})();
+</script>
+@endif
 @endsection
