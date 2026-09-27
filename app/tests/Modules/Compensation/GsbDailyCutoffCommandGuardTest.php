@@ -5,16 +5,24 @@ declare(strict_types=1);
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\GroupBvDaily;
+use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\GsbDailyPool;
+use App\Modules\Compensation\Models\MentorshipBonusResult;
+use App\Modules\Compensation\Models\MsbDailyPool;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
+use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Laravel\Pennant\Feature;
 
@@ -300,46 +308,131 @@ it('--force does not lift the in-flight guard', function (): void {
     expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25', '--force' => true]))->toBe(1);
 });
 
-it('leaves out the distributors last night\'s evaluation skipped, and says so', function (): void {
-    Feature::for(null)->activate(RepurchaseEngineFeature::class);
-    $kept = Distributor::factory()->create(['status' => 'active']);
-    $skipped = Distributor::factory()->create(['status' => 'active']);
+// ── Deferred cut-offs (E5 redesign, 2026-09-27) ─────────────────────────────
 
-    EngineRun::create([
+/**
+ * A succeeded `repurchase:evaluate` run for the period that could not judge
+ * the given distributors — the `completed_with_skips` shape the command writes.
+ *
+ * @param  list<int>  $ids
+ * @param  list<string>  $adns
+ */
+function seedEvaluateRunWithDeferrals(string $period, array $ids, array $adns, ?string $startedAt = null): EngineRun
+{
+    $started = Carbon::parse($startedAt ?? $period.' 00:05:00');
+
+    return EngineRun::create([
         'engine_key' => 'repurchase.evaluate',
-        'period_start' => '2026-08-26',
+        'period_start' => $period,
         'status' => EngineRun::STATUS_SUCCEEDED,
         'trigger' => EngineRun::TRIGGER_CONSOLE,
-        'started_at' => Carbon::parse('2026-08-26 00:05:00'),
-        'finished_at' => Carbon::parse('2026-08-26 00:06:00'),
+        'started_at' => $started,
+        'finished_at' => $started->copy()->addMinute(),
         'summary' => [
-            'outcome' => 'completed_with_skips',
-            'failed' => 1,
-            'failed_adns' => [$skipped->adn],
-            'failed_distributor_ids' => [$skipped->id],
+            'outcome' => $ids === [] ? 'completed' : 'completed_with_skips',
+            'failed' => count($ids),
+            'failed_adns' => $adns,
+            'failed_distributor_ids' => $ids,
         ],
     ]);
+}
 
-    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(0)
-        ->and(Artisan::output())->toContain((string) $skipped->adn)
-        ->and(GsbCutoffResult::where('distributor_id', $kept->id)->exists())->toBeTrue()
-        ->and(GsbCutoffResult::where('distributor_id', $skipped->id)->exists())->toBeFalse();
+/**
+ * A slab-N achiever (the GsbDailyCutoffCommandTest seedSlabAchiever() shape)
+ * whose group BV matches the slab on each of $days, with a sponsor who clears
+ * the MSB minimum BV. Personal BV is dated before the first day so it stays
+ * out of every day's company BV.
+ *
+ * @param  list<string>  $days
+ * @return array{0: Distributor, 1: Distributor} [achiever, sponsor]
+ */
+function seedDeferralAchiever(int $slab, array $days): array
+{
+    static $seq = 0;
+    $titleMinBySlab = [1 => 300_000, 3 => 1_500_000];
+    $thresholdBySlab = [1 => 1_500_000, 3 => 10_000_000];
+    $before = Carbon::parse($days[0])->subDay();
+
+    $achiever = Distributor::factory()->create(['status' => 'active', 'adn' => '3000'.str_pad((string) ++$seq, 5, '0', STR_PAD_LEFT)]);
+    $sponsor = Distributor::factory()->create(['status' => 'active', 'adn' => '3100'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT)]);
+
+    BvLedgerEntry::create(['distributor_id' => $achiever->id, 'order_id' => 910_000 + $seq, 'bv_paise' => $titleMinBySlab[$slab], 'type' => 'accrual', 'effective_at' => $before]);
+    BvLedgerEntry::create(['distributor_id' => $sponsor->id, 'order_id' => 920_000 + $seq, 'bv_paise' => 60_000, 'type' => 'accrual', 'effective_at' => $before]);
+    DB::table('sponsorship')->insert(['sponsor_id' => $sponsor->id, 'distributor_id' => $achiever->id, 'created_at' => $before]);
+
+    foreach ($days as $day) {
+        GroupBvDaily::create([
+            'distributor_id' => $achiever->id, 'date' => $day,
+            'left_bv_paise' => $thresholdBySlab[$slab], 'right_bv_paise' => $thresholdBySlab[$slab],
+        ]);
+    }
+
+    return [$achiever, $sponsor];
+}
+
+/** The company's turnover BV on each day, carried by one accrual per day. */
+function seedDeferralCompanyBv(array $days, int $bvPaise = 100_000_000): void
+{
+    $dummy = Distributor::factory()->create(['status' => 'active', 'adn' => '399999999']);
+
+    foreach ($days as $i => $day) {
+        BvLedgerEntry::create([
+            'distributor_id' => $dummy->id, 'order_id' => 930_000 + $i,
+            'bv_paise' => $bvPaise, 'type' => 'accrual', 'effective_at' => Carbon::parse($day)->setTime(12, 0),
+        ]);
+    }
+}
+
+/** Every flag the deferral path touches, on. */
+function activateDeferralFeatures(): void
+{
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    Feature::for(null)->activate(GsbDailyPoolPricingFeature::class);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+}
+
+it('reserves a deferred distributor\'s share in the frozen pools and writes a deferral instead of a row', function (): void {
+    Carbon::setTestNow('2026-08-27 00:30:00');
+    activateDeferralFeatures();
+
+    seedDeferralCompanyBv(['2026-08-25']);
+    [$achiever] = seedDeferralAchiever(3, ['2026-08-25']);
+    [$pairSponsee] = seedDeferralAchiever(1, ['2026-08-25']);
+    seedEvaluateRunWithDeferrals('2026-08-26', [$achiever->id], [$achiever->adn]);
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(0);
+    expect(Artisan::output())->toContain('deferred: 1');
+
+    $deferral = GsbCutoffDeferral::where('distributor_id', $achiever->id)->sole();
+    expect($deferral->cutoff_date->toDateString())->toBe('2026-08-25')
+        ->and($deferral->reserved_slab)->toBe(3)
+        ->and($deferral->reserved_gsb_paise)->toBeGreaterThan(0)
+        ->and($deferral->reserved_msb_points)->toBe(15)
+        ->and($deferral->resolved_at)->toBeNull();
+    expect(GsbCutoffResult::where('distributor_id', $achiever->id)->exists())->toBeFalse()
+        ->and(WalletLedgerEntry::where('distributor_id', $achiever->id)->exists())->toBeFalse();
+
+    // Reserved: the pool's variable score total is the deferred slab-3 score,
+    // and the reserved gross is that score at the frozen value.
+    $pool = GsbDailyPool::whereDate('cutoff_date', '2026-08-25')->sole();
+    expect($pool->variable_total_score)->toBe(32)
+        ->and($deferral->reserved_gsb_paise)->toBe(32 * $pool->variable_score_value_paise);
+
+    // The MSB denominator carries the deferred sponsee's 15 points beside the
+    // credited slab-1 sponsee's 21, and only the credited one is paid.
+    expect(MsbDailyPool::whereDate('cutoff_date', '2026-08-25')->sole()->total_points)->toBe(36)
+        ->and(GsbCutoffResult::where('distributor_id', $pairSponsee->id)->value('status'))->toBe(GsbCutoffResult::STATUS_CREDITED)
+        ->and(MentorshipBonusResult::count())->toBe(1);
 });
 
-it('never skips a distributor the operator asked for by name', function (): void {
+it('writes the deferral even when pool pricing is off', function (): void {
+    Carbon::setTestNow('2026-08-27 00:30:00');
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
-    $skipped = Distributor::factory()->create(['status' => 'active']);
+    $d = Distributor::factory()->create(['status' => 'active']);
+    seedEvaluateRunWithDeferrals('2026-08-26', [$d->id], [$d->adn]);
 
-    EngineRun::create([
-        'engine_key' => 'repurchase.evaluate',
-        'period_start' => '2026-08-26',
-        'status' => EngineRun::STATUS_SUCCEEDED,
-        'trigger' => EngineRun::TRIGGER_CONSOLE,
-        'started_at' => Carbon::parse('2026-08-26 00:05:00'),
-        'finished_at' => Carbon::parse('2026-08-26 00:06:00'),
-        'summary' => ['outcome' => 'completed_with_skips', 'failed' => 1, 'failed_adns' => [$skipped->adn], 'failed_distributor_ids' => [$skipped->id]],
-    ]);
-
-    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25', '--distributor' => (string) $skipped->id]))->toBe(0)
-        ->and(GsbCutoffResult::where('distributor_id', $skipped->id)->exists())->toBeTrue();
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(0)
+        ->and(GsbCutoffDeferral::where('distributor_id', $d->id)->exists())->toBeTrue()
+        ->and(GsbCutoffResult::where('distributor_id', $d->id)->exists())->toBeFalse()
+        ->and(GsbDailyPool::count())->toBe(0);
 });

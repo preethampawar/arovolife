@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Exceptions\CutoffReplayedOutOfOrder;
+use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\DTOs\GsbCutoffComputation;
 use App\Modules\Compensation\Services\DTOs\MsbAccrual;
@@ -157,7 +158,7 @@ final class GsbDailyCutoffCommand extends Command
             // Why the gate is shut, when the evaluation ran and named its
             // casualties. `repurchase:evaluate` isolates a throwing distributor
             // and carries on. Up to the skip cap the run succeeds and this gate
-            // opens — the distributors it could not judge are left out below
+            // opens — the distributors it could not judge are deferred below
             // (client decision 2026-09-27). Above the cap it exits non-zero with
             // a `failed_partial` summary and the run is `failed`, so this gate
             // stays shut platform-wide: that many throwing is a fault in the
@@ -198,30 +199,34 @@ final class GsbDailyCutoffCommand extends Command
             $query->where('id', $singleId);
         }
 
-        // A full run leaves out the distributors last night's evaluation could
-        // not judge; a --distributor run never does — the operator named them
-        // after re-evaluating, and that retry prices against the frozen pool.
-        $skippedByEvaluation = ['ids' => [], 'adns' => []];
+        // A full run DEFERS the distributors the covering evaluation could not
+        // judge (client decision 2026-09-27; E5 redesign). They stay in pass 1
+        // — a pure computation on the stale verdict — so their matched share is
+        // reserved in the day's frozen GSB pool and MSB denominator; only the
+        // settle is skipped, and a GsbCutoffDeferral row records the owed day
+        // until the next full run backfills it in date order. A --distributor
+        // run never defers.
+        $deferredByEvaluation = ['ids' => [], 'adns' => [], 'run_id' => null];
+
+        /** @var array<int, string> $deferredIds distributor id => deferral cause */
+        $deferredIds = [];
 
         if ($singleId === null && $this->eligibility->engineActive()) {
-            $skippedByEvaluation = $this->skippedByEvaluation($date);
+            $deferredByEvaluation = $this->deferredByEvaluation($date);
 
-            if ($skippedByEvaluation['ids'] !== []) {
-                $query->whereNotIn('id', $skippedByEvaluation['ids']);
+            foreach ($deferredByEvaluation['ids'] as $id) {
+                $deferredIds[$id] = GsbCutoffDeferral::CAUSE_EVALUATION_FAILED;
+            }
 
+            if ($deferredIds !== []) {
                 $this->warn(sprintf(
-                    '%d distributor(s) left out: their repurchase evaluation failed and they keep the previous '
-                    .'verdict%s. Their %s cut-off is not computed until it is re-run for them by name.',
-                    count($skippedByEvaluation['ids']),
-                    $skippedByEvaluation['adns'] === [] ? '' : ' — ADN '.implode(', ', $skippedByEvaluation['adns']),
+                    '%d distributor(s) deferred: their repurchase evaluation failed and they keep the previous '
+                    .'verdict%s. Their %s share is reserved in the day\'s pools and their cut-off is backfilled '
+                    .'by the first full run after they evaluate cleanly.',
+                    count($deferredIds),
+                    $deferredByEvaluation['adns'] === [] ? '' : ' — ADN '.implode(', ', $deferredByEvaluation['adns']),
                     $date->toDateString(),
                 ));
-
-                Log::warning('gsb.cutoff.skipped_unevaluated', [
-                    'date' => $date->toDateString(),
-                    'count' => count($skippedByEvaluation['ids']),
-                    'adns' => $skippedByEvaluation['adns'],
-                ]);
             }
         }
 
@@ -258,9 +263,14 @@ final class GsbDailyCutoffCommand extends Command
         // once, below, from the aggregate of EVERY computation, because the
         // day's economics are the day's — a pool frozen per chunk would price
         // each chunk against its own denominator.
+        /** @var array<int, true> $deferredSeen deferred ids the roster reached, minus out-of-order ones */
+        $deferredSeen = [];
+
         $query->chunkById(self::ROSTER_CHUNK, function (Collection $chunk) use (
             $date,
             $singleId,
+            $deferredIds,
+            &$deferredSeen,
             &$computations,
             &$failed,
             &$skipped,
@@ -277,18 +287,34 @@ final class GsbDailyCutoffCommand extends Command
             // instead of a compute+settle cycle each. On the reference dataset
             // that is ~98% of the day's rows. Single-distributor retries never
             // take the shortcut.
+            //
+            // A deferred distributor never takes it either: the batch WRITES
+            // their row, and a deferred day must have none until it is
+            // backfilled.
             if ($singleId === null) {
-                $partition = $this->idleBatch->partition($chunk, $date);
+                $deferredInChunk = $chunk->filter(fn (Distributor $d): bool => isset($deferredIds[(int) $d->id]));
+                $partition = $this->idleBatch->partition(
+                    $chunk->reject(fn (Distributor $d): bool => isset($deferredIds[(int) $d->id])),
+                    $date,
+                );
                 $skipped += $this->idleBatch->write($partition['below_min'], $partition['idle'], $date);
-                $chunk = $partition['engine'];
+                $chunk = $partition['engine']->concat($deferredInChunk);
             }
 
             foreach ($chunk as $distributor) {
                 $distributorId = (int) $distributor->id;
 
+                if (isset($deferredIds[$distributorId])) {
+                    $deferredSeen[$distributorId] = true;
+                }
+
                 try {
                     $computations[$distributorId] = $this->cutoff->computeForDistributor($distributorId, $date);
                 } catch (CutoffReplayedOutOfOrder) {
+                    // A later row already exists for a deferred distributor:
+                    // there is no day left to owe them.
+                    unset($deferredSeen[$distributorId]);
+
                     // Not a failure — an ordering decision, caught by its own
                     // type so it cannot be filed as one. The day was cut off
                     // correctly and a later day has since advanced the rolling
@@ -346,6 +372,10 @@ final class GsbDailyCutoffCommand extends Command
                 }
 
                 $pool = $this->poolService->freezePoolForDate($date, $fixedPayoutPaise, $variableTotalScore);
+
+                if ($deferredSeen !== []) {
+                    $this->line('  Reserved in the frozen pools for '.count($deferredSeen).' deferred distributor(s).');
+                }
             } else {
                 $pool = $this->poolService->poolForDate($date);
             }
@@ -357,6 +387,32 @@ final class GsbDailyCutoffCommand extends Command
         $accruals = [];
         $msbTotalPoints = 0;
         foreach ($computations as $distributorId => $computation) {
+            // Deferred: priced so the reservation records the gross the day's
+            // pool set aside for them, never settled — a stale verdict pays
+            // nothing. Their sponsor's points join the MSB denominator now,
+            // before it freezes, so the backfill pays out of money reserved.
+            if (isset($deferredSeen[$distributorId])) {
+                try {
+                    $this->cutoff->price($computation, $pool, $poolPricingActive);
+                    $reservedPoints = $mentorshipActive && $computation->isMatched() && $computation->slabIndex !== null
+                        ? $this->mentorship->reservedPointsFor($distributorId, $computation->slabIndex)
+                        : 0;
+
+                    $this->writeDeferral($distributorId, $date, $deferredIds[$distributorId], $deferredByEvaluation['run_id'], $computation, $reservedPoints);
+                    $msbTotalPoints += $reservedPoints;
+                    unset($deferredSeen[$distributorId]);
+                } catch (\Throwable $e) {
+                    $failed++;
+                    Log::error('gsb.cutoff.deferral_write_failed', [
+                        'distributor_id' => $distributorId,
+                        'error' => $e->getMessage(),
+                        'exception' => get_class($e),
+                    ]);
+                }
+
+                continue;
+            }
+
             try {
                 $this->cutoff->price($computation, $pool, $poolPricingActive);
                 $result = $this->cutoff->settle($computation);
@@ -402,6 +458,36 @@ final class GsbDailyCutoffCommand extends Command
             }
         }
 
+        // A deferred distributor whose computation itself threw has nothing to
+        // reserve, but the day is still owed: record it with a zero reservation.
+        foreach (array_keys($deferredSeen) as $distributorId) {
+            if (isset($computations[$distributorId])) {
+                continue;
+            }
+
+            try {
+                $this->writeDeferral($distributorId, $date, $deferredIds[$distributorId], $deferredByEvaluation['run_id'], null, 0);
+            } catch (\Throwable $e) {
+                Log::error('gsb.cutoff.deferral_write_failed', [
+                    'distributor_id' => $distributorId,
+                    'error' => $e->getMessage(),
+                    'exception' => get_class($e),
+                ]);
+            }
+        }
+
+        $deferredCount = GsbCutoffDeferral::open()
+            ->whereDate('cutoff_date', $date->toDateString())
+            ->count();
+
+        if ($singleId === null && $deferredCount > 0) {
+            Log::warning('gsb.cutoff.deferred', [
+                'date' => $date->toDateString(),
+                'count' => $deferredCount,
+                'adns' => $deferredByEvaluation['adns'],
+            ]);
+        }
+
         // Pass 3 — the day's MSB denominator is only known now, so freeze the
         // pool and credit every accrual at the one point value it yields.
         // Single-distributor retries never freeze: one sponsor's points are not
@@ -429,7 +515,7 @@ final class GsbDailyCutoffCommand extends Command
         }
 
         $msbValue = number_format($msbPointValuePaise / 100, 2);
-        $this->info("Done — total: {$total}, engine: ".count($computations).", bulk: {$skipped}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}, msb-points: {$msbTotalPoints}, msb-point-value: ₹{$msbValue}, left out: ".count($skippedByEvaluation['ids']));
+        $this->info("Done — total: {$total}, engine: ".count($computations).", bulk: {$skipped}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}, msb-points: {$msbTotalPoints}, msb-point-value: ₹{$msbValue}, deferred: ".($singleId === null ? $deferredCount : 0));
 
         // Nothing computed, nothing broken: every distributor the engine could
         // not compute was refused for the same reason, and the day's earlier
@@ -514,15 +600,15 @@ final class GsbDailyCutoffCommand extends Command
     }
 
     /**
-     * The distributors the evaluation covering $date could not judge — left out
-     * of a full run (client decision 2026-09-27). Read from the latest evaluate
-     * run after the day, whatever its status: over-skipping is conservative
-     * (each one is named for the morning and retried by hand), under-skipping
-     * prices a day on a verdict nobody refreshed.
+     * The distributors the evaluation covering $date could not judge — deferred
+     * by a full run (client decision 2026-09-27). Read from the latest evaluate
+     * run after the day, whatever its status: over-deferring is conservative
+     * (the day is reserved and backfilled), under-deferring prices a day on a
+     * verdict nobody refreshed.
      *
-     * @return array{ids: list<int>, adns: list<string>}
+     * @return array{ids: list<int>, adns: list<string>, run_id: int|null}
      */
-    private function skippedByEvaluation(Carbon $date): array
+    private function deferredByEvaluation(Carbon $date): array
     {
         $run = $this->engineStatus->latestRunAfterDay('repurchase.evaluate', $date);
         $summary = is_array($run?->summary) ? $run->summary : [];
@@ -530,6 +616,50 @@ final class GsbDailyCutoffCommand extends Command
         return [
             'ids' => array_values(array_map(intval(...), is_array($summary['failed_distributor_ids'] ?? null) ? $summary['failed_distributor_ids'] : [])),
             'adns' => array_values(array_map(strval(...), is_array($summary['failed_adns'] ?? null) ? $summary['failed_adns'] : [])),
+            'run_id' => $run?->id === null ? null : (int) $run->id,
         ];
+    }
+
+    /**
+     * Record (or refresh, on a re-run of the same night) the owed day and what
+     * the full run reserved for it. Never touches a resolved row: a re-run
+     * after the day was backfilled must not reopen it.
+     */
+    private function writeDeferral(
+        int $distributorId,
+        Carbon $date,
+        string $cause,
+        ?int $evaluateRunId,
+        ?GsbCutoffComputation $computation,
+        int $reservedMsbPoints,
+    ): void {
+        $existing = GsbCutoffDeferral::where('distributor_id', $distributorId)
+            ->whereDate('cutoff_date', $date->toDateString())
+            ->first();
+
+        if ($existing?->resolved_at !== null) {
+            return;
+        }
+
+        $matched = $computation !== null && $computation->isMatched();
+
+        $attributes = [
+            'cause' => $cause,
+            'evaluate_run_id' => $evaluateRunId,
+            'reserved_slab' => $matched ? $computation->slabIndex : null,
+            'reserved_gsb_paise' => $matched ? $computation->grossPaise : 0,
+            'reserved_msb_points' => $reservedMsbPoints,
+        ];
+
+        if ($existing !== null) {
+            $existing->update($attributes);
+
+            return;
+        }
+
+        GsbCutoffDeferral::create($attributes + [
+            'distributor_id' => $distributorId,
+            'cutoff_date' => $date->toDateString(),
+        ]);
     }
 }
