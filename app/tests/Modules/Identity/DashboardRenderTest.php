@@ -377,7 +377,7 @@ it('DOC-04: the sidenav shows the Genos group a distributor is placed in', funct
         ->get(route('dashboard'))
         ->assertOk()
         ->assertSee('data-nav-position="L"', false)
-        ->assertSee('← Left group', false);
+        ->assertSee('← Left Genos', false);
 });
 
 it('DOC-05: a distributor with no placement side gets no Position row', function () {

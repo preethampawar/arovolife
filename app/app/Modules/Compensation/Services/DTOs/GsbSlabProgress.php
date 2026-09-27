@@ -6,7 +6,7 @@ namespace App\Modules\Compensation\Services\DTOs;
 
 /**
  * Snapshot of a distributor's position on the GSB slab ladder: today's
- * effective Left/Right group BV (daily accumulator + carry-forward on its
+ * effective Left/Right Genos BV (daily accumulator + carry-forward on its
  * side) plus one GsbSlabRow per active slab. Personal-purchase BV that the
  * 23:59 cut-off has yet to credit is carried separately in
  * pendingPersonalBvTopupPaise and is never folded into these figures.

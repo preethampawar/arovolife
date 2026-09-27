@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Transaction-style Genos BV ledger for one distributor: every per-order
- * credit into their left/right group BV accumulator, any cancelled-order
+ * credit into their left/right Genos BV accumulator, any cancelled-order
  * reversals, day by day, closed by that day's cut-off settlement.
  *
  * Credits come from group_bv_credits — the per-ancestor snapshot written by

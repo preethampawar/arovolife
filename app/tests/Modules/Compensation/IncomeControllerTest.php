@@ -1193,7 +1193,7 @@ it('shows the stored weaker side and a Left/Right power label on the genos bv pa
         '/Right\s*<span class="block text-xs text-gray-500 font-mono">1,500 BV<\/span>/',
     );
     // "Power CF after" carries its Left/Right label (house rule).
-    $response->assertSee('Left group');
+    $response->assertSee('Left Genos');
 });
 
 it('gives the personal-BV top-up its own genos ledger line instead of "No Genos BV added this day" (F62)', function (): void {
@@ -1248,7 +1248,7 @@ it('gives the personal-BV top-up its own genos ledger line instead of "No Genos 
     $this->get(route('income.genos-ledger'))
         ->assertOk()
         ->assertSee('Your own purchase BV added to your weaker group')
-        ->assertSee('applied at the cut-off to your Right group')
+        ->assertSee('applied at the cut-off to your Right Genos')
         ->assertSee('+600')
         ->assertSee('power (Left)')
         ->assertDontSee('No Genos BV added this day.');

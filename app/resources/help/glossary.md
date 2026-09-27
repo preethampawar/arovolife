@@ -14,10 +14,10 @@
 | **Distributor / Direct Seller** | A registered member who may sell Arovolife products directly to end-consumers. |
 | **End-consumer** | The person who actually uses the product. Direct sellers may only sell to end-consumers — never through shops or online marketplaces. |
 | **Sponsor** | The distributor who introduced a new joiner. Recorded in the **sponsorship** tree. Sponsor-tied earnings apply regardless of where the joiner sits in the Genos. |
-| **Genos** | The **binary placement tree** — the two-sided (left group / right group) genealogy where every distributor occupies one position. Shown to users as "Genos" / "My Genos". *(Internally the code calls it "binary".)* |
-| **Placement** | A distributor's position in the Genos — not necessarily directly under their sponsor. Each distributor has one placement parent and a side (left/right group). |
+| **Genos** | The **binary placement tree** — the two-sided (left Genos / right Genos) genealogy where every distributor occupies one position. Shown to users as "Genos" / "My Genos". *(Internally the code calls it "binary".)* |
+| **Placement** | A distributor's position in the Genos — not necessarily directly under their sponsor. Each distributor has one placement parent and a side (left/right Genos). |
 | **Placement Strategy** | A company-wide admin setting that decides the starting side when a placement is chosen: `default_left`, `default_right`, or `custom`. |
-| **Group / Leg** | One side of a distributor's Genos — the left group or the right group. |
+| **Left Genos / Right Genos** (formerly "group" or "leg") | One side of a distributor's Genos — shown to users as "Left Genos" and "Right Genos". |
 | **Line change** | A request to move a distributor's placement. Allowed only within a short window (≤ 5 days) after joining and subject to admin approval. |
 | **Couple registration** | A married couple registered under a **single ADN** with a primary and a secondary holder. |
 | **PYP / Q-Period** | **Prove Your Position**, also called the **Q-Period** or qualified count — how many times a rank must be achieved (lifetime total — gaps and repeat achievements within one month all count) before the next rank opens permanently: R1/R2 once, R3–R5 twice, R6–R9 three times. |

@@ -6,8 +6,8 @@
     $title = $isSelf
         ? 'You'
         : ($node->placement_side === 'L'
-            ? 'Left group'
-            : ($node->placement_side === 'R' ? 'Right group' : 'Root'));
+            ? 'Left Genos'
+            : ($node->placement_side === 'R' ? 'Right Genos' : 'Root'));
 
     $hasAnyChild = $left !== null || $right !== null;
 

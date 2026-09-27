@@ -1,6 +1,6 @@
 @extends('emails.layouts.branded', [
-    'subject'     => 'New distributor placed on your '.$sideLabel.' group — ADN '.$newJoinerAdn,
-    'previewText' => $newJoinerFullName.' (ADN '.$newJoinerAdn.') has just joined your '.$sideLabel.' group.',
+    'subject'     => 'New distributor placed on your '.$sideLabel.' Genos — ADN '.$newJoinerAdn,
+    'previewText' => $newJoinerFullName.' (ADN '.$newJoinerAdn.') has just joined your '.$sideLabel.' Genos.',
 ])
 
 @section('content')
@@ -8,7 +8,7 @@
     <tr>
         <td>
             <p class="ar-h1" style="margin: 0 0 18px 0; font-size: 22px; line-height: 28px; font-weight: 700; color: #111827;">
-                A new distributor joined your {{ $sideLabel }} group
+                A new distributor joined your {{ $sideLabel }} Genos
             </p>
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 Hi {{ $parentFullName }},
@@ -16,9 +16,9 @@
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 A new arovolife distributor has been placed directly under your Genos (placement tree) on the
                 @if($side === 'L')
-                    <strong style="color: #0a719f;">left group ←</strong>
+                    <strong style="color: #0a719f;">left Genos ←</strong>
                 @else
-                    <strong style="color: #0a719f;">right group →</strong>
+                    <strong style="color: #0a719f;">right Genos →</strong>
                 @endif
                 on {{ $placedAtFormatted }}.
             </p>

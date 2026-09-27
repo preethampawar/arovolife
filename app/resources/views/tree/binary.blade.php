@@ -24,6 +24,6 @@
     'contextSubtitlePre' => $isReRooted
         ? 'Showing '.$rootName.'’s placement and descendants up to '
         : 'Showing your placement and descendants up to ',
-    'contextNote'       => 'Your Genos is your placement tree — everyone you and your downline placed is shown here, split into Left and Right groups. Genos BV accumulates daily from purchases made by anyone in each side of your Genos; it feeds your daily 23:59 GSB cut-off. Use the depth filter to navigate large trees level by level.',
+    'contextNote'       => 'Your Genos is your placement tree — everyone you and your downline placed is shown here, split into Left and Right Genos. Genos BV accumulates daily from purchases made by anyone in each side of your Genos; it feeds your daily 23:59 GSB cut-off. Use the depth filter to navigate large trees level by level.',
 ])
 @endsection
