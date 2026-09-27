@@ -237,6 +237,10 @@ Pressing **Approve & dispatch to bank** does four things:
 **If one distributor fails, the rest still go out.** A bad IFSC marks that one
 line `failed` with the reason and the batch continues.
 
+**Do not switch the payout gateway while any batch is `dispatched`.** Lines still
+with Razorpay must settle first; switching to Manual NEFT mid-batch and paying
+those lines by hand can pay a distributor twice.
+
 If the button is disabled, the credentials are missing — the red banner on the
 page says so. Fix the environment, or switch the gateway to Manual NEFT.
 

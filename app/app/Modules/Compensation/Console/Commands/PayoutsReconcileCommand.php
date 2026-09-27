@@ -25,9 +25,10 @@ use Illuminate\Database\Eloquent\Builder;
  *      per-line "Check with Razorpay" button does.
  *   B. Never sent — `pending` with no payout id in a `dispatched` batch
  *      approved more than --hours ago, and not in an NEFT bank file for its
- *      current attempt (the bank may have paid it; Razorpay cannot see that). Re-queued; the dispatch service asks
- *      Razorpay for the line's reference before sending, and its fresh-read
- *      guard makes a duplicate queue entry harmless.
+ *      current attempt (the bank may have paid it; Razorpay cannot see that).
+ *      Re-queued: the line job sends pending lines only, and every send asks
+ *      Razorpay for the line's reference first, so a line already with
+ *      Razorpay is adopted, never paid twice.
  *
  * A no-op in Manual NEFT mode.
  */
