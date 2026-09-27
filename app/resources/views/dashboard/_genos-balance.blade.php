@@ -69,7 +69,7 @@
                     Genos BV is credited once your lifetime personal BV reaches the plan minimum{{ $gsbMinBvPaise !== null ? ' ('.\App\Modules\Commerce\Support\Bv::format($gsbMinBvPaise).')' : '' }}.
                     Until then both sides show 0 BV.
                 </p>
-                <a href="{{ route('my-business') }}" class="inline-block mt-3 text-xs font-semibold text-brand-700 hover:text-brand-800 underline">My Business →</a>
+                <a href="{{ route('my-business') }}" class="inline-block mt-3 text-xs font-semibold text-brand-700 hover:text-brand-800 underline">My Business World →</a>
             @endif
         </div>
     @endif

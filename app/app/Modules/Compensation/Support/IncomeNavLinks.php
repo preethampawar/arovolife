@@ -29,7 +29,7 @@ final class IncomeNavLinks
     public static function visible(): array
     {
         $links = [
-            ['route' => 'my-business', 'label' => 'My Business', 'visible' => true],
+            ['route' => 'my-business', 'label' => 'My Business World', 'visible' => true],
             ['route' => 'income.dashboard', 'label' => 'Income', 'visible' => true],
             ['route' => 'income.genos-bv', 'label' => 'Genos BV', 'visible' => true],
             ['route' => 'income.genos-ledger', 'label' => 'Genos Ledger', 'visible' => true],

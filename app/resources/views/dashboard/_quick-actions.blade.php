@@ -6,7 +6,7 @@
         ['label' => 'My Orders',     'href' => route('orders.index'),      'tone' => 'bg-amber-50 text-amber-700',     'icon' => 'package'],
         ['label' => 'My Genos',      'href' => route('tree.binary'),       'tone' => 'bg-brand-50 text-brand-700',     'icon' => 'network'],
         ['label' => 'My Referrals',  'href' => route('tree.sponsorship'),  'tone' => 'bg-leaf-50 text-leaf-700',       'icon' => 'users'],
-        ['label' => 'My Business',   'href' => route('my-business'),       'tone' => 'bg-indigo-50 text-indigo-700',   'icon' => 'chart-column'],
+        ['label' => 'My Business World','href' => route('my-business'),       'tone' => 'bg-indigo-50 text-indigo-700',   'icon' => 'chart-column'],
         ['label' => 'Income',        'href' => route('income.dashboard'),  'tone' => 'bg-emerald-50 text-emerald-700', 'icon' => 'trending-up'],
         ['label' => 'Wallet',        'href' => route('income.wallet'),     'tone' => 'bg-brand-50 text-brand-700',     'icon' => 'wallet'],
     ];

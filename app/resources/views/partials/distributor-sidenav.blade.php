@@ -36,8 +36,8 @@
 
     $groups = [
         'Overview' => [
-            ['label' => 'Dashboard',          'route' => 'dashboard',           'icon' => 'house', 'prefix' => 'dashboard'],
-            ['label' => 'My Business',        'route' => 'my-business',         'icon' => 'chart-column'],
+            ['label' => 'My Personal World',  'route' => 'dashboard',           'icon' => 'house', 'prefix' => 'dashboard'],
+            ['label' => 'My Business World',  'route' => 'my-business',         'icon' => 'chart-column'],
             ['label' => 'My Income',          'route' => 'income.dashboard',    'icon' => 'banknote', 'prefix' => 'income.'],
             ...($announcementsOn
                 ? [['label' => 'Announcements', 'route' => 'announcements.index', 'icon' => 'megaphone', 'prefix' => 'announcements.']]

@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'My Business')
+@section('title', 'My Business World')
 
 @section('content')
 @php
@@ -85,7 +85,7 @@
     $statValueClasses = 'text-2xl font-bold text-gray-900';
 @endphp
 <div>
-    <h1 class="text-2xl font-bold text-gray-900 mb-2">My Business</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">My Business World</h1>
 
     @include('income._tabs')
 

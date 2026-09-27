@@ -80,13 +80,13 @@
                         @else
                             <a href="{{ route('dashboard') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
                                 <x-lucide-house class="w-4 h-4 text-gray-600" />
-                                My Dashboard
+                                My Personal World
                             </a>
                         @endif
                         @if(! $isAdmin && $user->distributor)
                         <a href="{{ route('my-business') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
                             <x-lucide-briefcase class="w-4 h-4 text-gray-600" />
-                            My Business
+                            My Business World
                         </a>
                         @if (\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class) && auth()->user()?->distributor)
                         <a href="{{ route('my.offers.index') }}" class="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50" role="menuitem">
@@ -180,10 +180,10 @@
             @if(auth()->user()->isSuperStaff())
                 <a href="{{ route('admin.dashboard') }}" class="hover:text-brand-50 transition-colors">Admin Console</a>
             @else
-                <a href="{{ route('dashboard') }}" class="hover:text-brand-50 transition-colors">My Dashboard</a>
+                <a href="{{ route('dashboard') }}" class="hover:text-brand-50 transition-colors">My Personal World</a>
                 @if(auth()->user()->distributor)
                     <span class="text-brand-400">|</span>
-                    <a href="{{ route('my-business') }}" class="hover:text-brand-50 transition-colors">My Business</a>
+                    <a href="{{ route('my-business') }}" class="hover:text-brand-50 transition-colors">My Business World</a>
                     <span class="text-brand-400">|</span>
                     <a href="{{ route('orders.index') }}" class="hover:text-brand-50 transition-colors">My Orders</a>
                 @endif
@@ -451,10 +451,10 @@
                 @if(auth()->user()->isSuperStaff())
                     <a href="{{ route('admin.dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">Admin Console</a>
                 @else
-                    <a href="{{ route('dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Dashboard</a>
+                    <a href="{{ route('dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Personal World</a>
                 @endif
                 @if(! auth()->user()->isSuperStaff() && auth()->user()->distributor)
-                <a href="{{ route('my-business') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Business</a>
+                <a href="{{ route('my-business') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Business World</a>
                 <a href="{{ route('orders.index') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Orders</a>
                 @if (\Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\PurchaseOffersFeature::class) && auth()->user()?->distributor)
                 <a href="{{ route('my.offers.index') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-800 transition-colors font-medium">My Offers</a>
