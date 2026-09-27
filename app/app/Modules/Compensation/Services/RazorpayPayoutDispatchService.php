@@ -79,10 +79,27 @@ final class RazorpayPayoutDispatchService
         // Razorpay's cached payout back instead of creating a second one.
         $attempt = (int) $line->retry_count;
 
+        // Set while Razorpay is being asked whether this line's transfer
+        // already exists, so a failure there is told apart from a failed send.
+        $lookingUp = false;
+
         try {
             $contactId = $this->gateway->ensureContact($distributor);
             $fundAccountId = $this->gateway->ensureFundAccount($distributor, $contactId);
-            $payout = $this->gateway->createPayout($line, $distributor, $fundAccountId, $attempt);
+
+            // Ask Razorpay first. A previous attempt may have been accepted and
+            // then lost its response (a killed job, a connection dropped past
+            // the transport retries); that payout carries this line's reference
+            // id. A live or settled one is adopted, never sent again. Only a
+            // dead one (rejected, cancelled, reversed, failed) is re-created.
+            $lookingUp = true;
+            $existing = $this->gateway->findExistingPayout($line);
+            $lookingUp = false;
+
+            $adopted = $existing !== null && ! in_array($existing['status'], self::FAILED_STATES, true);
+            $payout = $adopted && $existing !== null
+                ? $existing
+                : $this->gateway->createPayout($line, $distributor, $fundAccountId, $attempt);
         } catch (BankDecryptionException) {
             // The critical log already fired inside the gateway. Held, not
             // failed: nothing is retryable until ops re-capture the details.
@@ -96,13 +113,20 @@ final class RazorpayPayoutDispatchService
 
             return false;
         } catch (Throwable $e) {
-            Log::critical('RazorpayX payout dispatch failed', [
+            Log::critical($lookingUp ? 'RazorpayX payout lookup failed — nothing sent' : 'RazorpayX payout dispatch failed', [
                 'payout_line_item_id' => $line->id,
                 'distributor_id' => $line->distributor_id,
                 'error' => $e->getMessage(),
             ]);
 
-            $this->hold($line, PayoutLineItem::STATUS_FAILED, $this->readableFailure($e), $actorId, 'gateway_error');
+            // Not knowing whether the transfer exists means not sending it.
+            if ($lookingUp) {
+                $this->hold($line, PayoutLineItem::STATUS_FAILED,
+                    'Razorpay could not confirm whether this transfer already exists; nothing was sent.',
+                    $actorId, 'gateway_lookup_failed');
+            } else {
+                $this->hold($line, PayoutLineItem::STATUS_FAILED, $this->readableFailure($e), $actorId, 'gateway_error');
+            }
 
             return false;
         }
@@ -142,6 +166,7 @@ final class RazorpayPayoutDispatchService
                 'gateway_status' => $state,
                 'transfer_mode' => $line->transfer_mode,
                 'attempt' => $attempt,
+                'adopted_existing' => $adopted,
             ],
             'ip' => app()->runningInConsole() ? null : request()->ip(),
         ]);

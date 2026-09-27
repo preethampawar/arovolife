@@ -257,7 +257,7 @@ final class RazorpayPayoutGateway
             // that payout rather than letting the batch believe it failed and
             // dispatch a second one.
             $existing = $this->duplicatePayout($e)
-                ? ($this->payoutIdIn($e) ?? $this->findPayoutByReference($reference))
+                ? ($this->payoutIdIn($e) ?? $this->findPayoutByReference($reference, $line))
                 : null;
 
             if ($existing === null) {
@@ -286,6 +286,29 @@ final class RazorpayPayoutGateway
         return [
             'id' => $payoutId,
             'status' => (string) ($payout['status'] ?? 'queued'),
+            'utr' => isset($payout['utr']) && $payout['utr'] !== '' ? (string) $payout['utr'] : null,
+        ];
+    }
+
+    /**
+     * The payout Razorpay already holds for this line, if any — asked BEFORE
+     * every create so a lost response can never become a second transfer.
+     * A transport or gateway error propagates: not knowing is not "none".
+     *
+     * @return array{id: string, status: string, utr: string|null}|null
+     */
+    public function findExistingPayout(PayoutLineItem $line): ?array
+    {
+        $payout = $this->findPayoutByReference(self::referenceFor((int) $line->id), $line);
+
+        $payoutId = (string) ($payout['id'] ?? '');
+        if ($payout === null || $payoutId === '') {
+            return null;
+        }
+
+        return [
+            'id' => $payoutId,
+            'status' => strtolower((string) ($payout['status'] ?? 'queued')),
             'utr' => isset($payout['utr']) && $payout['utr'] !== '' ? (string) $payout['utr'] : null,
         ];
     }
@@ -395,14 +418,14 @@ final class RazorpayPayoutGateway
     }
 
     /** @return array<string, mixed>|null */
-    private function findPayoutByReference(string $referenceId): ?array
+    private function findPayoutByReference(string $referenceId, ?PayoutLineItem $line = null): ?array
     {
         $query = ['reference_id' => $referenceId, 'count' => 1];
         if ($this->settings->accountNumber() !== '') {
             $query['account_number'] = $this->settings->accountNumber();
         }
 
-        return $this->firstItem($this->get('/payouts', $query, 'payouts.fetch_by_reference'));
+        return $this->firstItem($this->get('/payouts', $query, 'payouts.fetch_by_reference', $line));
     }
 
     /**
@@ -479,9 +502,9 @@ final class RazorpayPayoutGateway
      *
      * @throws PayoutGatewayException
      */
-    private function get(string $path, array $query, string $operation): array
+    private function get(string $path, array $query, string $operation, ?PayoutLineItem $line = null): array
     {
-        return $this->send('GET', $path, $query, $operation, [], null);
+        return $this->send('GET', $path, $query, $operation, [], $line);
     }
 
     /**

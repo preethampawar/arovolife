@@ -24,6 +24,12 @@ use Illuminate\Support\Facades\Log;
  * is what makes this attempt distinguishable from the one that failed — and
  * what guarantees a crash between the increment and the response cannot come
  * back on the next run with the previous attempt's key.
+ *
+ * A new key alone would make a killed attempt dangerous: Razorpay may have
+ * accepted it before the process died. What makes that safe is the dispatch
+ * service asking Razorpay for this line's reference id before every send and
+ * adopting a live payout instead of creating a second one. The timeout covers
+ * the worst-case gateway time (lookup, create and their transport retries).
  */
 final class RetryRazorpayPayoutJob implements ShouldQueue
 {
@@ -31,7 +37,7 @@ final class RetryRazorpayPayoutJob implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 120;
+    public int $timeout = 300;
 
     /**
      * @param  bool  $ignoreRetryLimit  true when a person clicked Send again on
