@@ -621,7 +621,7 @@ final class EngineHealthService
         foreach ($ages as $adn => $age) {
             if ($age >= self::DEFERRAL_AGEING_DAYS) {
                 $steps[] = sprintf(
-                    'ADN %s has waited %d days: check the distributor is still active (an inactive distributor is never backfilled — decide whether to reactivate or write the day off in the audit log).%s',
+                    'ADN %s has waited %d days: check the distributor is still active (an inactive distributor is never backfilled — decide whether to reactivate them or have the developer write the day off with gsb:write-off-deferral, which is audited).%s',
                     $adn,
                     $age,
                     isset($inactive[$adn]) ? ' They are inactive now.' : '',

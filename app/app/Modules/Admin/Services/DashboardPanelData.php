@@ -403,7 +403,7 @@ final class DashboardPanelData
             $report = $this->engineHealth->report(Carbon::now());
 
             // The DTO is readonly and holds nothing but lists of scalars, so
-            // it survives the round trip as those five lists and is rebuilt
+            // it survives the round trip as those six lists and is rebuilt
             // below. Caching the object itself would not (see `remember()`).
             return [
                 'failures' => $report->failures,
@@ -411,6 +411,7 @@ final class DashboardPanelData
                 'stuck' => $report->stuck,
                 'premature_freezes' => $report->prematureFreezes,
                 'chain_alerts' => $report->chainAlerts,
+                'deferred_cutoffs' => $report->deferredCutoffs,
                 'generated_at' => Carbon::now()->getTimestamp(),
             ];
         });
@@ -422,6 +423,8 @@ final class DashboardPanelData
                 stuck: $payload['stuck'],
                 prematureFreezes: $payload['premature_freezes'],
                 chainAlerts: $payload['chain_alerts'],
+                // A payload cached before this key existed has no owed days in it.
+                deferredCutoffs: $payload['deferred_cutoffs'] ?? [],
             ),
             'generated_at' => $payload['generated_at'],
         ];

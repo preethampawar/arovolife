@@ -7,6 +7,7 @@ use App\Modules\Admin\Services\DashboardPanelData;
 use App\Modules\Admin\Support\DashboardPanels;
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -555,6 +556,26 @@ it('DSH-21: the compensation card carries the batch, the held breakdown and engi
         ->and($body)->toContain('₹600.00')
         ->and($body)->toContain('KYC pending')
         ->and($body)->toContain('Engine health');
+});
+
+it('DSH-22: the deferred cut-offs line counts owed days, not digest items', function (): void {
+    // L1: the digest groups every open deferral into one item, so counting
+    // items read 1 whatever the number of owed days.
+    $admin = dashUser('admin');
+
+    disableTestForeignKeys();
+    try {
+        foreach (['2026-09-01', '2026-09-02', '2026-09-03'] as $i => $day) {
+            $distributor = Distributor::factory()->create(['status' => 'active', 'adn' => '10000009'.$i]);
+            GsbCutoffDeferral::create(['distributor_id' => $distributor->id, 'cutoff_date' => $day, 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED]);
+        }
+    } finally {
+        enableTestForeignKeys();
+    }
+
+    $body = $this->actingAs($admin)->get(panelUrl('compensation'))->assertOk()->getContent();
+
+    expect($body)->toMatch('#<dt>Deferred cut-offs</dt>\s*<dd class="tabular-nums">3</dd>#');
 });
 
 it('DSH-17: a panel title containing an ampersand is escaped once, not twice', function (): void {

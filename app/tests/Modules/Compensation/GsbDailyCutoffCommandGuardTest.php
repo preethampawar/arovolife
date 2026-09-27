@@ -787,3 +787,18 @@ it('tells the operator to re-evaluate before settling an owed day by name, and a
             && $context['owed_date'] === '2026-08-25')
         ->twice();
 });
+
+it('resolves a deferral the same night when a full re-run settles a distributor it no longer defers (L4)', function (): void {
+    $achiever = deferAchieverOn25th();
+
+    // The evaluation is fixed and re-run after the day; the night is re-run.
+    seedEvaluateRun('2026-08-26', '2026-08-27 00:20:00');
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(0);
+
+    $result = GsbCutoffResult::where('distributor_id', $achiever->id)->whereDate('cutoff_date', '2026-08-25')->sole();
+    $deferral = GsbCutoffDeferral::where('distributor_id', $achiever->id)->sole();
+
+    expect($result->status)->toBe(GsbCutoffResult::STATUS_CREDITED)
+        ->and($deferral->resolution)->toBe(GsbCutoffDeferral::RESOLUTION_BACKFILLED)
+        ->and($deferral->gsb_cutoff_result_id)->toBe($result->id);
+});

@@ -21,6 +21,7 @@ use App\Modules\Compensation\Console\Commands\FortuneStagingE2ESeedCommand;
 use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\GsbDailyCutoffCommand;
 use App\Modules\Compensation\Console\Commands\GsbWeeklyPayoutCommand;
+use App\Modules\Compensation\Console\Commands\GsbWriteOffDeferralCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCloseCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyPayoutCommand;
@@ -176,6 +177,7 @@ class AppServiceProvider extends ServiceProvider
                 CreateStaffUserCommand::class,
                 GsbDailyCutoffCommand::class,
                 GsbWeeklyPayoutCommand::class,
+                GsbWriteOffDeferralCommand::class,
                 GbbMonthlyRunCommand::class,
                 RankBonusRunCommand::class,
                 RankCheckCommand::class,

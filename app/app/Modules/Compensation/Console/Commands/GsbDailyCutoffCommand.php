@@ -363,11 +363,25 @@ final class GsbDailyCutoffCommand extends Command
         /** @var array<int, true> $deferredSeen deferred ids the roster reached, minus out-of-order ones */
         $deferredSeen = [];
 
+        // A re-run of a night that deferred someone who now evaluates cleanly
+        // settles them tonight; their row for this date resolves as backfilled
+        // the same night (L4). They must reach the engine path to do so — the
+        // idle batch writes a row but never resolves anything.
+        /** @var array<int, true> $openForTonight */
+        $openForTonight = $singleId === null
+            ? GsbCutoffDeferral::open()
+                ->whereDate('cutoff_date', $date->toDateString())
+                ->pluck('distributor_id')
+                ->mapWithKeys(fn ($id): array => [(int) $id => true])
+                ->all()
+            : [];
+
         $query->chunkById(self::ROSTER_CHUNK, function (Collection $chunk) use (
             $date,
             $singleId,
             $deferredIds,
             $owedDays,
+            $openForTonight,
             &$deferredSeen,
             &$computations,
             &$failed,
@@ -390,9 +404,10 @@ final class GsbDailyCutoffCommand extends Command
             // their row, and a deferred day must have none until it is
             // backfilled.
             if ($singleId === null) {
-                $deferredInChunk = $chunk->filter(fn (Distributor $d): bool => isset($deferredIds[(int) $d->id]));
+                $mustCompute = fn (Distributor $d): bool => isset($deferredIds[(int) $d->id]) || isset($openForTonight[(int) $d->id]);
+                $deferredInChunk = $chunk->filter($mustCompute);
                 $partition = $this->idleBatch->partition(
-                    $chunk->reject(fn (Distributor $d): bool => isset($deferredIds[(int) $d->id])),
+                    $chunk->reject($mustCompute),
                     $date,
                 );
                 $skipped += $this->idleBatch->write($partition['below_min'], $partition['idle'], $date);
@@ -560,9 +575,14 @@ final class GsbDailyCutoffCommand extends Command
                 $result = $this->cutoff->settle($computation);
 
                 // A --force by-name run past the refusal above settled a
-                // deferred day: the row that now exists is its resolution.
-                if ($singleId !== null && $result->status !== GsbCutoffResult::STATUS_FAILED) {
-                    $this->resolveDeferral($distributorId, $date, $result, GsbCutoffDeferral::RESOLUTION_MANUAL);
+                // deferred day: the row that now exists is its resolution. So
+                // does a full re-run that settled someone it no longer defers.
+                if ($result->status !== GsbCutoffResult::STATUS_FAILED) {
+                    if ($singleId !== null) {
+                        $this->resolveDeferral($distributorId, $date, $result, GsbCutoffDeferral::RESOLUTION_MANUAL);
+                    } elseif (isset($openForTonight[$distributorId])) {
+                        $this->resolveDeferral($distributorId, $date, $result, GsbCutoffDeferral::RESOLUTION_BACKFILLED);
+                    }
                 }
 
                 if ($result->status === GsbCutoffResult::STATUS_CREDITED) {
