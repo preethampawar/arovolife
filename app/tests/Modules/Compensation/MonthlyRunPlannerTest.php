@@ -493,3 +493,33 @@ it('is not due late in the month once the batch has been built', function (): vo
 
     expect(app(MonthlyRunPlanner::class)->isDue(Carbon::parse('2026-10-20')))->toBeFalse();
 });
+
+it('owes the payout again when its sweep failed before approval', function (): void {
+    seedMonthlyPlannerBatch('2026-09-01');
+    seedMonthlyPlannerSales('2026-09-01');
+    seedMonthlyPlannerCrediting('2026-09-01');
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_MONTHLY,
+        'batch_date' => '2026-10-01',
+        'earnings_through' => '2026-09-30',
+        'status' => PayoutBatch::STATUS_FAILED,
+    ]);
+
+    expect(payoutMonths('2026-10-08'))->toBe(['2026-09']);
+});
+
+it('does not re-owe an approved monthly batch whose every line failed', function (): void {
+    seedMonthlyPlannerBatch('2026-09-01');
+    seedMonthlyPlannerSales('2026-09-01');
+    seedMonthlyPlannerCrediting('2026-09-01');
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_MONTHLY,
+        'batch_date' => '2026-10-01',
+        'earnings_through' => '2026-09-30',
+        'status' => PayoutBatch::STATUS_FAILED,
+        'processed_at' => Carbon::parse('2026-10-08 04:05:00'),
+        'approved_at' => Carbon::parse('2026-10-08 10:00:00'),
+    ]);
+
+    expect(payoutMonths('2026-10-08'))->toBe([]);
+});

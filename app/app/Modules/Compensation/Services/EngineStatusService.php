@@ -678,12 +678,23 @@ final class EngineStatusService
      * batch waiting for the bank is not a batch anyone may add lines to. An
      * orchestrator that re-invokes it would abort its own chain over a batch
      * that is not merely fine but already signed off.
+     *
+     * A row that is `failed` and was never approved is a sweep that threw (or
+     * was reopened after it stalled) before anyone could act on it: it was not
+     * built, so it does not count and the date stays owed. The runner re-enters
+     * it cleanly, keeping the lines already written. A batch that was approved
+     * and then had every line fail keeps `approved_at` and still counts — the
+     * planners must never rebuild a signed-off batch.
      */
     public function payoutBatchExists(string $batchType, Carbon $batchDate): bool
     {
         return PayoutBatch::query()
             ->where('batch_type', $batchType)
             ->whereDate('batch_date', $batchDate->toDateString())
+            ->where(function ($query): void {
+                $query->where('status', '!=', PayoutBatch::STATUS_FAILED)
+                    ->orWhereNotNull('approved_at');
+            })
             ->exists();
     }
 

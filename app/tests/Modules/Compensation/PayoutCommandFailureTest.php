@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -78,6 +79,24 @@ it('gsb:weekly-payout marks a stuck batch failed and exits non-zero', function (
 
     expect($batch)->not->toBeNull();
     expect($batch->status)->toBe(PayoutBatch::STATUS_FAILED);
+});
+
+it('a weekly batch whose sweep failed is built again by the next run, in the same row', function () {
+    throwOnBatchFinalize();
+    $this->artisan('gsb:weekly-payout', ['--date' => '2026-08-25'])->assertExitCode(1);
+
+    $failed = PayoutBatch::where('batch_type', PayoutBatch::TYPE_WEEKLY)->sole();
+    expect($failed->status)->toBe(PayoutBatch::STATUS_FAILED)
+        ->and(app(EngineStatusService::class)->payoutBatchExists(PayoutBatch::TYPE_WEEKLY, Carbon::parse('2026-08-25')))->toBeFalse();
+
+    PayoutBatch::flushEventListeners();
+    $this->artisan('gsb:weekly-payout', ['--date' => '2026-08-25'])->assertExitCode(0);
+
+    $rebuilt = PayoutBatch::where('batch_type', PayoutBatch::TYPE_WEEKLY)->sole();
+    expect($rebuilt->id)->toBe($failed->id)
+        ->and($rebuilt->status)->toBe(PayoutBatch::STATUS_PENDING)
+        ->and($rebuilt->earnings_through?->toDateString())->toBe($failed->earnings_through?->toDateString())
+        ->and(app(EngineStatusService::class)->payoutBatchExists(PayoutBatch::TYPE_WEEKLY, Carbon::parse('2026-08-25')))->toBeTrue();
 });
 
 it('gsb:weekly-payout refuses a batch date that is not a Tuesday unless forced', function () {
