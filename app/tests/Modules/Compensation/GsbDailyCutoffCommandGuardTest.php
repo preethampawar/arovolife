@@ -727,3 +727,34 @@ it('resolves an owed day a later by-name row already passed as superseded, and a
         'later_row_date' => '2026-08-26',
     ]);
 });
+
+it('stops the night before any settle when a deferral row cannot be written (M5)', function (): void {
+    Carbon::setTestNow('2026-08-27 00:30:00');
+    activateDeferralFeatures();
+    seedDeferralCompanyBv(['2026-08-25']);
+    [$achiever] = seedDeferralAchiever(3, ['2026-08-25']);
+    [$pairSponsee] = seedDeferralAchiever(1, ['2026-08-25']);
+    seedEvaluateRunWithDeferrals('2026-08-26', [$achiever->id], [$achiever->adn]);
+
+    GsbCutoffDeferral::creating(function (GsbCutoffDeferral $row) use ($achiever): void {
+        if ($row->distributor_id === $achiever->id) {
+            throw new RuntimeException('simulated deferral write failure');
+        }
+    });
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(1)
+        ->and(Artisan::output())->toContain('Nothing was settled tonight');
+
+    // Nobody the engine computed was settled: no row for the achievers, no credit.
+    expect(GsbCutoffResult::whereIn('distributor_id', [$achiever->id, $pairSponsee->id])->exists())->toBeFalse()
+        ->and(WalletLedgerEntry::count())->toBe(0)
+        ->and(GsbCutoffDeferral::count())->toBe(0);
+
+    $run = EngineRun::where('engine_key', 'gsb.daily-cutoff')->latest('id')->first();
+    expect($run->status)->toBe(EngineRun::STATUS_FAILED)
+        ->and($run->error)->toContain('gsb.cutoff.deferral_write_failed')
+        ->and($run->error)->toContain($achiever->adn);
+
+    // The pool was frozen before the stop; a re-run reuses it.
+    expect(GsbDailyPool::whereDate('cutoff_date', '2026-08-25')->count())->toBe(1);
+});

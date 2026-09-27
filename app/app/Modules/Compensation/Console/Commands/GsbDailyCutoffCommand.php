@@ -28,6 +28,7 @@ use App\Modules\Shared\Features\MentorshipBonusFeature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Laravel\Pennant\Feature;
 
@@ -469,35 +470,77 @@ final class GsbDailyCutoffCommand extends Command
             }
         }
 
+        // Every owed day is on record before anything settles (M5). Deferred
+        // distributors are priced so the reservation records the gross the
+        // day's pool set aside for them, never settled — a stale verdict pays
+        // nothing — and their sponsor's points join the MSB denominator before
+        // it freezes. One whose computation threw has nothing to reserve but
+        // the day is still owed: a zero reservation. All in one transaction:
+        // if any row cannot be written the night stops here, because the next
+        // night would advance that distributor's store past a day nobody
+        // recorded, and the day would be lost.
+        $msbTotalPoints = 0;
+
+        if ($deferredSeen !== []) {
+            try {
+                $msbTotalPoints = DB::transaction(function () use ($deferredSeen, $computations, $pool, $poolPricingActive, $mentorshipActive, $date, $deferredIds, $deferredByEvaluation): int {
+                    $reservedTotal = 0;
+
+                    foreach (array_keys($deferredSeen) as $distributorId) {
+                        $computation = $computations[$distributorId] ?? null;
+                        $reservedPoints = 0;
+
+                        if ($computation !== null) {
+                            $this->cutoff->price($computation, $pool, $poolPricingActive);
+                            $reservedPoints = $mentorshipActive && $computation->isMatched() && $computation->slabIndex !== null
+                                ? $this->mentorship->reservedPointsFor($distributorId, $computation->slabIndex)
+                                : 0;
+                        }
+
+                        $this->writeDeferral($distributorId, $date, $deferredIds[$distributorId], $deferredByEvaluation['run_id'], $computation, $reservedPoints);
+                        $reservedTotal += $reservedPoints;
+                    }
+
+                    return $reservedTotal;
+                });
+            } catch (\Throwable $e) {
+                $adns = Distributor::whereIn('id', array_keys($deferredSeen))->orderBy('adn')->pluck('adn')->map(strval(...))->all();
+
+                Log::error('gsb.cutoff.deferral_write_failed', [
+                    'date' => $date->toDateString(),
+                    'adns' => $adns,
+                    'error' => $e->getMessage(),
+                    'exception' => get_class($e),
+                ]);
+
+                $message = sprintf(
+                    'gsb.cutoff.deferral_write_failed: the %s GSB cut-off could not record the owed day for ADN %s (%s). '
+                    .'Nothing was settled tonight. Re-run the night (php artisan gsb:daily-cutoff --date=%s) once the '
+                    .'cause is fixed — before the next nightly run, or the next night advances these distributors past '
+                    .'a day nobody recorded.',
+                    $date->toDateString(),
+                    implode(', ', $adns),
+                    $e->getMessage(),
+                    $date->toDateString(),
+                );
+
+                $this->error($message);
+
+                // Resolved per call: EngineRunContext is container-scoped while a
+                // console command is a process-lifetime singleton.
+                app(EngineRunContext::class)->noteFailed($message);
+
+                return self::FAILURE;
+            }
+        }
+
         // Pass 2 — price against the frozen pool, then settle (all writes).
         // MSB accruals are collected here and credited in pass 3 below.
         /** @var list<MsbAccrual> $accruals */
         $accruals = [];
-        $msbTotalPoints = 0;
         foreach ($computations as $distributorId => $computation) {
-            // Deferred: priced so the reservation records the gross the day's
-            // pool set aside for them, never settled — a stale verdict pays
-            // nothing. Their sponsor's points join the MSB denominator now,
-            // before it freezes, so the backfill pays out of money reserved.
+            // Deferred: recorded above, never settled.
             if (isset($deferredSeen[$distributorId])) {
-                try {
-                    $this->cutoff->price($computation, $pool, $poolPricingActive);
-                    $reservedPoints = $mentorshipActive && $computation->isMatched() && $computation->slabIndex !== null
-                        ? $this->mentorship->reservedPointsFor($distributorId, $computation->slabIndex)
-                        : 0;
-
-                    $this->writeDeferral($distributorId, $date, $deferredIds[$distributorId], $deferredByEvaluation['run_id'], $computation, $reservedPoints);
-                    $msbTotalPoints += $reservedPoints;
-                    unset($deferredSeen[$distributorId]);
-                } catch (\Throwable $e) {
-                    $failed++;
-                    Log::error('gsb.cutoff.deferral_write_failed', [
-                        'distributor_id' => $distributorId,
-                        'error' => $e->getMessage(),
-                        'exception' => get_class($e),
-                    ]);
-                }
-
                 continue;
             }
 
@@ -548,24 +591,6 @@ final class GsbDailyCutoffCommand extends Command
                     'exception' => get_class($e),
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                ]);
-            }
-        }
-
-        // A deferred distributor whose computation itself threw has nothing to
-        // reserve, but the day is still owed: record it with a zero reservation.
-        foreach (array_keys($deferredSeen) as $distributorId) {
-            if (isset($computations[$distributorId])) {
-                continue;
-            }
-
-            try {
-                $this->writeDeferral($distributorId, $date, $deferredIds[$distributorId], $deferredByEvaluation['run_id'], null, 0);
-            } catch (\Throwable $e) {
-                Log::error('gsb.cutoff.deferral_write_failed', [
-                    'distributor_id' => $distributorId,
-                    'error' => $e->getMessage(),
-                    'exception' => get_class($e),
                 ]);
             }
         }
