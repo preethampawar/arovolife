@@ -147,13 +147,14 @@ it('never shows a rebuild engine card, whatever the role', function (): void {
 });
 
 it('hides flag-off engines from the index entirely, including their dependency chips', function (): void {
-    // Every flag defaults to off, so only the always-on Monthly Payout Batch
-    // remains — and its "Runs first" chips must not name the hidden engines
-    // either. A disabled feature leaves no trace.
+    // Every flag defaults to off. The Monthly Payout Batch declares the
+    // compensation master flag since E1 (2026-09-26 review), exactly as the
+    // weekly payout does, so its card is hidden too — and no chip anywhere
+    // names a hidden engine. A disabled feature leaves no trace.
     $this->actingAs(engineRunsUser('admin'))
         ->get(route('admin.compensation.engine-runs.index'))
         ->assertOk()
-        ->assertSee('Monthly Payout Batch')
+        ->assertDontSee('Monthly Payout Batch')
         ->assertDontSee('GSB Daily Cut-off (incl. MSB)')
         ->assertDontSee('Growth Booster Bonus')
         ->assertDontSee('Fortune Bonus Enrolment')

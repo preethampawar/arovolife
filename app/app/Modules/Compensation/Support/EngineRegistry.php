@@ -428,7 +428,10 @@ final class EngineRegistry
                     ['key' => 'fortune.payout'],
                     ['key' => 'adc.bonus'],
                 ],
-                featureFlagClass: null,
+                // The compensation master flag, exactly as the weekly payout declares it:
+                // the command no-ops on it, and only the registry can tell RecordEngineRun
+                // that the 0-exit was a no-op to record as skipped, not a run (E1).
+                featureFlagClass: GenosSalesBonusFeature::class,
                 reportRouteName: 'admin.compensation.weekly-payouts.index',
                 // The 8th, not the 1st: crediting closes on the 1st and payment
                 // waits a week, so a bad month can be caught before it reaches a

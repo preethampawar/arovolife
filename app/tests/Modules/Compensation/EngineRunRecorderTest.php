@@ -90,6 +90,20 @@ it('records a feature-flag-off no-op as skipped, never succeeded', function (): 
     expect($run->summary['reason'])->toBe('feature_flag_off');
 });
 
+it('records a flag-off monthly payout batch as skipped, never succeeded', function (): void {
+    // E1 (2026-09-26 review): the batch exits 0 on the compensation flag being
+    // off and was recorded succeeded — the only payout engine that was.
+    Feature::for(null)->deactivate(GenosSalesBonusFeature::class);
+
+    Artisan::call('payout:monthly-run', ['--month' => '2026-08']);
+
+    $run = EngineRun::where('engine_key', 'payout.monthly')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED)
+        ->and($run->summary['reason'])->toBe('feature_flag_off')
+        ->and($run->period_start->toDateString())->toBe('2026-08-01');
+});
+
 it('captures no PII patterns in the recorded console output', function (): void {
     Feature::activate(RankBonusFeature::class);
 
