@@ -475,6 +475,62 @@ it('re-running a no_match day does not compound carry-forward (retry is idempote
     expect($cf->power_side)->toBe('L');
 });
 
+it('rolls the carry-forward advance back when the no-match result row cannot be written', function () {
+    // E2: the store was advanced, the row failed, and the next run — seeing no
+    // row to rewind from — advanced the store a second time.
+    $dist = makeDistributorWithBv(300_000);
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 1_000_000,
+        'right_bv_paise' => 800_000,
+    ]);
+
+    GsbCutoffResult::saving(function (): void {
+        throw new RuntimeException('simulated write failure');
+    });
+
+    expect(fn () => app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::today()))
+        ->toThrow(RuntimeException::class);
+
+    expect(GsbCutoffResult::count())->toBe(0)
+        ->and(GsbCarryforward::where('distributor_id', $dist->id)->exists())->toBeFalse();
+});
+
+it('rolls an applied personal-BV top-up back with the no-match row it belonged to', function () {
+    enableTopupGolive();
+    $dist = makeDistributorWithBv(300_000);            // 3,000 BV pending top-up
+    GsbCarryforward::create([
+        'distributor_id' => $dist->id,
+        'power_side_bv_paise' => 1_600_000,            // R touches slab 1 → top-up fires
+        'power_side' => 'R',
+        'slab1_weaker_bv_paise' => 0,
+    ]);
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 1_000_000,                  // 10,000 + 3,000 top-up = 13,000 < 15,000: no match
+        'right_bv_paise' => 0,
+    ]);
+
+    GsbCutoffResult::saving(function (): void {
+        throw new RuntimeException('simulated write failure');
+    });
+
+    expect(fn () => app(GsbCutoffService::class)->runForDistributor($dist->id, Carbon::today()))
+        ->toThrow(RuntimeException::class);
+
+    // Nothing of the settle survived: no top-up row, the daily leg untouched,
+    // the store exactly as it stood.
+    expect(GsbPersonalBvTopup::count())->toBe(0);
+    $daily = GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', today())->first();
+    expect($daily->left_bv_paise)->toBe(1_000_000);
+    $cf = GsbCarryforward::where('distributor_id', $dist->id)->first();
+    expect($cf->power_side_bv_paise)->toBe(1_600_000)
+        ->and($cf->power_side)->toBe('R')
+        ->and($cf->slab1_weaker_bv_paise)->toBe(0);
+});
+
 it('re-run rewinds from recorded before-state even with pre-existing carry-forward', function () {
     $dist = makeDistributorWithBv(300_000);
     GsbCarryforward::create([
