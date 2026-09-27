@@ -105,15 +105,16 @@
                         </span>
                     @endif
                     @if($card->qualified())
-                        {{-- Dates plus the window length, kept to one line. The
-                             anchor day is day 0 and due_date is inclusive, so the
-                             span reads as off-by-one unless the card says the last
-                             day counts — daysTotal counts both ends, so minus one
-                             is the DB-driven comp.repurchase.cycle_days length,
-                             never a hardcoded 30. --}}
-                        <p class="ms-auto text-xs text-gray-500">
-                            <span class="font-semibold text-gray-900">{{ $card->startDate?->format('d M') }} &rarr; {{ $card->endDate?->format('d M Y') }}</span>
-                            &middot; {{ $card->daysTotal - 1 }}-day window, last day counts
+                        {{-- Start (to the minute) and end (11:59 PM on the inclusive
+                             due date) plus the window length. daysTotal counts both
+                             ends, so minus one is the DB-driven
+                             comp.repurchase.cycle_days length, never a hardcoded 30.
+                             Times are display only; eligibility is by whole day. --}}
+                        <p class="ms-auto text-xs text-gray-500 flex flex-col sm:flex-row sm:gap-1 sm:items-center">
+                            <span>Started <span class="font-semibold text-gray-900">{{ $card->startedAt?->format('j M Y, g:i A') }}</span></span>
+                            <span class="hidden sm:inline">&middot;</span>
+                            <span>Ends <span class="font-semibold text-gray-900">{{ $card->endDate?->format('j M Y') }}, 11:59 PM</span></span>
+                            <span class="hidden sm:inline">&middot; {{ $card->daysTotal - 1 }}-day window</span>
                         </p>
                     @endif
                 </div>
@@ -162,6 +163,19 @@
                             @endunless
                         </span>
                     </p>
+
+                    @if($card->bvMet() && in_array($card->state, [\App\Modules\Compensation\Services\DTOs\RepurchaseCycleCard::STATE_ACTIVE, \App\Modules\Compensation\Services\DTOs\RepurchaseCycleCard::STATE_COMPLETED], true))
+                        <p data-repurchase-met class="flex items-start gap-2 text-xs font-medium text-green-800">
+                            <x-lucide-circle-check class="w-4 h-4 text-green-700 mt-px shrink-0" />
+                            {{-- A running cycle still needs the wallet at ₹0 on the due
+                             date, so only a completed cycle claims eligibility. --}}
+                        @if($card->state === \App\Modules\Compensation\Services\DTOs\RepurchaseCycleCard::STATE_COMPLETED)
+                            <span>Repurchase eligibility met. Today's business counts toward your bonuses.</span>
+                        @else
+                            <span>Repurchase BV met. Keep your repurchase wallet at ₹0 on {{ $card->endDate?->format('j M Y') }} to complete the cycle.</span>
+                        @endif
+                        </p>
+                    @endif
                 @endif
             </div>
         </div>

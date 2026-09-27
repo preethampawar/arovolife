@@ -523,7 +523,52 @@ final class RepurchaseCycleService
             ? $this->walletBalanceAt($distributorId, $today->copy()->endOfDay())
             : null;
 
-        return RepurchaseCycleCard::fromCycle($cycle, $today, $personalBvPaise, $qualifyBvPaise, $liveWalletPaise);
+        return RepurchaseCycleCard::fromCycle($cycle, $today, $personalBvPaise, $qualifyBvPaise, $liveWalletPaise, startedAt: $this->cycleStartedAt($cycle));
+    }
+
+    /**
+     * When this cycle began, to the minute, for the dashboard card (client,
+     * 2026-09-28). Display only — eligibility stays by whole day.
+     *
+     *  - First cycle: the moment personal BV first reached the qualifying
+     *    minimum (the paid time of that order).
+     *  - A cycle opened on a late-fulfilment day: the time of that day's last
+     *    self-purchase accrual (the purchase that completed it is at or before
+     *    it; a documented approximation when two purchases land the same day).
+     *  - Any other cycle rolls straight on from the last one: 00:00 on its start.
+     */
+    public function cycleStartedAt(RepurchaseCycle $cycle): Carbon
+    {
+        $start = $cycle->cycle_start_date->copy()->startOfDay();
+
+        $firstReach = $this->bvLedger->firstReachedBvPaiseAt($cycle->distributor_id, $this->plan->gsbMinBvPaise());
+        if ($firstReach !== null && $firstReach->isSameDay($start)) {
+            return $firstReach;
+        }
+
+        $reactivated = RepurchaseCycle::query()
+            ->where('distributor_id', $cycle->distributor_id)
+            ->where('id', '!=', $cycle->id)
+            ->whereDate('fulfilled_on', $start->toDateString())
+            ->whereColumn('fulfilled_on', '>', 'due_date')
+            ->exists();
+
+        if ($reactivated) {
+            $last = DB::table('bv_ledger_entries')
+                ->where('distributor_id', $cycle->distributor_id)
+                ->where('type', 'accrual')
+                ->whereBetween('effective_at', [$start, $start->copy()->endOfDay()])
+                ->whereExists(fn ($q) => $q->selectRaw('1')->from('orders')
+                    ->whereColumn('orders.id', 'bv_ledger_entries.order_id')
+                    ->where('orders.self_consumption', true))
+                ->max('effective_at');
+
+            if ($last !== null) {
+                return Carbon::parse($last);
+            }
+        }
+
+        return $start;
     }
 
     /**
