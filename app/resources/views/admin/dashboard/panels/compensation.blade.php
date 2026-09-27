@@ -23,7 +23,7 @@
         PayoutLineItem::STATUS_BANK_DECRYPT_FAILED => 'Bank unreadable',
     ];
 
-    // Likewise for the health report's five buckets. Order matches the DTO's
+    // Likewise for the health report's six buckets. Order matches the DTO's
     // own constructor order.
     $buckets = [
         ['label' => 'Failed runs', 'count' => count($report->failures)],
@@ -31,6 +31,13 @@
         ['label' => 'Stuck runs', 'count' => count($report->stuck)],
         ['label' => 'Premature freezes', 'count' => count($report->prematureFreezes)],
         ['label' => 'Chain alerts', 'count' => count($report->chainAlerts)],
+        // Open owed days, not digest items: the bucket groups every open row
+        // into one item, and also carries resolved over-reservation and
+        // superseded notices that are not owed days at all.
+        ['label' => 'Deferred cut-offs', 'count' => array_sum(array_column(
+            array_filter($report->deferredCutoffs, fn (array $item): bool => ($item['kind'] ?? 'open') === 'open'),
+            'count',
+        ))],
     ];
 
     $alertTotal = array_sum(array_column($buckets, 'count'));

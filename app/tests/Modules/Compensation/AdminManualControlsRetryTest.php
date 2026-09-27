@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compliance\Models\AuditLog;
@@ -166,4 +167,30 @@ it('states the nightly run as instants, not as a rule the admin has to apply', f
         ->assertOk()
         ->assertSee('19 Sep 2026, 00:05 IST')
         ->assertSee('20 Sep 2026, 00:05 IST');
+});
+
+it('refuses to retry a deferred day, or any later one, and leaves it to the nightly backfill', function () {
+    $distributor = Distributor::factory()->create();
+    GsbCutoffDeferral::create([
+        'distributor_id' => $distributor->id,
+        'cutoff_date' => '2026-08-14',
+        'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+    ]);
+
+    foreach (['2026-08-14', '2026-08-15'] as $date) {
+        $this->from(route('admin.compensation.manual-controls.index'))
+            ->actingAs(retryAdmin())
+            ->post(route('admin.compensation.manual-controls.retry'), [
+                'adn' => $distributor->adn,
+                'date' => $date,
+                'reason' => 'Trying to settle the owed day by hand.',
+            ])
+            ->assertRedirect(route('admin.compensation.manual-controls.index'));
+
+        expect(session('error'))->toContain('backfills automatically');
+    }
+
+    expect(GsbCutoffResult::where('distributor_id', $distributor->id)->exists())->toBeFalse()
+        ->and(GsbCutoffDeferral::open()->count())->toBe(1)
+        ->and(AuditLog::where('action', 'compensation.cutoff.manual_retry_refused')->count())->toBe(2);
 });

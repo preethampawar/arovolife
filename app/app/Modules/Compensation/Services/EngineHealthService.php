@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Services\DTOs\EngineHealthReport;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
@@ -13,6 +14,7 @@ use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
 use App\Modules\Compensation\Support\NightlyRunAlert;
 use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -31,6 +33,7 @@ use Illuminate\Support\Str;
  * @phpstan-import-type StuckItem from EngineHealthReport
  * @phpstan-import-type PrematureFreezeItem from EngineHealthReport
  * @phpstan-import-type ChainAlertItem from EngineHealthReport
+ * @phpstan-import-type DeferredCutoffsItem from EngineHealthReport
  */
 final class EngineHealthService
 {
@@ -51,6 +54,9 @@ final class EngineHealthService
      */
     private const int CHAIN_ALERT_WINDOW_DAYS = 7;
 
+    /** An owed day this old gets its own "is the distributor still active" step. */
+    private const int DEFERRAL_AGEING_DAYS = 3;
+
     public function __construct(private readonly EngineStatusService $status) {}
 
     public function report(Carbon $now): EngineHealthReport
@@ -63,6 +69,7 @@ final class EngineHealthService
             stuck: $this->stuck(),
             prematureFreezes: $this->prematureFreezes($now),
             chainAlerts: $this->chainAlerts($now),
+            deferredCutoffs: $this->deferredCutoffs($now),
         );
     }
 
@@ -432,6 +439,220 @@ final class EngineHealthService
             'Send this email to the developer today. Correcting it means rebuilding the period from the orders, which only they can do.',
             'Until then, treat that period as provisional on every report; the payout for it may be short.',
         ];
+    }
+
+    /**
+     * The deferred-cut-offs bucket: the open owed days, then any backfill that
+     * paid more than its night reserved (E5 review N1).
+     *
+     * @return list<DeferredCutoffsItem>
+     */
+    private function deferredCutoffs(Carbon $now): array
+    {
+        return [
+            ...$this->openDeferredCutoffs($now),
+            ...$this->backfillsOverReservation($now),
+            ...$this->supersededOwedDays($now),
+        ];
+    }
+
+    /**
+     * Owed days the backfill resolved as superseded in the last seven days — a
+     * later cut-off had already advanced the store, so the day closed with no
+     * result row of its own (M3). Grouped as one item.
+     *
+     * @return list<DeferredCutoffsItem>
+     */
+    private function supersededOwedDays(Carbon $now): array
+    {
+        $rows = GsbCutoffDeferral::supersededSince($now->copy()->subDays(7))
+            ->join('distributors', 'distributors.id', '=', 'gsb_cutoff_deferrals.distributor_id')
+            ->orderBy('gsb_cutoff_deferrals.cutoff_date')
+            ->orderBy('gsb_cutoff_deferrals.distributor_id')
+            ->get(['gsb_cutoff_deferrals.*', 'distributors.adn']);
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $adns = [];
+        $days = [];
+
+        foreach ($rows as $row) {
+            $adn = (string) $row->getAttribute('adn');
+            $adns[$adn] = true;
+            $days[] = sprintf('ADN %s, %s', $adn, $row->cutoff_date->format('d M Y'));
+        }
+
+        $oldest = $rows->first()->cutoff_date;
+
+        return [[
+            'kind' => 'superseded',
+            'engine' => 'GSB daily cut-off',
+            'key' => 'gsb.daily-cutoff',
+            'headline' => sprintf('Superseded owed days — check the later row is right (%d)', $rows->count()),
+            'period' => $oldest->format('d M Y'),
+            'period_value' => $oldest->toDateString(),
+            'count' => $rows->count(),
+            'oldest' => $oldest->format('d M Y'),
+            'adns' => array_map(strval(...), array_keys($adns)),
+            'ages' => [],
+            'steps' => [
+                sprintf('A later cut-off had already passed these owed days, so they closed with no result of their own: %s.', implode('; ', $days)),
+                'Open each distributor\'s GSB history and check the next day\'s row: the owed day\'s group BV was never matched on its own. The audit log holds each one as gsb.cutoff.deferral_superseded, with the later row\'s date.',
+                'If the later row is wrong, send this email to the developer — correcting it is a rebuild, not a re-run.',
+            ],
+        ]];
+    }
+
+    /**
+     * Every deferral backfilled in the last 24 hours for more than the
+     * deferring night reserved, grouped as one item. The excess was paid out of
+     * the day's leftover or, when that was short, on top of the priced pool —
+     * real money, so it is named with the figures and never left to the log.
+     *
+     * @return list<DeferredCutoffsItem>
+     */
+    private function backfillsOverReservation(Carbon $now): array
+    {
+        $rows = GsbCutoffDeferral::exceededSince($now->copy()->subDay())
+            ->join('distributors', 'distributors.id', '=', 'gsb_cutoff_deferrals.distributor_id')
+            ->orderBy('gsb_cutoff_deferrals.cutoff_date')
+            ->orderBy('gsb_cutoff_deferrals.distributor_id')
+            ->get(['gsb_cutoff_deferrals.*', 'distributors.adn']);
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $adns = [];
+        $steps = [];
+
+        foreach ($rows as $row) {
+            $adn = (string) $row->getAttribute('adn');
+            $adns[$adn] = true;
+            $paidGsb = (int) $row->paid_gsb_paise;
+            $paidPoints = (int) $row->paid_msb_points;
+
+            $steps[] = sprintf(
+                'Backfilled over the reservation: ADN %s, %s — reserved %s GSB and %d MSB point(s), paid %s and %d point(s). '
+                ."That day's pool figures were exceeded by %s and %d MSB point(s); the client should be told.",
+                $adn,
+                $row->cutoff_date->format('d M Y'),
+                IndianNumber::rupees($row->reserved_gsb_paise),
+                $row->reserved_msb_points,
+                IndianNumber::rupees($paidGsb),
+                $paidPoints,
+                IndianNumber::rupees(max(0, $paidGsb - $row->reserved_gsb_paise)),
+                max(0, $paidPoints - $row->reserved_msb_points),
+            );
+        }
+
+        $steps[] = 'Nothing to re-run: the credit stands. The audit log holds each one as gsb.cutoff.backfill_exceeds_reservation (R-113).';
+
+        $oldest = $rows->first()->cutoff_date;
+
+        return [[
+            'kind' => 'over_reservation',
+            'engine' => 'GSB daily cut-off',
+            'key' => 'gsb.daily-cutoff',
+            'headline' => sprintf('%d deferred GSB cut-off(s) backfilled over the reservation', $rows->count()),
+            'period' => $oldest->format('d M Y'),
+            'period_value' => $oldest->toDateString(),
+            'count' => $rows->count(),
+            'oldest' => $oldest->format('d M Y'),
+            'adns' => array_map(strval(...), array_keys($adns)),
+            'ages' => [],
+            'steps' => $steps,
+        ]];
+    }
+
+    /**
+     * Every open deferred GSB cut-off (E5 redesign), grouped as one item.
+     *
+     * No time window: the deferral table is durable, so an owed day is in the
+     * digest every morning until a backfill or a --force by-name run resolves
+     * it. ADNs and ids only — never names or contact details.
+     *
+     * @return list<DeferredCutoffsItem>
+     */
+    private function openDeferredCutoffs(Carbon $now): array
+    {
+        $rows = GsbCutoffDeferral::open()
+            ->join('distributors', 'distributors.id', '=', 'gsb_cutoff_deferrals.distributor_id')
+            ->orderBy('gsb_cutoff_deferrals.cutoff_date')
+            ->orderBy('gsb_cutoff_deferrals.distributor_id')
+            ->get(['gsb_cutoff_deferrals.*', 'distributors.adn', 'distributors.status as distributor_status']);
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $today = $now->copy()->startOfDay();
+        $oldest = $rows->first()->cutoff_date;
+        $ages = [];
+        $adns = [];
+        $inactive = [];
+        $closedMonthDays = [];
+
+        foreach ($rows as $row) {
+            $adn = (string) $row->getAttribute('adn');
+            $age = (int) $row->cutoff_date->copy()->startOfDay()->diffInDays($today);
+
+            $adns[$adn] = true;
+            $ages[$adn] = max($ages[$adn] ?? 0, $age);
+
+            if ($row->getAttribute('distributor_status') !== 'active') {
+                $inactive[$adn] = true;
+            }
+
+            // The monthly engines close a month on the 1st of the next.
+            if ($row->cutoff_date->copy()->startOfMonth()->lt($today->copy()->startOfMonth())) {
+                $closedMonthDays[$row->cutoff_date->format('d M Y')] = true;
+            }
+        }
+
+        $adnList = array_map(strval(...), array_keys($adns));
+        $oldestAge = (int) $oldest->copy()->startOfDay()->diffInDays($today);
+
+        $steps = [
+            'Nothing to run: the next nightly cut-off backfills each one automatically the first night the distributor evaluates cleanly, paid at that day\'s frozen pool value.',
+            sprintf('Open each distributor (ADN %s) and fix what the evaluation tripped on — the exception class is on the Repurchase Evaluation run\'s summary on Engine Runs.', implode(', ', $adnList)),
+        ];
+
+        foreach ($ages as $adn => $age) {
+            if ($age >= self::DEFERRAL_AGEING_DAYS) {
+                $steps[] = sprintf(
+                    'ADN %s has waited %d days: check the distributor is still active (an inactive distributor is never backfilled — decide whether to reactivate them or have the developer write the day off with gsb:write-off-deferral, which is audited).%s',
+                    $adn,
+                    $age,
+                    isset($inactive[$adn]) ? ' They are inactive now.' : '',
+                );
+            }
+        }
+
+        foreach (array_keys($closedMonthDays) as $day) {
+            $steps[] = "A backfill for {$day} credits a month whose figures have moved; the weekly payout picks the credit up on its next Tuesday.";
+        }
+
+        return [[
+            'kind' => 'open',
+            'engine' => 'GSB daily cut-off',
+            'key' => 'gsb.daily-cutoff',
+            'headline' => sprintf(
+                '%d deferred GSB cut-off(s) waiting on a fixed repurchase evaluation — oldest %s (%d days)',
+                $rows->count(),
+                $oldest->format('d M Y'),
+                $oldestAge,
+            ),
+            'period' => $oldest->format('d M Y'),
+            'period_value' => $oldest->toDateString(),
+            'count' => $rows->count(),
+            'oldest' => $oldest->format('d M Y'),
+            'adns' => $adnList,
+            'ages' => $ages,
+            'steps' => $steps,
+        ]];
     }
 
     /**

@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 use App\Modules\Compensation\Exceptions\CutoffReplayedOutOfOrder;
 use App\Modules\Compensation\Exceptions\ReversalCreditAlreadyPaid;
 use App\Modules\Compensation\Exceptions\ReversalRequestStale;
+use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbReversalRequest;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -88,6 +89,46 @@ final class AdminManualControlsController extends Controller
         $date = Carbon::parse((string) $request->input('date'));
         $reason = $request->input('reason');
         $ip = $request->ip();
+
+        // An owed (deferred) cut-off on or before this date belongs to the next
+        // nightly run's backfill. Settling it here would leave the deferral
+        // open, and settling a LATER day would advance the carry-forward store
+        // past it and lose it for good (E5, H1).
+        $owed = GsbCutoffDeferral::open()
+            ->where('distributor_id', $distributor->id)
+            ->whereDate('cutoff_date', '<=', $date->toDateString())
+            ->orderBy('cutoff_date')
+            ->first();
+
+        if ($owed !== null) {
+            $refusal = sprintf(
+                'ADN %s has a deferred cut-off for %s that the next nightly run backfills automatically, at that '
+                ."day's frozen pool value. Retry cannot run %s before it. Fix what the repurchase evaluation "
+                .'tripped on; to settle it sooner, ask the developer to re-evaluate the distributor by name and '
+                .'run that day with --force.',
+                $distributor->adn,
+                $owed->cutoff_date->format('d M Y'),
+                $date->format('d M Y'),
+            );
+
+            AuditLog::create([
+                'actor_id' => auth()->id(),
+                'action' => 'compensation.cutoff.manual_retry_refused',
+                'subject_type' => 'distributor',
+                'subject_id' => $distributor->id,
+                'before_hash' => null,
+                'after_hash' => null,
+                'details' => [
+                    'adn' => $distributor->adn,
+                    'date' => $date->toDateString(),
+                    'reason' => $reason,
+                    'refusal' => $refusal,
+                ],
+                'ip' => $ip,
+            ]);
+
+            return back()->withInput()->with('error', $refusal);
+        }
 
         try {
             $result = DB::transaction(function () use ($distributor, $date, $reason, $ip) {

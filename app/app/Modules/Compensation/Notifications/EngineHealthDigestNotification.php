@@ -114,6 +114,21 @@ final class EngineHealthDigestNotification extends Notification implements Shoul
             }
         }
 
+        if ($this->report->deferredCutoffs !== []) {
+            $mail->line('**Deferred GSB cut-offs**');
+
+            foreach ($this->report->deferredCutoffs as $item) {
+                $position++;
+                $mail->line(sprintf(
+                    '**%d. %s** (ADN %s)',
+                    $position,
+                    $item['headline'],
+                    implode(', ', $item['adns']),
+                ));
+                $this->appendSteps($mail, $item['steps']);
+            }
+        }
+
         return $mail
             ->action('Open Engine Runs', $this->engineRunsUrl)
             ->line('A re-run never credits anybody twice: every engine only fills what the failed run left empty, and every trigger is audit-logged with your name and reason.')

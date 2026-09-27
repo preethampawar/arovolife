@@ -60,11 +60,21 @@ final class GsbPersonalBvTopupService
      * applies exactly these orders via $onlyOrderIds, so an order paid between
      * the two passes never desyncs the settled BV from the computed slab.
      *
+     * $excludeOrderIds withholds orders an earlier, not yet settled, day would
+     * already have spent — the full cut-off's in-memory chain of owed days.
+     *
+     * @param  list<int>  $excludeOrderIds
      * @return array{order_ids: list<int>, bv_paise: int}
      */
-    public function pendingPlanForDistributor(int $distributorId, Carbon $cutoffDate): array
+    public function pendingPlanForDistributor(int $distributorId, Carbon $cutoffDate, array $excludeOrderIds = []): array
     {
         $accruals = $this->pendingAccruals($distributorId, $cutoffDate);
+
+        if ($excludeOrderIds !== []) {
+            $accruals = $accruals->reject(
+                fn (BvLedgerEntry $a) => in_array((int) $a->order_id, $excludeOrderIds, true)
+            )->values();
+        }
 
         return [
             'order_ids' => array_values($accruals->map(fn (BvLedgerEntry $a) => (int) $a->order_id)->all()),

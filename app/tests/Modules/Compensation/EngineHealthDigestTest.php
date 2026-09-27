@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Notifications\EngineHealthDigestNotification;
 use App\Modules\Compensation\Services\EngineHealthService;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\NightlyRunAlert;
 use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Carbon;
@@ -584,4 +586,101 @@ it('names the run in a skipped-night headline, and what its next night picks up'
         ->toContain('The Weekly Run never started — the previous one was still running')
         ->toContain('the next night builds any Tuesday this one would have');
     expect($text)->not->toContain('The chain never started');
+});
+
+it('lists open deferred cut-offs every morning until they are resolved', function (): void {
+    seedHealthyRuns();
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active', 'adn' => '100000077']);
+    GsbCutoffDeferral::create(['distributor_id' => $d->id, 'cutoff_date' => '2026-09-03', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED]);
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    $text = digestText(sentDigest());
+
+    expect($text)->toContain('deferred GSB cut-off')
+        ->and($text)->toContain('100000077')
+        ->and($text)->toContain('03 Sep 2026')
+        ->and($text)->toContain('backfills each one automatically')
+        ->and($text)->toContain('has waited 5 days');
+});
+
+it('says a backfill for a closed month moves that month\'s figures', function (): void {
+    seedHealthyRuns();
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active', 'adn' => '100000078']);
+    GsbCutoffDeferral::create(['distributor_id' => $d->id, 'cutoff_date' => '2026-08-30', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED]);
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    expect(digestText(sentDigest()))->toContain('A backfill for 30 Aug 2026 credits a month whose figures have moved');
+});
+
+it('stops listing a deferral once it is resolved', function (): void {
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active']);
+    GsbCutoffDeferral::create(['distributor_id' => $d->id, 'cutoff_date' => '2026-09-07', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED, 'resolved_at' => now(), 'resolution' => 'backfilled']);
+    seedHealthyRuns();
+
+    expect(app(EngineHealthService::class)->report(Carbon::now())->deferredCutoffs)->toBe([]);
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    Notification::assertNothingSent();
+});
+
+it('names a backfill that paid more than its night reserved, with the figures (N1)', function (): void {
+    seedHealthyRuns();
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active', 'adn' => '100000079']);
+    GsbCutoffDeferral::create([
+        'distributor_id' => $d->id, 'cutoff_date' => '2026-09-06', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+        'reserved_gsb_paise' => 0, 'reserved_msb_points' => 0,
+        'paid_gsb_paise' => 200_000, 'paid_msb_points' => 21,
+        'resolved_at' => now()->subHours(2), 'resolution' => GsbCutoffDeferral::RESOLUTION_BACKFILLED,
+        'exceeded_reservation_at' => now()->subHours(2),
+    ]);
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    expect(digestText(sentDigest()))
+        ->toContain('Backfilled over the reservation: ADN 100000079, 06 Sep 2026')
+        ->toContain('reserved ₹0.00 GSB and 0 MSB point(s), paid ₹2,000.00 and 21 point(s)')
+        ->toContain('exceeded by ₹2,000.00 and 21 MSB point(s); the client should be told');
+});
+
+it('stops naming an over-reservation backfill after a day', function (): void {
+    seedHealthyRuns();
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active']);
+    GsbCutoffDeferral::create([
+        'distributor_id' => $d->id, 'cutoff_date' => '2026-09-05', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+        'paid_gsb_paise' => 200_000, 'paid_msb_points' => 0,
+        'resolved_at' => now()->subDays(2), 'resolution' => GsbCutoffDeferral::RESOLUTION_BACKFILLED,
+        'exceeded_reservation_at' => now()->subDays(2),
+    ]);
+
+    expect(app(EngineHealthService::class)->report(Carbon::now())->deferredCutoffs)->toBe([]);
+});
+
+it('lists a superseded owed day for a week after it closed (M3)', function (): void {
+    seedHealthyRuns();
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active', 'adn' => '100000080']);
+    $old = Distributor::factory()->create(['status' => 'active', 'adn' => '100000081']);
+    GsbCutoffDeferral::create([
+        'distributor_id' => $d->id, 'cutoff_date' => '2026-09-02', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+        'resolved_at' => now()->subDays(3), 'resolution' => GsbCutoffDeferral::RESOLUTION_SUPERSEDED,
+    ]);
+    GsbCutoffDeferral::create([
+        'distributor_id' => $old->id, 'cutoff_date' => '2026-08-20', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+        'resolved_at' => now()->subDays(8), 'resolution' => GsbCutoffDeferral::RESOLUTION_SUPERSEDED,
+    ]);
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    expect(digestText(sentDigest()))
+        ->toContain('Superseded owed days — check the later row is right')
+        ->toContain('ADN 100000080, 02 Sep 2026')
+        ->not->toContain('100000081');
 });

@@ -333,3 +333,22 @@ it('never mutates the sponsee GSB row or the sponsor personal BV ledger', functi
     expect((int) BvLedgerEntry::where('distributor_id', $sponsor->id)->sum('bv_paise'))->toBe($bvBefore);
     expect((int) $cutoffResult->fresh()->gross_gsb_paise)->toBe(100_000);
 });
+
+it('reserves the slab\'s MSB points for a sponsee with an eligible sponsor', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+    giveSponsorMinBv($sponsor);
+
+    expect(app(MentorshipBonusService::class)->reservedPointsFor($sponsee->id, 3))->toBe(15);
+});
+
+it('reserves nothing when the sponsor is under the minimum BV or there is no sponsor', function () {
+    $sponsor = Distributor::factory()->create();
+    $sponsee = Distributor::factory()->create();
+    $orphan = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+
+    expect(app(MentorshipBonusService::class)->reservedPointsFor($sponsee->id, 3))->toBe(0)
+        ->and(app(MentorshipBonusService::class)->reservedPointsFor($orphan->id, 3))->toBe(0);
+});

@@ -65,6 +65,48 @@ final class MentorshipBonusService
             return null;
         }
 
+        $owed = $this->sponsorPointsFor($sponseeId, (int) $cutoffResult->slab);
+
+        if ($owed === null) {
+            return null;
+        }
+
+        [$sponsorId, $points] = $owed;
+
+        if ($this->existingCredit($sponseeId, $cutoffResult, $points) !== null) {
+            return null;
+        }
+
+        return new MsbAccrual(
+            sponsorId: $sponsorId,
+            sponseeId: $sponseeId,
+            slab: (int) $cutoffResult->slab,
+            points: $points,
+            sponseeGsbPaise: (int) $cutoffResult->gross_gsb_paise,
+            cutoffDate: $cutoffResult->cutoff_date->toDateString(),
+        );
+    }
+
+    /**
+     * The MSB points a sponsee's matched slab would earn their sponsor, from a
+     * computation rather than a credited row — what the full cut-off reserves
+     * in the day's denominator for a distributor whose settle it defers.
+     * 0 when the sponsee has no sponsor, the sponsor is under the min BV, or
+     * the slab carries no MSB points; the same gates accrueForSponsee() applies.
+     */
+    public function reservedPointsFor(int $sponseeId, int $slab): int
+    {
+        return $this->sponsorPointsFor($sponseeId, $slab)[1] ?? 0;
+    }
+
+    /**
+     * The sponsor and the points they are owed for the sponsee matching $slab,
+     * or null when any gate shuts it.
+     *
+     * @return array{0: int, 1: int}|null
+     */
+    private function sponsorPointsFor(int $sponseeId, int $slab): ?array
+    {
         // Look up the sponsee's sponsor.
         $sponsorId = DB::table('sponsorship')
             ->where('distributor_id', $sponseeId)
@@ -84,25 +126,14 @@ final class MentorshipBonusService
             return null;
         }
 
-        $slabRow = $this->plan->gsbSlab((int) $cutoffResult->slab);
-        $points = $slabRow['msb_score'] ?? 0;
+        $slabRow = $this->plan->gsbSlab($slab);
+        $points = (int) ($slabRow['msb_score'] ?? 0);
 
         if ($points <= 0) {
             return null;
         }
 
-        if ($this->existingCredit($sponseeId, $cutoffResult, $points) !== null) {
-            return null;
-        }
-
-        return new MsbAccrual(
-            sponsorId: (int) $sponsorId,
-            sponseeId: $sponseeId,
-            slab: (int) $cutoffResult->slab,
-            points: $points,
-            sponseeGsbPaise: (int) $cutoffResult->gross_gsb_paise,
-            cutoffDate: $cutoffResult->cutoff_date->toDateString(),
-        );
+        return [(int) $sponsorId, $points];
     }
 
     /**

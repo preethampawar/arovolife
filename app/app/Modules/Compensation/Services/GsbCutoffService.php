@@ -10,6 +10,7 @@ use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
+use App\Modules\Compensation\Services\DTOs\GsbCarryforwardSnapshot;
 use App\Modules\Compensation\Services\DTOs\GsbCutoffComputation;
 use App\Modules\Compensation\Services\DTOs\RepurchaseVerdict;
 use App\Modules\Identity\Models\Distributor;
@@ -110,8 +111,14 @@ final class GsbCutoffService
      * Pass 1 — pure computation, zero writes. Determines the distributor's
      * legs (CF-aware, rewound on re-run), simulates the conditional personal-BV
      * top-up, and matches a slab. All mutations are deferred to settle().
+     *
+     * $assumedStore replaces the carry-forward row with the store a chain of
+     * earlier pure computations would leave (E5 review N1): the full cut-off
+     * reserves a still-deferred distributor's day on top of the days they are
+     * owed. It also withholds the top-up orders those days would spend. Only
+     * valid for a date with no store-advancing row of its own.
      */
-    public function computeForDistributor(int $distributorId, Carbon $date): GsbCutoffComputation
+    public function computeForDistributor(int $distributorId, Carbon $date, ?GsbCarryforwardSnapshot $assumedStore = null): GsbCutoffComputation
     {
         // Idempotency: never double-credit.
         //
@@ -167,10 +174,20 @@ final class GsbCutoffService
         $rightToday = $dailyBv?->right_bv_paise ?? 0;
 
         // Carry-forward state, read into locals — settle() owns the row.
-        $cf = GsbCarryforward::where('distributor_id', $distributorId)->first();
-        $cfPower = $cf->power_side_bv_paise ?? 0;
-        $cfSlab1 = $cf->slab1_weaker_bv_paise ?? 0;
-        $cfSide = $cf->power_side ?? null;
+        if ($assumedStore !== null) {
+            if ($existing !== null && $existing->advancedCarryForward()) {
+                throw new \LogicException('An assumed store cannot be combined with a settled row for the same date');
+            }
+
+            $cfPower = $assumedStore->powerPaise;
+            $cfSlab1 = $assumedStore->slab1Paise;
+            $cfSide = $assumedStore->powerSide;
+        } else {
+            $cf = GsbCarryforward::where('distributor_id', $distributorId)->first();
+            $cfPower = $cf->power_side_bv_paise ?? 0;
+            $cfSlab1 = $cf->slab1_weaker_bv_paise ?? 0;
+            $cfSide = $cf->power_side ?? null;
+        }
 
         // Re-run of an already-processed date. The rolling CF store has already
         // absorbed this date's outcome, so recomputing against it would compound
@@ -295,7 +312,11 @@ final class GsbCutoffService
         $topupOrderIds = [];
         $minSlabMatched = $this->plan->gsbMinSlabMatchedBvPaise();
         if ($minSlabMatched > 0 && max($leftEffective, $rightEffective) >= $minSlabMatched) {
-            $plan = $this->topup->pendingPlanForDistributor($distributorId, $date);
+            $plan = $this->topup->pendingPlanForDistributor(
+                $distributorId,
+                $date,
+                $assumedStore->consumedTopupOrderIds ?? [],
+            );
 
             if ($plan['bv_paise'] > 0) {
                 $topupSide = $leftEffective < $rightEffective ? 'L' : 'R';

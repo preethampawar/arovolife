@@ -28,6 +28,13 @@ use Laravel\Pennant\Feature;
  * `forfeited` are the verdicts this run took — windows that closed while it
  * ran; `withheld` is the standing count of distributors whose current cycle is
  * suspended, which is the number that answers "who is not earning tonight".
+ *
+ * A distributor whose evaluation throws is skipped, not fatal (client decision
+ * 2026-09-27): they keep the previous run's verdict, the run carries on and
+ * succeeds, and tonight's GSB cut-off reserves their share and defers their
+ * day (GsbCutoffDeferral). Above the cap ({@see effectiveSkipCap()}), or when
+ * ten or more failures share one exception class, the run is a fault in
+ * itself — it then fails closed, as every partial run did before.
  */
 final class RepurchaseEvaluateCommand extends Command
 {
@@ -35,11 +42,26 @@ final class RepurchaseEvaluateCommand extends Command
     public const OUTCOME_COMPLETED = 'completed';
 
     /**
-     * The run finished, but at least one distributor threw and still carries
-     * the previous run's verdict. Recorded — and exited — as a failure: the
-     * cut-off must not price a day against a verdict nobody refreshed.
+     * The run finished; up to the cap of distributors threw and keep the
+     * previous run's verdict. Exited 0 — the cut-off runs for everyone else and
+     * defers their day (client decision 2026-09-27).
+     */
+    public const OUTCOME_COMPLETED_WITH_SKIPS = 'completed_with_skips';
+
+    /**
+     * More than the cap threw: a fault in the run, not in the data. Recorded —
+     * and exited — as a failure, as before.
      */
     public const OUTCOME_FAILED_PARTIAL = 'failed_partial';
+
+    /**
+     * Failures sharing one exception class at or above this count fail the run
+     * closed whatever the cap: that shape is a fault in the run.
+     */
+    private const SINGLE_CLASS_FLOOR = 10;
+
+    /** The skip cap never drops below this, however small the roster. */
+    private const SKIP_CAP_FLOOR = 10;
 
     /** Cap on the ADNs named in the summary; the log has them all. */
     private const MAX_REPORTED_FAILURES = 50;
@@ -160,8 +182,9 @@ final class RepurchaseEvaluateCommand extends Command
                     // One distributor's data problem must not cost the other N their
                     // evaluation: the cut-off reads the verdict this writes, and a run
                     // abandoned half way would leave every distributor after the
-                    // throwing one judged on yesterday's state. Collect and carry on;
-                    // the failure count is what the run's verdict rests on.
+                    // throwing one judged on yesterday's state. Collect and carry on:
+                    // up to the skip cap they are skipped and the run succeeds
+                    // (client decision 2026-09-27); above it the run fails closed.
                     try {
                         $cycle = $this->cycles->evaluate((int) $distributorId, $asOf);
                         $evaluated++;
@@ -192,12 +215,21 @@ final class RepurchaseEvaluateCommand extends Command
         }, 'id');
 
         $failed = count($failedIds);
+        $cap = self::effectiveSkipCap($evaluated + $failed);
+
+        // Ten or more failures that all share one exception class are one
+        // fault in the run (a dropped connection, a bad deploy), not ten
+        // distributors' bad data — however far under the cap they are.
+        $singleClass = $failed >= self::SINGLE_CLASS_FLOOR && count($failureClasses) === 1;
+        $withinCap = $failed <= $cap && ! $singleClass;
         $verdicts = $this->verdictsTakenSince($startedAt);
         $fulfilled = $verdicts[RepurchaseCycle::STATUS_COMPLETED];
         $forfeited = $verdicts[RepurchaseCycle::STATUS_SUSPENDED];
 
         $this->recordRunSummary([
-            'outcome' => $failed > 0 ? self::OUTCOME_FAILED_PARTIAL : self::OUTCOME_COMPLETED,
+            'outcome' => $failed === 0
+                ? self::OUTCOME_COMPLETED
+                : ($withinCap ? self::OUTCOME_COMPLETED_WITH_SKIPS : self::OUTCOME_FAILED_PARTIAL),
             'as_of' => $asOf->toDateString(),
             'evaluated' => $evaluated,
             'fulfilled' => $fulfilled,
@@ -206,29 +238,79 @@ final class RepurchaseEvaluateCommand extends Command
             'no_cycle' => $noCycle,
             'failed' => $failed,
             'failed_adns' => $this->adnsFor($failedIds),
+            'failed_distributor_ids' => array_slice($failedIds, 0, $cap),
+            'skip_cap' => $cap,
             'failure_classes' => array_keys($failureClasses),
-            'reason' => $failed > 0
-                ? sprintf(
-                    'Evaluated %d distributor(s) as of %s; %d could not be evaluated and still carry the '
-                        .'previous run\'s verdict. The GSB cut-off refuses until every one of them is fixed '
-                        .'and the evaluation re-run.',
-                    $evaluated,
-                    $asOf->toDateString(),
-                    $failed,
-                )
-                : sprintf(
+            'reason' => match (true) {
+                $failed === 0 => sprintf(
                     'Evaluated %d distributor(s) as of %s with no failures.',
                     $evaluated,
                     $asOf->toDateString(),
                 ),
+                $withinCap => sprintf(
+                    'Evaluated %d distributor(s) as of %s; %d could not be evaluated and were skipped — they keep the '
+                        ."previous run's verdict, and tonight's GSB cut-off reserves their share and defers their day. "
+                        .'The first full cut-off after they evaluate cleanly backfills it.',
+                    $evaluated,
+                    $asOf->toDateString(),
+                    $failed,
+                ),
+                $cap === 0 => sprintf(
+                    'Evaluated %d distributor(s) as of %s; %d could not be evaluated. Skip-and-continue is off (the '
+                        .'skip cap is 0), so any failure fails the run. The GSB cut-off refuses until it is fixed and '
+                        .'the evaluation re-run.',
+                    $evaluated,
+                    $asOf->toDateString(),
+                    $failed,
+                ),
+                $singleClass => sprintf(
+                    'Evaluated %d distributor(s) as of %s; %d could not be evaluated and every failure is the same class '
+                        .'(%s) — a fault in the run, not in the data. The GSB cut-off refuses until it is fixed and the '
+                        .'evaluation re-run.',
+                    $evaluated,
+                    $asOf->toDateString(),
+                    $failed,
+                    (string) array_key_first($failureClasses),
+                ),
+                default => sprintf(
+                    'Evaluated %d distributor(s) as of %s; %d could not be evaluated — more than the %d the run may skip, '
+                        .'so this is a fault in the run, not in the data. The GSB cut-off refuses until it is fixed and the '
+                        .'evaluation re-run.',
+                    $evaluated,
+                    $asOf->toDateString(),
+                    $failed,
+                    $cap,
+                ),
+            },
         ]);
 
         $this->info(
             "Done — evaluated: {$evaluated}, fulfilled: {$fulfilled}, forfeited: {$forfeited}, "
             ."withheld: {$withheld}, failed: {$failed}"
+            .($failed > 0 && $withinCap ? ", skipped: {$failed}" : '')
         );
 
-        return $failed > 0 ? self::FAILURE : self::SUCCESS;
+        return $withinCap ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * How many throwing distributors a run over $lookedAt may skip: the
+     * smaller of the configured cap and 1% of the roster it looked at, never
+     * below ten. A flat cap larger than the network would let a systemic fault
+     * pass as a handful of bad rows.
+     *
+     * A configured 0 turns skip-and-continue off (L2): the cap is 0, so the
+     * first failure fails the run closed, as before E5.
+     */
+    public static function effectiveSkipCap(int $lookedAt): int
+    {
+        $configured = max(0, (int) config('arovolife.compensation.evaluate_skip_cap', 500));
+
+        if ($configured === 0) {
+            return 0;
+        }
+
+        return max(self::SKIP_CAP_FLOOR, min($configured, intdiv(max(0, $lookedAt), 100)));
     }
 
     /**
