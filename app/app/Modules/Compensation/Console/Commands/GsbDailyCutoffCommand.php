@@ -20,6 +20,7 @@ use App\Modules\Compensation\Services\MsbDailyPoolService;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\OpenMonthGuard;
 use App\Modules\Compensation\Support\RunPrerequisites;
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
@@ -834,6 +835,9 @@ final class GsbDailyCutoffCommand extends Command
                 continue;
             }
 
+            $paidGross = $result->status === GsbCutoffResult::STATUS_CREDITED ? (int) $result->gross_gsb_paise : 0;
+            $paidPoints = 0;
+
             // The GSB day is settled whatever MB does next; an MB failure is
             // logged as one, exactly as on the nightly path.
             if ($result->status === GsbCutoffResult::STATUS_CREDITED && $mentorshipActive) {
@@ -841,6 +845,7 @@ final class GsbDailyCutoffCommand extends Command
                     $accrual = $this->mentorship->accrueForSponsee($distributorId, $result);
 
                     if ($accrual !== null) {
+                        $paidPoints = $accrual->points;
                         $this->mentorship->creditAccrual($accrual, $this->msbPoolService->poolForDate($day));
                     }
                 } catch (\Throwable $e) {
@@ -853,15 +858,59 @@ final class GsbDailyCutoffCommand extends Command
                 }
             }
 
+            $exceeded = $paidGross > $deferral->reserved_gsb_paise || $paidPoints > $deferral->reserved_msb_points;
+
             $deferral->update([
                 'resolved_at' => Carbon::now(),
                 'resolution' => GsbCutoffDeferral::RESOLUTION_BACKFILLED,
                 'gsb_cutoff_result_id' => $result->id,
+                'paid_gsb_paise' => $paidGross,
+                'paid_msb_points' => $paidPoints,
+                'exceeded_reservation_at' => $exceeded ? Carbon::now() : null,
             ]);
+
+            if ($exceeded) {
+                $this->recordBackfillExcess($deferral, $paidGross, $paidPoints);
+            }
+
             $settled++;
         }
 
         return ['settled' => $settled, 'failed' => $failed, 'left_open' => $leftOpen];
+    }
+
+    /**
+     * The backfill paid more than the deferring night reserved — a title
+     * crossed, a sponsor crossing the MB minimum, a reversal, or a computation
+     * that threw and reserved nothing (R-113). The excess is real money out of
+     * the day's leftover, or on top of the priced pool: an audit row and a
+     * warning, and the next digest lists it.
+     */
+    private function recordBackfillExcess(GsbCutoffDeferral $deferral, int $paidGross, int $paidPoints): void
+    {
+        $details = [
+            'distributor_id' => $deferral->distributor_id,
+            'adn' => (string) Distributor::whereKey($deferral->distributor_id)->value('adn'),
+            'cutoff_date' => $deferral->cutoff_date->toDateString(),
+            'reserved_gsb_paise' => $deferral->reserved_gsb_paise,
+            'paid_gsb_paise' => $paidGross,
+            'reserved_msb_points' => $deferral->reserved_msb_points,
+            'paid_msb_points' => $paidPoints,
+            'delta_gsb_paise' => $paidGross - $deferral->reserved_gsb_paise,
+            'delta_msb_points' => $paidPoints - $deferral->reserved_msb_points,
+        ];
+
+        Log::warning('gsb.cutoff.backfill_exceeds_reservation', $details);
+
+        AuditLog::create([
+            'actor_id' => null,
+            'action' => 'gsb.cutoff.backfill_exceeds_reservation',
+            'subject_type' => 'gsb_cutoff_deferral',
+            'subject_id' => $deferral->id,
+            'before_hash' => null,
+            'after_hash' => null,
+            'details' => $details,
+        ]);
     }
 
     /**

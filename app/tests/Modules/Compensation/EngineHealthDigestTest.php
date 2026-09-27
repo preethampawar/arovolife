@@ -628,3 +628,37 @@ it('stops listing a deferral once it is resolved', function (): void {
 
     Notification::assertNothingSent();
 });
+
+it('names a backfill that paid more than its night reserved, with the figures (N1)', function (): void {
+    seedHealthyRuns();
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active', 'adn' => '100000079']);
+    GsbCutoffDeferral::create([
+        'distributor_id' => $d->id, 'cutoff_date' => '2026-09-06', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+        'reserved_gsb_paise' => 0, 'reserved_msb_points' => 0,
+        'paid_gsb_paise' => 200_000, 'paid_msb_points' => 21,
+        'resolved_at' => now()->subHours(2), 'resolution' => GsbCutoffDeferral::RESOLUTION_BACKFILLED,
+        'exceeded_reservation_at' => now()->subHours(2),
+    ]);
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    expect(digestText(sentDigest()))
+        ->toContain('Backfilled over the reservation: ADN 100000079, 06 Sep 2026')
+        ->toContain('reserved ₹0.00 GSB and 0 MSB point(s), paid ₹2,000.00 and 21 point(s)')
+        ->toContain('exceeded by ₹2,000.00 and 21 MSB point(s); the client should be told');
+});
+
+it('stops naming an over-reservation backfill after a day', function (): void {
+    seedHealthyRuns();
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active']);
+    GsbCutoffDeferral::create([
+        'distributor_id' => $d->id, 'cutoff_date' => '2026-09-05', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+        'paid_gsb_paise' => 200_000, 'paid_msb_points' => 0,
+        'resolved_at' => now()->subDays(2), 'resolution' => GsbCutoffDeferral::RESOLUTION_BACKFILLED,
+        'exceeded_reservation_at' => now()->subDays(2),
+    ]);
+
+    expect(app(EngineHealthService::class)->report(Carbon::now())->deferredCutoffs)->toBe([]);
+});

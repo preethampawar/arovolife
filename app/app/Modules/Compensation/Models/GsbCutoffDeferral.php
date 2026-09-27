@@ -25,6 +25,9 @@ use Illuminate\Support\Carbon;
  * @property int|null $reserved_slab
  * @property int $reserved_gsb_paise
  * @property int $reserved_msb_points
+ * @property int|null $paid_gsb_paise
+ * @property int|null $paid_msb_points
+ * @property Carbon|null $exceeded_reservation_at
  * @property Carbon|null $resolved_at
  * @property string|null $resolution
  * @property int|null $gsb_cutoff_result_id
@@ -47,6 +50,7 @@ final class GsbCutoffDeferral extends Model
     protected $fillable = [
         'distributor_id', 'cutoff_date', 'cause', 'evaluate_run_id',
         'reserved_slab', 'reserved_gsb_paise', 'reserved_msb_points',
+        'paid_gsb_paise', 'paid_msb_points', 'exceeded_reservation_at',
         'resolved_at', 'resolution', 'gsb_cutoff_result_id',
     ];
 
@@ -59,6 +63,9 @@ final class GsbCutoffDeferral extends Model
             'reserved_slab' => 'integer',
             'reserved_gsb_paise' => 'integer',
             'reserved_msb_points' => 'integer',
+            'paid_gsb_paise' => 'integer',
+            'paid_msb_points' => 'integer',
+            'exceeded_reservation_at' => 'datetime',
             'resolved_at' => 'datetime',
             'gsb_cutoff_result_id' => 'integer',
         ];
@@ -71,6 +78,17 @@ final class GsbCutoffDeferral extends Model
     public function scopeOpen(Builder $query): Builder
     {
         return $query->whereNull('resolved_at');
+    }
+
+    /**
+     * Backfilled on or after $since for more than the deferring night reserved.
+     *
+     * @param  Builder<GsbCutoffDeferral>  $query
+     * @return Builder<GsbCutoffDeferral>
+     */
+    public function scopeExceededSince(Builder $query, Carbon $since): Builder
+    {
+        return $query->where('exceeded_reservation_at', '>=', $since);
     }
 
     /** @return BelongsTo<Distributor, $this> */

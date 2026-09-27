@@ -14,6 +14,7 @@ use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
 use App\Modules\Compensation\Support\NightlyRunAlert;
 use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -441,6 +442,81 @@ final class EngineHealthService
     }
 
     /**
+     * The deferred-cut-offs bucket: the open owed days, then any backfill that
+     * paid more than its night reserved (E5 review N1).
+     *
+     * @return list<DeferredCutoffsItem>
+     */
+    private function deferredCutoffs(Carbon $now): array
+    {
+        return [
+            ...$this->openDeferredCutoffs($now),
+            ...$this->backfillsOverReservation($now),
+        ];
+    }
+
+    /**
+     * Every deferral backfilled in the last 24 hours for more than the
+     * deferring night reserved, grouped as one item. The excess was paid out of
+     * the day's leftover or, when that was short, on top of the priced pool —
+     * real money, so it is named with the figures and never left to the log.
+     *
+     * @return list<DeferredCutoffsItem>
+     */
+    private function backfillsOverReservation(Carbon $now): array
+    {
+        $rows = GsbCutoffDeferral::exceededSince($now->copy()->subDay())
+            ->join('distributors', 'distributors.id', '=', 'gsb_cutoff_deferrals.distributor_id')
+            ->orderBy('gsb_cutoff_deferrals.cutoff_date')
+            ->orderBy('gsb_cutoff_deferrals.distributor_id')
+            ->get(['gsb_cutoff_deferrals.*', 'distributors.adn']);
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $adns = [];
+        $steps = [];
+
+        foreach ($rows as $row) {
+            $adn = (string) $row->getAttribute('adn');
+            $adns[$adn] = true;
+            $paidGsb = (int) $row->paid_gsb_paise;
+            $paidPoints = (int) $row->paid_msb_points;
+
+            $steps[] = sprintf(
+                'Backfilled over the reservation: ADN %s, %s — reserved %s GSB and %d MSB point(s), paid %s and %d point(s). '
+                ."That day's pool figures were exceeded by %s and %d MSB point(s); the client should be told.",
+                $adn,
+                $row->cutoff_date->format('d M Y'),
+                IndianNumber::rupees($row->reserved_gsb_paise),
+                $row->reserved_msb_points,
+                IndianNumber::rupees($paidGsb),
+                $paidPoints,
+                IndianNumber::rupees(max(0, $paidGsb - $row->reserved_gsb_paise)),
+                max(0, $paidPoints - $row->reserved_msb_points),
+            );
+        }
+
+        $steps[] = 'Nothing to re-run: the credit stands. The audit log holds each one as gsb.cutoff.backfill_exceeds_reservation (R-113).';
+
+        $oldest = $rows->first()->cutoff_date;
+
+        return [[
+            'engine' => 'GSB daily cut-off',
+            'key' => 'gsb.daily-cutoff',
+            'headline' => sprintf('%d deferred GSB cut-off(s) backfilled over the reservation', $rows->count()),
+            'period' => $oldest->format('d M Y'),
+            'period_value' => $oldest->toDateString(),
+            'count' => $rows->count(),
+            'oldest' => $oldest->format('d M Y'),
+            'adns' => array_map(strval(...), array_keys($adns)),
+            'ages' => [],
+            'steps' => $steps,
+        ]];
+    }
+
+    /**
      * Every open deferred GSB cut-off (E5 redesign), grouped as one item.
      *
      * No time window: the deferral table is durable, so an owed day is in the
@@ -449,7 +525,7 @@ final class EngineHealthService
      *
      * @return list<DeferredCutoffsItem>
      */
-    private function deferredCutoffs(Carbon $now): array
+    private function openDeferredCutoffs(Carbon $now): array
     {
         $rows = GsbCutoffDeferral::open()
             ->join('distributors', 'distributors.id', '=', 'gsb_cutoff_deferrals.distributor_id')

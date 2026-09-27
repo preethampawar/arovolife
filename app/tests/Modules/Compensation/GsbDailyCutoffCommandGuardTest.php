@@ -14,6 +14,7 @@ use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Support\EngineRegistry;
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
@@ -619,4 +620,68 @@ it('reserves a still-deferred day on top of the days the distributor is owed (N1
         ])
         ->and($rows[1]->gross_gsb_paise)->toBe($d26->reserved_gsb_paise)
         ->and(GsbDailyPool::whereDate('cutoff_date', '2026-08-26')->sole()->leftover_paise)->toBe($pool26->leftover_paise);
+});
+
+it('records a backfill that pays more than the night reserved, in the row, the audit log and the log (N1)', function (): void {
+    // The deferring night saw no group BV for the achiever and reserved nothing;
+    // BV arriving for that day afterwards makes the fresh backfill match slab 1.
+    Carbon::setTestNow('2026-08-27 00:30:00');
+    activateDeferralFeatures();
+    seedDeferralCompanyBv(['2026-08-25', '2026-08-26']);
+    [$achiever] = seedLeggedAchiever(['2026-08-25' => [0, 0]]);
+
+    seedEvaluateRunWithDeferrals('2026-08-26', [$achiever->id], [$achiever->adn]);
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(0);
+
+    $deferral = GsbCutoffDeferral::where('distributor_id', $achiever->id)->sole();
+    expect($deferral->reserved_slab)->toBeNull()
+        ->and($deferral->reserved_gsb_paise)->toBe(0)
+        ->and($deferral->reserved_msb_points)->toBe(0);
+
+    GroupBvDaily::where('distributor_id', $achiever->id)->whereDate('date', '2026-08-25')
+        ->update(['left_bv_paise' => 1_600_000, 'right_bv_paise' => 1_600_000]);
+
+    Log::spy();
+    seedEvaluateRun('2026-08-27', '2026-08-27 00:05:00');
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-26']))->toBe(0);
+
+    $deferral->refresh();
+    $points = (int) MentorshipBonusResult::where('sponsee_id', $achiever->id)->value('msb_points');
+
+    expect($points)->toBeGreaterThan(0)
+        ->and($deferral->resolution)->toBe(GsbCutoffDeferral::RESOLUTION_BACKFILLED)
+        ->and($deferral->paid_gsb_paise)->toBe(200_000)
+        ->and($deferral->paid_msb_points)->toBe($points)
+        ->and($deferral->exceeded_reservation_at)->not->toBeNull();
+
+    $audit = AuditLog::where('action', 'gsb.cutoff.backfill_exceeds_reservation')->sole();
+    expect($audit->details)->toMatchArray([
+        'distributor_id' => $achiever->id,
+        'adn' => $achiever->adn,
+        'cutoff_date' => '2026-08-25',
+        'reserved_gsb_paise' => 0,
+        'paid_gsb_paise' => 200_000,
+        'reserved_msb_points' => 0,
+        'paid_msb_points' => $points,
+        'delta_gsb_paise' => 200_000,
+        'delta_msb_points' => $points,
+    ]);
+
+    Log::shouldHaveReceived('warning')
+        ->withArgs(fn (string $message, array $context = []): bool => $message === 'gsb.cutoff.backfill_exceeds_reservation'
+            && $context['delta_gsb_paise'] === 200_000)
+        ->once();
+});
+
+it('records what a backfill paid without flagging it when it stays inside the reservation', function (): void {
+    $achiever = deferAchieverOn25th();
+    seedEvaluateRun('2026-08-27', '2026-08-27 00:05:00');
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-26']))->toBe(0);
+
+    $deferral = GsbCutoffDeferral::where('distributor_id', $achiever->id)->sole();
+    expect($deferral->paid_gsb_paise)->toBe($deferral->reserved_gsb_paise)
+        ->and($deferral->paid_msb_points)->toBe($deferral->reserved_msb_points)
+        ->and($deferral->exceeded_reservation_at)->toBeNull()
+        ->and(AuditLog::where('action', 'gsb.cutoff.backfill_exceeds_reservation')->exists())->toBeFalse();
 });
