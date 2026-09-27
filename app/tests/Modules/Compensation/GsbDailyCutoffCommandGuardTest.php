@@ -436,3 +436,110 @@ it('writes the deferral even when pool pricing is off', function (): void {
         ->and(GsbCutoffResult::where('distributor_id', $d->id)->exists())->toBeFalse()
         ->and(GsbDailyPool::count())->toBe(0);
 });
+
+/**
+ * The night of 26 Aug: the achiever's evaluation threw, so the 25 Aug full
+ * cut-off deferred them. Group BV and company BV exist for 25 and 26 Aug.
+ */
+function deferAchieverOn25th(): Distributor
+{
+    Carbon::setTestNow('2026-08-27 00:30:00');
+    activateDeferralFeatures();
+
+    seedDeferralCompanyBv(['2026-08-25', '2026-08-26']);
+    [$achiever] = seedDeferralAchiever(3, ['2026-08-25', '2026-08-26']);
+    seedEvaluateRunWithDeferrals('2026-08-26', [$achiever->id], [$achiever->adn]);
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(0);
+    expect(GsbCutoffDeferral::open()->where('distributor_id', $achiever->id)->count())->toBe(1);
+
+    return $achiever;
+}
+
+it('backfills an open deferral before computing the new day, and advances the store in order', function (): void {
+    $achiever = deferAchieverOn25th();
+    seedEvaluateRun('2026-08-27', '2026-08-27 00:05:00');   // clean run, no failed ids
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-26']))->toBe(0)
+        ->and(Artisan::output())->toContain('Backfilled 1 deferred cut-off(s)');
+
+    $deferral = GsbCutoffDeferral::where('distributor_id', $achiever->id)->sole();
+    expect($deferral->resolution)->toBe(GsbCutoffDeferral::RESOLUTION_BACKFILLED)
+        ->and($deferral->gsb_cutoff_result_id)->not->toBeNull();
+
+    $rows = GsbCutoffResult::where('distributor_id', $achiever->id)->orderBy('cutoff_date')->orderBy('id')->get();
+    expect($rows->map(fn (GsbCutoffResult $r): string => $r->cutoff_date->toDateString())->all())->toBe(['2026-08-25', '2026-08-26'])
+        ->and($rows->pluck('status')->unique()->all())->toBe([GsbCutoffResult::STATUS_CREDITED])
+        ->and($rows->first()->id)->toBe($deferral->gsb_cutoff_result_id);
+
+    // Paid at the frozen 25 Aug value, not recomputed.
+    expect($rows->first()->score_value_paise)
+        ->toBe(GsbDailyPool::whereDate('cutoff_date', '2026-08-25')->sole()->variable_score_value_paise);
+
+    // The sponsor's MB for the 25th is credited at that day's frozen point value.
+    $msb25 = MsbDailyPool::whereDate('cutoff_date', '2026-08-25')->sole();
+    $mb = MentorshipBonusResult::where('sponsee_id', $achiever->id)->whereDate('cutoff_date', '2026-08-25')->sole();
+    expect($mb->msb_points)->toBe(15)
+        ->and($mb->msb_point_value_paise)->toBe($msb25->point_value_paise);
+});
+
+it('keeps a deferral open while the distributor still fails evaluation, and adds one for the new day', function (): void {
+    $achiever = deferAchieverOn25th();
+    seedEvaluateRunWithDeferrals('2026-08-27', [$achiever->id], [$achiever->adn]);
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-26']))->toBe(0);
+
+    expect(GsbCutoffDeferral::open()->where('distributor_id', $achiever->id)->orderBy('cutoff_date')->get()
+        ->map(fn (GsbCutoffDeferral $d): string => $d->cutoff_date->toDateString())->all())
+        ->toBe(['2026-08-25', '2026-08-26'])
+        ->and(GsbCutoffResult::where('distributor_id', $achiever->id)->exists())->toBeFalse();
+
+    // Both are backfilled oldest-first the first night they evaluate cleanly.
+    seedEvaluateRun('2026-08-28', '2026-08-28 00:05:00');
+    Carbon::setTestNow('2026-08-28 00:30:00');
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-27']))->toBe(0);
+    expect(GsbCutoffDeferral::open()->count())->toBe(0)
+        ->and(GsbCutoffResult::where('distributor_id', $achiever->id)->orderBy('cutoff_date')->get()
+            ->map(fn (GsbCutoffResult $r): string => $r->cutoff_date->toDateString())->all())
+        ->toBe(['2026-08-25', '2026-08-26', '2026-08-27']);
+});
+
+it('never backfills an inactive distributor, and leaves the row open', function (): void {
+    $achiever = deferAchieverOn25th();
+    $achiever->update(['status' => 'inactive']);
+    seedEvaluateRun('2026-08-27', '2026-08-27 00:05:00');
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-26']))->toBe(0);
+    expect(GsbCutoffDeferral::open()->count())->toBe(1)
+        ->and(GsbCutoffResult::where('distributor_id', $achiever->id)->exists())->toBeFalse();
+});
+
+it('refuses a by-name run of a deferred day without --force, and resolves it as manual with it', function (): void {
+    $achiever = deferAchieverOn25th();
+
+    // A later day by name would overtake the owed one: refused even with --force.
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-26', '--distributor' => (string) $achiever->id, '--force' => true]))->toBe(1)
+        ->and(Artisan::output())->toContain('still open');
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25', '--distributor' => (string) $achiever->id]))->toBe(1)
+        ->and(Artisan::output())->toContain('backfill automatically');
+    expect(GsbCutoffResult::where('distributor_id', $achiever->id)->exists())->toBeFalse();
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25', '--distributor' => (string) $achiever->id, '--force' => true]))->toBe(0);
+    $deferral = GsbCutoffDeferral::sole();
+    expect($deferral->resolution)->toBe(GsbCutoffDeferral::RESOLUTION_MANUAL)
+        ->and($deferral->gsb_cutoff_result_id)->toBe(GsbCutoffResult::where('distributor_id', $achiever->id)->value('id'));
+});
+
+it('does not backfill a deferral a by-name run already settled', function (): void {
+    $achiever = deferAchieverOn25th();
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25', '--distributor' => (string) $achiever->id, '--force' => true]))->toBe(0);
+
+    seedEvaluateRun('2026-08-27', '2026-08-27 00:05:00');
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-26']))->toBe(0);
+
+    expect(GsbCutoffResult::where('distributor_id', $achiever->id)->count())->toBe(2)
+        ->and(WalletLedgerEntry::where('distributor_id', $achiever->id)->where('type', 'gsb_credit')->count())->toBe(2)
+        ->and(GsbCutoffDeferral::sole()->resolution)->toBe(GsbCutoffDeferral::RESOLUTION_MANUAL);
+});

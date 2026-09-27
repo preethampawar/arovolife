@@ -189,7 +189,60 @@ final class GsbDailyCutoffCommand extends Command
             return self::FAILURE;
         }
 
+        // A by-name run must not overtake a deferred day. An open deferral on
+        // an EARLIER date is refused outright: settling this date first would
+        // advance the carry-forward store past the owed day and lose it (H1).
+        // One on THIS date is the next full run's to backfill; `--force` after
+        // a by-name re-evaluation settles it now and resolves it as manual.
+        if ($singleId !== null) {
+            $oldestOpen = GsbCutoffDeferral::open()
+                ->where('distributor_id', $singleId)
+                ->whereDate('cutoff_date', '<=', $date->toDateString())
+                ->orderBy('cutoff_date')
+                ->first();
+
+            if ($oldestOpen !== null) {
+                $adn = (string) Distributor::whereKey($singleId)->value('adn');
+                $owedDate = $oldestOpen->cutoff_date->toDateString();
+
+                if ($owedDate !== $date->toDateString()) {
+                    $this->error(sprintf(
+                        'ADN %s has a deferred cut-off for %s that is still open. Settling %s first would advance their '
+                        .'carry-forward past it and lose the owed day. The next full run backfills it automatically; '
+                        .'to settle it now, run that day first (php artisan gsb:daily-cutoff --date=%s --distributor=%d --force).',
+                        $adn,
+                        $owedDate,
+                        $date->toDateString(),
+                        $owedDate,
+                        $singleId,
+                    ));
+
+                    return self::FAILURE;
+                }
+
+                if (! $this->option('force')) {
+                    $this->error(sprintf(
+                        "ADN %s has a deferred cut-off for %s that tonight's full run will backfill automatically. "
+                        .'To settle it now, re-evaluate them by name first (php artisan repurchase:evaluate --date=%s '
+                        .'--distributor=%d) and pass --force.',
+                        $adn,
+                        $owedDate,
+                        Carbon::today()->toDateString(),
+                        $singleId,
+                    ));
+
+                    return self::FAILURE;
+                }
+            }
+        }
+
         $this->info("GSB daily cut-off — {$date->toDateString()}");
+
+        $poolPricingActive = Feature::for(null)->active(GsbDailyPoolPricingFeature::class);
+
+        // The Mentorship Bonus is computed alongside each GSB credit, so gate it
+        // on its own flag — GSB can run without MB, but not the reverse.
+        $mentorshipActive = Feature::for(null)->active(MentorshipBonusFeature::class);
 
         $query = Distributor::query()
             ->whereNotNull('adn')
@@ -230,9 +283,32 @@ final class GsbDailyCutoffCommand extends Command
             }
         }
 
-        // The Mentorship Bonus is computed alongside each GSB credit, so gate it
-        // on its own flag — GSB can run without MB, but not the reverse.
-        $mentorshipActive = Feature::for(null)->active(MentorshipBonusFeature::class);
+        // Owed days first, in date order, so each deferred distributor's
+        // carry-forward store is advanced in sequence before tonight's day is
+        // computed on top of it (H1). A distributor still owed an earlier day
+        // after this — their backfill threw — is deferred again tonight rather
+        // than settled past it.
+        if ($singleId === null) {
+            $backfill = $this->backfillDeferrals($date, array_keys($deferredIds), $poolPricingActive, $mentorshipActive);
+
+            if ($backfill['settled'] + $backfill['failed'] + $backfill['left_open'] > 0) {
+                $this->line(sprintf(
+                    '  Backfilled %d deferred cut-off(s) (%d failed, %d left open).',
+                    $backfill['settled'],
+                    $backfill['failed'],
+                    $backfill['left_open'],
+                ));
+            }
+
+            $stillOwed = GsbCutoffDeferral::open()
+                ->whereDate('cutoff_date', '<', $date->toDateString())
+                ->distinct()
+                ->pluck('distributor_id');
+
+            foreach ($stillOwed as $owedId) {
+                $deferredIds[(int) $owedId] ??= GsbCutoffDeferral::CAUSE_EARLIER_DAY_OPEN;
+            }
+        }
 
         $total = (clone $query)->count();
         $credited = 0;
@@ -240,8 +316,6 @@ final class GsbDailyCutoffCommand extends Command
         $mbFailed = 0;
         $skipped = 0;
         $outOfOrder = 0;
-
-        $poolPricingActive = Feature::for(null)->active(GsbDailyPoolPricingFeature::class);
 
         // Pass 1 — pure computation for every distributor (no writes). A
         // compute failure excludes that distributor from the day's pool
@@ -416,6 +490,12 @@ final class GsbDailyCutoffCommand extends Command
             try {
                 $this->cutoff->price($computation, $pool, $poolPricingActive);
                 $result = $this->cutoff->settle($computation);
+
+                // A --force by-name run past the refusal above settled a
+                // deferred day: the row that now exists is its resolution.
+                if ($singleId !== null && $result->status !== GsbCutoffResult::STATUS_FAILED) {
+                    $this->resolveDeferral($distributorId, $date, $result, GsbCutoffDeferral::RESOLUTION_MANUAL);
+                }
 
                 if ($result->status === GsbCutoffResult::STATUS_CREDITED) {
                     $credited++;
@@ -618,6 +698,148 @@ final class GsbDailyCutoffCommand extends Command
             'adns' => array_values(array_map(strval(...), is_array($summary['failed_adns'] ?? null) ? $summary['failed_adns'] : [])),
             'run_id' => $run?->id === null ? null : (int) $run->id,
         ];
+    }
+
+    /**
+     * Settle every open deferral dated before $tonightDate, oldest first, one
+     * distributor at a time through the single-distributor sequence: compute,
+     * price against the day's FROZEN pool (never re-frozen), settle, then
+     * accrue and credit the sponsor's MB at the day's frozen MSB point value —
+     * the money the deferring night reserved.
+     *
+     * Skipped: distributors tonight's evaluation still could not judge, those
+     * no longer active (never backfilled; the digest asks for a decision), and
+     * any later day of a distributor whose earlier backfill failed tonight — it
+     * would advance the store past the day still owed.
+     *
+     * @param  list<int>  $stillDeferredIds
+     * @return array{settled: int, failed: int, left_open: int}
+     */
+    private function backfillDeferrals(Carbon $tonightDate, array $stillDeferredIds, bool $poolPricingActive, bool $mentorshipActive): array
+    {
+        $open = GsbCutoffDeferral::open()
+            ->whereDate('cutoff_date', '<', $tonightDate->toDateString())
+            ->orderBy('cutoff_date')
+            ->orderBy('distributor_id')
+            ->get();
+
+        $settled = 0;
+        $failed = 0;
+        $leftOpen = 0;
+        $still = array_fill_keys($stillDeferredIds, true);
+
+        /** @var array<int, true> $blocked distributors whose earlier owed day failed tonight */
+        $blocked = [];
+
+        $active = Distributor::query()
+            ->whereIn('id', $open->pluck('distributor_id')->unique()->all())
+            ->whereNotNull('adn')
+            ->where('status', 'active')
+            ->pluck('id')
+            ->mapWithKeys(fn ($id): array => [(int) $id => true])
+            ->all();
+
+        foreach ($open as $deferral) {
+            $distributorId = $deferral->distributor_id;
+            $day = $deferral->cutoff_date->copy()->startOfDay();
+
+            if (isset($still[$distributorId]) || isset($blocked[$distributorId]) || ! isset($active[$distributorId])) {
+                $leftOpen++;
+
+                continue;
+            }
+
+            try {
+                $computation = $this->cutoff->computeForDistributor($distributorId, $day);
+                $this->cutoff->price(
+                    $computation,
+                    $poolPricingActive ? $this->poolService->poolForDate($day) : null,
+                    $poolPricingActive,
+                );
+                $result = $this->cutoff->settle($computation);
+            } catch (CutoffReplayedOutOfOrder) {
+                // A later row already advanced the store — an operator ran them
+                // by name, or an older fault. The row that exists is the truth;
+                // looping on it every night would help nobody.
+                Log::warning('gsb.cutoff.deferral_already_passed', [
+                    'distributor_id' => $distributorId,
+                    'cutoff_date' => $day->toDateString(),
+                ]);
+                $deferral->update([
+                    'resolved_at' => Carbon::now(),
+                    'resolution' => GsbCutoffDeferral::RESOLUTION_MANUAL,
+                ]);
+
+                continue;
+            } catch (\Throwable $e) {
+                $failed++;
+                $blocked[$distributorId] = true;
+                Log::error('gsb.cutoff.deferral_failed', [
+                    'distributor_id' => $distributorId,
+                    'cutoff_date' => $day->toDateString(),
+                    'error' => $e->getMessage(),
+                    'exception' => get_class($e),
+                ]);
+
+                continue;
+            }
+
+            if ($result->status === GsbCutoffResult::STATUS_FAILED) {
+                $failed++;
+                $blocked[$distributorId] = true;
+                Log::error('gsb.cutoff.deferral_failed', [
+                    'distributor_id' => $distributorId,
+                    'cutoff_date' => $day->toDateString(),
+                    'reason' => $result->failure_reason,
+                ]);
+
+                continue;
+            }
+
+            // The GSB day is settled whatever MB does next; an MB failure is
+            // logged as one, exactly as on the nightly path.
+            if ($result->status === GsbCutoffResult::STATUS_CREDITED && $mentorshipActive) {
+                try {
+                    $accrual = $this->mentorship->accrueForSponsee($distributorId, $result);
+
+                    if ($accrual !== null) {
+                        $this->mentorship->creditAccrual($accrual, $this->msbPoolService->poolForDate($day));
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('mb.credit.exception', [
+                        'sponsee_id' => $distributorId,
+                        'cutoff_date' => $day->toDateString(),
+                        'error' => $e->getMessage(),
+                        'exception' => get_class($e),
+                    ]);
+                }
+            }
+
+            $deferral->update([
+                'resolved_at' => Carbon::now(),
+                'resolution' => GsbCutoffDeferral::RESOLUTION_BACKFILLED,
+                'gsb_cutoff_result_id' => $result->id,
+            ]);
+            $settled++;
+        }
+
+        return ['settled' => $settled, 'failed' => $failed, 'left_open' => $leftOpen];
+    }
+
+    /**
+     * Close an open deferral for ($distributorId, $date) against the result
+     * row a settle produced. A no-op when there is none.
+     */
+    private function resolveDeferral(int $distributorId, Carbon $date, GsbCutoffResult $result, string $resolution): void
+    {
+        GsbCutoffDeferral::open()
+            ->where('distributor_id', $distributorId)
+            ->whereDate('cutoff_date', $date->toDateString())
+            ->update([
+                'resolved_at' => Carbon::now(),
+                'resolution' => $resolution,
+                'gsb_cutoff_result_id' => $result->id,
+            ]);
     }
 
     /**

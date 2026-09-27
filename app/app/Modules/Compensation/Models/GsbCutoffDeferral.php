@@ -34,6 +34,12 @@ final class GsbCutoffDeferral extends Model
 {
     public const CAUSE_EVALUATION_FAILED = 'evaluation_failed';
 
+    /**
+     * Evaluated cleanly, but an earlier owed day could not be backfilled
+     * tonight: settling this day would advance the store past it.
+     */
+    public const CAUSE_EARLIER_DAY_OPEN = 'earlier_day_open';
+
     public const RESOLUTION_BACKFILLED = 'backfilled';
 
     public const RESOLUTION_MANUAL = 'manual';
