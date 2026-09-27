@@ -114,6 +114,24 @@ final class EngineHealthDigestNotification extends Notification implements Shoul
             }
         }
 
+        if ($this->report->skippedDistributors !== []) {
+            $mail->line('**Distributors the repurchase evaluation could not judge**');
+
+            foreach ($this->report->skippedDistributors as $item) {
+                $position++;
+                $mail->line(sprintf(
+                    '**%d. %s — %s** (%d distributor(s) skipped: ADN %s; their %s GSB cut-off was not computed)',
+                    $position,
+                    $item['engine'],
+                    $item['period'],
+                    $item['count'],
+                    $item['adns'] === [] ? '…' : implode(', ', $item['adns']),
+                    $item['cutoff_date'],
+                ));
+                $this->appendSteps($mail, $item['steps']);
+            }
+        }
+
         return $mail
             ->action('Open Engine Runs', $this->engineRunsUrl)
             ->line('A re-run never credits anybody twice: every engine only fills what the failed run left empty, and every trigger is audit-logged with your name and reason.')

@@ -107,11 +107,9 @@ it('counts a lapsed window as forfeited and the distributor as withheld', functi
         ->and($summary['withheld'])->toBe(1);
 });
 
-it('carries on past a throwing distributor and evaluates the rest', function (): void {
-    // F23: one distributor's data problem must not cost the other N their
-    // evaluation. Before this, the loop caught the exception but every
-    // distributor after it was still evaluated — what changed is that the run
-    // now says WHO failed, rather than leaving it in the log.
+it('carries on past a throwing distributor, evaluates the rest, and exits 0', function (): void {
+    // E5, client decision 2026-09-27: one distributor's data problem costs
+    // that distributor tonight, never the other N.
     $first = distributorWithAnchor('2026-07-07');
     $broken = distributorWithAnchor('2026-07-13');
     $last = distributorWithAnchor('2026-07-24');
@@ -122,14 +120,14 @@ it('carries on past a throwing distributor and evaluates the rest', function ():
         }
     });
 
-    expect(Artisan::call('repurchase:evaluate', ['--date' => '2026-07-30']))->toBe(1);
+    expect(Artisan::call('repurchase:evaluate', ['--date' => '2026-07-30']))->toBe(0);
 
     expect(RepurchaseCycle::where('distributor_id', $first->id)->exists())->toBeTrue()
         ->and(RepurchaseCycle::where('distributor_id', $broken->id)->exists())->toBeFalse()
         ->and(RepurchaseCycle::where('distributor_id', $last->id)->exists())->toBeTrue();
 });
 
-it('records a failed_partial summary naming the failed ADNs and the exception class', function (): void {
+it('records a completed_with_skips summary naming the skipped ADNs, ids and exception class', function (): void {
     distributorWithAnchor('2026-07-07');
     $broken = distributorWithAnchor('2026-07-13');
 
@@ -139,18 +137,39 @@ it('records a failed_partial summary naming the failed ADNs and the exception cl
         }
     });
 
+    expect(Artisan::call('repurchase:evaluate', ['--date' => '2026-07-30']))->toBe(0);
+
+    $run = lastEvaluateRun();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SUCCEEDED)
+        ->and($run->summary['outcome'])->toBe(RepurchaseEvaluateCommand::OUTCOME_COMPLETED_WITH_SKIPS)
+        ->and($run->summary['evaluated'])->toBe(1)
+        ->and($run->summary['failed'])->toBe(1)
+        ->and($run->summary['failed_adns'])->toBe([$broken->adn])
+        ->and($run->summary['failed_distributor_ids'])->toBe([$broken->id])
+        // The class, never the message: an exception message can carry
+        // anything the data put in it.
+        ->and($run->summary['failure_classes'])->toBe([RuntimeException::class])
+        ->and($run->summary['reason'])->toContain('skipped');
+});
+
+it('fails closed above the skip cap, because that is a fault in the run and not in the data', function (): void {
+    config(['arovolife.compensation.evaluate_skip_cap' => 1]);
+    distributorWithAnchor('2026-07-07');
+    distributorWithAnchor('2026-07-13');
+
+    RepurchaseCycle::creating(function (): void {
+        throw new RuntimeException('simulated systemic failure');
+    });
+
     expect(Artisan::call('repurchase:evaluate', ['--date' => '2026-07-30']))->toBe(1);
 
     $run = lastEvaluateRun();
 
     expect($run->status)->toBe(EngineRun::STATUS_FAILED)
         ->and($run->summary['outcome'])->toBe(RepurchaseEvaluateCommand::OUTCOME_FAILED_PARTIAL)
-        ->and($run->summary['evaluated'])->toBe(1)
-        ->and($run->summary['failed'])->toBe(1)
-        ->and($run->summary['failed_adns'])->toBe([$broken->adn])
-        // The class, never the message: an exception message can carry
-        // anything the data put in it.
-        ->and($run->summary['failure_classes'])->toBe([RuntimeException::class]);
+        ->and($run->summary['failed'])->toBe(2)
+        ->and($run->summary['reason'])->toContain('more than the 1');
 });
 
 it('refuses while another evaluation run is in flight', function (): void {

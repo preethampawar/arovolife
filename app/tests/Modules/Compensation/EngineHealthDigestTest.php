@@ -585,3 +585,40 @@ it('names the run in a skipped-night headline, and what its next night picks up'
         ->toContain('the next night builds any Tuesday this one would have');
     expect($text)->not->toContain('The chain never started');
 });
+
+it('lists the distributors last night\'s evaluation skipped, with the day they missed and the remedy', function (): void {
+    seedHealthyRuns();
+    EngineRun::where('engine_key', 'repurchase.evaluate')->update(['summary' => json_encode([
+        'outcome' => 'completed_with_skips',
+        'failed' => 1,
+        'failed_adns' => ['ADN12345'],
+        'failed_distributor_ids' => [42],
+    ])]);
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    $text = digestText(sentDigest());
+
+    expect($text)->toContain('could not judge')
+        ->and($text)->toContain('ADN12345')
+        ->and($text)->toContain('07 Sep 2026')                       // the cut-off day: the run's period minus one
+        ->and($text)->toContain('--distributor=42')
+        ->and($text)->toContain('before tonight');
+});
+
+it('does not list skips from an evaluation older than a day', function (): void {
+    seedHealthyRuns();
+    EngineRun::where('engine_key', 'repurchase.evaluate')->update([
+        'started_at' => '2026-09-06 00:05:00',
+        'finished_at' => '2026-09-06 00:06:00',
+        'summary' => json_encode(['outcome' => 'completed_with_skips', 'failed' => 1, 'failed_adns' => ['ADN12345'], 'failed_distributor_ids' => [42]]),
+    ]);
+
+    // Nothing else is wrong on this morning, so no digest is sent at all; the
+    // report itself is what proves the stale skip list was not picked up.
+    expect(app(EngineHealthService::class)->report(Carbon::now())->skippedDistributors)->toBe([]);
+
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    Notification::assertNothingSent();
+});

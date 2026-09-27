@@ -67,10 +67,9 @@ it('refuses when no evaluate run has seen the whole cut-off day', function (): v
 
 it('names the distributors the evaluation could not judge when it refuses', function (): void {
     // F23: `repurchase:evaluate` isolates a throwing distributor and carries
-    // on, so the run finishes — as `failed`, with a `failed_partial` summary.
-    // The gate is unmoved (a non-zero failure count means somebody's verdict is
-    // stale, and the day's pools are frozen once), but the operator is now told
-    // which ADNs to fix instead of being sent to the log.
+    // on. Above the skip cap (E5) the run finishes as `failed`, with a
+    // `failed_partial` summary, and the gate stays shut platform-wide — but the
+    // operator is told which ADNs to fix instead of being sent to the log.
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     EngineRun::create([
@@ -83,7 +82,7 @@ it('names the distributors the evaluation could not judge when it refuses', func
         'summary' => [
             'outcome' => 'failed_partial',
             'evaluated' => 6,
-            'failed' => 1,
+            'failed' => 600,
             'failed_adns' => ['ADN12345'],
             'failure_classes' => ['RuntimeException'],
         ],
@@ -92,11 +91,16 @@ it('names the distributors the evaluation could not judge when it refuses', func
     Log::shouldReceive('critical')
         ->once()
         ->withArgs(fn (string $message, array $context): bool => $message === 'gsb.cutoff.refused_missing_evaluate'
-            && $context['evaluate_failures'] === 1
+            && $context['evaluate_failures'] === 600
             && $context['evaluate_failed_adns'] === ['ADN12345']);
 
-    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(1)
-        ->and(Artisan::output())->toContain('ADN12345')
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(1);
+
+    // Read once: Artisan::output() drains the buffer.
+    $output = Artisan::output();
+
+    expect($output)->toContain('ADN12345')
+        ->and($output)->toContain('more than the')
         ->and(GsbCutoffResult::count())->toBe(0);
 });
 
@@ -294,4 +298,48 @@ it('--force does not lift the in-flight guard', function (): void {
     ]);
 
     expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25', '--force' => true]))->toBe(1);
+});
+
+it('leaves out the distributors last night\'s evaluation skipped, and says so', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $kept = Distributor::factory()->create(['status' => 'active']);
+    $skipped = Distributor::factory()->create(['status' => 'active']);
+
+    EngineRun::create([
+        'engine_key' => 'repurchase.evaluate',
+        'period_start' => '2026-08-26',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::parse('2026-08-26 00:05:00'),
+        'finished_at' => Carbon::parse('2026-08-26 00:06:00'),
+        'summary' => [
+            'outcome' => 'completed_with_skips',
+            'failed' => 1,
+            'failed_adns' => [$skipped->adn],
+            'failed_distributor_ids' => [$skipped->id],
+        ],
+    ]);
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(0)
+        ->and(Artisan::output())->toContain((string) $skipped->adn)
+        ->and(GsbCutoffResult::where('distributor_id', $kept->id)->exists())->toBeTrue()
+        ->and(GsbCutoffResult::where('distributor_id', $skipped->id)->exists())->toBeFalse();
+});
+
+it('never skips a distributor the operator asked for by name', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $skipped = Distributor::factory()->create(['status' => 'active']);
+
+    EngineRun::create([
+        'engine_key' => 'repurchase.evaluate',
+        'period_start' => '2026-08-26',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => Carbon::parse('2026-08-26 00:05:00'),
+        'finished_at' => Carbon::parse('2026-08-26 00:06:00'),
+        'summary' => ['outcome' => 'completed_with_skips', 'failed' => 1, 'failed_adns' => [$skipped->adn], 'failed_distributor_ids' => [$skipped->id]],
+    ]);
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25', '--distributor' => (string) $skipped->id]))->toBe(0)
+        ->and(GsbCutoffResult::where('distributor_id', $skipped->id)->exists())->toBeTrue();
 });

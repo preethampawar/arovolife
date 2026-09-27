@@ -185,6 +185,12 @@ return [
         ), static fn (string $name): bool => $name !== '')),
     ],
 
+    'compensation' => [
+        // How many distributors one repurchase evaluation may skip and still
+        // succeed. Above it the run is a fault, not data, and fails closed.
+        'evaluate_skip_cap' => (int) env('COMP_EVALUATE_SKIP_CAP', 500),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Scale harness (TESTING ONLY)

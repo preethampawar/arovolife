@@ -23,7 +23,7 @@
         PayoutLineItem::STATUS_BANK_DECRYPT_FAILED => 'Bank unreadable',
     ];
 
-    // Likewise for the health report's five buckets. Order matches the DTO's
+    // Likewise for the health report's six buckets. Order matches the DTO's
     // own constructor order.
     $buckets = [
         ['label' => 'Failed runs', 'count' => count($report->failures)],
@@ -31,6 +31,7 @@
         ['label' => 'Stuck runs', 'count' => count($report->stuck)],
         ['label' => 'Premature freezes', 'count' => count($report->prematureFreezes)],
         ['label' => 'Chain alerts', 'count' => count($report->chainAlerts)],
+        ['label' => 'Skipped distributors', 'count' => count($report->skippedDistributors)],
     ];
 
     $alertTotal = array_sum(array_column($buckets, 'count'));

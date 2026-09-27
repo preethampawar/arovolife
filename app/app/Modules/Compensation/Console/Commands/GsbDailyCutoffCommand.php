@@ -156,14 +156,14 @@ final class GsbDailyCutoffCommand extends Command
             && ! $this->engineStatus->hasSucceededRunAfterDay('repurchase.evaluate', $date)) {
             // Why the gate is shut, when the evaluation ran and named its
             // casualties. `repurchase:evaluate` isolates a throwing distributor
-            // and carries on, then exits non-zero with a `failed_partial`
-            // summary; the run is `failed`, so the gate above is unmoved — a
-            // non-zero failure count means somebody's verdict is stale, and the
-            // cut-off prices a day permanently. Fail-closed platform-wide is
-            // deliberate: refusing only the named distributors would still
-            // freeze the day's pools without their BV. What changes is that the
-            // operator is told which ADNs to fix instead of being left to read
-            // the log.
+            // and carries on. Up to the skip cap the run succeeds and this gate
+            // opens — the distributors it could not judge are left out below
+            // (client decision 2026-09-27). Above the cap it exits non-zero with
+            // a `failed_partial` summary and the run is `failed`, so this gate
+            // stays shut platform-wide: that many throwing is a fault in the
+            // run, not in the data, and the cut-off prices a day permanently.
+            // The operator is told which ADNs to fix instead of being left to
+            // read the log.
             $partial = $this->repurchaseFailureNote($date);
 
             Log::critical('gsb.cutoff.refused_missing_evaluate', [
@@ -196,6 +196,33 @@ final class GsbDailyCutoffCommand extends Command
 
         if ($singleId !== null) {
             $query->where('id', $singleId);
+        }
+
+        // A full run leaves out the distributors last night's evaluation could
+        // not judge; a --distributor run never does — the operator named them
+        // after re-evaluating, and that retry prices against the frozen pool.
+        $skippedByEvaluation = ['ids' => [], 'adns' => []];
+
+        if ($singleId === null && $this->eligibility->engineActive()) {
+            $skippedByEvaluation = $this->skippedByEvaluation($date);
+
+            if ($skippedByEvaluation['ids'] !== []) {
+                $query->whereNotIn('id', $skippedByEvaluation['ids']);
+
+                $this->warn(sprintf(
+                    '%d distributor(s) left out: their repurchase evaluation failed and they keep the previous '
+                    .'verdict%s. Their %s cut-off is not computed until it is re-run for them by name.',
+                    count($skippedByEvaluation['ids']),
+                    $skippedByEvaluation['adns'] === [] ? '' : ' — ADN '.implode(', ', $skippedByEvaluation['adns']),
+                    $date->toDateString(),
+                ));
+
+                Log::warning('gsb.cutoff.skipped_unevaluated', [
+                    'date' => $date->toDateString(),
+                    'count' => count($skippedByEvaluation['ids']),
+                    'adns' => $skippedByEvaluation['adns'],
+                ]);
+            }
         }
 
         // The Mentorship Bonus is computed alongside each GSB credit, so gate it
@@ -402,7 +429,7 @@ final class GsbDailyCutoffCommand extends Command
         }
 
         $msbValue = number_format($msbPointValuePaise / 100, 2);
-        $this->info("Done — total: {$total}, engine: ".count($computations).", bulk: {$skipped}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}, msb-points: {$msbTotalPoints}, msb-point-value: ₹{$msbValue}");
+        $this->info("Done — total: {$total}, engine: ".count($computations).", bulk: {$skipped}, credited: {$credited}, failed: {$failed}, mb-failed: {$mbFailed}, msb-points: {$msbTotalPoints}, msb-point-value: ₹{$msbValue}, left out: ".count($skippedByEvaluation['ids']));
 
         // Nothing computed, nothing broken: every distributor the engine could
         // not compute was refused for the same reason, and the day's earlier
@@ -465,18 +492,40 @@ final class GsbDailyCutoffCommand extends Command
         ));
 
         $classes = is_array($summary['failure_classes'] ?? null) ? $summary['failure_classes'] : [];
+        $cap = (int) ($summary['skip_cap'] ?? config('arovolife.compensation.evaluate_skip_cap', 500));
 
         return [
             'failed' => $failed,
             'adns' => $adns,
             'message' => sprintf(
                 "That run did complete, but %d distributor(s) threw and still carry the previous run's "
-                    ."verdict%s%s.\nFix them first — the cut-off stays shut while any failure stands, because "
-                    ."the day's pools are frozen once and never repriced.\n",
+                    ."verdict%s%s.\nThat is more than the %d the run may skip, so it was recorded as a failure: "
+                    ."fix the cause, re-run the evaluation, then this cut-off.\n",
                 $failed,
                 $adns === [] ? '' : ' — ADN '.implode(', ', $adns),
                 $classes === [] ? '' : ' ('.implode(', ', array_map(strval(...), $classes)).')',
+                $cap,
             ),
+        ];
+    }
+
+    /**
+     * The distributors the evaluation covering $date could not judge — left out
+     * of a full run (client decision 2026-09-27). Read from the latest evaluate
+     * run after the day, whatever its status: over-skipping is conservative
+     * (each one is named for the morning and retried by hand), under-skipping
+     * prices a day on a verdict nobody refreshed.
+     *
+     * @return array{ids: list<int>, adns: list<string>}
+     */
+    private function skippedByEvaluation(Carbon $date): array
+    {
+        $run = $this->engineStatus->latestRunAfterDay('repurchase.evaluate', $date);
+        $summary = is_array($run?->summary) ? $run->summary : [];
+
+        return [
+            'ids' => array_values(array_map(intval(...), is_array($summary['failed_distributor_ids'] ?? null) ? $summary['failed_distributor_ids'] : [])),
+            'adns' => array_values(array_map(strval(...), is_array($summary['failed_adns'] ?? null) ? $summary['failed_adns'] : [])),
         ];
     }
 }
