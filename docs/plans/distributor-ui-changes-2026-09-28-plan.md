@@ -498,8 +498,14 @@ it('distributor top bar has a red sign-out pill and no profile dropdown', functi
     expect($html)->not->toContain('data-profile-menu')
         ->toContain('data-signout-pill')
         ->toContain('bg-brand-600');
-    // The pill sits after the country marker.
-    expect(strpos($html, 'data-signout-pill'))->toBeGreaterThan(strpos($html, 'India'));
+    // Sign out takes the guest Sign In pill's spot: main nav, right after the cart.
+    expect(strpos($html, 'data-signout-pill'))->toBeGreaterThan(strpos($html, 'data-cart-count'));
+});
+
+it('guest Sign In pill and distributor Sign out pill share the same slot', function () {
+    $guest = $this->get(route('about'))->assertOk()->getContent();
+    expect($guest)->toContain('data-signin-pill')->not->toContain('data-signout-pill');
+    expect(strpos($guest, 'data-signin-pill'))->toBeGreaterThan(strpos($guest, 'data-cart-count'));
 });
 
 it('sidebar has a My Profile group with Edit Profile, Change Password, My Addresses', function () {
@@ -547,23 +553,29 @@ This is the same admin fixture as `tests/Modules/Admin/AdminLineChangeController
 
   Check that the profile-dropdown JS (~l.347) returns early when `[data-profile-trigger]` is absent. Add `if (! trigger) return;` if it doesn't.
 
-- [ ] **Step 5: Implement the sign-out pill.** After `<span>India 🇮🇳</span>`, add:
+- [ ] **Step 5: Implement the sign-out pill.** In the desktop main nav (~l.318–323), the guest block is `@guest <a href="{{ route('login') }}" …>Sign In</a> @endguest`. Add `data-signin-pill` to that `<a>`, then replace `@endguest` with an `@else` branch so Sign out renders in exactly the same slot:
 
 ```blade
-@auth
+@guest
+<a href="{{ route('login') }}" data-signin-pill
+   class="px-4 py-2 rounded-full bg-white hover:bg-brand-50 text-brand-700 text-xs font-semibold transition-colors shadow-sm">
+    Sign In
+</a>
+@else
     @if(auth()->user()->distributor && ! auth()->user()->isSuperStaff())
-        <span class="text-brand-200">|</span>
-        <form method="POST" action="{{ route('logout') }}" class="inline">
+        <form method="POST" action="{{ route('logout') }}">
             @csrf
             <button type="submit" data-signout-pill
-                    class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-red-600 shadow-sm hover:bg-red-50 transition-colors">
+                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white hover:bg-red-50 text-red-600 text-xs font-semibold transition-colors shadow-sm">
                 <x-lucide-log-out class="w-3.5 h-3.5" />
                 Sign out
             </button>
         </form>
     @endif
-@endauth
+@endguest
 ```
+
+  Do not add anything to the utility strip next to "India 🇮🇳".
 
   In the mobile menu (~l.475–477), make the Sign out button red: `text-red-100 hover:text-white hover:bg-red-600`, and prepend `<x-lucide-log-out class="inline w-4 h-4 mr-1.5" />`.
 
