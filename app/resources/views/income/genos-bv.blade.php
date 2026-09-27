@@ -50,7 +50,7 @@
                 $settledPowerSide = $slabProgress->settledPowerSide();
                 $weakerSideIsLeft = ($slabProgress->settledWeakerSide() ?? 'R') === 'L';
                 $sideBadgeClasses = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium';
-                $powerBadgeClasses = $sideBadgeClasses.' bg-indigo-100 text-indigo-700';
+                $powerBadgeClasses = $sideBadgeClasses.' bg-violet-100 text-violet-700';
                 $weakerBadgeClasses = $sideBadgeClasses.' bg-amber-100 text-amber-700';
                 $slab1WeakerCfHint = $slab1WeakerCfBv > 0
                     ? '+ '.\App\Modules\Shared\Support\IndianNumber::format($slab1WeakerCfBv, 0).' BV in slab-1 weaker carry over — counted under Slab 1 below'
@@ -264,7 +264,7 @@
                         </td>
                         <td class="px-4 py-3 text-center">
                             @if($row->slab)
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">Slab {{ $row->slab }}</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">Slab {{ $row->slab }}</span>
                             @else
                                 <span class="text-gray-600 text-xs">—</span>
                             @endif

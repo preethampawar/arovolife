@@ -68,6 +68,7 @@
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../../app/Modules/Genealogy/Support';
 
 @layer base {
     /* Public canvas — deliberately UNCHANGED. The admin console retunes its
@@ -1118,6 +1119,12 @@ html.dark .bg-brand-50\/70 { background-color: rgb(12 41 56 / 0.7); }
 html.dark .bg-emerald-100 { background-color: #0b3732; }
 html.dark .bg-emerald-50 { background-color: #0c2a2a; }
 html.dark .bg-emerald-50\/30 { background-color: rgb(12 42 42 / 0.3); }
+html.dark .bg-emerald-50\/60 { background-color: rgb(12 42 42 / 0.6); }
+html.dark .border-emerald-300 { border-color: #1f6b5c; }
+html.dark .from-emerald-50 { --tw-gradient-from: #0c2a2a; }
+html.dark .bg-violet-50\/40 { background-color: rgb(29 29 58 / 0.4); }
+html.dark .bg-violet-50\/60 { background-color: rgb(29 29 58 / 0.6); }
+html.dark .text-violet-400 { color: #a78bfa; }
 html.dark .bg-green-50\/60 { background-color: rgb(12 43 37 / 0.6); }
 html.dark .bg-indigo-50\/40 { background-color: rgb(24 31 58 / 0.4); }
 html.dark .bg-indigo-50\/60 { background-color: rgb(24 31 58 / 0.6); }

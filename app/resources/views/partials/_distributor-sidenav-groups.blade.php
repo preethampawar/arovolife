@@ -5,11 +5,14 @@
 {{-- Position — which Genos group this distributor sits in. Came here from
      the dashboard's Placement card, which was removed. --}}
 @if(($navSide ?? null) !== null)
-    @php $navIsLeft = $navSide === 'L'; @endphp
+    @php
+        $navIsLeft = $navSide === 'L';
+        $navSideColors = \App\Modules\Genealogy\Support\GenosSideColors::for($navSide);
+    @endphp
     <div data-nav-position="{{ $navSide }}"
-         class="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs {{ $navIsLeft ? 'border-sky-200 bg-sky-50' : 'border-indigo-200 bg-indigo-50' }}">
+         class="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs {{ $navSideColors['chip'] }}">
         <span class="font-medium text-gray-600">Position</span>
-        <span class="font-semibold {{ $navIsLeft ? 'text-sky-700' : 'text-indigo-700' }}">{{ $navIsLeft ? '← Left' : '→ Right' }} Genos</span>
+        <span class="font-semibold {{ $navSideColors['text'] }}">{{ $navIsLeft ? '← Left' : '→ Right' }} Genos</span>
     </div>
 @endif
 

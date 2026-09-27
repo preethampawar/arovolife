@@ -31,11 +31,11 @@
     <div class="mb-6">
         <div class="flex items-center justify-between text-xs mb-2">
             <span class="inline-flex items-center gap-1.5 font-semibold text-sky-700"><span class="w-2 h-2 rounded-full bg-sky-500"></span>← Left Genos · {{ $fmt::format($leftTeam) }} {{ $leftTeam === 1 ? 'member' : 'members' }}</span>
-            <span class="inline-flex items-center gap-1.5 font-semibold text-indigo-700">{{ $fmt::format($rightTeam) }} {{ $rightTeam === 1 ? 'member' : 'members' }} · Right Genos →<span class="w-2 h-2 rounded-full bg-indigo-500"></span></span>
+            <span class="inline-flex items-center gap-1.5 font-semibold text-emerald-700">{{ $fmt::format($rightTeam) }} {{ $rightTeam === 1 ? 'member' : 'members' }} · Right Genos →<span class="w-2 h-2 rounded-full bg-emerald-500"></span></span>
         </div>
         <div class="flex h-4 w-full overflow-hidden rounded-full bg-gray-100" role="img" aria-label="Left Genos {{ $leftTeam }} members, Right Genos {{ $rightTeam }} members">
             <div class="h-full bg-gradient-to-r from-sky-400 to-sky-600 transition-all" style="width: {{ $leftPct }}%"></div>
-            <div class="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all" style="width: {{ $rightPct }}%"></div>
+            <div class="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all" style="width: {{ $rightPct }}%"></div>
         </div>
         <p class="text-[11px] text-gray-600 mt-2">Members placed under each side of your Genos, including everyone below them.</p>
     </div>
@@ -57,10 +57,10 @@
                     </div>
                     <div>
                         <div class="flex items-center justify-between text-xs mb-1">
-                            <span class="font-semibold text-indigo-700">Right Genos →</span>
+                            <span class="font-semibold text-emerald-700">Right Genos →</span>
                             <span class="font-bold text-gray-900">@bv($rightBv)</span>
                         </div>
-                        <div class="h-2.5 w-full rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-indigo-500" style="width: {{ max(2, $rightBvPct) }}%"></div></div>
+                        <div class="h-2.5 w-full rounded-full bg-gray-100 overflow-hidden"><div class="h-full rounded-full bg-emerald-500" style="width: {{ max(2, $rightBvPct) }}%"></div></div>
                     </div>
                 </div>
                 <a href="{{ route('income.genos-bv') }}" class="inline-block mt-4 text-xs font-semibold text-brand-700 hover:text-brand-800 underline">Genos BV details →</a>
