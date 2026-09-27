@@ -1,10 +1,10 @@
 @extends('layouts.wizard')
-@section('title', 'Step 9 — Personal Details')
+@section('title', 'Step 9 — My Personal Details')
 @php $currentStep = 9; @endphp
 
 @section('content')
 <div class="max-w-2xl mx-auto">
-    <h2 class="text-2xl font-bold mb-2">Personal Details</h2>
+    <h2 class="text-2xl font-bold mb-2">My Personal Details</h2>
     <p class="text-gray-600 text-sm mb-6">You must be 18+ years old (21+ in Maharashtra) to register as a Direct Seller.</p>
 
     <form method="POST" action="{{ url('/register/personal') }}" class="space-y-5 bg-white rounded-2xl border border-gray-200 p-8">
