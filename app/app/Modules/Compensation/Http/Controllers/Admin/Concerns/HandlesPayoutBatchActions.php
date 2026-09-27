@@ -733,6 +733,13 @@ trait HandlesPayoutBatchActions
             return back()->with('error', 'This batch has not been approved yet. Approve it first — the NEFT file is the instruction the bank acts on, and it must not exist before finance has signed the amount off.');
         }
 
+        // Razorpay sends every line of a batch it is given. A bank file handed
+        // over as well is a second instruction for the same money, and in this
+        // mode nothing can record what the bank did with it (R-112).
+        if (app(PayoutGatewaySettings::class)->isRazorpay()) {
+            return back()->with('error', 'The payout gateway is Razorpay, which sends every line itself. A bank file is only for Manual NEFT mode — handing one to the bank as well could pay a distributor twice.');
+        }
+
         if (($projected = $this->projectedFiguresRefusal(
             'The amounts in this batch were computed on a clock that has not arrived, so they cannot be approved or sent to a bank.'
         )) !== null) {
@@ -746,6 +753,11 @@ trait HandlesPayoutBatchActions
         $lines = $batch->lineItems()
             ->with('distributor.user')
             ->where('status', PayoutLineItem::STATUS_PENDING)
+            // A line Razorpay already holds is paid (or paying) there, even
+            // after the gateway is switched to Manual NEFT.
+            ->where(function ($query): void {
+                $query->whereNull('razorpay_payout_id')->orWhere('razorpay_payout_id', '');
+            })
             ->orderBy('id')
             ->get();
 

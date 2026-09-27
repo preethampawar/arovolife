@@ -223,8 +223,10 @@ batch of nothing but holds no longer reads as "₹0.00 to 0 distributor(s)".
 Pressing **Approve & dispatch to bank** does four things:
 
 1. Moves the batch to `dispatched` and records who approved it and when.
-2. Queues a job on the `compensation` queue, which sends each line item to
-   RazorpayX one at a time.
+2. Queues a job on the `compensation` queue, which queues one job per line
+   item; each line job sends its line to RazorpayX. A line job that is killed
+   (a worker restart, a timeout) marks its line `failed` with *The transfer job
+   was interrupted before Razorpay answered*, and the 11:00 retry picks it up.
 3. For each distributor, creates (or reuses) a *contact* and a *fund account*
    from their bank details, then creates the *payout*. The line item stores the
    payout id, contact id, fund account id, the rail used, and the dispatch time
@@ -234,6 +236,10 @@ Pressing **Approve & dispatch to bank** does four things:
 
 **If one distributor fails, the rest still go out.** A bad IFSC marks that one
 line `failed` with the reason and the batch continues.
+
+**Do not switch the payout gateway while any batch is `dispatched`.** Lines still
+with Razorpay must settle first; switching to Manual NEFT mid-batch and paying
+those lines by hand can pay a distributor twice.
 
 If the button is disabled, the credentials are missing — the red banner on the
 page says so. Fix the environment, or switch the gateway to Manual NEFT.
@@ -257,6 +263,11 @@ is a no-op. A late event that would walk a settled transfer backwards is
 ignored.
 
 ## The bank file (NEFT)
+
+The bank file exists only in **Manual NEFT** mode. While the gateway is Razorpay
+the download is hidden and refused — Razorpay sends every line itself, and a
+bank file handed over as well could pay a distributor twice. A line Razorpay
+already holds is never put in a bank file, even after switching to Manual NEFT.
 
 The download is the instruction the bank acts on, so it carries what a bank
 needs to execute a transfer — not a reconciliation sheet:
@@ -412,9 +423,38 @@ limit (default 3). It never touches a line whose transfer Razorpay reported
 failed or reversed — that needs a person to check the cause — and it does
 nothing in Manual NEFT mode.
 
-A retry never sends a second transfer for a payout Razorpay already has: each
-attempt carries a deterministic idempotency key, and a line item that already
-holds a live payout id is skipped outright.
+A retry never sends a second transfer for a payout Razorpay already has.
+Before every send — first attempt, retry or **Send again** — Razorpay is asked
+whether it already holds a payout for this line (by its `AROVOPAY-` reference).
+A live or settled one is adopted instead of sent again; only one Razorpay
+reports as rejected, cancelled, reversed or failed is replaced. If Razorpay
+cannot answer that question, nothing is sent and the line is marked `failed`
+with *Razorpay could not confirm whether this transfer already exists*. If Razorpay
+holds two live transfers for one line, or one whose amount does not match,
+nothing is sent and the line is marked `failed` naming the payout ids — check
+them with Razorpay before sending again.
+
+### Transfers waiting on the bank
+
+`payouts:reconcile` runs at 09:30 and 16:30 IST (Razorpay mode only). It is
+the backstop for the webhook, not a replacement:
+
+- A line Razorpay accepted more than 6 hours ago that is still `pending` is
+  checked with Razorpay — exactly what **Check with Razorpay** does on one line.
+- A payable line of a `dispatched` batch approved more than 6 hours ago that
+  was never sent (no payout id) is queued again — unless it is in an NEFT bank
+  file for its current attempt: the bank may already have paid it, so it is
+  never sent through Razorpay and stays in the Action Center until the bank's
+  answer is recorded.
+
+Two Action Center items under **Money** show what it could not finish:
+
+- **Payouts waiting on the bank** (warning) — accepted by Razorpay over a day
+  ago, still no confirmation. Use **Check with Razorpay** on the line; if it
+  settles, check the webhook subscription.
+- **Approved payouts never sent** (critical) — a line of a batch approved over
+  an hour ago that never reached Razorpay. The next reconcile queues it; the
+  item clears once it is sent.
 
 `bank_decrypt_failed` lines are deliberately never retried — the stored bank
 details cannot be read at all, and only re-capturing them fixes it.
@@ -589,7 +629,9 @@ Every action leaves an `audit_log` row. In Compliance → Audit log, look for:
 | `payout.batch.approved` | Who approved it, under which gateway, for how much. |
 | `payout.batch.self_approval_refused` | An approver was refused their own batch: who tried, and who created it. |
 | `payout.batch.bank_file_exported` | Who downloaded the bank file, for which batch, how many lines, how many were already in an earlier file, the stored file's id, and a SHA-256 of the exact bytes. |
-| `payout.batch.dispatched` | How many line items were sent, how many failed on the way out. |
+| `payout.batch.dispatched` | How many line items were queued for sending — each line is then sent by its own job and audited as `payout.line_item.dispatched` or `payout.line_item.dispatch_failed`. |
+| `payout.line_item.dispatch_skipped` | A line not sent to Razorpay because its attempt is already in an NEFT bank file — record the bank's answer instead. |
+| `payout.reconcile.requeued` | `payouts:reconcile` queuing never-sent lines again (actor: the system), with their ids. |
 | `payout.batch.reconciled` | A bank response import: file name, rows, matched, transferred, failed, and the stored file's id. |
 | `payout.bank_file.downloaded` | Someone downloading a stored bank file (never its contents). |
 | `payout.bank_file.purged` | The nightly job deleting a stored file after its retention period. |

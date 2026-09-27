@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Exceptions\BankDecryptionException;
 use App\Modules\Compensation\Exceptions\BankValidationException;
+use App\Modules\Compensation\Models\PayoutBankFileRow;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compliance\Models\AuditLog;
@@ -14,8 +15,8 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Sends exactly one line item to RazorpayX, shared by the batch dispatch job
- * and the retry job so the two can never drift.
+ * Sends exactly one line item to RazorpayX, shared by the per-line dispatch
+ * job and the retry job so the two can never drift.
  *
  * Never throws: a failure is recorded on the line item and swallowed, because
  * one distributor's bad IFSC must not strand the other four hundred payouts
@@ -65,6 +66,32 @@ final class RazorpayPayoutDispatchService
             return true;
         }
 
+        // An attempt already handed to the bank in an NEFT file may have been
+        // paid by the bank, which Razorpay cannot see. Never send it from here;
+        // the bank's answer is recorded on the line first.
+        if (self::inBankFile($line)) {
+            Log::warning('RazorpayX payout not sent — line is in an NEFT bank file for this attempt', [
+                'payout_line_item_id' => $line->id,
+                'attempt' => (int) $line->retry_count,
+            ]);
+
+            AuditLog::create([
+                'actor_id' => $actorId,
+                'action' => 'payout.line_item.dispatch_skipped',
+                'subject_type' => 'payout_line_item',
+                'subject_id' => (int) $line->id,
+                'details' => [
+                    'payout_batch_id' => $line->payout_batch_id,
+                    'distributor_id' => $line->distributor_id,
+                    'cause' => 'in_bank_file',
+                    'attempt' => (int) $line->retry_count,
+                ],
+                'ip' => app()->runningInConsole() ? null : request()->ip(),
+            ]);
+
+            return false;
+        }
+
         $distributor = Distributor::with('user')->find($line->distributor_id);
 
         if ($distributor === null) {
@@ -79,10 +106,56 @@ final class RazorpayPayoutDispatchService
         // Razorpay's cached payout back instead of creating a second one.
         $attempt = (int) $line->retry_count;
 
+        // Set while Razorpay is being asked whether this line's transfer
+        // already exists, so a failure there is told apart from a failed send.
+        $lookingUp = false;
+
         try {
             $contactId = $this->gateway->ensureContact($distributor);
             $fundAccountId = $this->gateway->ensureFundAccount($distributor, $contactId);
-            $payout = $this->gateway->createPayout($line, $distributor, $fundAccountId, $attempt);
+
+            // Ask Razorpay first. A previous attempt may have been accepted and
+            // then lost its response (a killed job, a connection dropped past
+            // the transport retries); that payout carries this line's reference
+            // id. A live or settled one is adopted, never sent again. Only when
+            // every payout under the reference is dead (rejected, cancelled,
+            // reversed, failed) is a new one created.
+            $lookingUp = true;
+            $live = array_values(array_filter(
+                $this->gateway->findPayoutsForLine($line),
+                static fn (array $payout): bool => ! in_array($payout['status'], self::FAILED_STATES, true),
+            ));
+            $lookingUp = false;
+
+            if (count($live) > 1) {
+                Log::critical('RazorpayX holds more than one live payout for one line — nothing sent', [
+                    'payout_line_item_id' => $line->id,
+                    'razorpay_payout_ids' => array_column($live, 'id'),
+                ]);
+                $this->hold($line, PayoutLineItem::STATUS_FAILED,
+                    'Razorpay holds more than one live transfer for this line ('.implode(', ', array_column($live, 'id')).'). Nothing was sent; check both with Razorpay before doing anything else.',
+                    $actorId, 'gateway_multiple_live');
+
+                return false;
+            }
+
+            $existing = $live[0] ?? null;
+            if ($existing !== null && ! $this->matchesLine($existing, $line)) {
+                Log::critical('RazorpayX payout under this reference does not match the line — nothing sent', [
+                    'payout_line_item_id' => $line->id,
+                    'razorpay_payout_id' => $existing['id'],
+                    'gateway_amount_paise' => $existing['amount'],
+                    'line_amount_paise' => $line->net_transferred_paise,
+                ]);
+                $this->hold($line, PayoutLineItem::STATUS_FAILED,
+                    'Razorpay holds a transfer under this line\'s reference ('.$existing['id'].') that does not match its amount. Nothing was sent; check it with Razorpay.',
+                    $actorId, 'gateway_lookup_mismatch');
+
+                return false;
+            }
+
+            $adopted = $existing !== null;
+            $payout = $existing ?? $this->gateway->createPayout($line, $distributor, $fundAccountId, $attempt);
         } catch (BankDecryptionException) {
             // The critical log already fired inside the gateway. Held, not
             // failed: nothing is retryable until ops re-capture the details.
@@ -96,13 +169,20 @@ final class RazorpayPayoutDispatchService
 
             return false;
         } catch (Throwable $e) {
-            Log::critical('RazorpayX payout dispatch failed', [
+            Log::critical($lookingUp ? 'RazorpayX payout lookup failed — nothing sent' : 'RazorpayX payout dispatch failed', [
                 'payout_line_item_id' => $line->id,
                 'distributor_id' => $line->distributor_id,
                 'error' => $e->getMessage(),
             ]);
 
-            $this->hold($line, PayoutLineItem::STATUS_FAILED, $this->readableFailure($e), $actorId, 'gateway_error');
+            // Not knowing whether the transfer exists means not sending it.
+            if ($lookingUp) {
+                $this->hold($line, PayoutLineItem::STATUS_FAILED,
+                    'Razorpay could not confirm whether this transfer already exists; nothing was sent.',
+                    $actorId, 'gateway_lookup_failed');
+            } else {
+                $this->hold($line, PayoutLineItem::STATUS_FAILED, $this->readableFailure($e), $actorId, 'gateway_error');
+            }
 
             return false;
         }
@@ -113,8 +193,9 @@ final class RazorpayPayoutDispatchService
         $line->forceFill([
             'razorpay_payout_id' => $payout['id'],
             'razorpay_contact_id' => $contactId,
-            'razorpay_fund_account_id' => $fundAccountId,
-            'transfer_mode' => strtolower($this->settings->modeFor((int) $line->net_transferred_paise)),
+            // An adopted payout keeps what it was actually sent with.
+            'razorpay_fund_account_id' => $existing['fund_account_id'] ?? $fundAccountId,
+            'transfer_mode' => $existing['mode'] ?? strtolower($this->settings->modeFor((int) $line->net_transferred_paise)),
             'dispatched_at' => now(),
             // Status stays `pending` until the webhook confirms settlement —
             // "sent to the bank" is not "the distributor has the money".
@@ -138,10 +219,11 @@ final class RazorpayPayoutDispatchService
                 'net_transferred_paise' => $line->net_transferred_paise,
                 'razorpay_payout_id' => $payout['id'],
                 'razorpay_contact_id' => $contactId,
-                'razorpay_fund_account_id' => $fundAccountId,
+                'razorpay_fund_account_id' => $line->razorpay_fund_account_id,
                 'gateway_status' => $state,
                 'transfer_mode' => $line->transfer_mode,
                 'attempt' => $attempt,
+                'adopted_existing' => $adopted,
             ],
             'ip' => app()->runningInConsole() ? null : request()->ip(),
         ]);
@@ -230,6 +312,57 @@ final class RazorpayPayoutDispatchService
             ],
             'ip' => app()->runningInConsole() ? null : request()->ip(),
         ]);
+    }
+
+    /**
+     * Whether this line's current attempt was handed to the bank in an NEFT
+     * file — the same test the bank-file export uses to mark a line as
+     * already sent.
+     */
+    public static function inBankFile(PayoutLineItem $line): bool
+    {
+        return PayoutBankFileRow::query()
+            ->where('payout_line_item_id', $line->id)
+            ->where('attempt', (int) $line->retry_count)
+            ->where('result', PayoutBankFileRow::RESULT_SENT)
+            ->exists();
+    }
+
+    /**
+     * A payout found under this line's reference is adopted only when it is
+     * provably this line's: same reference, same amount.
+     *
+     * @param  array{reference_id: string, amount: int|null}  $payout
+     */
+    private function matchesLine(array $payout, PayoutLineItem $line): bool
+    {
+        return $payout['reference_id'] === RazorpayPayoutGateway::referenceFor((int) $line->id)
+            && $payout['amount'] === (int) $line->net_transferred_paise;
+    }
+
+    /**
+     * A line job was killed (timeout, worker restart) before Razorpay
+     * answered. The line is still `pending` with no payout id, which nothing
+     * would ever pick up again; `failed` puts it in front of the auto-retry
+     * sweep and "Send again", both safe because every send asks Razorpay for
+     * the line's reference first.
+     *
+     * @return bool whether the line was held (false when it had moved on)
+     */
+    public function holdInterrupted(PayoutLineItem $line, ?int $actorId): bool
+    {
+        $fresh = PayoutLineItem::find($line->id);
+        if ($fresh === null
+            || $fresh->status !== PayoutLineItem::STATUS_PENDING
+            || ($fresh->razorpay_payout_id !== null && $fresh->razorpay_payout_id !== '')) {
+            return false;
+        }
+
+        $this->hold($fresh, PayoutLineItem::STATUS_FAILED,
+            'The transfer job was interrupted before Razorpay answered. The next send checks Razorpay for this transfer first.',
+            $actorId, 'job_interrupted');
+
+        return true;
     }
 
     /**

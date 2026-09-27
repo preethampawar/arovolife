@@ -60,9 +60,9 @@
         </span>
 
         @can('finance.record')
-        @if($canExportNeft)
-        {{-- In Razorpay mode the file is a record to reconcile against rather
-             than an instruction, but it still only exists after approval. --}}
+        @if($canExportNeft && ! $isRazorpay)
+        {{-- Manual NEFT only: in Razorpay mode Razorpay sends every line, and a
+             bank file handed over as well could pay a distributor twice (R-112). --}}
         {{-- Holds only the lines still to pay. Every download is kept (see
              Bank files below). --}}
         <form method="GET" action="{{ route('admin.compensation.weekly-payouts.neft', $batch) }}"

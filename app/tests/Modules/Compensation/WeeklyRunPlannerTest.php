@@ -82,3 +82,31 @@ it('is due on a Wednesday whose Tuesday was never built', function (): void {
     expect(app(WeeklyRunPlanner::class)->isDue(Carbon::parse('2026-09-16')))->toBeTrue();
     expect(owedTuesdayStrings('2026-09-16'))->toBe(['2026-09-15']);
 });
+
+it('owes a Tuesday whose sweep failed before approval', function (): void {
+    // The sweep threw and the command marked the row `failed`. Nobody could
+    // act on it, so it was never built: the next run must build it again.
+    seedPlannerWeeklyBatch('2026-09-08');
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => '2026-09-15',
+        'earnings_through' => '2026-09-08',
+        'status' => PayoutBatch::STATUS_FAILED,
+    ]);
+
+    expect(owedTuesdayStrings('2026-09-15'))->toBe(['2026-09-15']);
+});
+
+it('does not re-owe an approved batch whose every line failed', function (): void {
+    seedPlannerWeeklyBatch('2026-09-08');
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => '2026-09-15',
+        'earnings_through' => '2026-09-08',
+        'status' => PayoutBatch::STATUS_FAILED,
+        'processed_at' => Carbon::parse('2026-09-15 03:05:00'),
+        'approved_at' => Carbon::parse('2026-09-15 10:00:00'),
+    ]);
+
+    expect(owedTuesdayStrings('2026-09-15'))->toBe([]);
+});

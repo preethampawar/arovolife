@@ -257,7 +257,7 @@ final class RazorpayPayoutGateway
             // that payout rather than letting the batch believe it failed and
             // dispatch a second one.
             $existing = $this->duplicatePayout($e)
-                ? ($this->payoutIdIn($e) ?? $this->findPayoutByReference($reference))
+                ? ($this->payoutIdIn($e) ?? $this->findPayoutByReference($reference, $line))
                 : null;
 
             if ($existing === null) {
@@ -288,6 +288,46 @@ final class RazorpayPayoutGateway
             'status' => (string) ($payout['status'] ?? 'queued'),
             'utr' => isset($payout['utr']) && $payout['utr'] !== '' ? (string) $payout['utr'] : null,
         ];
+    }
+
+    /**
+     * Every payout Razorpay holds under this line's reference — asked BEFORE
+     * every create so a lost response can never become a second transfer.
+     * All of them, not the first: one line can carry a dead attempt and a live
+     * one, and the list order is not documented. A transport or gateway error
+     * propagates: not knowing is not "none".
+     *
+     * @return list<array{id: string, status: string, utr: string|null, amount: int|null, reference_id: string, fund_account_id: string|null, mode: string|null}>
+     */
+    public function findPayoutsForLine(PayoutLineItem $line): array
+    {
+        $query = ['reference_id' => self::referenceFor((int) $line->id), 'count' => 100];
+        if ($this->settings->accountNumber() !== '') {
+            $query['account_number'] = $this->settings->accountNumber();
+        }
+
+        $collection = $this->get('/payouts', $query, 'payouts.fetch_by_reference', $line);
+        $items = is_array($collection['items'] ?? null) ? $collection['items'] : [];
+
+        $payouts = [];
+        foreach ($items as $item) {
+            $id = is_array($item) ? (string) ($item['id'] ?? '') : '';
+            if ($id === '') {
+                continue;
+            }
+
+            $payouts[] = [
+                'id' => $id,
+                'status' => strtolower((string) ($item['status'] ?? 'queued')),
+                'utr' => isset($item['utr']) && $item['utr'] !== '' ? (string) $item['utr'] : null,
+                'amount' => isset($item['amount']) ? (int) $item['amount'] : null,
+                'reference_id' => (string) ($item['reference_id'] ?? ''),
+                'fund_account_id' => isset($item['fund_account_id']) && $item['fund_account_id'] !== '' ? (string) $item['fund_account_id'] : null,
+                'mode' => isset($item['mode']) && $item['mode'] !== '' ? strtolower((string) $item['mode']) : null,
+            ];
+        }
+
+        return $payouts;
     }
 
     /**
@@ -395,14 +435,14 @@ final class RazorpayPayoutGateway
     }
 
     /** @return array<string, mixed>|null */
-    private function findPayoutByReference(string $referenceId): ?array
+    private function findPayoutByReference(string $referenceId, ?PayoutLineItem $line = null): ?array
     {
         $query = ['reference_id' => $referenceId, 'count' => 1];
         if ($this->settings->accountNumber() !== '') {
             $query['account_number'] = $this->settings->accountNumber();
         }
 
-        return $this->firstItem($this->get('/payouts', $query, 'payouts.fetch_by_reference'));
+        return $this->firstItem($this->get('/payouts', $query, 'payouts.fetch_by_reference', $line));
     }
 
     /**
@@ -479,9 +519,9 @@ final class RazorpayPayoutGateway
      *
      * @throws PayoutGatewayException
      */
-    private function get(string $path, array $query, string $operation): array
+    private function get(string $path, array $query, string $operation, ?PayoutLineItem $line = null): array
     {
-        return $this->send('GET', $path, $query, $operation, [], null);
+        return $this->send('GET', $path, $query, $operation, [], $line);
     }
 
     /**

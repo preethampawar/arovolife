@@ -8,6 +8,7 @@ use App\Modules\Compensation\Console\Commands\CompensationRecomputeAllCommand;
 use App\Modules\Compensation\Console\Commands\EngineHealthDigestCommand;
 use App\Modules\Compensation\Console\Commands\MonthlyRunCommand;
 use App\Modules\Compensation\Console\Commands\NightlyRunCommand;
+use App\Modules\Compensation\Console\Commands\PayoutsReconcileCommand;
 use App\Modules\Compensation\Console\Commands\PurgeExpiredPayoutBankFilesCommand;
 use App\Modules\Compensation\Console\Commands\RankProvisionalStandingsCommand;
 use App\Modules\Compensation\Console\Commands\WeeklyRunCommand;
@@ -177,6 +178,18 @@ Schedule::command(EngineHealthDigestCommand::class)
 // the retry limit are picked up; the command is a no-op in Manual NEFT mode.
 Schedule::command(AutoRetryFailedPayoutsCommand::class)
     ->dailyAt('11:00')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping()
+    ->when($compensationEnginesMayRun)
+    ->runInBackground();
+
+// Payouts still in flight are reconciled twice daily, 09:30 and 16:30 IST. The
+// RazorpayX webhook is the primary confirmation; this is the backstop for one
+// that never arrives (asks Razorpay where the transfer stands) and for lines a
+// killed job never sent (re-queues them — every send looks the reference up at
+// Razorpay first, so a re-queue can never pay twice). A no-op in Manual NEFT.
+Schedule::command(PayoutsReconcileCommand::class)
+    ->twiceDailyAt(9, 16, 30)
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping()
     ->when($compensationEnginesMayRun)
