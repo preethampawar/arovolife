@@ -302,7 +302,7 @@ it('shows the distributor their own FB points times the frozen point value', fun
     $user = User::find(DB::table('distributors')->where('id', $alice)->value('user_id'));
 
     $this->actingAs($user)
-        ->get(route('income.fortune-bonus'))
+        ->get(route('income.fortune-bonus', ['f' => 1]))
         ->assertOk()
         ->assertSee('36 × ₹2.00')
         ->assertSee('Credited')

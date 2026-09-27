@@ -80,6 +80,7 @@
 
     {{-- Filter form --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
+        <input type="hidden" name="f" value="1">
         <div>
             <label class="block text-xs text-gray-600 mb-1">From (YYYY-MM)</label>
             <input type="month" name="from" value="{{ request('from') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
@@ -89,9 +90,7 @@
             <input type="month" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
         <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
-        @if(request('from') || request('to'))
-            <a href="{{ route('income.growth-booster') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
-        @endif
+        <a href="{{ route('income.growth-booster', ['f' => 1]) }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
     </form>
 
     @if($rows->isEmpty())

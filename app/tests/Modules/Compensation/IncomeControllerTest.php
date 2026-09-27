@@ -833,7 +833,7 @@ it('shows the repurchase deduction and the credited amount on the gsb history pa
         'updated_at' => now()->toDateTimeString(),
     ]);
 
-    $this->get(route('income.gsb-history'))
+    $this->get(route('income.gsb-history', ['f' => 1]))
         ->assertOk()
         ->assertSee('Repurchase deduction')
         ->assertSee('Credited to wallet')
@@ -842,7 +842,7 @@ it('shows the repurchase deduction and the credited amount on the gsb history pa
         ->assertDontSee('TDS 5%')
         ->assertDontSee('Admin 3%');
 
-    $rows = XlsxReader::rows($this->get(route('income.gsb-history.export'))->assertOk()->streamedContent());
+    $rows = XlsxReader::rows($this->get(route('income.gsb-history.export', ['f' => 1]))->assertOk()->streamedContent());
 
     expect($rows[0])->toBe(['Date', 'Left BV matched', 'Right BV matched', 'Slab', 'Gross GSB (₹)', 'Repurchase Deduction (₹)', 'Credited to Wallet (₹)', 'Status']);
     expect($rows[1])->toBe([today()->toDateString(), '20000', '16000', '1', '2000', '200', '1800', 'credited']);
@@ -909,7 +909,7 @@ it('shows a forfeited day on the gsb history page and csv, with no slab badge an
         ],
     ]);
 
-    $html = $this->get(route('income.gsb-history'))
+    $html = $this->get(route('income.gsb-history', ['f' => 1]))
         ->assertOk()
         ->assertSee('Repurchase not met — day not counted', false)
         // The day's raw Genos BV is shown, but no slab badge is rendered for it.
@@ -922,7 +922,7 @@ it('shows a forfeited day on the gsb history page and csv, with no slab badge an
     // row renders an em dash, never an empty "Slab " badge.
     expect(substr_count($html, 'bg-indigo-100 text-indigo-700">Slab '))->toBe(1);
 
-    $rows = XlsxReader::rows($this->get(route('income.gsb-history.export'))->assertOk()->streamedContent());
+    $rows = XlsxReader::rows($this->get(route('income.gsb-history.export', ['f' => 1]))->assertOk()->streamedContent());
 
     expect(XlsxReader::anyCellContains($rows, 'repurchase_forfeited'))->toBeTrue();
     $forfeitedRow = collect($rows)->first(fn (array $row): bool => ($row[7] ?? null) === 'repurchase_forfeited');
@@ -1010,7 +1010,7 @@ it('shows a wallet-blocked month on the growth booster page without paying it', 
         ],
     ]);
 
-    $this->get(route('income.growth-booster'))
+    $this->get(route('income.growth-booster', ['f' => 1]))
         ->assertOk()
         ->assertSee('August 2026')
         ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
@@ -1066,7 +1066,7 @@ it('shows a wallet-blocked month on the fortune bonus page without paying it', f
         ],
     ]);
 
-    $html = $this->get(route('income.fortune-bonus'))
+    $html = $this->get(route('income.fortune-bonus', ['f' => 1]))
         ->assertOk()
         ->assertSee('August 2026')
         ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
@@ -1276,7 +1276,7 @@ it('dates every mentorship bonus row on the distributor page (F62)', function ()
         'updated_at' => now(),
     ]);
 
-    $this->get(route('income.mentorship'))
+    $this->get(route('income.mentorship', ['f' => 1]))
         ->assertOk()
         ->assertSee('06 Sep 2026');
 });
