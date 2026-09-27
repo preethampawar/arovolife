@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Exceptions\BankDecryptionException;
 use App\Modules\Compensation\Exceptions\BankValidationException;
+use App\Modules\Compensation\Models\PayoutBankFileRow;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compliance\Models\AuditLog;
@@ -65,6 +66,32 @@ final class RazorpayPayoutDispatchService
             return true;
         }
 
+        // An attempt already handed to the bank in an NEFT file may have been
+        // paid by the bank, which Razorpay cannot see. Never send it from here;
+        // the bank's answer is recorded on the line first.
+        if (self::inBankFile($line)) {
+            Log::warning('RazorpayX payout not sent — line is in an NEFT bank file for this attempt', [
+                'payout_line_item_id' => $line->id,
+                'attempt' => (int) $line->retry_count,
+            ]);
+
+            AuditLog::create([
+                'actor_id' => $actorId,
+                'action' => 'payout.line_item.dispatch_skipped',
+                'subject_type' => 'payout_line_item',
+                'subject_id' => (int) $line->id,
+                'details' => [
+                    'payout_batch_id' => $line->payout_batch_id,
+                    'distributor_id' => $line->distributor_id,
+                    'cause' => 'in_bank_file',
+                    'attempt' => (int) $line->retry_count,
+                ],
+                'ip' => app()->runningInConsole() ? null : request()->ip(),
+            ]);
+
+            return false;
+        }
+
         $distributor = Distributor::with('user')->find($line->distributor_id);
 
         if ($distributor === null) {
@@ -90,16 +117,45 @@ final class RazorpayPayoutDispatchService
             // Ask Razorpay first. A previous attempt may have been accepted and
             // then lost its response (a killed job, a connection dropped past
             // the transport retries); that payout carries this line's reference
-            // id. A live or settled one is adopted, never sent again. Only a
-            // dead one (rejected, cancelled, reversed, failed) is re-created.
+            // id. A live or settled one is adopted, never sent again. Only when
+            // every payout under the reference is dead (rejected, cancelled,
+            // reversed, failed) is a new one created.
             $lookingUp = true;
-            $existing = $this->gateway->findExistingPayout($line);
+            $live = array_values(array_filter(
+                $this->gateway->findPayoutsForLine($line),
+                static fn (array $payout): bool => ! in_array($payout['status'], self::FAILED_STATES, true),
+            ));
             $lookingUp = false;
 
-            $adopted = $existing !== null && ! in_array($existing['status'], self::FAILED_STATES, true);
-            $payout = $adopted && $existing !== null
-                ? $existing
-                : $this->gateway->createPayout($line, $distributor, $fundAccountId, $attempt);
+            if (count($live) > 1) {
+                Log::critical('RazorpayX holds more than one live payout for one line — nothing sent', [
+                    'payout_line_item_id' => $line->id,
+                    'razorpay_payout_ids' => array_column($live, 'id'),
+                ]);
+                $this->hold($line, PayoutLineItem::STATUS_FAILED,
+                    'Razorpay holds more than one live transfer for this line ('.implode(', ', array_column($live, 'id')).'). Nothing was sent; check both with Razorpay before doing anything else.',
+                    $actorId, 'gateway_multiple_live');
+
+                return false;
+            }
+
+            $existing = $live[0] ?? null;
+            if ($existing !== null && ! $this->matchesLine($existing, $line)) {
+                Log::critical('RazorpayX payout under this reference does not match the line — nothing sent', [
+                    'payout_line_item_id' => $line->id,
+                    'razorpay_payout_id' => $existing['id'],
+                    'gateway_amount_paise' => $existing['amount'],
+                    'line_amount_paise' => $line->net_transferred_paise,
+                ]);
+                $this->hold($line, PayoutLineItem::STATUS_FAILED,
+                    'Razorpay holds a transfer under this line\'s reference ('.$existing['id'].') that does not match its amount. Nothing was sent; check it with Razorpay.',
+                    $actorId, 'gateway_lookup_mismatch');
+
+                return false;
+            }
+
+            $adopted = $existing !== null;
+            $payout = $existing ?? $this->gateway->createPayout($line, $distributor, $fundAccountId, $attempt);
         } catch (BankDecryptionException) {
             // The critical log already fired inside the gateway. Held, not
             // failed: nothing is retryable until ops re-capture the details.
@@ -137,8 +193,9 @@ final class RazorpayPayoutDispatchService
         $line->forceFill([
             'razorpay_payout_id' => $payout['id'],
             'razorpay_contact_id' => $contactId,
-            'razorpay_fund_account_id' => $fundAccountId,
-            'transfer_mode' => strtolower($this->settings->modeFor((int) $line->net_transferred_paise)),
+            // An adopted payout keeps what it was actually sent with.
+            'razorpay_fund_account_id' => $existing['fund_account_id'] ?? $fundAccountId,
+            'transfer_mode' => $existing['mode'] ?? strtolower($this->settings->modeFor((int) $line->net_transferred_paise)),
             'dispatched_at' => now(),
             // Status stays `pending` until the webhook confirms settlement —
             // "sent to the bank" is not "the distributor has the money".
@@ -162,7 +219,7 @@ final class RazorpayPayoutDispatchService
                 'net_transferred_paise' => $line->net_transferred_paise,
                 'razorpay_payout_id' => $payout['id'],
                 'razorpay_contact_id' => $contactId,
-                'razorpay_fund_account_id' => $fundAccountId,
+                'razorpay_fund_account_id' => $line->razorpay_fund_account_id,
                 'gateway_status' => $state,
                 'transfer_mode' => $line->transfer_mode,
                 'attempt' => $attempt,
@@ -255,6 +312,32 @@ final class RazorpayPayoutDispatchService
             ],
             'ip' => app()->runningInConsole() ? null : request()->ip(),
         ]);
+    }
+
+    /**
+     * Whether this line's current attempt was handed to the bank in an NEFT
+     * file — the same test the bank-file export uses to mark a line as
+     * already sent.
+     */
+    public static function inBankFile(PayoutLineItem $line): bool
+    {
+        return PayoutBankFileRow::query()
+            ->where('payout_line_item_id', $line->id)
+            ->where('attempt', (int) $line->retry_count)
+            ->where('result', PayoutBankFileRow::RESULT_SENT)
+            ->exists();
+    }
+
+    /**
+     * A payout found under this line's reference is adopted only when it is
+     * provably this line's: same reference, same amount.
+     *
+     * @param  array{reference_id: string, amount: int|null}  $payout
+     */
+    private function matchesLine(array $payout, PayoutLineItem $line): bool
+    {
+        return $payout['reference_id'] === RazorpayPayoutGateway::referenceFor((int) $line->id)
+            && $payout['amount'] === (int) $line->net_transferred_paise;
     }
 
     /**

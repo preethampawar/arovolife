@@ -11,6 +11,7 @@ use App\Modules\ActionCenter\Support\Severity;
 use App\Modules\Compensation\Console\Commands\PayoutsReconcileCommand;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Services\RazorpayPayoutDispatchService;
 use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -44,7 +45,7 @@ final class PayoutsUnsentInDispatchedBatchProvider extends AbstractProvider
 
     public function description(): string
     {
-        return 'Payable lines in a batch handed to Razorpay more than an hour ago that were never sent — usually a transfer job that was killed. payouts:reconcile re-queues them at 09:30 and 16:30.';
+        return 'Payable lines in a batch handed to Razorpay more than an hour ago that were never sent — usually a transfer job that was killed. payouts:reconcile queues them again at 09:30 and 16:30 once they have waited six hours.';
     }
 
     public function permission(): string
@@ -84,7 +85,9 @@ final class PayoutsUnsentInDispatchedBatchProvider extends AbstractProvider
                     subjectId: (int) $line->id,
                     title: 'ADN '.($line->distributor->adn ?? $line->distributor_id).' — ₹'
                         .IndianNumber::format($line->net_transferred_paise / 100, 2),
-                    subtitle: 'Batch approved '.$this->ageLabel($occurredAt).' ago, this line was never sent — payouts:reconcile re-queues it at 09:30 and 16:30',
+                    subtitle: RazorpayPayoutDispatchService::inBankFile($line)
+                        ? 'In an NEFT bank file, so it will not be sent through Razorpay — record the bank\'s answer for this line'
+                        : 'Batch approved '.$this->ageLabel($occurredAt).' ago, this line was never sent — if it is still waiting at 09:30 or 16:30, payouts:reconcile queues it again',
                     occurredAt: $occurredAt,
                     dueAt: null,
                     severity: $this->severity(),
@@ -98,7 +101,7 @@ final class PayoutsUnsentInDispatchedBatchProvider extends AbstractProvider
     /** @return Builder<PayoutLineItem> */
     private function baseQuery(): Builder
     {
-        $query = PayoutsReconcileCommand::unsentInDispatchedBatch(Carbon::now()->subHours(self::THRESHOLD_HOURS));
+        $query = PayoutsReconcileCommand::unsentInDispatchedBatch(Carbon::now()->subHours(self::THRESHOLD_HOURS), includeBankFiled: true);
 
         $this->excludeSnoozed($query->getQuery(), 'payout_line_items.id');
 

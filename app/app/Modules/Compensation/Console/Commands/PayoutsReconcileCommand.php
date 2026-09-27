@@ -6,10 +6,12 @@ namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Exceptions\PayoutLineActionRefused;
 use App\Modules\Compensation\Jobs\DispatchRazorpayPayoutLineJob;
+use App\Modules\Compensation\Models\PayoutBankFileRow;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\PayoutGatewaySettings;
 use App\Modules\Compensation\Services\PayoutLineSettlementService;
+use App\Modules\Compliance\Models\AuditLog;
 use DateTimeInterface;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,7 +24,8 @@ use Illuminate\Database\Eloquent\Builder;
  *      than --hours ago. Razorpay is asked where each stands, exactly as the
  *      per-line "Check with Razorpay" button does.
  *   B. Never sent — `pending` with no payout id in a `dispatched` batch
- *      approved more than --hours ago. Re-queued; the dispatch service asks
+ *      approved more than --hours ago, and not in an NEFT bank file for its
+ *      current attempt (the bank may have paid it; Razorpay cannot see that). Re-queued; the dispatch service asks
  *      Razorpay for the line's reference before sending, and its fresh-read
  *      guard makes a duplicate queue entry harmless.
  *
@@ -93,6 +96,22 @@ final class PayoutsReconcileCommand extends Command
             DispatchRazorpayPayoutLineJob::dispatch((int) $lineItemId, null);
         }
 
+        if ($unsent->isNotEmpty()) {
+            // Re-queueing is an instruction to send money: on the record,
+            // before any line job acts on it.
+            AuditLog::create([
+                'actor_id' => null,
+                'action' => 'payout.reconcile.requeued',
+                'subject_type' => 'payout_line_item',
+                'subject_id' => (int) $unsent->first(),
+                'details' => [
+                    'payout_line_item_ids' => $unsent->map(static fn ($id): int => (int) $id)->values()->all(),
+                    'hours' => (int) $this->option('hours'),
+                ],
+                'ip' => null,
+            ]);
+        }
+
         $this->info(sprintf(
             'Checked %d with Razorpay (%d transferred, %d failed, %d still in flight, %d unreachable); re-queued %d unsent line(s).',
             $inFlight->count(),
@@ -127,13 +146,14 @@ final class PayoutsReconcileCommand extends Command
 
     /**
      * Payable, never sent, in a batch handed to Razorpay before the cutoff.
-     * Shared with the Action Center item.
+     * Shared with the Action Center item, which keeps the bank-filed lines:
+     * they must not be sent from here, but a person must still see them.
      *
      * @return Builder<PayoutLineItem>
      */
-    public static function unsentInDispatchedBatch(DateTimeInterface $approvedBefore): Builder
+    public static function unsentInDispatchedBatch(DateTimeInterface $approvedBefore, bool $includeBankFiled = false): Builder
     {
-        return PayoutLineItem::query()
+        $query = PayoutLineItem::query()
             ->join('payout_batches', 'payout_batches.id', '=', 'payout_line_items.payout_batch_id')
             ->where('payout_line_items.status', PayoutLineItem::STATUS_PENDING)
             ->whereNull('payout_line_items.razorpay_payout_id')
@@ -141,5 +161,21 @@ final class PayoutsReconcileCommand extends Command
             ->where('payout_batches.status', PayoutBatch::STATUS_DISPATCHED)
             ->where('payout_batches.approved_at', '<', $approvedBefore)
             ->select('payout_line_items.*');
+
+        if ($includeBankFiled) {
+            return $query;
+        }
+
+        return $query
+            // A line handed to the bank in an NEFT file for this attempt may
+            // already be paid; Razorpay cannot see that, so it is never
+            // re-queued. The bank's answer is recorded on it instead.
+            ->whereNotExists(function ($row): void {
+                $row->selectRaw('1')
+                    ->from('payout_bank_file_rows')
+                    ->whereColumn('payout_bank_file_rows.payout_line_item_id', 'payout_line_items.id')
+                    ->whereColumn('payout_bank_file_rows.attempt', 'payout_line_items.retry_count')
+                    ->where('payout_bank_file_rows.result', PayoutBankFileRow::RESULT_SENT);
+            });
     }
 }

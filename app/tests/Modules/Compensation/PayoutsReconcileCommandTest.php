@@ -13,9 +13,12 @@ declare(strict_types=1);
  * PR-05: manual NEFT mode touches nothing
  */
 
+use App\Modules\ActionCenter\Providers\Money\PayoutsUnsentInDispatchedBatchProvider;
 use App\Modules\Compensation\Jobs\DispatchRazorpayPayoutLineJob;
+use App\Modules\Compensation\Models\PayoutBankFileRow;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -97,6 +100,30 @@ it('PR-03: an unsent line in a dispatched batch is re-queued; one in a batch not
 
     Queue::assertPushed(DispatchRazorpayPayoutLineJob::class, 1);
     Queue::assertPushed(DispatchRazorpayPayoutLineJob::class, fn ($job): bool => $job->lineItemId === (int) $unsent->id);
+
+    $audit = AuditLog::where('action', 'payout.reconcile.requeued')->sole();
+    expect($audit->actor_id)->toBeNull()
+        ->and($audit->details['payout_line_item_ids'])->toBe([(int) $unsent->id]);
+});
+
+it('never re-queues a line handed to the bank in an NEFT file for this attempt', function (): void {
+    Queue::fake();
+    $filed = prUnsentLine('ADN9310', 7);
+    PayoutBankFileRow::create([
+        'payout_bank_file_id' => 1, 'row_no' => 1, 'adn' => 'ADN9310', 'payout_line_item_id' => $filed->id,
+        'attempt' => 0, 'amount_paise' => $filed->net_transferred_paise, 'result' => PayoutBankFileRow::RESULT_SENT,
+    ]);
+
+    $this->artisan('payouts:reconcile')
+        ->expectsOutputToContain('re-queued 0 unsent line(s)')
+        ->assertExitCode(0);
+
+    Queue::assertNothingPushed();
+
+    // Still in front of a person, with its own instruction.
+    $item = app(PayoutsUnsentInDispatchedBatchProvider::class)->items()->sole();
+    expect($item->subjectId)->toBe((int) $filed->id)
+        ->and($item->subtitle)->toContain('NEFT bank file');
 });
 
 it('PR-04: --dry-run changes nothing and queues nothing', function (): void {

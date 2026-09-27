@@ -291,26 +291,43 @@ final class RazorpayPayoutGateway
     }
 
     /**
-     * The payout Razorpay already holds for this line, if any — asked BEFORE
+     * Every payout Razorpay holds under this line's reference — asked BEFORE
      * every create so a lost response can never become a second transfer.
-     * A transport or gateway error propagates: not knowing is not "none".
+     * All of them, not the first: one line can carry a dead attempt and a live
+     * one, and the list order is not documented. A transport or gateway error
+     * propagates: not knowing is not "none".
      *
-     * @return array{id: string, status: string, utr: string|null}|null
+     * @return list<array{id: string, status: string, utr: string|null, amount: int|null, reference_id: string, fund_account_id: string|null, mode: string|null}>
      */
-    public function findExistingPayout(PayoutLineItem $line): ?array
+    public function findPayoutsForLine(PayoutLineItem $line): array
     {
-        $payout = $this->findPayoutByReference(self::referenceFor((int) $line->id), $line);
-
-        $payoutId = (string) ($payout['id'] ?? '');
-        if ($payout === null || $payoutId === '') {
-            return null;
+        $query = ['reference_id' => self::referenceFor((int) $line->id), 'count' => 100];
+        if ($this->settings->accountNumber() !== '') {
+            $query['account_number'] = $this->settings->accountNumber();
         }
 
-        return [
-            'id' => $payoutId,
-            'status' => strtolower((string) ($payout['status'] ?? 'queued')),
-            'utr' => isset($payout['utr']) && $payout['utr'] !== '' ? (string) $payout['utr'] : null,
-        ];
+        $collection = $this->get('/payouts', $query, 'payouts.fetch_by_reference', $line);
+        $items = is_array($collection['items'] ?? null) ? $collection['items'] : [];
+
+        $payouts = [];
+        foreach ($items as $item) {
+            $id = is_array($item) ? (string) ($item['id'] ?? '') : '';
+            if ($id === '') {
+                continue;
+            }
+
+            $payouts[] = [
+                'id' => $id,
+                'status' => strtolower((string) ($item['status'] ?? 'queued')),
+                'utr' => isset($item['utr']) && $item['utr'] !== '' ? (string) $item['utr'] : null,
+                'amount' => isset($item['amount']) ? (int) $item['amount'] : null,
+                'reference_id' => (string) ($item['reference_id'] ?? ''),
+                'fund_account_id' => isset($item['fund_account_id']) && $item['fund_account_id'] !== '' ? (string) $item['fund_account_id'] : null,
+                'mode' => isset($item['mode']) && $item['mode'] !== '' ? strtolower((string) $item['mode']) : null,
+            ];
+        }
+
+        return $payouts;
     }
 
     /**

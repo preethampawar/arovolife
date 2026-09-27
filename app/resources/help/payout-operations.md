@@ -420,7 +420,10 @@ whether it already holds a payout for this line (by its `AROVOPAY-` reference).
 A live or settled one is adopted instead of sent again; only one Razorpay
 reports as rejected, cancelled, reversed or failed is replaced. If Razorpay
 cannot answer that question, nothing is sent and the line is marked `failed`
-with *Razorpay could not confirm whether this transfer already exists*.
+with *Razorpay could not confirm whether this transfer already exists*. If Razorpay
+holds two live transfers for one line, or one whose amount does not match,
+nothing is sent and the line is marked `failed` naming the payout ids — check
+them with Razorpay before sending again.
 
 ### Transfers waiting on the bank
 
@@ -430,7 +433,10 @@ the backstop for the webhook, not a replacement:
 - A line Razorpay accepted more than 6 hours ago that is still `pending` is
   checked with Razorpay — exactly what **Check with Razorpay** does on one line.
 - A payable line of a `dispatched` batch approved more than 6 hours ago that
-  was never sent (no payout id) is queued again.
+  was never sent (no payout id) is queued again — unless it is in an NEFT bank
+  file for its current attempt: the bank may already have paid it, so it is
+  never sent through Razorpay and stays in the Action Center until the bank's
+  answer is recorded.
 
 Two Action Center items under **Money** show what it could not finish:
 
@@ -615,6 +621,8 @@ Every action leaves an `audit_log` row. In Compliance → Audit log, look for:
 | `payout.batch.self_approval_refused` | An approver was refused their own batch: who tried, and who created it. |
 | `payout.batch.bank_file_exported` | Who downloaded the bank file, for which batch, how many lines, how many were already in an earlier file, the stored file's id, and a SHA-256 of the exact bytes. |
 | `payout.batch.dispatched` | How many line items were queued for sending — each line is then sent by its own job and audited as `payout.line_item.dispatched` or `payout.line_item.dispatch_failed`. |
+| `payout.line_item.dispatch_skipped` | A line not sent to Razorpay because its attempt is already in an NEFT bank file — record the bank's answer instead. |
+| `payout.reconcile.requeued` | `payouts:reconcile` queuing never-sent lines again (actor: the system), with their ids. |
 | `payout.batch.reconciled` | A bank response import: file name, rows, matched, transferred, failed, and the stored file's id. |
 | `payout.bank_file.downloaded` | Someone downloading a stored bank file (never its contents). |
 | `payout.bank_file.purged` | The nightly job deleting a stored file after its retention period. |

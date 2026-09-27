@@ -43,8 +43,11 @@ final class DispatchRazorpayPayoutLineJob implements ShouldQueue
 
     public function handle(RazorpayPayoutDispatchService $dispatcher, PayoutGatewaySettings $settings): void
     {
+        // A first send only. A line that has since failed belongs to the
+        // governed retry path (retry limit, attempt bump) — never to a stale
+        // copy of this job.
         $line = PayoutLineItem::find($this->lineItemId);
-        if ($line === null) {
+        if ($line === null || $line->status !== PayoutLineItem::STATUS_PENDING) {
             return;
         }
 
@@ -85,7 +88,8 @@ final class DispatchRazorpayPayoutLineJob implements ShouldQueue
 
         $dispatcher = app(RazorpayPayoutDispatchService::class);
 
-        if (! $dispatcher->holdInterrupted($line, $this->actorId)) {
+        // actor null: the interruption is the system's, not the approver's.
+        if (! $dispatcher->holdInterrupted($line, null)) {
             return;
         }
 

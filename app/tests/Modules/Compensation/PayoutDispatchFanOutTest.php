@@ -10,6 +10,7 @@ declare(strict_types=1);
  * PF-02: the line job sends through the dispatch service and settles the batch
  * PF-03: failed() marks a still-unsent line failed (job_interrupted), never one with an id
  * PF-04: the line job does nothing once the batch is no longer dispatched
+ * PF-05: the line job never sends a line that has since failed (retry path only)
  */
 
 use App\Modules\Compensation\Jobs\DispatchRazorpayPayoutLineJob;
@@ -135,6 +136,7 @@ it('PF-03: failed() marks a still-unsent line failed, and leaves a line with a p
 
     expect($unsent->fresh()->status)->toBe(PayoutLineItem::STATUS_FAILED)
         ->and($audit->details['cause'])->toBe('job_interrupted')
+        ->and($audit->actor_id)->toBeNull()
         ->and($sent->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING)
         ->and(AuditLog::where('action', 'payout.line_item.dispatch_failed')->where('subject_id', $sent->id)->exists())->toBeFalse();
 });
@@ -149,4 +151,15 @@ it('PF-04: the line job does nothing once the batch is no longer dispatched', fu
     Http::assertNothingSent();
     expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING)
         ->and($line->fresh()->razorpay_payout_id)->toBeNull();
+});
+
+it('PF-05: the line job never sends a line that has since failed', function (): void {
+    Http::fake();
+    [, $line] = pfoBatch('ADN9241');
+    $line->forceFill(['status' => PayoutLineItem::STATUS_FAILED])->save();
+
+    pfoRunLine((int) $line->id);
+
+    Http::assertNothingSent();
+    expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_FAILED);
 });
