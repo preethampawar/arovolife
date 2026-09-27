@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Console\Commands;
 use App\Modules\Compensation\Exceptions\CutoffReplayedOutOfOrder;
 use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Services\DTOs\GsbCarryforwardSnapshot;
 use App\Modules\Compensation\Services\DTOs\GsbCutoffComputation;
 use App\Modules\Compensation\Services\DTOs\MsbAccrual;
 use App\Modules\Compensation\Services\EngineStatusService;
@@ -264,6 +265,9 @@ final class GsbDailyCutoffCommand extends Command
         /** @var array<int, string> $deferredIds distributor id => deferral cause */
         $deferredIds = [];
 
+        /** @var array<int, list<Carbon>> $owedDays distributor id => earlier days still owed, oldest first */
+        $owedDays = [];
+
         if ($singleId === null && $this->eligibility->engineActive()) {
             $deferredByEvaluation = $this->deferredByEvaluation($date);
 
@@ -302,11 +306,12 @@ final class GsbDailyCutoffCommand extends Command
 
             $stillOwed = GsbCutoffDeferral::open()
                 ->whereDate('cutoff_date', '<', $date->toDateString())
-                ->distinct()
-                ->pluck('distributor_id');
+                ->orderBy('cutoff_date')
+                ->get(['distributor_id', 'cutoff_date']);
 
-            foreach ($stillOwed as $owedId) {
-                $deferredIds[(int) $owedId] ??= GsbCutoffDeferral::CAUSE_EARLIER_DAY_OPEN;
+            foreach ($stillOwed as $owed) {
+                $deferredIds[$owed->distributor_id] ??= GsbCutoffDeferral::CAUSE_EARLIER_DAY_OPEN;
+                $owedDays[$owed->distributor_id][] = $owed->cutoff_date->copy()->startOfDay();
             }
         }
 
@@ -344,6 +349,7 @@ final class GsbDailyCutoffCommand extends Command
             $date,
             $singleId,
             $deferredIds,
+            $owedDays,
             &$deferredSeen,
             &$computations,
             &$failed,
@@ -383,7 +389,9 @@ final class GsbDailyCutoffCommand extends Command
                 }
 
                 try {
-                    $computations[$distributorId] = $this->cutoff->computeForDistributor($distributorId, $date);
+                    $computations[$distributorId] = isset($owedDays[$distributorId])
+                        ? $this->computeOnOwedDays($distributorId, $date, $owedDays[$distributorId])
+                        : $this->cutoff->computeForDistributor($distributorId, $date);
                 } catch (CutoffReplayedOutOfOrder) {
                     // A later row already exists for a deferred distributor:
                     // there is no day left to owe them.
@@ -698,6 +706,36 @@ final class GsbDailyCutoffCommand extends Command
             'adns' => array_values(array_map(strval(...), is_array($summary['failed_adns'] ?? null) ? $summary['failed_adns'] : [])),
             'run_id' => $run?->id === null ? null : (int) $run->id,
         ];
+    }
+
+    /**
+     * Tonight's computation for a distributor still owed earlier days, on the
+     * store those days WOULD leave (E5 review N1). Each owed day is computed
+     * purely, oldest first, and folded into an in-memory snapshot; tonight is
+     * then computed on it. Nothing is written — the reservation just prices the
+     * same day the backfill will later settle, instead of one on a store that
+     * never absorbed the owed days.
+     *
+     * @param  list<Carbon>  $owedDays
+     */
+    private function computeOnOwedDays(int $distributorId, Carbon $date, array $owedDays): GsbCutoffComputation
+    {
+        $snapshot = null;
+
+        foreach ($owedDays as $day) {
+            $snapshot = GsbCarryforwardSnapshot::after(
+                $this->cutoff->computeForDistributor($distributorId, $day, $snapshot),
+                $snapshot,
+            );
+        }
+
+        Log::info('gsb.cutoff.reservation_chained', [
+            'distributor_id' => $distributorId,
+            'owed_days' => count($owedDays),
+            'date' => $date->toDateString(),
+        ]);
+
+        return $this->cutoff->computeForDistributor($distributorId, $date, $snapshot);
     }
 
     /**

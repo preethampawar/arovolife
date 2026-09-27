@@ -10,6 +10,7 @@ use App\Modules\Compensation\Models\GsbPersonalBvTopup;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\DTOs\BonusCreditOutcome;
+use App\Modules\Compensation\Services\DTOs\GsbCarryforwardSnapshot;
 use App\Modules\Compensation\Services\GsbCutoffService;
 use App\Modules\Compensation\Services\Recompute\CarryforwardRewind;
 use App\Modules\Compensation\Services\WalletService;
@@ -859,4 +860,35 @@ it('keeps one source of truth for the carry-forward-advancing statuses', functio
 
     expect(statusConstantsNamedIn(CarryforwardRewind::class, 'readFrom'))->toBe([]);
     expect(statusConstantsNamedIn(GsbCutoffResult::class, 'advancedCarryForward'))->toBe([]);
+});
+
+it('computes on an assumed store instead of the carry-forward row, and withholds its consumed top-ups', function () {
+    // E5 review N1: the full cut-off reserves a still-deferred distributor's
+    // day on the store their owed days would leave — L 10,000 power CF and
+    // 8,000 slab-1 CF here — while the real row is still empty. The top-up is
+    // live, so the pending 3,000 BV order tops the weaker leg up on a match.
+    enableTopupGolive();
+    $dist = makeDistributorWithBv(300_000);
+    GroupBvDaily::create([
+        'distributor_id' => $dist->id,
+        'date' => today()->toDateString(),
+        'left_bv_paise' => 600_000,
+        'right_bv_paise' => 800_000,
+    ]);
+
+    $svc = app(GsbCutoffService::class);
+    $assumed = new GsbCarryforwardSnapshot('L', 1_000_000, 800_000);
+
+    expect($svc->computeForDistributor($dist->id, Carbon::today())->isMatched())->toBeFalse();
+
+    $c = $svc->computeForDistributor($dist->id, Carbon::today(), $assumed);
+    expect($c->isMatched())->toBeTrue()
+        ->and($c->slabIndex)->toBe(1)
+        ->and($c->cfBeforePower)->toBe(1_000_000)
+        ->and($c->cfBeforeSlab1)->toBe(800_000)
+        ->and(GsbCarryforward::where('distributor_id', $dist->id)->exists())->toBeFalse();
+
+    // Unless an owed day in the chain already spent that order.
+    expect($c->topupOrderIds)->toBe([999_999])
+        ->and($svc->computeForDistributor($dist->id, Carbon::today(), new GsbCarryforwardSnapshot('L', 1_000_000, 800_000, [999_999]))->topupOrderIds)->toBe([]);
 });

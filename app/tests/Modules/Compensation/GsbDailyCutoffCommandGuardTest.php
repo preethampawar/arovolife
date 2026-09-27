@@ -543,3 +543,80 @@ it('does not backfill a deferral a by-name run already settled', function (): vo
         ->and(WalletLedgerEntry::where('distributor_id', $achiever->id)->where('type', 'gsb_credit')->count())->toBe(2)
         ->and(GsbCutoffDeferral::sole()->resolution)->toBe(GsbCutoffDeferral::RESOLUTION_MANUAL);
 });
+
+// ── Review fixes (N1, M1–M5, L1–L5), 2026-09-27 ─────────────────────────────
+
+/**
+ * A slab-1-titled achiever (3,000 BV personal, dated before the first day) with
+ * a sponsor over the MSB minimum, and the given [left, right] group BV (paise)
+ * on each day.
+ *
+ * @param  array<string, array{0: int, 1: int}>  $legsByDay
+ * @return array{0: Distributor, 1: Distributor} [achiever, sponsor]
+ */
+function seedLeggedAchiever(array $legsByDay): array
+{
+    static $seq = 0;
+    $before = Carbon::parse(array_key_first($legsByDay))->subDay();
+    $seq++;
+
+    $achiever = Distributor::factory()->create(['status' => 'active', 'adn' => '3200'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT)]);
+    $sponsor = Distributor::factory()->create(['status' => 'active', 'adn' => '3300'.str_pad((string) $seq, 5, '0', STR_PAD_LEFT)]);
+
+    BvLedgerEntry::create(['distributor_id' => $achiever->id, 'order_id' => 940_000 + $seq, 'bv_paise' => 300_000, 'type' => 'accrual', 'effective_at' => $before]);
+    BvLedgerEntry::create(['distributor_id' => $sponsor->id, 'order_id' => 950_000 + $seq, 'bv_paise' => 60_000, 'type' => 'accrual', 'effective_at' => $before]);
+    DB::table('sponsorship')->insert(['sponsor_id' => $sponsor->id, 'distributor_id' => $achiever->id, 'created_at' => $before]);
+
+    foreach ($legsByDay as $day => [$left, $right]) {
+        GroupBvDaily::create([
+            'distributor_id' => $achiever->id, 'date' => $day,
+            'left_bv_paise' => $left, 'right_bv_paise' => $right,
+        ]);
+    }
+
+    return [$achiever, $sponsor];
+}
+
+it('reserves a still-deferred day on top of the days the distributor is owed (N1)', function (): void {
+    // The review's example: store empty; 25 Aug is L 10,000 / R 8,000 (no
+    // match); 26 Aug is L 6,000 / R 8,000. On the unadvanced store the 26th
+    // matches nothing, but after the 25th settles it is L 16,000 / R 8,000 with
+    // 8,000 slab-1 CF — slab 1. The 26th's reservation must include it.
+    Carbon::setTestNow('2026-08-27 00:30:00');
+    activateDeferralFeatures();
+    seedDeferralCompanyBv(['2026-08-25', '2026-08-26', '2026-08-27']);
+    [$achiever] = seedLeggedAchiever([
+        '2026-08-25' => [1_000_000, 800_000],
+        '2026-08-26' => [600_000, 800_000],
+    ]);
+
+    seedEvaluateRunWithDeferrals('2026-08-26', [$achiever->id], [$achiever->adn]);
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-25']))->toBe(0);
+
+    seedEvaluateRunWithDeferrals('2026-08-27', [$achiever->id], [$achiever->adn]);
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-26']))->toBe(0);
+
+    $d25 = GsbCutoffDeferral::where('distributor_id', $achiever->id)->whereDate('cutoff_date', '2026-08-25')->sole();
+    $d26 = GsbCutoffDeferral::where('distributor_id', $achiever->id)->whereDate('cutoff_date', '2026-08-26')->sole();
+    $pool26 = GsbDailyPool::whereDate('cutoff_date', '2026-08-26')->sole();
+
+    expect($d25->reserved_slab)->toBeNull()
+        ->and($d26->reserved_slab)->toBe(1)
+        ->and($d26->reserved_gsb_paise)->toBe(200_000)
+        ->and($pool26->fixed_payout_paise)->toBe(200_000);
+
+    // The night they evaluate cleanly: both days backfill in order, and the
+    // 26th pays exactly what its pool set aside.
+    Carbon::setTestNow('2026-08-28 00:30:00');
+    seedEvaluateRun('2026-08-28', '2026-08-28 00:05:00');
+    expect(Artisan::call('gsb:daily-cutoff', ['--date' => '2026-08-27']))->toBe(0);
+
+    $rows = GsbCutoffResult::where('distributor_id', $achiever->id)->orderBy('cutoff_date')->get();
+    expect($rows->take(2)->map(fn (GsbCutoffResult $r): array => [$r->cutoff_date->toDateString(), $r->status, $r->slab])->all())
+        ->toBe([
+            ['2026-08-25', GsbCutoffResult::STATUS_NO_MATCH, null],
+            ['2026-08-26', GsbCutoffResult::STATUS_CREDITED, 1],
+        ])
+        ->and($rows[1]->gross_gsb_paise)->toBe($d26->reserved_gsb_paise)
+        ->and(GsbDailyPool::whereDate('cutoff_date', '2026-08-26')->sole()->leftover_paise)->toBe($pool26->leftover_paise);
+});
