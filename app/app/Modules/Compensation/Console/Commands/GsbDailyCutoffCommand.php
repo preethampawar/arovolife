@@ -494,17 +494,21 @@ final class GsbDailyCutoffCommand extends Command
         $classes = is_array($summary['failure_classes'] ?? null) ? $summary['failure_classes'] : [];
         $cap = (int) ($summary['skip_cap'] ?? config('arovolife.compensation.evaluate_skip_cap', 500));
 
+        $why = $failed > $cap
+            ? sprintf('That is more than the %d the run may skip', $cap)
+            : 'Every failure is the same exception class — a fault in the run, not in the data';
+
         return [
             'failed' => $failed,
             'adns' => $adns,
             'message' => sprintf(
                 "That run did complete, but %d distributor(s) threw and still carry the previous run's "
-                    ."verdict%s%s.\nThat is more than the %d the run may skip, so it was recorded as a failure: "
+                    ."verdict%s%s.\n%s, so it was recorded as a failure: "
                     ."fix the cause, re-run the evaluation, then this cut-off.\n",
                 $failed,
                 $adns === [] ? '' : ' — ADN '.implode(', ', $adns),
                 $classes === [] ? '' : ' ('.implode(', ', array_map(strval(...), $classes)).')',
-                $cap,
+                $why,
             ),
         ];
     }

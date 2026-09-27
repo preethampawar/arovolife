@@ -153,13 +153,24 @@ it('records a completed_with_skips summary naming the skipped ADNs, ids and exce
         ->and($run->summary['reason'])->toContain('skipped');
 });
 
-it('fails closed above the skip cap, because that is a fault in the run and not in the data', function (): void {
-    config(['arovolife.compensation.evaluate_skip_cap' => 1]);
-    distributorWithAnchor('2026-07-07');
-    distributorWithAnchor('2026-07-13');
+it('caps skips at 1% of the roster it looked at, never below 10', function (): void {
+    expect(RepurchaseEvaluateCommand::effectiveSkipCap(300))->toBe(10)
+        ->and(RepurchaseEvaluateCommand::effectiveSkipCap(5_000))->toBe(50)
+        ->and(RepurchaseEvaluateCommand::effectiveSkipCap(1_000_000))->toBe(500);   // configured 500 wins
+});
 
-    RepurchaseCycle::creating(function (): void {
-        throw new RuntimeException('simulated systemic failure');
+it('fails closed above the skip cap, because that is a fault in the run and not in the data', function (): void {
+    // Eleven failures on an eleven-strong roster: over the floor of ten. Two
+    // exception classes, so it is the cap that trips, not the single-class rule.
+    for ($i = 0; $i < 11; $i++) {
+        distributorWithAnchor('2026-07-0'.(($i % 9) + 1));
+    }
+
+    $n = 0;
+    RepurchaseCycle::creating(function () use (&$n): void {
+        throw ($n++ % 2 === 0)
+            ? new RuntimeException('simulated failure')
+            : new LogicException('simulated failure');
     });
 
     expect(Artisan::call('repurchase:evaluate', ['--date' => '2026-07-30']))->toBe(1);
@@ -168,8 +179,25 @@ it('fails closed above the skip cap, because that is a fault in the run and not 
 
     expect($run->status)->toBe(EngineRun::STATUS_FAILED)
         ->and($run->summary['outcome'])->toBe(RepurchaseEvaluateCommand::OUTCOME_FAILED_PARTIAL)
-        ->and($run->summary['failed'])->toBe(2)
-        ->and($run->summary['reason'])->toContain('more than the 1');
+        ->and($run->summary['failed'])->toBe(11)
+        ->and($run->summary['skip_cap'])->toBe(10)
+        ->and($run->summary['reason'])->toContain('more than the 10');
+});
+
+it('fails closed when ten or more failures share one exception class', function (): void {
+    config(['arovolife.compensation.evaluate_skip_cap' => 500]);
+    for ($i = 0; $i < 10; $i++) {
+        distributorWithAnchor('2026-07-0'.(($i % 9) + 1));
+    }
+
+    RepurchaseCycle::creating(function (): void {
+        throw new RuntimeException('simulated systemic failure');
+    });
+
+    expect(Artisan::call('repurchase:evaluate', ['--date' => '2026-07-30']))->toBe(1);
+    $run = lastEvaluateRun();
+    expect($run->summary['outcome'])->toBe(RepurchaseEvaluateCommand::OUTCOME_FAILED_PARTIAL)
+        ->and($run->summary['reason'])->toContain('same class');
 });
 
 it('refuses while another evaluation run is in flight', function (): void {
