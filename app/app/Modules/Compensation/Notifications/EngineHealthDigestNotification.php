@@ -114,19 +114,16 @@ final class EngineHealthDigestNotification extends Notification implements Shoul
             }
         }
 
-        if ($this->report->skippedDistributors !== []) {
-            $mail->line('**Distributors the repurchase evaluation could not judge**');
+        if ($this->report->deferredCutoffs !== []) {
+            $mail->line('**Deferred GSB cut-offs**');
 
-            foreach ($this->report->skippedDistributors as $item) {
+            foreach ($this->report->deferredCutoffs as $item) {
                 $position++;
                 $mail->line(sprintf(
-                    '**%d. %s — %s** (%d distributor(s) skipped: ADN %s; their %s GSB cut-off was not computed)',
+                    '**%d. %s** (ADN %s)',
                     $position,
-                    $item['engine'],
-                    $item['period'],
-                    $item['count'],
-                    $item['adns'] === [] ? '…' : implode(', ', $item['adns']),
-                    $item['cutoff_date'],
+                    $item['headline'],
+                    implode(', ', $item['adns']),
                 ));
                 $this->appendSteps($mail, $item['steps']);
             }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Services\DTOs\EngineHealthReport;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
@@ -31,7 +32,7 @@ use Illuminate\Support\Str;
  * @phpstan-import-type StuckItem from EngineHealthReport
  * @phpstan-import-type PrematureFreezeItem from EngineHealthReport
  * @phpstan-import-type ChainAlertItem from EngineHealthReport
- * @phpstan-import-type SkippedDistributorsItem from EngineHealthReport
+ * @phpstan-import-type DeferredCutoffsItem from EngineHealthReport
  */
 final class EngineHealthService
 {
@@ -52,6 +53,9 @@ final class EngineHealthService
      */
     private const int CHAIN_ALERT_WINDOW_DAYS = 7;
 
+    /** An owed day this old gets its own "is the distributor still active" step. */
+    private const int DEFERRAL_AGEING_DAYS = 3;
+
     public function __construct(private readonly EngineStatusService $status) {}
 
     public function report(Carbon $now): EngineHealthReport
@@ -64,7 +68,7 @@ final class EngineHealthService
             stuck: $this->stuck(),
             prematureFreezes: $this->prematureFreezes($now),
             chainAlerts: $this->chainAlerts($now),
-            skippedDistributors: $this->skippedDistributors($now),
+            deferredCutoffs: $this->deferredCutoffs($now),
         );
     }
 
@@ -437,52 +441,89 @@ final class EngineHealthService
     }
 
     /**
-     * Last night's evaluation skipped somebody (client decision 2026-09-27):
-     * named here because the run itself succeeded and nothing else would say
-     * so. Only the most recent run, and only within a day — after that the
-     * day has been passed by a later cut-off and the remedy is a rebuild.
+     * Every open deferred GSB cut-off (E5 redesign), grouped as one item.
      *
-     * @return list<SkippedDistributorsItem>
+     * No time window: the deferral table is durable, so an owed day is in the
+     * digest every morning until a backfill or a --force by-name run resolves
+     * it. ADNs and ids only — never names or contact details.
+     *
+     * @return list<DeferredCutoffsItem>
      */
-    private function skippedDistributors(Carbon $now): array
+    private function deferredCutoffs(Carbon $now): array
     {
-        $run = $this->status->lastRun('repurchase.evaluate');
-        $summary = is_array($run?->summary) ? $run->summary : [];
+        $rows = GsbCutoffDeferral::open()
+            ->join('distributors', 'distributors.id', '=', 'gsb_cutoff_deferrals.distributor_id')
+            ->orderBy('gsb_cutoff_deferrals.cutoff_date')
+            ->orderBy('gsb_cutoff_deferrals.distributor_id')
+            ->get(['gsb_cutoff_deferrals.*', 'distributors.adn', 'distributors.status as distributor_status']);
 
-        if ($run === null
-            || $run->status !== EngineRun::STATUS_SUCCEEDED
-            || (int) ($summary['failed'] ?? 0) < 1
-            || $run->started_at === null
-            || $run->started_at->lessThan($now->copy()->subDay())) {
+        if ($rows->isEmpty()) {
             return [];
         }
 
-        $definition = $this->definitionFor('repurchase.evaluate');
-        $period = $run->period_start;
-        $cutoffDay = $period->copy()->subDay();
-        $ids = array_values(array_map(intval(...), is_array($summary['failed_distributor_ids'] ?? null) ? $summary['failed_distributor_ids'] : []));
-        $adns = array_values(array_map(strval(...), is_array($summary['failed_adns'] ?? null) ? $summary['failed_adns'] : []));
+        $today = $now->copy()->startOfDay();
+        $oldest = $rows->first()->cutoff_date;
+        $ages = [];
+        $adns = [];
+        $inactive = [];
+        $closedMonthDays = [];
+
+        foreach ($rows as $row) {
+            $adn = (string) $row->getAttribute('adn');
+            $age = (int) $row->cutoff_date->copy()->startOfDay()->diffInDays($today);
+
+            $adns[$adn] = true;
+            $ages[$adn] = max($ages[$adn] ?? 0, $age);
+
+            if ($row->getAttribute('distributor_status') !== 'active') {
+                $inactive[$adn] = true;
+            }
+
+            // The monthly engines close a month on the 1st of the next.
+            if ($row->cutoff_date->copy()->startOfMonth()->lt($today->copy()->startOfMonth())) {
+                $closedMonthDays[$row->cutoff_date->format('d M Y')] = true;
+            }
+        }
+
+        $adnList = array_map(strval(...), array_keys($adns));
+        $oldestAge = (int) $oldest->copy()->startOfDay()->diffInDays($today);
+
+        $steps = [
+            'Nothing to run: the next nightly cut-off backfills each one automatically the first night the distributor evaluates cleanly, paid at that day\'s frozen pool value.',
+            sprintf('Open each distributor (ADN %s) and fix what the evaluation tripped on — the exception class is on the Repurchase Evaluation run\'s summary on Engine Runs.', implode(', ', $adnList)),
+        ];
+
+        foreach ($ages as $adn => $age) {
+            if ($age >= self::DEFERRAL_AGEING_DAYS) {
+                $steps[] = sprintf(
+                    'ADN %s has waited %d days: check the distributor is still active (an inactive distributor is never backfilled — decide whether to reactivate or write the day off in the audit log).%s',
+                    $adn,
+                    $age,
+                    isset($inactive[$adn]) ? ' They are inactive now.' : '',
+                );
+            }
+        }
+
+        foreach (array_keys($closedMonthDays) as $day) {
+            $steps[] = "A backfill for {$day} credits a month whose figures have moved; the weekly payout picks the credit up on its next Tuesday.";
+        }
 
         return [[
-            'engine' => $definition->label ?? 'repurchase.evaluate',
-            'key' => 'repurchase.evaluate',
-            'period' => $this->displayPeriod($definition, $period),
-            'period_value' => $this->periodValue($definition, $period),
-            'cutoff_date' => $cutoffDay->format('d M Y'),
-            'count' => (int) $summary['failed'],
-            'adns' => $adns,
-            'ids' => $ids,
-            'steps' => [
-                sprintf('Open each distributor (ADN %s) and fix what the evaluation tripped on — the exception class is on the run\'s summary on the Engine Runs page.', $adns === [] ? '…' : implode(', ', $adns)),
-                sprintf(
-                    'Ask the developer to re-run both for each one by name before tonight\'s 00:05 run: php artisan repurchase:evaluate --date=%1$s --distributor=%3$s, then php artisan gsb:daily-cutoff --date=%2$s --distributor=%3$s (ids: %4$s). The single-distributor cut-off prices against the day\'s frozen pool.',
-                    $period->toDateString(),
-                    $cutoffDay->toDateString(),
-                    count($ids) === 1 ? (string) $ids[0] : '<id>',
-                    $ids === [] ? '…' : implode(', ', $ids),
-                ),
-                sprintf('Missed that window? %s can then only be rebuilt as a whole — ask the developer for a night rebuild of that day.', $cutoffDay->format('d M Y')),
-            ],
+            'engine' => 'GSB daily cut-off',
+            'key' => 'gsb.daily-cutoff',
+            'headline' => sprintf(
+                '%d deferred GSB cut-off(s) waiting on a fixed repurchase evaluation — oldest %s (%d days)',
+                $rows->count(),
+                $oldest->format('d M Y'),
+                $oldestAge,
+            ),
+            'period' => $oldest->format('d M Y'),
+            'period_value' => $oldest->toDateString(),
+            'count' => $rows->count(),
+            'oldest' => $oldest->format('d M Y'),
+            'adns' => $adnList,
+            'ages' => $ages,
+            'steps' => $steps,
         ]];
     }
 

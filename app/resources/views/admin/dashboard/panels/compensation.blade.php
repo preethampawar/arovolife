@@ -31,7 +31,7 @@
         ['label' => 'Stuck runs', 'count' => count($report->stuck)],
         ['label' => 'Premature freezes', 'count' => count($report->prematureFreezes)],
         ['label' => 'Chain alerts', 'count' => count($report->chainAlerts)],
-        ['label' => 'Skipped distributors', 'count' => count($report->skippedDistributors)],
+        ['label' => 'Deferred cut-offs', 'count' => count($report->deferredCutoffs)],
     ];
 
     $alertTotal = array_sum(array_column($buckets, 'count'));

@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Notifications\EngineHealthDigestNotification;
 use App\Modules\Compensation\Services\EngineHealthService;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\NightlyRunAlert;
 use App\Modules\Compensation\Support\PrematureFreezeAlert;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Carbon;
@@ -586,37 +588,41 @@ it('names the run in a skipped-night headline, and what its next night picks up'
     expect($text)->not->toContain('The chain never started');
 });
 
-it('lists the distributors last night\'s evaluation skipped, with the day they missed and the remedy', function (): void {
+it('lists open deferred cut-offs every morning until they are resolved', function (): void {
     seedHealthyRuns();
-    EngineRun::where('engine_key', 'repurchase.evaluate')->update(['summary' => json_encode([
-        'outcome' => 'completed_with_skips',
-        'failed' => 1,
-        'failed_adns' => ['ADN12345'],
-        'failed_distributor_ids' => [42],
-    ])]);
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active', 'adn' => '100000077']);
+    GsbCutoffDeferral::create(['distributor_id' => $d->id, 'cutoff_date' => '2026-09-03', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED]);
 
     $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
 
     $text = digestText(sentDigest());
 
-    expect($text)->toContain('could not judge')
-        ->and($text)->toContain('ADN12345')
-        ->and($text)->toContain('07 Sep 2026')                       // the cut-off day: the run's period minus one
-        ->and($text)->toContain('--distributor=42')
-        ->and($text)->toContain('before tonight');
+    expect($text)->toContain('deferred GSB cut-off')
+        ->and($text)->toContain('100000077')
+        ->and($text)->toContain('03 Sep 2026')
+        ->and($text)->toContain('backfills each one automatically')
+        ->and($text)->toContain('has waited 5 days');
 });
 
-it('does not list skips from an evaluation older than a day', function (): void {
+it('says a backfill for a closed month moves that month\'s figures', function (): void {
     seedHealthyRuns();
-    EngineRun::where('engine_key', 'repurchase.evaluate')->update([
-        'started_at' => '2026-09-06 00:05:00',
-        'finished_at' => '2026-09-06 00:06:00',
-        'summary' => json_encode(['outcome' => 'completed_with_skips', 'failed' => 1, 'failed_adns' => ['ADN12345'], 'failed_distributor_ids' => [42]]),
-    ]);
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active', 'adn' => '100000078']);
+    GsbCutoffDeferral::create(['distributor_id' => $d->id, 'cutoff_date' => '2026-08-30', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED]);
 
-    // Nothing else is wrong on this morning, so no digest is sent at all; the
-    // report itself is what proves the stale skip list was not picked up.
-    expect(app(EngineHealthService::class)->report(Carbon::now())->skippedDistributors)->toBe([]);
+    $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
+
+    expect(digestText(sentDigest()))->toContain('A backfill for 30 Aug 2026 credits a month whose figures have moved');
+});
+
+it('stops listing a deferral once it is resolved', function (): void {
+    disableTestForeignKeys();
+    $d = Distributor::factory()->create(['status' => 'active']);
+    GsbCutoffDeferral::create(['distributor_id' => $d->id, 'cutoff_date' => '2026-09-07', 'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED, 'resolved_at' => now(), 'resolution' => 'backfilled']);
+    seedHealthyRuns();
+
+    expect(app(EngineHealthService::class)->report(Carbon::now())->deferredCutoffs)->toBe([]);
 
     $this->artisan('compensation:engine-health-digest')->assertExitCode(0);
 

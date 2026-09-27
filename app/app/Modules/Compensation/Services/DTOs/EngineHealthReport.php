@@ -17,7 +17,7 @@ namespace App\Modules\Compensation\Services\DTOs;
  * @phpstan-type StuckItem array{engine: string, key: string, period: string, period_value: string, started_at: string, steps: list<string>}
  * @phpstan-type PrematureFreezeItem array{engine: string, key: string, period: string, period_value: string, frozen_at: string, detected_at: string, steps: list<string>}
  * @phpstan-type ChainAlertItem array{kind: string, headline: string, date: string, recorded_at: string, steps: list<string>}
- * @phpstan-type SkippedDistributorsItem array{engine: string, key: string, period: string, period_value: string, cutoff_date: string, count: int, adns: list<string>, ids: list<int>, steps: list<string>}
+ * @phpstan-type DeferredCutoffsItem array{engine: string, key: string, headline: string, period: string, period_value: string, count: int, oldest: string, adns: list<string>, ages: array<string, int>, steps: list<string>}
  */
 final readonly class EngineHealthReport
 {
@@ -27,7 +27,7 @@ final readonly class EngineHealthReport
      * @param  list<StuckItem>  $stuck  Runs still `running` long after they started.
      * @param  list<PrematureFreezeItem>  $prematureFreezes  Pools frozen too early that the self-heal had to keep.
      * @param  list<ChainAlertItem>  $chainAlerts  What the three scheduled runs could not do: a night one never started, a gap too wide to heal, a month or a batch deferred.
-     * @param  list<SkippedDistributorsItem>  $skippedDistributors  Distributors last night's repurchase evaluation could not judge, left out of that night's cut-off.
+     * @param  list<DeferredCutoffsItem>  $deferredCutoffs  Open GSB cut-off days deferred because the repurchase evaluation could not judge the distributor; listed until backfilled.
      */
     public function __construct(
         public array $failures,
@@ -35,7 +35,7 @@ final readonly class EngineHealthReport
         public array $stuck,
         public array $prematureFreezes = [],
         public array $chainAlerts = [],
-        public array $skippedDistributors = [],
+        public array $deferredCutoffs = [],
     ) {}
 
     public function isHealthy(): bool
@@ -50,6 +50,6 @@ final readonly class EngineHealthReport
             + count($this->stuck)
             + count($this->prematureFreezes)
             + count($this->chainAlerts)
-            + count($this->skippedDistributors);
+            + count($this->deferredCutoffs);
     }
 }
