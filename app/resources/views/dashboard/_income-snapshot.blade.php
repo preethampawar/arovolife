@@ -38,7 +38,7 @@
             {{-- Stat tiles — 2×2 grid --}}
             <div class="grid grid-cols-2 gap-3">
                 {{-- Wallet balance — spans both columns --}}
-                <div class="col-span-2 rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white p-4">
+                <div class="col-span-2 rounded-xl bg-brand-600 text-white p-4">
                     <div class="flex items-center justify-between mb-1">
                         <p class="text-[11px] uppercase tracking-wider font-semibold text-white/80">Wallet balance</p>
                         <x-help-tip :light="true" text="Already net of the repurchase deduction taken when each bonus was credited. Transferred to your bank on payout days after the 3% admin charge and 5% TDS, once the minimum payout is met." />

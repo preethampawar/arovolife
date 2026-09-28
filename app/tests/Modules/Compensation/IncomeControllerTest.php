@@ -232,9 +232,8 @@ it('shows carry-forward folded into the dashboard group BV cards as the opening 
         ->assertSee('21,000')
         ->assertSee('15,000 today + 6,000 carried over')
         ->assertSee('Power-side carry over (opening balance)')
-        // Left holds the power carry-forward, so Right is the weaker side.
-        ->assertSee('Power side')
-        ->assertSee('Weaker side')
+        // Power / Weaker side pills were removed (2026-09-28).
+        ->assertDontSee('Power side')
         // The side-less slab-1 bucket is surfaced under the weaker side…
         ->assertSee('+ 600 BV in slab-1 weaker carry over (see card below)')
         // …and its own card names the side it is currently accumulating from.

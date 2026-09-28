@@ -14,7 +14,7 @@ final class GenosSideColors
         'bar' => 'bg-gradient-to-r from-sky-400 to-sky-600',
         'text' => 'text-sky-700',
         'chip' => 'border-sky-200 bg-sky-50 text-sky-700',
-        'card' => 'border-sky-200 bg-gradient-to-br from-sky-50 to-white',
+        'card' => 'border-sky-300 bg-sky-100',
         'dot' => 'bg-sky-500',
     ];
 
@@ -22,7 +22,7 @@ final class GenosSideColors
         'bar' => 'bg-gradient-to-r from-emerald-400 to-emerald-600',
         'text' => 'text-emerald-700',
         'chip' => 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        'card' => 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white',
+        'card' => 'border-emerald-300 bg-emerald-100',
         'dot' => 'bg-emerald-500',
     ];
 

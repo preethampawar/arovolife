@@ -16,13 +16,13 @@
 
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-sky-100 rounded-2xl border border-sky-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">Fortune Bonus credited to wallet (page)</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalNet / 100, 0) }}
             </p>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-indigo-100 rounded-2xl border border-indigo-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">Months participated</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \App\Modules\Shared\Support\IndianNumber::format($rows->total()) : count($rows) }}

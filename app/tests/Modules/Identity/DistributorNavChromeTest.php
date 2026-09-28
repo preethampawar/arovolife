@@ -13,12 +13,10 @@ it('distributor top bar has a red sign-out pill and no profile dropdown', functi
     expect(strpos($html, 'data-signout-pill'))->toBeGreaterThan(strpos($html, 'India'));
 });
 
-it('guest Sign In pill and distributor Sign out pill share the same slot', function () {
+it('guests get no Sign in pill in the top strip; Sign In stays in the main nav', function () {
     $guest = $this->get(route('about'))->assertOk()->getContent();
-    expect($guest)->toContain('data-signin-pill')->not->toContain('data-signout-pill');
-    // Guests find Sign in in the same spot: thin strip, after the country marker.
-    expect(strpos($guest, 'data-signin-pill'))->toBeGreaterThan(strpos($guest, 'India'))
-        ->and(strpos($guest, 'data-signin-pill'))->toBeLessThan(strpos($guest, '<nav'));
+    expect($guest)->not->toContain('data-signin-pill')->not->toContain('data-signout-pill')
+        ->toContain(route('login'));
 });
 
 it('sidebar has a My Profile group with Edit Profile, Change Password, My Addresses', function () {

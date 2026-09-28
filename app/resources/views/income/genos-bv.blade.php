@@ -50,7 +50,7 @@
                 $settledPowerSide = $slabProgress->settledPowerSide();
                 $weakerSideIsLeft = ($slabProgress->settledWeakerSide() ?? 'R') === 'L';
                 $sideBadgeClasses = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium';
-                $powerBadgeClasses = $sideBadgeClasses.' bg-violet-100 text-violet-700';
+                $powerBadgeClasses = $sideBadgeClasses.' bg-green-100 text-green-700';
                 $weakerBadgeClasses = $sideBadgeClasses.' bg-amber-100 text-amber-700';
                 $slab1WeakerCfHint = $slab1WeakerCfBv > 0
                     ? '+ '.\App\Modules\Shared\Support\IndianNumber::format($slab1WeakerCfBv, 0).' BV in slab-1 weaker carry over — counted under Slab 1 below'
@@ -64,7 +64,7 @@
                 $slab1WeakerCfTip = 'Weaker-side BV from earlier days — including any personal-BV top-up — carries over into the slab-1 weaker bucket at each cut-off. That bucket is not pinned to a side; it applies to whichever side is weaker at the next cut-off, so it is not part of this side\'s total. It appears as Slab 1 "Your progress" in the ladder below and counts toward the 15,000 BV first-slab match.';
             @endphp
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pb-5">
-                <div class="bg-gray-50 rounded-xl px-4 py-3">
+                <div class="bg-sky-100 rounded-xl border border-sky-200 px-4 py-3">
                     <p class="text-xs text-gray-600 flex items-center gap-1">Left Genos BV today <x-help-tip text="Today's Left Genos BV plus any BV carried over on your Left side. This is the figure tonight's 23:59 cut-off will use. Your own purchase BV is not included — the cut-off adds it to the weaker side." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($slabProgress->leftEffectivePaise / 100, 0) }}</p>
                     @if ($settledPowerSide !== null)
@@ -82,7 +82,7 @@
                         </p>
                     @endif
                 </div>
-                <div class="bg-gray-50 rounded-xl px-4 py-3">
+                <div class="bg-indigo-100 rounded-xl border border-indigo-200 px-4 py-3">
                     <p class="text-xs text-gray-600 flex items-center gap-1">Right Genos BV today <x-help-tip text="Today's Right Genos BV plus any BV carried over on your Right side. This is the figure tonight's 23:59 cut-off will use. Your own purchase BV is not included — the cut-off adds it to the weaker side." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($slabProgress->rightEffectivePaise / 100, 0) }}</p>
                     @if ($settledPowerSide !== null)
@@ -100,7 +100,7 @@
                         </p>
                     @endif
                 </div>
-                <div class="bg-gray-50 rounded-xl px-4 py-3">
+                <div class="bg-amber-100 rounded-xl border border-amber-200 px-4 py-3">
                     <p class="text-xs text-gray-600 flex items-center gap-1">Matched BV so far <x-help-tip text="The lower of your Left and Right Genos BV. The slabs below are matched against this figure at the 23:59 cut-off." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format(min($slabProgress->leftEffectivePaise, $slabProgress->rightEffectivePaise) / 100, 0) }}</p>
                 </div>
@@ -264,7 +264,7 @@
                         </td>
                         <td class="px-4 py-3 text-center">
                             @if($row->slab)
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700">Slab {{ $row->slab }}</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Slab {{ $row->slab }}</span>
                             @else
                                 <span class="text-gray-600 text-xs">—</span>
                             @endif

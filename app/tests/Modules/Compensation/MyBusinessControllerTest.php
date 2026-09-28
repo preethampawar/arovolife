@@ -148,11 +148,10 @@ it('renders all four my business groups with the flag-gated menu tiles hidden', 
         // The distributor sidenav (layouts.app, lg+) carries a "My Income" link
         // to the income dashboard; the topnav account menu links here instead.
         ->assertSee('My Income')
-        // Note block — the partner's canonical carry over / carry forward definitions.
-        ->assertSee('Business that occurs before matching is called carry over.')
-        ->assertSee('The remaining BVs after matching are called carry forward.')
-        // Group 2 — hero cards share the dashboard's brand-blue gradient (F54).
-        ->assertSee('from-brand-600 to-brand-800', false)
+        // The carry over / carry forward Note block was removed (2026-09-28).
+        ->assertDontSee('Business that occurs before matching is called carry over.')
+        // Group 2 — hero cards use the dashboard KPI tile style (leaf / brand tones).
+        ->assertSee('from-leaf-50 via-white to-white', false)
         ->assertDontSee('from-indigo-600 to-purple-600', false)
         ->assertSee('Personal BV (lifetime)')
         ->assertSee('No title yet')
@@ -231,10 +230,9 @@ it('shows the carry-forward decomposition, todays genos bv and team counts', fun
         // …what is pending sits on the info icon.
         ->assertSee("Pending tonight's 23:59 cut-off: 6,000 BV of Left Genos business today.")
         ->assertSee("Pending tonight's 23:59 cut-off: 3,000 BV of Right Genos business today.")
-        // Badges are the last cut-off's decision: Left holds the power CF.
-        ->assertSee('Power side')
-        // Right is weaker, so it holds the side-less slab-1 accumulator.
-        ->assertSee('Weaker side')
+        // Power / Weaker side pills were removed (2026-09-28).
+        ->assertDontSee('Power side')
+        ->assertDontSee('Weaker side')
         // The slab-1 weaker carry over is named in the weaker side's help tip.
         ->assertSee('It includes 600 BV of slab-1 weaker carry over.')
         // Carry cards show numbers only (client, 2026-09-28).

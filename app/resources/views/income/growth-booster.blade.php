@@ -58,21 +58,21 @@
 
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-sky-100 rounded-2xl border border-sky-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">
                 Credited to wallet (this page)
                 <x-help-tip text="Growth Booster Bonus that landed in your main wallet across the months listed on this page — gross minus the repurchase deduction. Held and non-payable months are excluded." />
             </p>
             <p class="text-2xl font-bold text-gray-900">{{ $creditedRows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($creditedNetPaise / 100, 0) }}</p>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-indigo-100 rounded-2xl border border-indigo-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">
                 AGP behind it
                 <x-help-tip text="The AGP you recorded in the months that were credited on this page." />
             </p>
             <p class="text-2xl font-bold text-gray-900">{{ $creditedRows->isEmpty() ? '—' : \App\Modules\Shared\Support\IndianNumber::format($creditedAgp) }}</p>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-amber-100 rounded-2xl border border-amber-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">Months listed</p>
             <p class="text-2xl font-bold text-gray-900">{{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \App\Modules\Shared\Support\IndianNumber::format($rows->total()) : \App\Modules\Shared\Support\IndianNumber::format(count($rows)) }}</p>
         </div>

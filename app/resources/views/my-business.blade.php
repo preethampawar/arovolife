@@ -61,9 +61,6 @@
 
         return 'Pending tonight\'s 23:59 cut-off: '.implode(' and ', $parts).'.'.$tail;
     };
-    $sideBadgeClasses = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium';
-    $powerBadgeClasses = $sideBadgeClasses.' bg-indigo-100 text-indigo-700';
-    $weakerBadgeClasses = $sideBadgeClasses.' bg-amber-100 text-amber-700';
 
     // With the GSB flag off there is no cut-off, no eligibility minimum and no
     // matching — every GSB-mechanics phrase disappears from the page.
@@ -75,7 +72,6 @@
         : '';
     $todayBvTipSuffix = $gsbOn ? ' — that is, since the last 23:59 cut-off. It does not include BV carried over from earlier days' : '';
 
-    $badgeTipSuffix = ' The badge shows whether this was your power side (the higher of the two) or your weaker side at the last 23:59 cut-off — only the weaker side is matched against the slab table. It is hidden until a cut-off has decided the sides.';
 
     $cardClasses = 'bg-white rounded-2xl border border-gray-200 p-5';
     $statLabelClasses = 'text-xs text-gray-600 font-medium';
@@ -97,28 +93,36 @@
 
     {{-- Group 2 — headline stats --}}
     <div class="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-4">
-        <div class="bg-gradient-to-br from-brand-600 to-brand-800 rounded-2xl p-5 text-white sm:col-span-2">
-            <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-white/80 font-medium">Personal BV (lifetime)</p>
-                <x-help-tip :light="true" text="The total Business Volume from your own personal purchases since joining. It is a lifetime running total and never resets, and it is what decides your purchase title." />
+        <div class="relative overflow-hidden rounded-2xl border border-leaf-200 bg-gradient-to-br from-leaf-50 via-white to-white p-5 shadow-sm sm:col-span-2">
+            <span class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-leaf-400 to-leaf-600" aria-hidden="true"></span>
+            <div class="flex items-start justify-between gap-2 mb-3">
+                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-md bg-leaf-500 text-white shadow-leaf-500/30">
+                    <x-lucide-shopping-bag class="w-5 h-5" />
+                </span>
+                <x-help-tip text="The total Business Volume from your own personal purchases since joining. It is a lifetime running total and never resets, and it is what decides your purchase title." />
             </div>
-            <p class="text-2xl font-bold">{{ $personalBvPaise !== null ? Number::format($personalBvPaise / 100, 0) : '—' }}</p>
-            <p class="text-xs text-white/80 mt-1 flex items-center gap-1">
+            <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Personal BV (lifetime)</p>
+            <p class="mt-1 text-xl sm:text-2xl font-bold text-leaf-800 leading-tight">{{ $personalBvPaise !== null ? Number::format($personalBvPaise / 100, 0) : '—' }}</p>
+            <p class="mt-1 text-[11px] text-gray-600 leading-snug flex items-center gap-1">
                 Title: {{ $title?->title ?? 'No title yet' }}
-                <x-help-tip :light="true" text="Your title comes from the personal purchase ladder — it moves up as your lifetime personal BV grows. Below 3,000 BV of personal purchases no title is held yet, which is shown as 'No title yet'." />
+                <x-help-tip text="Your title comes from the personal purchase ladder — it moves up as your lifetime personal BV grows. Below 3,000 BV of personal purchases no title is held yet, which is shown as 'No title yet'." />
             </p>
         </div>
-        <div class="bg-gradient-to-br from-emerald-500 to-green-700 rounded-2xl p-5 text-white sm:col-span-3">
-            <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-white/80 font-medium">Next payout — Tuesday, {{ $nextPayout->format('d M Y') }}</p>
-                <x-help-tip :light="true" :text="($payoutCadencePublished
+        <div class="relative overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-white p-5 shadow-sm sm:col-span-3">
+            <span class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-400 to-brand-600" aria-hidden="true"></span>
+            <div class="flex items-start justify-between gap-2 mb-3">
+                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-md bg-brand-500 text-white shadow-brand-500/30">
+                    <x-lucide-wallet class="w-5 h-5" />
+                </span>
+                <x-help-tip :text="($payoutCadencePublished
                     ? 'Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday (03:00 IST), so the '.$nextPayout->format('d M Y').' transfer covers earnings through '.\App\Modules\Compensation\Models\PayoutBatch::weeklyEarningWindow($nextPayout)['end']->format('d M Y').'; monthly bonus income transfers in the monthly payout on the 8th.'
                     : 'Weekly income is transferred in the Tuesday payout run (03:00 IST); monthly bonus income transfers in the monthly payout run.')
                     .' This is the balance sitting in your wallet right now, not a forecast. The repurchase deduction was already taken when each bonus was credited; at payout the balance is transferred after the 3% admin charge and 5% TDS; a balance below the minimum payout amount is not transferred and simply stays in your wallet for the following payout.'" />
             </div>
-            <p class="text-2xl font-bold">₹{{ $walletBalancePaise !== null ? Number::format($walletBalancePaise / 100, 2) : '—' }}</p>
-            <p class="text-xs text-white/80 mt-1">Already net of the repurchase deduction. Transferred after 3% admin charge + 5% TDS.</p>
-            <p class="text-xs text-white/70 mt-1">Current wallet balance</p>
+            <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Next payout — Tuesday, {{ $nextPayout->format('d M Y') }}</p>
+            <p class="mt-1 text-xl sm:text-2xl font-bold text-brand-800 leading-tight">₹{{ $walletBalancePaise !== null ? Number::format($walletBalancePaise / 100, 2) : '—' }}</p>
+            <p class="mt-1 text-[11px] text-gray-600 leading-snug">Already net of the repurchase deduction. Transferred after 3% admin charge + 5% TDS.</p>
+            <p class="mt-0.5 text-[11px] text-gray-500 leading-snug">Current wallet balance</p>
         </div>
     </div>
 
@@ -149,27 +153,17 @@
         <div class="rounded-2xl border p-5 shadow-sm {{ $gl['card'] }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Carried-over Left Genos BV</p>
-                <x-help-tip text="Business added on your Left side since your last slab match, as it stood after the last 23:59 cut-off. Together with your carry forward, it counts toward your next slab match.{{ ($slabProgress !== null && $settledWeakerSide === 'L' && $slabProgress->slab1WeakerCfPaise > 0) ? ' It includes '.\App\Modules\Shared\Support\IndianNumber::format($slabProgress->slab1WeakerCfPaise / 100, 0).' BV of slab-1 weaker carry over.' : '' }}{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
+                <x-help-tip text="Business added on your Left side since your last slab match, as it stood after the last 23:59 cut-off. Together with your carry forward, it counts toward your next slab match.{{ ($slabProgress !== null && $settledWeakerSide === 'L' && $slabProgress->slab1WeakerCfPaise > 0) ? ' It includes '.\App\Modules\Shared\Support\IndianNumber::format($slabProgress->slab1WeakerCfPaise / 100, 0).' BV of slab-1 weaker carry over.' : '' }}{{ $eligibilityTipSuffix }}" />
             </div>
             <p class="{{ $statValueClasses }}">{{ \App\Modules\Shared\Support\IndianNumber::format($leftSinceMatchBv, 0) }}</p>
-            @if($settledPowerSide !== null)
-                <p class="mt-1">
-                    <span class="{{ $settledPowerSide === 'L' ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $settledPowerSide === 'L' ? 'Power side' : 'Weaker side' }}</span>
-                </p>
-            @endif
             <p class="text-xs text-gray-600 mt-1 flex items-center gap-1">As of the last 23:59 cut-off <x-help-tip :text="$pendingTip('Left', $leftTodayBv)" /></p>
         </div>
         <div class="rounded-2xl border p-5 shadow-sm {{ $gr['card'] }}">
             <div class="flex items-center justify-between mb-1">
                 <p class="{{ $statLabelClasses }}">Carried-over Right Genos BV</p>
-                <x-help-tip text="Business added on your Right side since your last slab match, as it stood after the last 23:59 cut-off. Together with your carry forward, it counts toward your next slab match.{{ ($slabProgress !== null && $settledWeakerSide === 'R' && $slabProgress->slab1WeakerCfPaise > 0) ? ' It includes '.\App\Modules\Shared\Support\IndianNumber::format($slabProgress->slab1WeakerCfPaise / 100, 0).' BV of slab-1 weaker carry over.' : '' }}{{ $badgeTipSuffix }}{{ $eligibilityTipSuffix }}" />
+                <x-help-tip text="Business added on your Right side since your last slab match, as it stood after the last 23:59 cut-off. Together with your carry forward, it counts toward your next slab match.{{ ($slabProgress !== null && $settledWeakerSide === 'R' && $slabProgress->slab1WeakerCfPaise > 0) ? ' It includes '.\App\Modules\Shared\Support\IndianNumber::format($slabProgress->slab1WeakerCfPaise / 100, 0).' BV of slab-1 weaker carry over.' : '' }}{{ $eligibilityTipSuffix }}" />
             </div>
             <p class="{{ $statValueClasses }}">{{ \App\Modules\Shared\Support\IndianNumber::format($rightSinceMatchBv, 0) }}</p>
-            @if($settledPowerSide !== null)
-                <p class="mt-1">
-                    <span class="{{ $settledPowerSide === 'R' ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $settledPowerSide === 'R' ? 'Power side' : 'Weaker side' }}</span>
-                </p>
-            @endif
             <p class="text-xs text-gray-600 mt-1 flex items-center gap-1">As of the last 23:59 cut-off <x-help-tip :text="$pendingTip('Right', $rightTodayBv)" /></p>
         </div>
         <div class="rounded-2xl border p-5 shadow-sm {{ $gr['card'] }}">
@@ -227,16 +221,5 @@
             <p class="text-xs text-gray-600 mt-1">orders today ← members</p>
         </div>
     </div>
-
-    {{-- Note — carry over vs carry forward, the partner's canonical definitions --}}
-    @if($gsbOn)
-    <div class="bg-white rounded-2xl border border-gray-200 p-5 mt-8">
-        <p class="text-sm font-semibold text-gray-700 mb-3">Note</p>
-        <p class="text-sm text-gray-600 mb-2"><span class="font-semibold text-gray-800">Carry over:</span> Business that occurs before matching is called carry over.</p>
-        <p class="text-sm text-gray-600"><span class="font-semibold text-gray-800">Carry forward:</span> The remaining BVs after matching are called carry forward.</p>
-        <p class="text-xs text-gray-600 mt-2">Carry over is never lost — it keeps accumulating as that side's opening balance until a slab is matched. After a match, the weaker side resets to 0 and the power side's carry forward is capped at 4,50,000 BV.</p>
-        <p class="text-xs text-gray-600 mt-2">Your own purchase BV never joins the carry over at the time of purchase. It is added at the 23:59 cut-off, to whichever Genos side is weaker at that moment, and only if a side has reached the first slab that day.</p>
-    </div>
-    @endif
 </div>
 @endsection

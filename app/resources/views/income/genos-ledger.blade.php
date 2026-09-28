@@ -157,22 +157,22 @@
                         ];
                         [$statusLabel, $statusClass] = $statusLabels[$c->status] ?? ['Pending', 'bg-gray-100 text-gray-600'];
                     @endphp
-                    <tr class="bg-violet-50/60">
-                        <td colspan="3" class="px-4 py-2.5 text-violet-900">
+                    <tr class="bg-green-50/60">
+                        <td colspan="3" class="px-4 py-2.5 text-green-900">
                             <span class="font-semibold">Daily cut-off</span>
                             <span class="inline-flex ml-2 px-2 py-0.5 rounded-full text-xs font-medium {{ $statusClass }}">{{ $statusLabel }}</span>
                             @if($c->slab)
                             <span class="ml-1 text-xs">· Slab {{ $c->slab }} matched</span>
                             @endif
                         </td>
-                        <td colspan="2" class="px-4 py-2.5 text-right text-violet-900 text-xs">
+                        <td colspan="2" class="px-4 py-2.5 text-right text-green-900 text-xs">
                             {{ $c->slab ? 'carried forward' : 'carried over' }}: <span class="font-mono font-medium">power {{ match ($c->power_side_after) { 'L' => '(Left) ', 'R' => '(Right) ', default => '' } }}{{ \App\Modules\Shared\Support\IndianNumber::format($c->power_cf_after_paise / 100, 0) }}</span>
                             · <span class="font-mono font-medium">slab-1 weaker {{ \App\Modules\Shared\Support\IndianNumber::format($c->slab1_weaker_cf_after_paise / 100, 0) }}</span>
                         </td>
                     </tr>
                     @else
-                    <tr class="bg-violet-50/40">
-                        <td colspan="5" class="px-4 py-2.5 text-violet-400 italic">Cut-off pending for this day.</td>
+                    <tr class="bg-green-50/40">
+                        <td colspan="5" class="px-4 py-2.5 text-green-400 italic">Cut-off pending for this day.</td>
                     </tr>
                     @endif
                     @endforeach

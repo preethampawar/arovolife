@@ -141,7 +141,7 @@
             @else
                 {{-- Distributors: a plain name label. Their profile links live in
                      the sidebar's "My Profile" group; Sign out is the red pill at
-                     the end of this strip, where guests find Sign in. --}}
+                     the end of this strip. --}}
                 <span class="inline-flex items-center gap-2 px-2 py-0.5">
                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white text-brand-700 text-[10px] font-bold leading-none">{{ $initials }}</span>
                     <span class="font-medium">{{ $name }}</span>
@@ -201,15 +201,8 @@
         @endauth
         <span class="text-brand-200">|</span>
         <span>India 🇮🇳</span>
-        {{-- Sign in / Sign out share one spot: the far right of this strip. --}}
-        @guest
-            <span class="text-brand-200">|</span>
-            <a href="{{ route('login') }}" data-signin-pill
-               class="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-brand-700 shadow-sm hover:bg-brand-50 transition-colors">
-                <x-lucide-log-in class="w-3.5 h-3.5" />
-                Sign in
-            </a>
-        @else
+        {{-- Sign out: the far right of this strip. Guests sign in from the main nav. --}}
+        @auth
             @if(auth()->user()->distributor && ! auth()->user()->isSuperStaff())
                 <span class="text-brand-200">|</span>
                 <form method="POST" action="{{ route('logout') }}" class="inline">
@@ -221,7 +214,7 @@
                     </button>
                 </form>
             @endif
-        @endguest
+        @endauth
     </div>
 </div>
 
