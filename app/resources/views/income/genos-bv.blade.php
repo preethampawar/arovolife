@@ -45,13 +45,8 @@
                 // added into either side's total. Tie ⇒ Left is the power side
                 // (engine tie-break), so Right is the weaker one.
                 $slab1WeakerCfBv = (int) round($slabProgress->slab1WeakerCfPaise / 100);
-                // Badges are the LAST cut-off's decision, hidden until one exists
-                // (client, 2026-08-29: sides are decided at 23:59, never intraday).
-                $settledPowerSide = $slabProgress->settledPowerSide();
+                // Weaker side = the LAST cut-off's decision (client, 2026-08-29).
                 $weakerSideIsLeft = ($slabProgress->settledWeakerSide() ?? 'R') === 'L';
-                $sideBadgeClasses = 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium';
-                $powerBadgeClasses = $sideBadgeClasses.' bg-green-100 text-green-700';
-                $weakerBadgeClasses = $sideBadgeClasses.' bg-amber-100 text-amber-700';
                 $slab1WeakerCfHint = $slab1WeakerCfBv > 0
                     ? '+ '.\App\Modules\Shared\Support\IndianNumber::format($slab1WeakerCfBv, 0).' BV in slab-1 weaker carry over — counted under Slab 1 below'
                     : null;
@@ -67,11 +62,6 @@
                 <div class="bg-sky-100 rounded-xl border border-sky-200 px-4 py-3">
                     <p class="text-xs text-gray-600 flex items-center gap-1">Left Genos BV today <x-help-tip text="Today's Left Genos BV plus any BV carried over on your Left side. This is the figure tonight's 23:59 cut-off will use. Your own purchase BV is not included — the cut-off adds it to the weaker side." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($slabProgress->leftEffectivePaise / 100, 0) }}</p>
-                    @if ($settledPowerSide !== null)
-                        <p class="mt-1">
-                            <span class="{{ $settledPowerSide === 'L' ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $settledPowerSide === 'L' ? 'Power side' : 'Weaker side' }}</span>
-                        </p>
-                    @endif
                     @if ($pendingPersonalBvTip !== null)
                         <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">Personal purchase pending <x-help-tip :text="$pendingPersonalBvTip" /></p>
                     @endif
@@ -85,11 +75,6 @@
                 <div class="bg-indigo-100 rounded-xl border border-indigo-200 px-4 py-3">
                     <p class="text-xs text-gray-600 flex items-center gap-1">Right Genos BV today <x-help-tip text="Today's Right Genos BV plus any BV carried over on your Right side. This is the figure tonight's 23:59 cut-off will use. Your own purchase BV is not included — the cut-off adds it to the weaker side." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($slabProgress->rightEffectivePaise / 100, 0) }}</p>
-                    @if ($settledPowerSide !== null)
-                        <p class="mt-1">
-                            <span class="{{ $settledPowerSide === 'R' ? $powerBadgeClasses : $weakerBadgeClasses }}">{{ $settledPowerSide === 'R' ? 'Power side' : 'Weaker side' }}</span>
-                        </p>
-                    @endif
                     @if ($pendingPersonalBvTip !== null)
                         <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">Personal purchase pending <x-help-tip :text="$pendingPersonalBvTip" /></p>
                     @endif

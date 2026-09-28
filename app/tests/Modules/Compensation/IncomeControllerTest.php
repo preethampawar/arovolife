@@ -400,8 +400,7 @@ it('shows per-side slab progress and the slab-1 weaker carry-forward on the geno
 
     $this->get(route('income.genos-bv'))
         ->assertOk()
-        ->assertSee('Power side')
-        ->assertSee('Weaker side')
+        ->assertDontSee('Power side')
         ->assertSee('600 BV in slab-1 weaker carry over')
         // Slab 1 row: the weaker (Right) side carries the 600 BV accumulator,
         // the Left side does not — min(10,000, 3,600) is the matched figure.
