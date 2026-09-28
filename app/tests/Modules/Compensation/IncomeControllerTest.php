@@ -132,7 +132,7 @@ it('renders income dashboard for a distributor', function (): void {
         // F64: the page title must follow the "My Income — …" pattern every
         // other income tab uses.
         ->assertSee('My Income — Overview', false)
-        ->assertSee('Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday')
+        ->assertDontSee('Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday')
         ->assertDontSee('cooling-off');
 });
 
@@ -504,7 +504,7 @@ it('renders wallet page with empty state', function (): void {
         ->assertSee('Wallet')
         // The payout week, stated as the week rule and never as "cooling-off"
         // (that is the statutory 30-day cancellation window, hard rule 5).
-        ->assertSee('Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday')
+        ->assertDontSee('Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday')
         ->assertSee('Covers earnings through')
         ->assertDontSee('cooling-off');
 });
@@ -1371,7 +1371,7 @@ it('keeps the payout-week and 8th-of-month cadence off every distributor surface
         ->assertOk()
         ->assertSee('Wednesday-to-Tuesday')
         ->assertSee('Covers earnings through');
-    $this->get(route('my-business'))->assertOk()->assertSee('Wednesday-to-Tuesday');
+    $this->get(route('my-business'))->assertOk()->assertDontSee('Wednesday-to-Tuesday');
 });
 
 it('shows the rank progress note with the snapshot date only while the snapshot flag is on', function (): void {

@@ -11,6 +11,10 @@
      aria-label so screen-reader users still get it; mouse hover still shows it here. --}}
 {{-- The popup is repositioned to fixed viewport coordinates on show so it is never
      clipped by overflow-x-auto table wrappers or overflow-hidden cards. --}}
+{{-- Distributor-facing pages show no help icons (client, 2026-09-28): any
+     signed-in viewer outside the admin console — impersonation included —
+     gets nothing. Guests (registration wizard) and the admin console keep them. --}}
+@if(! auth()->check() || request()->routeIs('admin.*'))
 <span class="relative inline-flex items-center align-middle ml-1" data-help-tip>
     @if($interactive)
     <button type="button" tabindex="0" aria-label="More information"
@@ -43,6 +47,7 @@
         {{ $text }}
     </span>
 </span>
+@endif
 @once
 <script>
 (function () {

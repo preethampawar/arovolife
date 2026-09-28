@@ -160,8 +160,8 @@ it('renders all four my business groups with the flag-gated menu tiles hidden', 
         // the next batch will not pay, so the visible copy labels it as such
         // and the earning week it covers lives in the help tip instead.
         ->assertSee('Current wallet balance')
-        ->assertSee('Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday')
-        ->assertSee('transfer covers earnings through')
+        ->assertDontSee('Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday')
+        ->assertDontSee('transfer covers earnings through')
         // Group 3 — Left before Right
         ->assertSee('Left carry forward')
         ->assertSee('Carried-over Left Genos BV')
@@ -227,14 +227,14 @@ it('shows the carry-forward decomposition, todays genos bv and team counts', fun
         ->assertDontSee('12,000')
         ->assertDontSee('today + ')
         ->assertSee('As of the last 23:59 cut-off')
-        // …what is pending sits on the info icon.
-        ->assertSee("Pending tonight's 23:59 cut-off: 6,000 BV of Left Genos business today.")
-        ->assertSee("Pending tonight's 23:59 cut-off: 3,000 BV of Right Genos business today.")
+        // Help icons are hidden for distributors (client, 2026-09-28).
+        ->assertDontSee("Pending tonight's 23:59 cut-off: 6,000 BV of Left Genos business today.")
+        ->assertDontSee("Pending tonight's 23:59 cut-off: 3,000 BV of Right Genos business today.")
         // Power / Weaker side pills were removed (2026-09-28).
         ->assertDontSee('Power side')
         ->assertDontSee('Weaker side')
-        // The slab-1 weaker carry over is named in the weaker side's help tip.
-        ->assertSee('It includes 600 BV of slab-1 weaker carry over.')
+        // Help icons are hidden for distributors (client, 2026-09-28).
+        ->assertDontSee('It includes 600 BV of slab-1 weaker carry over.')
         // Carry cards show numbers only (client, 2026-09-28).
         ->assertDontSee('No slab matched yet')
         ->assertSee('as of last page load')
@@ -273,8 +273,8 @@ it('keeps personal purchase BV out of the carried-over figures until the cut-off
         // …and no side is badged before a cut-off has decided the sides.
         ->assertDontSee('Power side')
         ->assertDontSee('Weaker side')
-        // It is announced on the info icon as pending tonight's cut-off.
-        ->assertSee('1,000 BV of your own purchase, which goes to whichever side is weaker at that moment', false);
+        // Help icons are hidden for distributors (client, 2026-09-28).
+        ->assertDontSee('1,000 BV of your own purchase, which goes to whichever side is weaker at that moment', false);
 });
 
 it('shows carry forward as the remainder of the last slab match only', function (): void {
@@ -375,7 +375,7 @@ it('shows zero genos figures on my business below the personal bv minimum', func
         ->assertDontSee('6,000')
         ->assertDontSee('3,000 BV of Right')
         // …and every Genos card reads 0 instead.
-        ->assertSee('Nothing is pending for your Left side')
+        ->assertDontSee('Nothing is pending for your Left side')
         ->assertDontSee('as of last page load');
 });
 
