@@ -57,7 +57,7 @@
                         class="input-refined">
                     <p class="mt-1.5 text-[11px] text-slate-500">
                         Sign in with your <strong>9-digit ADN</strong>.
-                        <a href="{{ route('find-my-id.show') }}" class="text-brand-700 hover:text-brand-800 font-medium underline-offset-4 hover:underline">Forgot your ADN?</a>
+                        <a href="{{ route('find-my-id.show') }}" class="text-brand-700 hover:text-brand-800 font-medium underline-offset-4 hover:underline">Find my ADN</a>
                     </p>
                 </div>
 
@@ -69,31 +69,6 @@
                     <input id="password" name="password" type="password" autocomplete="current-password" required
                         placeholder="••••••••"
                         class="input-refined font-mono tracking-widest">
-                </div>
-
-                {{-- Couple (joint) ADN disambiguation. Revealed only when the
-                     identifier looks like an ADN (all digits) — see the script
-                     below. Two spouses share one ADN; this picks which holder
-                     to sign in as. Ignored server-side for solo ADNs / emails. --}}
-                <div id="coupleRoleRow" class="hidden">
-                    <label class="flex items-start gap-2 text-sm text-slate-600 cursor-pointer rounded-lg border border-slate-200 bg-slate-50/60 p-3">
-                        <input type="checkbox" name="primary" value="1" checked
-                            class="mt-0.5 rounded border-slate-300 text-brand-500 focus:ring-brand-500/40">
-                        <span>
-                            <span class="font-medium text-slate-700">Primary account holder</span>
-                            <span class="block text-[11px] text-slate-600 leading-snug mt-0.5">
-                                Joint (couple) ADNs are shared by two people. Leave this checked for the
-                                primary holder, or uncheck to sign in as the spouse.
-                            </span>
-                        </span>
-                    </label>
-                </div>
-
-                <div class="flex items-center justify-between lift-in" style="animation-delay: 440ms;">
-                    <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                        <input type="checkbox" name="remember" class="rounded border-slate-300 text-brand-500 focus:ring-brand-500/40">
-                        <span>Remember me</span>
-                    </label>
                 </div>
 
                 <button type="submit"
@@ -121,23 +96,6 @@
         </p>
     </div>
 
-    <script>
-        // Reveal the couple/primary selector only when the identifier looks
-        // like an ADN (digits only). Email logins never see it. The server
-        // applies the choice only when the ADN actually maps to a couple.
-        (function () {
-            var loginInput = document.getElementById('login');
-            var row = document.getElementById('coupleRoleRow');
-            if (!loginInput || !row) return;
-            function sync() {
-                var v = loginInput.value.trim();
-                var looksLikeAdn = /^\d{4,}$/.test(v);
-                row.classList.toggle('hidden', !looksLikeAdn);
-            }
-            loginInput.addEventListener('input', sync);
-            sync();
-        })();
-    </script>
 
 </body>
 </html>

@@ -11,9 +11,9 @@
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
         @if($gsbOn)
-            A transaction view of your Genos BV. Each purchase made in your Left or Right group adds BV here as it happens; at the daily 23:59 cut-off the day is settled — the matched BV is used for your Genos Sales Bonus, the weaker side resets, and the balance shown carries over as the next day's opening BV. Business that occurs before matching is carry over; on a day a slab matches, the remaining BV is your carry forward.
+            A transaction view of your Genos BV. Each purchase made in your Left or Right Genos adds BV here as it happens; at the daily 23:59 cut-off the day is settled — the matched BV is used for your Genos Sales Bonus, the weaker side resets, and the balance shown carries over as the next day's opening BV. Business that occurs before matching is carry over; on a day a slab matches, the remaining BV is your carry forward.
         @else
-            A transaction view of your Genos BV. Each purchase made in your Left or Right group adds BV here as it happens, day by day.
+            A transaction view of your Genos BV. Each purchase made in your Left or Right Genos adds BV here as it happens, day by day.
         @endif
     </div>
     @enddeveloper
@@ -27,8 +27,8 @@
 
     @php
         $debtParts = [];
-        if (($openDebts['L'] ?? 0) > 0) { $debtParts[] = 'Left group '.\App\Modules\Shared\Support\IndianNumber::format($openDebts['L'] / 100, 0).' BV'; }
-        if (($openDebts['R'] ?? 0) > 0) { $debtParts[] = 'Right group '.\App\Modules\Shared\Support\IndianNumber::format($openDebts['R'] / 100, 0).' BV'; }
+        if (($openDebts['L'] ?? 0) > 0) { $debtParts[] = 'Left Genos '.\App\Modules\Shared\Support\IndianNumber::format($openDebts['L'] / 100, 0).' BV'; }
+        if (($openDebts['R'] ?? 0) > 0) { $debtParts[] = 'Right Genos '.\App\Modules\Shared\Support\IndianNumber::format($openDebts['R'] / 100, 0).' BV'; }
     @endphp
     @if($debtParts !== [])
     {{-- Outstanding cancelled-order adjustment --}}
@@ -70,10 +70,10 @@
                             <span class="flex items-center gap-1">Member <x-help-tip text="The ADN of the Genos member whose purchase generated this BV." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Left BV <x-help-tip text="BV added to your Left group by this purchase." /></span>
+                            <span class="flex items-center justify-end gap-1">Left BV <x-help-tip text="BV added to your Left Genos by this purchase." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Right BV <x-help-tip text="BV added to your Right group by this purchase." /></span>
+                            <span class="flex items-center justify-end gap-1">Right BV <x-help-tip text="BV added to your Right Genos by this purchase." /></span>
                         </th>
                     </tr>
                 </thead>
@@ -134,7 +134,7 @@
                             @if($topup->reversed_at)
                             <span class="block text-xs text-amber-700">reversed — that order was cancelled</span>
                             @else
-                            <span class="block text-xs text-amber-700">applied at the cut-off to your {{ $topup->side === 'L' ? 'Left' : 'Right' }} group</span>
+                            <span class="block text-xs text-amber-700">applied at the cut-off to your {{ $topup->side === 'L' ? 'Left' : 'Right' }} Genos</span>
                             @endif
                         </td>
                         <td class="px-4 py-2.5 font-mono text-gray-700">{{ $distributor->adn }}</td>
@@ -157,22 +157,22 @@
                         ];
                         [$statusLabel, $statusClass] = $statusLabels[$c->status] ?? ['Pending', 'bg-gray-100 text-gray-600'];
                     @endphp
-                    <tr class="bg-indigo-50/60">
-                        <td colspan="3" class="px-4 py-2.5 text-indigo-900">
+                    <tr class="bg-green-50/60">
+                        <td colspan="3" class="px-4 py-2.5 text-green-900">
                             <span class="font-semibold">Daily cut-off</span>
                             <span class="inline-flex ml-2 px-2 py-0.5 rounded-full text-xs font-medium {{ $statusClass }}">{{ $statusLabel }}</span>
                             @if($c->slab)
                             <span class="ml-1 text-xs">· Slab {{ $c->slab }} matched</span>
                             @endif
                         </td>
-                        <td colspan="2" class="px-4 py-2.5 text-right text-indigo-900 text-xs">
+                        <td colspan="2" class="px-4 py-2.5 text-right text-green-900 text-xs">
                             {{ $c->slab ? 'carried forward' : 'carried over' }}: <span class="font-mono font-medium">power {{ match ($c->power_side_after) { 'L' => '(Left) ', 'R' => '(Right) ', default => '' } }}{{ \App\Modules\Shared\Support\IndianNumber::format($c->power_cf_after_paise / 100, 0) }}</span>
                             · <span class="font-mono font-medium">slab-1 weaker {{ \App\Modules\Shared\Support\IndianNumber::format($c->slab1_weaker_cf_after_paise / 100, 0) }}</span>
                         </td>
                     </tr>
                     @else
-                    <tr class="bg-indigo-50/40">
-                        <td colspan="5" class="px-4 py-2.5 text-indigo-400 italic">Cut-off pending for this day.</td>
+                    <tr class="bg-green-50/40">
+                        <td colspan="5" class="px-4 py-2.5 text-green-400 italic">Cut-off pending for this day.</td>
                     </tr>
                     @endif
                     @endforeach

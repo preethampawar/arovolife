@@ -8,7 +8,7 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 
 /**
  * One day of a distributor's Genos BV ledger: the per-order credits that
- * landed on their left/right group that day, any cancelled-order reversals
+ * landed on their left/right Genos that day, any cancelled-order reversals
  * applied that day, the personal-purchase BV the cut-off topped the weaker
  * group up with, plus the day's cut-off settlement result (null when the
  * cut-off has not run yet).

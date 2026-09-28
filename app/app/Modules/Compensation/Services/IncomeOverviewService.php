@@ -53,7 +53,7 @@ final class IncomeOverviewService
     {
         $rows = [
             ['type' => 'gsb_credit', 'label' => 'Genos Sales Bonus', 'route' => 'income.gsb-history', 'active' => Feature::for(null)->active(GenosSalesBonusFeature::class),
-                'tip' => 'Your daily Genos Sales Bonus credits — earned when both your Left and Right groups match a slab at the 23:59 cut-off.'],
+                'tip' => 'Your daily Genos Sales Bonus credits — earned when both your Left and Right Genos match a slab at the 23:59 cut-off.'],
             ['type' => 'mb_credit', 'label' => 'Mentorship Bonus', 'route' => 'income.mentorship', 'active' => Feature::for(null)->active(MentorshipBonusFeature::class),
                 'tip' => 'Earned when a distributor you directly sponsored matches a Genos Sales Bonus slab.'],
             ['type' => 'gbb_credit', 'label' => 'Growth Booster Bonus', 'route' => 'income.growth-booster', 'active' => Feature::for(null)->active(GrowthBoosterBonusFeature::class),

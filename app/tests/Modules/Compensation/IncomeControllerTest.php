@@ -232,9 +232,8 @@ it('shows carry-forward folded into the dashboard group BV cards as the opening 
         ->assertSee('21,000')
         ->assertSee('15,000 today + 6,000 carried over')
         ->assertSee('Power-side carry over (opening balance)')
-        // Left holds the power carry-forward, so Right is the weaker side.
-        ->assertSee('Power side')
-        ->assertSee('Weaker side')
+        // Power / Weaker side pills were removed (2026-09-28).
+        ->assertDontSee('Power side')
         // The side-less slab-1 bucket is surfaced under the weaker side…
         ->assertSee('+ 600 BV in slab-1 weaker carry over (see card below)')
         // …and its own card names the side it is currently accumulating from.
@@ -833,7 +832,7 @@ it('shows the repurchase deduction and the credited amount on the gsb history pa
         'updated_at' => now()->toDateTimeString(),
     ]);
 
-    $this->get(route('income.gsb-history'))
+    $this->get(route('income.gsb-history', ['f' => 1]))
         ->assertOk()
         ->assertSee('Repurchase deduction')
         ->assertSee('Credited to wallet')
@@ -842,7 +841,7 @@ it('shows the repurchase deduction and the credited amount on the gsb history pa
         ->assertDontSee('TDS 5%')
         ->assertDontSee('Admin 3%');
 
-    $rows = XlsxReader::rows($this->get(route('income.gsb-history.export'))->assertOk()->streamedContent());
+    $rows = XlsxReader::rows($this->get(route('income.gsb-history.export', ['f' => 1]))->assertOk()->streamedContent());
 
     expect($rows[0])->toBe(['Date', 'Left BV matched', 'Right BV matched', 'Slab', 'Gross GSB (₹)', 'Repurchase Deduction (₹)', 'Credited to Wallet (₹)', 'Status']);
     expect($rows[1])->toBe([today()->toDateString(), '20000', '16000', '1', '2000', '200', '1800', 'credited']);
@@ -909,7 +908,7 @@ it('shows a forfeited day on the gsb history page and csv, with no slab badge an
         ],
     ]);
 
-    $html = $this->get(route('income.gsb-history'))
+    $html = $this->get(route('income.gsb-history', ['f' => 1]))
         ->assertOk()
         ->assertSee('Repurchase not met — day not counted', false)
         // The day's raw Genos BV is shown, but no slab badge is rendered for it.
@@ -922,7 +921,7 @@ it('shows a forfeited day on the gsb history page and csv, with no slab badge an
     // row renders an em dash, never an empty "Slab " badge.
     expect(substr_count($html, 'bg-indigo-100 text-indigo-700">Slab '))->toBe(1);
 
-    $rows = XlsxReader::rows($this->get(route('income.gsb-history.export'))->assertOk()->streamedContent());
+    $rows = XlsxReader::rows($this->get(route('income.gsb-history.export', ['f' => 1]))->assertOk()->streamedContent());
 
     expect(XlsxReader::anyCellContains($rows, 'repurchase_forfeited'))->toBeTrue();
     $forfeitedRow = collect($rows)->first(fn (array $row): bool => ($row[7] ?? null) === 'repurchase_forfeited');
@@ -1010,7 +1009,7 @@ it('shows a wallet-blocked month on the growth booster page without paying it', 
         ],
     ]);
 
-    $this->get(route('income.growth-booster'))
+    $this->get(route('income.growth-booster', ['f' => 1]))
         ->assertOk()
         ->assertSee('August 2026')
         ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
@@ -1066,7 +1065,7 @@ it('shows a wallet-blocked month on the fortune bonus page without paying it', f
         ],
     ]);
 
-    $html = $this->get(route('income.fortune-bonus'))
+    $html = $this->get(route('income.fortune-bonus', ['f' => 1]))
         ->assertOk()
         ->assertSee('August 2026')
         ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
@@ -1193,7 +1192,7 @@ it('shows the stored weaker side and a Left/Right power label on the genos bv pa
         '/Right\s*<span class="block text-xs text-gray-500 font-mono">1,500 BV<\/span>/',
     );
     // "Power CF after" carries its Left/Right label (house rule).
-    $response->assertSee('Left group');
+    $response->assertSee('Left Genos');
 });
 
 it('gives the personal-BV top-up its own genos ledger line instead of "No Genos BV added this day" (F62)', function (): void {
@@ -1248,7 +1247,7 @@ it('gives the personal-BV top-up its own genos ledger line instead of "No Genos 
     $this->get(route('income.genos-ledger'))
         ->assertOk()
         ->assertSee('Your own purchase BV added to your weaker group')
-        ->assertSee('applied at the cut-off to your Right group')
+        ->assertSee('applied at the cut-off to your Right Genos')
         ->assertSee('+600')
         ->assertSee('power (Left)')
         ->assertDontSee('No Genos BV added this day.');
@@ -1276,7 +1275,7 @@ it('dates every mentorship bonus row on the distributor page (F62)', function ()
         'updated_at' => now(),
     ]);
 
-    $this->get(route('income.mentorship'))
+    $this->get(route('income.mentorship', ['f' => 1]))
         ->assertOk()
         ->assertSee('06 Sep 2026');
 });

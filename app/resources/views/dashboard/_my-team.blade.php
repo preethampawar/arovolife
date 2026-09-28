@@ -54,13 +54,13 @@
                     class="text-left rounded-xl border border-sky-200 bg-sky-50/60 p-4 hover:bg-sky-50 hover:border-sky-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-sky-500">
                     <p class="text-[11px] text-sky-700 uppercase tracking-wider font-semibold mb-1">← Left team</p>
                     <p class="text-3xl font-bold text-sky-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['left_team']) }}</p>
-                    <p class="text-[11px] text-gray-700 mt-1.5">members under your left group</p>
+                    <p class="text-[11px] text-gray-700 mt-1.5">members under your left Genos</p>
                 </button>
                 <button type="button" data-team-roster="right"
-                    class="text-left rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 hover:bg-indigo-50 hover:border-indigo-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <p class="text-[11px] text-indigo-700 uppercase tracking-wider font-semibold mb-1">Right team →</p>
-                    <p class="text-3xl font-bold text-indigo-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['right_team']) }}</p>
-                    <p class="text-[11px] text-gray-700 mt-1.5">members under your right group</p>
+                    class="text-left rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <p class="text-[11px] text-emerald-700 uppercase tracking-wider font-semibold mb-1">Right team →</p>
+                    <p class="text-3xl font-bold text-emerald-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['right_team']) }}</p>
+                    <p class="text-[11px] text-gray-700 mt-1.5">members under your right Genos</p>
                 </button>
             </div>
         </div>

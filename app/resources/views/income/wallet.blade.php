@@ -37,7 +37,7 @@
 
     {{-- Stat cards --}}
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+        <div class="bg-sky-100 rounded-2xl border border-sky-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600">Wallet Balance</p>
                 <x-help-tip text="Your current wallet balance — GSB and other bonus credits net of any debits. This will be transferred to your bank account on the next payout date." />
@@ -46,14 +46,14 @@
                 ₹{{ \App\Modules\Shared\Support\IndianNumber::format($walletBalancePaise / 100, 2) }}
             </p>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+        <div class="bg-indigo-100 rounded-2xl border border-indigo-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600">Total Paid Out</p>
                 <x-help-tip text="Total net amount transferred to your bank account since you joined." />
             </div>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalPaidOutPaise / 100, 2) }}</p>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+        <div class="bg-amber-100 rounded-2xl border border-amber-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600">Next Payout Date</p>
                 <x-help-tip :text="$payoutCadencePublished
@@ -65,14 +65,14 @@
             <p class="text-xs text-gray-600 mt-0.5">Covers earnings through {{ \App\Modules\Compensation\Models\PayoutBatch::weeklyEarningWindow($nextPayout)['end']->format('d M Y') }}</p>
             @endif
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+        <div class="bg-emerald-100 rounded-2xl border border-emerald-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600">Min. Payout</p>
                 <x-help-tip text="Wallet balances below this threshold roll over to the next Tuesday batch, and are never forfeited." />
             </div>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($minThresholdPaise / 100, 0) }}</p>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5">
+        <div class="bg-green-100 rounded-2xl border border-green-200 p-5">
             <div class="flex items-center justify-between mb-1">
                 <p class="text-xs text-gray-600">Repurchase Wallet</p>
                 <x-help-tip text="This balance is applied automatically at checkout toward your mandatory monthly repurchase and carries forward each month. It cannot be withdrawn." />

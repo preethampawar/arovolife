@@ -251,7 +251,7 @@ it('shows the distributor their own AGP times the frozen point value', function 
     $user = User::find(DB::table('distributors')->where('id', $distributorId)->value('user_id'));
 
     $this->actingAs($user)
-        ->get(route('income.growth-booster'))
+        ->get(route('income.growth-booster', ['f' => 1]))
         ->assertOk()
         ->assertSee('12 AGP × ₹'.Number::format(250, 2))
         ->assertSee('Credited')

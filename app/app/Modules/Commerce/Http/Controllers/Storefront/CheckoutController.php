@@ -18,6 +18,7 @@ use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Commerce\Services\ShippingService;
 use App\Modules\Compensation\Models\AreteCenter;
+use App\Modules\Compensation\Services\RepurchaseOrderNotice;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
@@ -28,6 +29,7 @@ use App\Modules\Payments\Services\PaymentGatewayResolver;
 use App\Modules\Payments\Services\RazorpayClient;
 use App\Modules\Payments\Services\StubGateway;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use App\Modules\Shared\Support\IndianStates;
 use App\Modules\Tax\Services\InvoiceGenerator;
 use Illuminate\Contracts\View\View;
@@ -557,8 +559,25 @@ final class CheckoutController extends Controller
             throw new NotFoundHttpException;
         }
 
+        // One-time repurchase notice when THIS order changed the buyer's
+        // repurchase standing — owner-only, shown once per order per session,
+        // and no trace while the repurchase engine is off.
+        $repurchaseNotice = null;
+        $seenKey = 'repurchase_notice_shown.'.$order->id;
+        if (Feature::for(null)->active(RepurchaseEngineFeature::class)
+            && $this->ownsOrder($request, $order)
+            && $request->user()?->distributor !== null
+            && $order->attributed_distributor_id === $request->user()->distributor->id
+            && ! $request->session()->has($seenKey)) {
+            $repurchaseNotice = app(RepurchaseOrderNotice::class)->for($order);
+            if ($repurchaseNotice !== null) {
+                $request->session()->put($seenKey, true);
+            }
+        }
+
         return view('shop.confirmation', [
             'order' => $order,
+            'repurchaseNotice' => $repurchaseNotice,
             // BV is shown only to the authenticated owner who is a distributor.
             'showBv' => $this->ownsOrder($request, $order) && $request->user()?->distributor !== null,
             // Repurchase credit applied to this order (paise). Zero when none was

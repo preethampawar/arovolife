@@ -1,8 +1,11 @@
 <?php
 
+use App\Modules\Commerce\Models\Customer;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\User;
 use Database\Seeders\ContentPageSeeder;
 use Database\Seeders\FortuneBonusLevelsSeeder;
 use Database\Seeders\FortuneBonusTiersSeeder;
@@ -10,8 +13,11 @@ use Database\Seeders\GsbSlabsSeeder;
 use Database\Seeders\LifetimeAwardRewardsSeeder;
 use Database\Seeders\RankTiersSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /*
@@ -269,4 +275,132 @@ function dispatchedFixture(string $payoutId): array
 function fakeCatalogDisk(): void
 {
     Storage::fake('catalog', ['url' => config('filesystems.disks.catalog.url')]);
+}
+
+/*
+| Distributor UI changes (2026-09-28) — shared fixtures. Prefixed `ui` so they
+| never collide with per-file helpers.
+*/
+function uiDistributor(array $attrs = []): array
+{
+    $user = User::create([
+        'full_name' => $attrs['full_name'] ?? 'Ui Tester',
+        'email' => 'ui-'.uniqid().'@example.com',
+        'phone_e164' => '+91944'.str_pad((string) random_int(0, 9999999), 7, '0', STR_PAD_LEFT),
+        'password_hash' => Hash::make('ui-test-pwd-2026'),
+        'password_set_at' => now(),
+        'status' => 'active',
+        'email_verified_at' => now(),
+    ]);
+
+    disableTestForeignKeys();
+    try {
+        $now = now()->format('Y-m-d H:i:s.v');
+        $id = DB::table('distributors')->insertGetId([
+            'user_id' => $user->id,
+            'adn' => (string) random_int(100000000, 999999999),
+            'pan_hash' => random_bytes(32),
+            'pan_last4' => '0000',
+            'bank_account_enc' => 'stub',
+            'bank_ifsc' => 'SBIN0000000',
+            'sponsor_id' => 0,
+            'placement_parent_id' => 0,
+            'placement_side' => null,
+            'side_chosen_by' => 'referral_default',
+            'depth' => 0,
+            'effective_date' => $now,
+            'cooling_off_end_at' => now()->addDays(30)->format('Y-m-d H:i:s.v'),
+            'state' => 'TS',
+            'is_primary_couple' => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('distributors')->where('id', $id)
+            ->update(['sponsor_id' => $id, 'placement_parent_id' => $id]);
+    } finally {
+        enableTestForeignKeys();
+    }
+    DB::table('genealogy_closure')
+        ->insert(['ancestor_id' => $id, 'descendant_id' => $id, 'depth' => 0]);
+
+    return ['user' => $user, 'id' => $id];
+}
+
+function uiPlaceUnder(int $parentId, string $side, int $childId): void
+{
+    DB::table('distributors')->where('id', $childId)
+        ->update(['placement_parent_id' => $parentId, 'placement_side' => $side, 'sponsor_id' => $parentId]);
+
+    $rows = DB::table('genealogy_closure')
+        ->where('descendant_id', $parentId)->get(['ancestor_id', 'depth']);
+    foreach ($rows as $row) {
+        DB::table('genealogy_closure')->insert([
+            'ancestor_id' => $row->ancestor_id, 'descendant_id' => $childId, 'depth' => $row->depth + 1,
+        ]);
+    }
+}
+
+function uiPaidSelfOrder(int $distributorId, int $bvPaise, Carbon $paidAt, string $status = 'paid'): int
+{
+    disableTestForeignKeys();
+    try {
+        $orderId = DB::table('orders')->insertGetId([
+            'order_no' => 'UI'.random_int(10000000, 99999999),
+            'idempotency_key' => (string) Str::uuid(),
+            // One customers row per distributor (uniq_customers_distributor).
+            'customer_id' => DB::table('customers')->where('distributor_id', $distributorId)->value('id')
+                ?? DB::table('customers')->insertGetId([
+                    'distributor_id' => $distributorId,
+                    'display_name' => 'Ui Buyer',
+                    'created_at' => $paidAt,
+                    'updated_at' => $paidAt,
+                ]),
+            'attributed_distributor_id' => $distributorId,
+            'attribution_source' => 'logged_in',
+            'payment_method' => 'online',
+            'status' => $status,
+            'self_consumption' => true,
+            'subtotal_paise' => 100000,
+            'total_paise' => 100000,
+            'placed_at' => $paidAt,
+            'paid_at' => $paidAt,
+            'created_at' => $paidAt,
+            'updated_at' => $paidAt,
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributorId,
+        'order_id' => $orderId,
+        'type' => 'accrual',
+        'bv_paise' => $bvPaise,
+        'effective_at' => $paidAt,
+        'created_at' => $paidAt,
+        'updated_at' => $paidAt,
+    ]);
+
+    return $orderId;
+}
+
+/** Put $paise into a distributor's repurchase wallet (balance = deductions − usages). */
+function uiRepurchaseWallet(int $distributorId, int $paise): void
+{
+    WalletLedgerEntry::create([
+        'distributor_id' => $distributorId,
+        'type' => 'repurchase_deduction',
+        'amount_paise' => $paise,
+        'reference_id' => walletRef(),
+        'reference_type' => 'test',
+        'memo' => 'UI test repurchase credit',
+    ]);
+}
+
+/** A Customer row owned by $user, so CheckoutController::ownsOrder() is true for orders pointing at it. */
+function uiCustomerFor(User $user, int $distributorId): int
+{
+    return Customer::updateOrCreate(
+        ['distributor_id' => $distributorId],
+        ['user_id' => $user->id, 'display_name' => $user->full_name],
+    )->id;
 }

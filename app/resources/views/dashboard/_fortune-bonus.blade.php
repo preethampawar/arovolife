@@ -36,8 +36,8 @@
                         Qualified so far
                     </span>
                 @else
-                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-1 text-[11px] font-medium text-amber-800">
-                        <x-lucide-circle-dashed class="w-3.5 h-3.5" />
+                    <span class="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200 px-2 py-1 text-[11px] font-medium text-red-800">
+                        <x-lucide-circle-x class="w-3.5 h-3.5" />
                         Not qualified yet
                     </span>
                 @endif

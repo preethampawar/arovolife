@@ -407,6 +407,19 @@
     <div class="bg-white rounded-2xl border border-gray-200 p-6 h-fit sticky top-20">
         <h2 class="font-semibold text-gray-900 mb-4">Order Summary</h2>
 
+        @auth
+            @php $bvTotal = auth()->user()->distributor ? $cart->bvTotalPaise() : 0; @endphp
+            @if($bvTotal > 0)
+            {{-- BV directly under the Order Summary heading (distributor-only). A factual
+                 point total for the compensation plan, never an earnings figure
+                 (hard rule #3). --}}
+            <div class="flex justify-between text-sm mb-4 pb-4 border-b border-gray-200 text-brand-700">
+                <span class="font-semibold">Total BV</span>
+                <span class="font-bold" title="Business Volume — points used in the compensation plan">{{ \App\Modules\Shared\Support\IndianNumber::format($bvTotal / 100, 0) }} BV</span>
+            </div>
+            @endif
+        @endauth
+
         <div class="space-y-2 mb-4 pb-4 border-b border-gray-200">
             @foreach($cart->items as $item)
             <div class="flex justify-between text-sm">
@@ -455,18 +468,6 @@
             ];
             $activeMode = old('delivery_type', 'ship') === 'collect' ? 'collect' : 'ship';
         @endphp
-        @auth
-            @php $bvTotal = auth()->user()->distributor ? $cart->bvTotalPaise() : 0; @endphp
-            @if($bvTotal > 0)
-            {{-- BV at the TOP of the payment summary (distributor-only). A factual
-                 point total for the compensation plan, never an earnings figure
-                 (hard rule #3). --}}
-            <div class="flex justify-between text-sm mb-4 pb-4 border-b border-gray-200 text-brand-700">
-                <span class="font-semibold">Total BV</span>
-                <span class="font-bold" title="Business Volume — points used in the compensation plan">{{ \App\Modules\Shared\Support\IndianNumber::format($bvTotal / 100, 0) }} BV</span>
-            </div>
-            @endif
-        @endauth
         @foreach($summaries as $mode => $sum)
         {{-- One block per delivery method, both costed on the server. The
              toggle swaps which is visible; nothing is recalculated in the

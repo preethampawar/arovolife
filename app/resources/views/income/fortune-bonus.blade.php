@@ -16,13 +16,13 @@
 
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-sky-100 rounded-2xl border border-sky-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">Fortune Bonus credited to wallet (page)</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalNet / 100, 0) }}
             </p>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-indigo-100 rounded-2xl border border-indigo-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">Months participated</p>
             <p class="text-2xl font-bold text-gray-900">
                 {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \App\Modules\Shared\Support\IndianNumber::format($rows->total()) : count($rows) }}
@@ -32,6 +32,7 @@
 
     {{-- Filter --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
+        <input type="hidden" name="f" value="1">
         <div>
             <label class="block text-xs text-gray-600 mb-1">From (YYYY-MM)</label>
             <input type="month" name="from" value="{{ request('from') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
@@ -41,9 +42,7 @@
             <input type="month" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
         <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
-        @if(request('from') || request('to'))
-            <a href="{{ route('income.fortune-bonus') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
-        @endif
+        <a href="{{ route('income.fortune-bonus', ['f' => 1]) }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
     </form>
 
     @if($rows->isEmpty())

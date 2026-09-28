@@ -29,9 +29,9 @@ final readonly class GsbSlabRow
         public bool $isNext,
         public int $progressPaise,
         public int $remainingPaise,
-        /** Left group BV counting toward this slab (slab 1 adds the weaker CF when Left is weaker). */
+        /** Left Genos BV counting toward this slab (slab 1 adds the weaker CF when Left is weaker). */
         public int $leftProgressPaise = 0,
-        /** Right group BV counting toward this slab (slab 1 adds the weaker CF when Right is weaker). */
+        /** Right Genos BV counting toward this slab (slab 1 adds the weaker CF when Right is weaker). */
         public int $rightProgressPaise = 0,
     ) {}
 }

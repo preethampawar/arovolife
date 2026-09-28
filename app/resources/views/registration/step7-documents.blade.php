@@ -11,7 +11,7 @@
         registration becomes active.
     </p>
 
-    <form method="POST" action="{{ url('/register/documents') }}" enctype="multipart/form-data" class="bg-white rounded-2xl border border-gray-200 p-8 space-y-6">
+    <form data-upload-form method="POST" action="{{ url('/register/documents') }}" enctype="multipart/form-data" class="bg-white rounded-2xl border border-gray-200 p-8 space-y-6">
         @csrf
 
         @php
@@ -70,16 +70,42 @@
 
         @include('registration._draft_notice')
 
+        <div data-upload-progress hidden role="status" aria-live="polite"
+             class="flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800">
+            <x-lucide-loader-circle class="w-4 h-4 animate-spin" />
+            Uploading your documents. Please keep this page open.
+        </div>
+
         <div class="flex items-center justify-between gap-3 pt-2">
             <a href="{{ route('register.personal') }}"
                class="inline-flex items-center px-5 py-3 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 text-sm font-semibold transition-colors">
                 ← Back
             </a>
-            <button type="submit"
+            <button type="submit" data-upload-submit
                 class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                 Upload and continue →
             </button>
         </div>
     </form>
 </div>
+<script>
+(function () {
+    const form = document.querySelector('[data-upload-form]');
+    if (! form) return;
+    form.addEventListener('submit', function () {
+        if (! form.checkValidity()) return;
+        const note = form.querySelector('[data-upload-progress]');
+        const btn = form.querySelector('[data-upload-submit]');
+        if (note) note.hidden = false;
+        if (btn) { btn.disabled = true; btn.classList.add('opacity-60', 'cursor-wait'); }
+    });
+    // Back/forward cache restores a disabled button; undo it.
+    window.addEventListener('pageshow', function () {
+        const note = form.querySelector('[data-upload-progress]');
+        const btn = form.querySelector('[data-upload-submit]');
+        if (note) note.hidden = true;
+        if (btn) { btn.disabled = false; btn.classList.remove('opacity-60', 'cursor-wait'); }
+    });
+})();
+</script>
 @endsection

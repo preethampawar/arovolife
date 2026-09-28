@@ -25,6 +25,7 @@ use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Compensation\Services\RepurchaseCycleService;
 use App\Modules\Compensation\Services\WalletService;
+use App\Modules\Compensation\Support\IncomeFilterDefaults;
 use App\Modules\Compensation\Support\RepurchaseWalletStatus;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
@@ -194,6 +195,7 @@ final class IncomeController extends Controller
 
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
+        IncomeFilterDefaults::apply($request, 'daily');
 
         try {
             // Credited days and forfeited days only. A forfeited row carries no
@@ -224,6 +226,7 @@ final class IncomeController extends Controller
 
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
+        IncomeFilterDefaults::apply($request, 'daily');
 
         // Same two statuses as the on-screen history, so the CSV is the page.
         $rows = GsbCutoffResult::where('distributor_id', $distributor->id)
@@ -269,6 +272,7 @@ final class IncomeController extends Controller
 
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
+        IncomeFilterDefaults::apply($request, 'daily');
 
         try {
             $rows = MentorshipBonusResult::where('sponsor_id', $distributor->id)
@@ -310,6 +314,7 @@ final class IncomeController extends Controller
 
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
+        IncomeFilterDefaults::apply($request, 'monthly');
 
         try {
             // Credited months and wallet-blocked months only. A blocked row
@@ -347,6 +352,7 @@ final class IncomeController extends Controller
 
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
+        IncomeFilterDefaults::apply($request, 'monthly');
 
         try {
             $rows = RankBonusResult::where('distributor_id', $distributor->id)
@@ -385,6 +391,7 @@ final class IncomeController extends Controller
 
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
+        IncomeFilterDefaults::apply($request, 'monthly');
 
         try {
             // Wallet-blocked months join credited and skipped ones: the month
@@ -420,6 +427,7 @@ final class IncomeController extends Controller
 
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);
+        IncomeFilterDefaults::apply($request, 'monthly');
 
         try {
             $rows = AdcBonusResult::where('distributor_id', $distributor->id)

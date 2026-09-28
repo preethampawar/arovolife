@@ -66,7 +66,7 @@ Tests: feature tests assert the new strings render and the old strings are absen
 - Check that the dark-theme remap (`html.dark`, see the theme architecture memory) still gives the header a dark surface. Never use `dark:` variants.
 
 ### 4.2 Sign out (item 7)
-- For signed-in **distributors**, "Sign out" sits in the same place as the guest "Sign In" pill: the far right of the main nav bar, after the cart. It uses the same pill shape as "Sign In" (`px-4 py-2 rounded-full bg-white text-xs font-semibold shadow-sm`), with `<x-lucide-log-out>` and the label in `text-red-600`. It is a POST form to `route('logout')`. Signing in and signing out therefore happen at one spot, top right. Nothing is added to the utility strip.
+- Sign in and Sign out share one spot: the far right of the thin top strip, after "India 🇮🇳" (user, 2026-09-28). Guests see a white "Sign in" pill there (moved from the strip's start); signed-in **distributors** see a white pill with `<x-lucide-log-out>` and "Sign out" in `text-red-600 font-semibold`, a POST form to `route('logout')`. The main-nav guest "Sign In" pill is unchanged.
 - The white pill keeps the red readable on the blue bar.
 - Mobile menu: its existing "Sign out" button turns red (`text-red-100 hover:bg-red-600`) with the icon.
 - Admins and customer-only accounts keep the current dropdown, sign-out included.

@@ -432,18 +432,29 @@
                 $iconGradCap  = 'graduation-cap';
 
                 $whyCards = [
-                    ['title' => 'Free Registration',    'body' => 'Zero joining fee. No payment required at signup — ever. We believe opportunity should start with accessibility, clarity and informed choice.', 'icon' => $iconGift,   'bg' => 'bg-brand-50',   'border' => 'border-brand-200',   'iconBg' => 'bg-brand-100 text-brand-700',     'titleClr' => 'text-brand-700'],
-                    ['title' => 'Your Data, Protected', 'body' => 'PAN stored as hash. Raw Aadhaar never touches our database. Full audit log.', 'icon' => $iconShield, 'bg' => 'bg-violet-50',  'border' => 'border-violet-200',  'iconBg' => 'bg-violet-100 text-violet-700',   'titleClr' => 'text-violet-700'],
-                    ['title' => '30-Day Cooling-Off',   'body' => 'One-click cancellation with full refund during the cooling-off period. A defined cooling-off period gives new direct sellers time to understand the opportunity and make an informed decision.', 'icon' => $iconClock,  'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'iconBg' => 'bg-sunrise-100 text-sunrise-700', 'titleClr' => 'text-sunrise-800'],
-                    ['title' => 'Real Sales Earnings',  'body' => 'Commissions are paid on actual product sales, never on recruiting. Business rewards are connected to genuine product sales under the published compensation plan—never to recruitment.', 'icon' => $iconRupee,  'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200',    'iconBg' => 'bg-leaf-100 text-leaf-700',       'titleClr' => 'text-leaf-700'],
-                    ['title' => 'Customer-First Approach', 'body' => 'Every relationship begins with genuine product value, responsible recommendations and dependable service.', 'icon' => $iconHandHeart, 'bg' => 'bg-sky-50', 'border' => 'border-sky-200', 'iconBg' => 'bg-sky-100 text-sky-700', 'titleClr' => 'text-sky-700'],
-                    ['title' => 'Learning & Leadership', 'body' => 'Product knowledge, business skills, mentoring and continuous development help individuals progress with greater confidence.', 'icon' => $iconGradCap, 'bg' => 'bg-amber-50', 'border' => 'border-amber-200', 'iconBg' => 'bg-amber-100 text-amber-700', 'titleClr' => 'text-amber-700'],
+                    ['title' => 'Free Registration',    'body' => 'Zero joining fee. No payment required at signup — ever. We believe opportunity should start with accessibility, clarity and informed choice.', 'icon' => $iconGift,   'bg' => 'bg-brand-50',   'border' => 'border-brand-200', 'tone' => 'brand',   'iconBg' => 'bg-brand-100 text-brand-700',     'titleClr' => 'text-brand-700'],
+                    ['title' => 'Your Data, Protected', 'body' => 'PAN stored as hash. Raw Aadhaar never touches our database. Full audit log.', 'icon' => $iconShield, 'bg' => 'bg-violet-50',  'border' => 'border-violet-200', 'tone' => 'violet',  'iconBg' => 'bg-violet-100 text-violet-700',   'titleClr' => 'text-violet-700'],
+                    ['title' => '30-Day Cooling-Off',   'body' => 'One-click cancellation with full refund during the cooling-off period. A defined cooling-off period gives new direct sellers time to understand the opportunity and make an informed decision.', 'icon' => $iconClock,  'bg' => 'bg-sunrise-50', 'border' => 'border-sunrise-200', 'tone' => 'sunrise', 'iconBg' => 'bg-sunrise-100 text-sunrise-700', 'titleClr' => 'text-sunrise-800'],
+                    ['title' => 'Real Sales Earnings',  'body' => 'Commissions are paid on actual product sales, never on recruiting. Business rewards are connected to genuine product sales under the published compensation plan—never to recruitment.', 'icon' => $iconRupee,  'bg' => 'bg-leaf-50',    'border' => 'border-leaf-200', 'tone' => 'leaf',    'iconBg' => 'bg-leaf-100 text-leaf-700',       'titleClr' => 'text-leaf-700'],
+                    ['title' => 'Customer-First Approach', 'body' => 'Every relationship begins with genuine product value, responsible recommendations and dependable service.', 'icon' => $iconHandHeart, 'bg' => 'bg-sky-50', 'border' => 'border-sky-200', 'tone' => 'sky', 'iconBg' => 'bg-sky-100 text-sky-700', 'titleClr' => 'text-sky-700'],
+                    ['title' => 'Learning & Leadership', 'body' => 'Product knowledge, business skills, mentoring and continuous development help individuals progress with greater confidence.', 'icon' => $iconGradCap, 'bg' => 'bg-amber-50', 'border' => 'border-amber-200', 'tone' => 'amber', 'iconBg' => 'bg-amber-100 text-amber-700', 'titleClr' => 'text-amber-700'],
+                ];
+                // Team-card style (dashboard KPI tile), keyed by each card's tone.
+                $whyTones = [
+                    'brand' => ['card' => 'border-brand-200 from-brand-50', 'bar' => 'from-brand-400 to-brand-600', 'icon' => 'bg-brand-500 shadow-brand-500/30'],
+                    'violet' => ['card' => 'border-violet-200 from-violet-50', 'bar' => 'from-violet-400 to-violet-600', 'icon' => 'bg-violet-500 shadow-violet-500/30'],
+                    'sunrise' => ['card' => 'border-sunrise-200 from-sunrise-50', 'bar' => 'from-sunrise-400 to-sunrise-600', 'icon' => 'bg-sunrise-500 shadow-sunrise-500/30'],
+                    'leaf' => ['card' => 'border-leaf-200 from-leaf-50', 'bar' => 'from-leaf-400 to-leaf-600', 'icon' => 'bg-leaf-500 shadow-leaf-500/30'],
+                    'sky' => ['card' => 'border-sky-200 from-sky-50', 'bar' => 'from-sky-400 to-sky-600', 'icon' => 'bg-sky-500 shadow-sky-500/30'],
+                    'amber' => ['card' => 'border-amber-200 from-amber-50', 'bar' => 'from-amber-400 to-amber-600', 'icon' => 'bg-amber-500 shadow-amber-500/30'],
                 ];
             @endphp
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach($whyCards as $card)
-                <div class="rounded-2xl border-2 {{ $card['border'] }} {{ $card['bg'] }} p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                    <div class="w-12 h-12 rounded-xl flex items-center justify-center {{ $card['iconBg'] }} mb-4 shadow-sm">
+                @php $tone = $whyTones[$card['tone']]; @endphp
+                <div class="relative overflow-hidden rounded-2xl border {{ $tone['card'] }} bg-gradient-to-br via-white to-white p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition">
+                    <span class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r {{ $tone['bar'] }}" aria-hidden="true"></span>
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center {{ $tone['icon'] }} text-white mb-4 shadow-md">
                         {{ svg('lucide-'.$card['icon'], 'w-6 h-6') }}
                     </div>
                     <h3 class="font-bold {{ $card['titleClr'] }} mb-1.5">{{ $card['title'] }}</h3>

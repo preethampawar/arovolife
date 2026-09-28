@@ -88,6 +88,7 @@ final class MyBusinessController extends Controller
                 : null;
 
             $teamCounts = app(TeamStatsService::class)->counts($distributor);
+            $ordersToday = app(TeamStatsService::class)->ordersTodayBySide($distributor);
         } catch (QueryException) {
             $personalBvPaise = null;
             $title = null;
@@ -98,6 +99,7 @@ final class MyBusinessController extends Controller
             $slabProgress = null;
             $lastMatch = null;
             $teamCounts = ['left_team' => 0, 'right_team' => 0, 'total_team' => 0];
+            $ordersToday = ['left' => 0, 'right' => 0];
         }
 
         // The next Tuesday 03:00 batch — same rule as the wallet page.
@@ -105,7 +107,7 @@ final class MyBusinessController extends Controller
 
         return view('my-business', compact(
             'distributor', 'personalBvPaise', 'title', 'gsbMinBvPaise', 'genosBvEligible',
-            'walletBalancePaise', 'nextPayout', 'dailyBv', 'slabProgress', 'lastMatch', 'teamCounts',
+            'walletBalancePaise', 'nextPayout', 'dailyBv', 'slabProgress', 'lastMatch', 'teamCounts', 'ordersToday',
             'gsbOn',
         ));
     }

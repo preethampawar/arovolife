@@ -158,6 +158,6 @@ it('FMI-08: the lookup requires privacy consent (DPDP)', function (): void {
 it('FMI-09: the login page links to Find My ID', function (): void {
     $this->get(route('login'))
         ->assertOk()
-        ->assertSee('Forgot your ADN?')
+        ->assertSee('Find my ADN')
         ->assertSee(route('find-my-id.show'), false);
 });

@@ -48,6 +48,8 @@ final readonly class RepurchaseCycleCard
         public ?string $failureReason,
         public int $personalBvPaise,
         public int $qualifyBvPaise,
+        /** When the cycle began, to the minute (display only; eligibility is by whole day). */
+        public ?Carbon $startedAt = null,
     ) {}
 
     /**
@@ -78,7 +80,7 @@ final readonly class RepurchaseCycleCard
      *                                            NULL until the window's last day, so without this the card would
      *                                            report "now ₹0.00" to a distributor who is still holding money.
      */
-    public static function fromCycle(RepurchaseCycle $cycle, Carbon $today, int $personalBvPaise, int $qualifyBvPaise, ?int $liveWalletBalancePaise = null): self
+    public static function fromCycle(RepurchaseCycle $cycle, Carbon $today, int $personalBvPaise, int $qualifyBvPaise, ?int $liveWalletBalancePaise = null, ?Carbon $startedAt = null): self
     {
         $start = $cycle->cycle_start_date->copy()->startOfDay();
         $end = $cycle->due_date->copy()->startOfDay();
@@ -106,6 +108,7 @@ final readonly class RepurchaseCycleCard
             failureReason: $cycle->failure_reason,
             personalBvPaise: $personalBvPaise,
             qualifyBvPaise: $qualifyBvPaise,
+            startedAt: $startedAt ?? $start,
         );
     }
 

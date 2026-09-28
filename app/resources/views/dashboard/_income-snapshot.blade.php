@@ -38,7 +38,7 @@
             {{-- Stat tiles — 2×2 grid --}}
             <div class="grid grid-cols-2 gap-3">
                 {{-- Wallet balance — spans both columns --}}
-                <div class="col-span-2 rounded-xl bg-gradient-to-br from-brand-600 to-brand-800 text-white p-4">
+                <div class="col-span-2 rounded-xl bg-brand-600 text-white p-4">
                     <div class="flex items-center justify-between mb-1">
                         <p class="text-[11px] uppercase tracking-wider font-semibold text-white/80">Wallet balance</p>
                         <x-help-tip :light="true" text="Already net of the repurchase deduction taken when each bonus was credited. Transferred to your bank on payout days after the 3% admin charge and 5% TDS, once the minimum payout is met." />
@@ -47,9 +47,9 @@
                 </div>
 
                 {{-- Credited this month --}}
-                <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div data-card="this-month" class="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4">
                     <div class="flex items-center justify-between mb-1">
-                        <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">This month</p>
+                        <p class="text-[11px] uppercase tracking-wider font-semibold text-emerald-800">This month</p>
                         <x-help-tip text="Total bonus credits that reached your wallet since the 1st of this month." />
                     </div>
                     <p class="text-xl font-bold text-gray-900 leading-tight">{{ $fmt::rupees((int) $monthTotal) }}</p>
@@ -57,9 +57,9 @@
                 </div>
 
                 {{-- Lifetime total --}}
-                <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div data-card="lifetime" class="rounded-xl border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-4">
                     <div class="flex items-center justify-between mb-1">
-                        <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Lifetime</p>
+                        <p class="text-[11px] uppercase tracking-wider font-semibold text-brand-800">Lifetime</p>
                         <x-help-tip text="Total bonus credits across all engines since you joined." />
                     </div>
                     <p class="text-xl font-bold text-gray-900 leading-tight">{{ $fmt::rupees($lifetimeTotal) }}</p>
@@ -67,9 +67,9 @@
                 </div>
 
                 {{-- Next weekly payout --}}
-                <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div data-card="next-weekly" class="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4">
                     <div class="flex items-center justify-between mb-1">
-                        <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Next weekly</p>
+                        <p class="text-[11px] uppercase tracking-wider font-semibold text-amber-800">Next weekly</p>
                         <x-help-tip :text="$payoutCadencePublished
                             ? 'Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday (03:00 IST), provided your balance meets the minimum payout.'
                             : 'Weekly income is transferred in the Tuesday payout run (03:00 IST), provided your balance meets the minimum payout.'" />
@@ -81,9 +81,9 @@
                 </div>
 
                 {{-- Next monthly payout (if any monthly bonuses are active, else show payout label) --}}
-                <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div data-card="next-monthly" class="rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-4">
                     <div class="flex items-center justify-between mb-1">
-                        <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Next monthly</p>
+                        <p class="text-[11px] uppercase tracking-wider font-semibold text-violet-800">Next monthly</p>
                         <x-help-tip :text="$payoutCadencePublished
                             ? 'Monthly bonuses transfer to your bank on the 8th of each month, provided your balance meets the minimum payout.'
                             : 'Monthly bonuses transfer to your bank in the monthly payout run, provided your balance meets the minimum payout.'" />
@@ -98,7 +98,8 @@
 
                 {{-- Repurchase alert — urgency of clearing the repurchase wallet before month end --}}
                 @if(($repurchaseWalletStatus ?? null) !== null)
-                <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 col-span-2">
+                @php $alertUrgent = $repurchaseWalletStatus->tone === 'red' || $repurchaseWalletStatus->overdue(); @endphp
+                <div data-card="repurchase-alert" class="rounded-xl border p-4 col-span-2 bg-gradient-to-br to-white {{ $alertUrgent ? 'border-red-300 from-red-50' : 'border-amber-300 from-amber-50' }}">
                     <div class="flex items-center justify-between mb-1">
                         <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Repurchase alert</p>
                     </div>
@@ -143,12 +144,13 @@
 
         {{-- Right: per-bonus table --}}
         <div>
-            <div class="divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
-                <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 px-4 py-3 text-[11px] uppercase tracking-wider font-semibold text-gray-600 bg-gray-50">
+            <div class="relative divide-y divide-brand-100 rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-leaf-50/60 overflow-hidden shadow-sm">
+                <span class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-500 via-leaf-500 to-sunrise-500" aria-hidden="true"></span>
+                <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 px-4 pt-4 pb-3 text-[11px] uppercase tracking-wider font-semibold text-gray-600 bg-brand-50/70">
                     <span>Bonus</span><span class="text-right w-24">This month</span><span class="text-right w-28">Lifetime</span>
                 </div>
                 @foreach($bonusSummary as $row)
-                    <a href="{{ route($row['route']) }}" class="grid grid-cols-[1fr_auto_auto] gap-x-4 items-center px-4 py-3 text-sm hover:bg-gray-50 transition">
+                    <a href="{{ route($row['route']) }}" class="grid grid-cols-[1fr_auto_auto] gap-x-4 items-center px-4 py-3 text-sm hover:bg-white/70 transition">
                         <span class="inline-flex items-center gap-1 min-w-0">
                             <span class="font-medium text-gray-900 truncate">{{ $row['label'] }}</span>
                             <x-help-tip :text="$row['tip']" />
@@ -158,7 +160,7 @@
                     </a>
                 @endforeach
                 {{-- Totals row --}}
-                <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 items-center px-4 py-3 bg-gray-50 border-t border-gray-200">
+                <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 items-center px-4 py-3 bg-brand-50/70 border-t border-gray-200">
                     <span class="text-xs font-bold text-gray-700 uppercase tracking-wide">Total</span>
                     <span class="text-right w-24 font-bold text-gray-900">{{ $fmt::rupees((int) $monthTotal) }}</span>
                     <span class="text-right w-28 font-bold text-gray-900">{{ $fmt::rupees($lifetimeTotal) }}</span>

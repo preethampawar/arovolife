@@ -11,6 +11,7 @@ use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Models\SharedCart;
 use App\Modules\Commerce\Services\AttributionService;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -309,4 +310,73 @@ it('SCT-09: placing the shared-cart order clears the guest pass (gate re-closes 
         ])
         ->assertRedirect()
         ->assertSessionMissing(SharedCart::SESSION_DISTRIBUTOR_KEY); // pass consumed
+});
+
+function sctPlaceForm(): array
+{
+    return [
+        'buyer_name' => 'Guest Customer',
+        'buyer_email' => 'guest-'.uniqid().'@test.com',
+        'buyer_phone' => '9800000000',
+        'ship_line1' => '1 Test St',
+        'ship_city' => 'Pune',
+        'ship_state' => 'Maharashtra',
+        'ship_pincode' => '411001',
+        'delivery_type' => 'ship',
+        'payment_method' => 'online',
+        'billing_same' => '1',
+        'accept_terms' => '1',
+    ];
+}
+
+it('SCT-10: a guest paying through KP\'s Easy Purchase link pays in full and KP\'s wallet is untouched', function (): void {
+    $this->seed(LedgerAccountSeeder::class);
+    sctSetting('commerce.checkout.enabled', 'true');
+    sctSetting('commerce.guest_checkout.enabled', 'false');
+
+    $adn = 'ADN'.random_int(10000, 99999);
+    $kp = sctDistributorUser($adn);
+    DB::table('distributors')->where('id', $kp->distributor->id)->update(['status' => 'active']);
+    uiRepurchaseWallet($kp->distributor->id, 500_000);           // ₹5,000
+    $cart = sctGuestCart(sctVariant(400_000));                     // ₹4,000
+
+    $page = $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->withSession([SharedCart::SESSION_DISTRIBUTOR_KEY => $kp->distributor->id])
+        ->get(route('shop.checkout'));
+    $page->assertOk()->assertDontSee('Repurchase Credit');
+
+    $this->withCookie(AttributionService::ANON_COOKIE, $cart->anonymous_key)
+        ->withCookie(AttributionService::COOKIE_NAME, $adn)
+        ->withSession([SharedCart::SESSION_DISTRIBUTOR_KEY => $kp->distributor->id])
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('shop.checkout.place'), sctPlaceForm())
+        ->assertRedirect();
+
+    $order = Order::latest('id')->first();
+    $wallet = app(WalletService::class);
+    expect($order->total_paise)->toBeGreaterThanOrEqual(400_000)
+        ->and($wallet->repurchaseCreditAppliedToOrder($order->id))->toBe(0)
+        ->and($wallet->repurchaseWalletBalancePaise($kp->distributor->id))->toBe(500_000)
+        ->and(DB::table('wallet_ledger_entries')->where('distributor_id', $kp->distributor->id)->where('type', 'repurchase_wallet_used')->count())->toBe(0);
+});
+
+it('SCT-11: a different signed-in distributor on KP\'s link only ever spends their own wallet', function (): void {
+    $this->seed(LedgerAccountSeeder::class);
+    sctSetting('commerce.checkout.enabled', 'true');
+
+    $kp = sctDistributorUser('ADN'.random_int(10000, 99999));
+    uiRepurchaseWallet($kp->distributor->id, 500_000);
+    $buyer = sctDistributorUser('ADN'.random_int(10000, 99999));
+    uiRepurchaseWallet($buyer->distributor->id, 100_000);           // ₹1,000
+    sctCartFor($buyer, [sctVariant(400_000)]);
+
+    $this->actingAs($buyer)
+        ->withSession([SharedCart::SESSION_DISTRIBUTOR_KEY => $kp->distributor->id])
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('shop.checkout.place'), array_merge(sctPlaceForm(), ['buyer_email' => $buyer->email]))
+        ->assertRedirect();
+
+    $wallet = app(WalletService::class);
+    expect($wallet->repurchaseWalletBalancePaise($kp->distributor->id))->toBe(500_000)
+        ->and($wallet->repurchaseWalletBalancePaise($buyer->distributor->id))->toBe(0);
 });

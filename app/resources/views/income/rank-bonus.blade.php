@@ -21,30 +21,37 @@
     {{-- Rank status — the distributor's own standing, and the published
          conditions of the next rank measured against their own figures. --}}
     @if($rankStatus)
-    <section class="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
+    <section class="relative overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-white p-5 shadow-sm mb-6">
+        <span class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-400 to-brand-600" aria-hidden="true"></span>
         <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
-            <div>
+            <div class="flex items-start gap-3">
+                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-md bg-brand-500 text-white shadow-brand-500/30"><x-lucide-award class="w-5 h-5" /></span>
+                <div>
                 <h2 class="text-lg font-semibold text-gray-900">My rank status</h2>
                 <p class="text-xs text-gray-600 mt-0.5">Ranks are checked once a month. Everything below is your own recorded result.</p>
+                </div>
             </div>
             <div class="flex flex-wrap gap-3">
-                <div class="rounded-xl border border-gray-200 px-4 py-2.5 text-center min-w-[140px]">
-                    <p class="text-[11px] uppercase tracking-wider text-gray-600 flex items-center justify-center gap-1">
+                <div class="flex flex-col items-center gap-1.5 rounded-2xl border border-indigo-300 bg-indigo-100 px-4 py-3 text-center min-w-[140px] shadow-sm">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-md bg-indigo-500 text-white"><x-lucide-medal class="w-5 h-5" /></span>
+                    <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-700 flex items-center justify-center gap-1">
                         Current rank
                         <x-help-tip text="The rank you achieved this month, or last month while this month is still being counted." />
                     </p>
-                    <p class="text-base font-bold text-indigo-700 mt-1">{{ $rankStatus->currentRankName() ?? 'No rank yet' }}</p>
+                    <p class="text-base font-bold text-indigo-900">{{ $rankStatus->currentRankName() ?? 'No rank yet' }}</p>
                 </div>
-                <div class="rounded-xl border border-gray-200 px-4 py-2.5 text-center min-w-[140px]">
-                    <p class="text-[11px] uppercase tracking-wider text-gray-600 flex items-center justify-center gap-1">
+                <div class="flex flex-col items-center gap-1.5 rounded-2xl border border-leaf-300 bg-leaf-100 px-4 py-3 text-center min-w-[140px] shadow-sm">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-md bg-leaf-500 text-white"><x-lucide-trophy class="w-5 h-5" /></span>
+                    <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-700 flex items-center justify-center gap-1">
                         Highest rank
                         <x-help-tip text="The highest rank you have ever achieved." />
                     </p>
-                    <p class="text-base font-bold text-purple-700 mt-1">{{ $rankStatus->highestRankName() ?? '—' }}</p>
+                    <p class="text-base font-bold text-leaf-900">{{ $rankStatus->highestRankName() ?? '—' }}</p>
                 </div>
-                <div class="rounded-xl border border-gray-200 px-4 py-2.5 text-center min-w-[140px]">
-                    <p class="text-[11px] uppercase tracking-wider text-gray-600">This month</p>
-                    <p class="text-base font-bold mt-1 {{ $rankStatus->qualifiedThisMonth ? 'text-green-700' : 'text-gray-600' }}">
+                <div class="flex flex-col items-center gap-1.5 rounded-2xl border border-amber-300 bg-amber-100 px-4 py-3 text-center min-w-[140px] shadow-sm">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl shadow-md bg-amber-500 text-white"><x-lucide-calendar-check class="w-5 h-5" /></span>
+                    <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-700">This month</p>
+                    <p class="text-base font-bold {{ $rankStatus->qualifiedThisMonth ? 'text-green-800' : 'text-amber-900' }}">
                         {{ $rankStatus->qualifiedThisMonth ? ($rankStatus->rankNames[$rankStatus->thisMonthRank] ?? 'Achieved') : 'Not yet achieved' }}
                     </p>
                 </div>
@@ -82,7 +89,7 @@
          at least once). Conditions only, in points; no rupee figure and no
          suggestion the offer will be granted (DSR 2021 r.5(1)(d)). --}}
     @if($aogoStatus && ($aogoStatus->everAchievedRank || $aogoStatus->usesUsed > 0))
-    <section class="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
+    <section class="bg-indigo-100 rounded-2xl border border-indigo-200 p-5 mb-6">
         <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
             <div>
                 <h2 class="text-lg font-semibold text-gray-900">AO-GO offer</h2>
@@ -131,20 +138,26 @@
 
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 {{ ($aogoUsed ?? 0) > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }} gap-4 mb-6">
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-600 mb-1">Rank Bonus credited to wallet (page)</p>
-            <p class="text-2xl font-bold text-gray-900">
-                {{ $rows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalNet / 100, 0) }}
-            </p>
+        <div data-tile="credited" class="flex items-center gap-3 rounded-2xl border border-emerald-300 bg-emerald-100 p-4 shadow-sm">
+            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-md"><x-lucide-wallet class="w-5 h-5" /></span>
+            <div>
+                <p class="text-xs font-semibold text-emerald-900">Rank Bonus credited to wallet (page)</p>
+                <p class="text-xl font-bold text-gray-900">
+                    {{ $rows->isEmpty() ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalNet / 100, 0) }}
+                </p>
+            </div>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
-            <p class="text-xs text-gray-600 mb-1">Months credited</p>
-            <p class="text-2xl font-bold text-gray-900">
-                {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \App\Modules\Shared\Support\IndianNumber::format($rows->total()) : count($rows) }}
-            </p>
+        <div data-tile="months" class="flex items-center gap-3 rounded-2xl border border-brand-300 bg-brand-100 p-4 shadow-sm">
+            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md"><x-lucide-calendar-check class="w-5 h-5" /></span>
+            <div>
+                <p class="text-xs font-semibold text-brand-900">Months credited</p>
+                <p class="text-xl font-bold text-gray-900">
+                    {{ $rows instanceof \Illuminate\Pagination\LengthAwarePaginator ? \App\Modules\Shared\Support\IndianNumber::format($rows->total()) : count($rows) }}
+                </p>
+            </div>
         </div>
         @if(($aogoUsed ?? 0) > 0)
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-amber-100 rounded-2xl border border-amber-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1 flex items-center justify-center gap-1">
                 AO-GO offer used
                 <x-help-tip text="Achieve Once – Get Once: if you lose your rank, you can earn 5 points in the Rank-1 pool up to {{ $aogoMax }} times in your lifetime — never in consecutive months, and only after re-achieving a rank between uses." />
@@ -156,6 +169,7 @@
 
     {{-- Filter --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
+        <input type="hidden" name="f" value="1">
         <div>
             <label class="block text-xs text-gray-600 mb-1">From (YYYY-MM)</label>
             <input type="month" name="from" value="{{ request('from') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
@@ -165,9 +179,7 @@
             <input type="month" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
         <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
-        @if(request('from') || request('to'))
-            <a href="{{ route('income.rank-bonus') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
-        @endif
+        <a href="{{ route('income.rank-bonus', ['f' => 1]) }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
     </form>
 
     @if($rows->isEmpty())

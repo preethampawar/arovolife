@@ -6,9 +6,9 @@
         ['label' => 'My Orders',     'href' => route('orders.index'),      'tone' => 'bg-amber-50 text-amber-700',     'icon' => 'package'],
         ['label' => 'My Genos',      'href' => route('tree.binary'),       'tone' => 'bg-brand-50 text-brand-700',     'icon' => 'network'],
         ['label' => 'My Referrals',  'href' => route('tree.sponsorship'),  'tone' => 'bg-leaf-50 text-leaf-700',       'icon' => 'users'],
-        ['label' => 'My Business',   'href' => route('my-business'),       'tone' => 'bg-indigo-50 text-indigo-700',   'icon' => 'chart-column'],
+        ['label' => 'My Business World','href' => route('my-business'),       'tone' => 'bg-indigo-50 text-indigo-700',   'icon' => 'chart-column'],
         ['label' => 'Income',        'href' => route('income.dashboard'),  'tone' => 'bg-emerald-50 text-emerald-700', 'icon' => 'trending-up'],
-        ['label' => 'Wallet',        'href' => route('income.wallet'),     'tone' => 'bg-brand-50 text-brand-700',     'icon' => 'wallet'],
+        ['label' => 'Wallet',        'href' => route('income.wallet'),     'tone' => 'bg-teal-50 text-teal-700',       'icon' => 'wallet'],
     ];
     if ($offersOn) {
         $actions[] = ['label' => 'My Offers', 'href' => route('my.offers.index'), 'tone' => 'bg-pink-50 text-pink-700', 'icon' => 'gift'];
@@ -25,16 +25,17 @@
     // border and solid icon from the colour name (classes listed literally
     // below so Tailwind keeps them).
     $quickTones = [
-        'sunrise' => ['card' => 'border-sunrise-200 bg-sunrise-50 hover:border-sunrise-400 hover:bg-sunrise-100', 'icon' => 'bg-sunrise-500 text-white', 'label' => 'text-sunrise-900'],
-        'amber'   => ['card' => 'border-amber-200 bg-amber-50 hover:border-amber-400 hover:bg-amber-100',         'icon' => 'bg-amber-500 text-white',   'label' => 'text-amber-900'],
-        'brand'   => ['card' => 'border-brand-200 bg-brand-50 hover:border-brand-400 hover:bg-brand-100',         'icon' => 'bg-brand-500 text-white',   'label' => 'text-brand-900'],
-        'leaf'    => ['card' => 'border-leaf-200 bg-leaf-50 hover:border-leaf-400 hover:bg-leaf-100',             'icon' => 'bg-leaf-500 text-white',    'label' => 'text-leaf-900'],
-        'indigo'  => ['card' => 'border-indigo-200 bg-indigo-50 hover:border-indigo-400 hover:bg-indigo-100',     'icon' => 'bg-indigo-500 text-white',  'label' => 'text-indigo-900'],
-        'emerald' => ['card' => 'border-emerald-200 bg-emerald-50 hover:border-emerald-400 hover:bg-emerald-100', 'icon' => 'bg-emerald-500 text-white', 'label' => 'text-emerald-900'],
-        'pink'    => ['card' => 'border-pink-200 bg-pink-50 hover:border-pink-400 hover:bg-pink-100',             'icon' => 'bg-pink-500 text-white',    'label' => 'text-pink-900'],
-        'violet'  => ['card' => 'border-violet-200 bg-violet-50 hover:border-violet-400 hover:bg-violet-100',     'icon' => 'bg-violet-500 text-white',  'label' => 'text-violet-900'],
-        'slate'   => ['card' => 'border-slate-200 bg-slate-50 hover:border-slate-400 hover:bg-slate-100',         'icon' => 'bg-slate-600 text-white',   'label' => 'text-slate-900'],
-        'red'     => ['card' => 'border-red-200 bg-red-50 hover:border-red-400 hover:bg-red-100',                 'icon' => 'bg-red-500 text-white',     'label' => 'text-red-900'],
+        'sunrise' => ['card' => 'border-sunrise-300 bg-sunrise-100 hover:border-sunrise-400 hover:bg-sunrise-200', 'icon' => 'bg-sunrise-500 text-white', 'label' => 'text-sunrise-900'],
+        'amber'   => ['card' => 'border-amber-300 bg-amber-100 hover:border-amber-400 hover:bg-amber-200',         'icon' => 'bg-amber-500 text-white',   'label' => 'text-amber-900'],
+        'brand'   => ['card' => 'border-brand-300 bg-brand-100 hover:border-brand-400 hover:bg-brand-200',         'icon' => 'bg-brand-500 text-white',   'label' => 'text-brand-900'],
+        'leaf'    => ['card' => 'border-leaf-300 bg-leaf-100 hover:border-leaf-400 hover:bg-leaf-200',             'icon' => 'bg-leaf-500 text-white',    'label' => 'text-leaf-900'],
+        'indigo'  => ['card' => 'border-indigo-300 bg-indigo-100 hover:border-indigo-400 hover:bg-indigo-200',     'icon' => 'bg-indigo-500 text-white',  'label' => 'text-indigo-900'],
+        'emerald' => ['card' => 'border-emerald-300 bg-emerald-100 hover:border-emerald-400 hover:bg-emerald-200', 'icon' => 'bg-emerald-500 text-white', 'label' => 'text-emerald-900'],
+        'pink'    => ['card' => 'border-pink-300 bg-pink-100 hover:border-pink-400 hover:bg-pink-200',             'icon' => 'bg-pink-500 text-white',    'label' => 'text-pink-900'],
+        'violet'  => ['card' => 'border-violet-300 bg-violet-100 hover:border-violet-400 hover:bg-violet-200',     'icon' => 'bg-violet-500 text-white',  'label' => 'text-violet-900'],
+        'slate'   => ['card' => 'border-slate-300 bg-slate-100 hover:border-slate-400 hover:bg-slate-200',         'icon' => 'bg-slate-600 text-white',   'label' => 'text-slate-900'],
+        'teal'    => ['card' => 'border-teal-300 bg-teal-100 hover:border-teal-400 hover:bg-teal-200',             'icon' => 'bg-teal-500 text-white',    'label' => 'text-teal-900'],
+        'red'     => ['card' => 'border-red-300 bg-red-100 hover:border-red-400 hover:bg-red-200',                 'icon' => 'bg-red-500 text-white',     'label' => 'text-red-900'],
     ];
 
     // Always exactly two rows, both the same width: half the tiles per row,

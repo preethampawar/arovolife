@@ -16,18 +16,18 @@
 
     {{-- Summary cards --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-sky-100 rounded-2xl border border-sky-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">
                 MB Credited This Month
                 <x-help-tip text="Mentorship Bonus that landed in your main wallet this month — gross minus the repurchase deduction taken when each bonus was credited." />
             </p>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($mbThisMonthPaise ?? 0) / 100, 2) }}</p>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-indigo-100 rounded-2xl border border-indigo-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">MB Credited Lifetime</p>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($mbLifetimePaise ?? 0) / 100, 2) }}</p>
         </div>
-        <div class="bg-white rounded-2xl border border-gray-200 p-5 text-center">
+        <div class="bg-amber-100 rounded-2xl border border-amber-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">Active Sponsees Contributing</p>
             <p class="text-2xl font-bold text-gray-900">{{ $activeSponsees ?? 0 }}</p>
         </div>
@@ -35,6 +35,7 @@
 
     {{-- Filter form --}}
     <form method="GET" class="flex flex-wrap gap-3 mb-6 items-end">
+        <input type="hidden" name="f" value="1">
         <div>
             <label class="block text-xs text-gray-600 mb-1">From</label>
             <input type="date" name="from" value="{{ request('from') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
@@ -44,9 +45,7 @@
             <input type="date" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
         <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
-        @if(request('from') || request('to'))
-            <a href="{{ route('income.mentorship') }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
-        @endif
+        <a href="{{ route('income.mentorship', ['f' => 1]) }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
     </form>
 
     @if($rows->isEmpty())
@@ -88,7 +87,7 @@
                         </td>
                         <td class="px-4 py-3 text-center">
                             @if($row->slab !== null)
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Slab {{ $row->slab }}</span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Slab {{ $row->slab }}</span>
                             @else
                             <span class="text-gray-600">—</span>
                             @endif
