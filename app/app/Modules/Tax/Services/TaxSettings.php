@@ -21,10 +21,10 @@ final class TaxSettings
         // an invoice carrying it is obviously unissued rather than subtly wrong.
         'tax.seller_gstin' => '',
         'tax.seller_legal_name' => 'Arovolife Private Limited',
-        'tax.seller_trade_name' => 'arovolife',
+        'tax.seller_trade_name' => 'Arovolife Private Limited',
         'tax.seller_state' => 'TG',
         'tax.seller_state_code' => '36',
-        'tax.seller_address' => 'H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India',
+        'tax.seller_address' => '6-51/2, LIG Phase 1, Bank Colony, Pothreddipalle, Sangareddy, Telangana – 502001, India',
         // Rule 46(o) — whether tax is payable on reverse charge. Always no for
         // a normal outward supply of goods; the line is still required.
         'tax.reverse_charge' => false,

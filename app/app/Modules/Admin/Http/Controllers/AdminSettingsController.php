@@ -194,11 +194,11 @@ final class AdminSettingsController extends Controller
             'tax.seller_address' => [
                 'group' => 'commerce',
                 'owner' => 'developer',
-                'label' => 'Registered address for invoices',
-                'description' => 'The supplier address printed on every tax invoice.',
+                'label' => 'Principal place of business for invoices',
+                'description' => 'The supplier address printed on every tax invoice — the principal place of business on the GST registration certificate (REG-06), which differs from the MCA registered office.',
                 'type' => 'string',
                 'max' => 500,
-                'default' => 'H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India',
+                'default' => '6-51/2, LIG Phase 1, Bank Colony, Pothreddipalle, Sangareddy, Telangana – 502001, India',
             ],
 
             // ── Purchase offers ────────────────────────────────────────────
