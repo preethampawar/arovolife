@@ -8,8 +8,8 @@
     $dash = round($circ * $fraction, 2);
     $urgent = $daysLeft <= 7;
 @endphp
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-    <p class="text-xs text-gray-700 uppercase tracking-wider mb-3 font-semibold">Cooling-Off Period</p>
+<div class="rounded-2xl border border-brand-200 bg-brand-50/60 shadow-sm p-6">
+    <p class="text-xs text-brand-700 uppercase tracking-wider mb-3 font-semibold">Cooling-Off Period</p>
     @if($isActive)
         <div class="flex items-center gap-4">
             <svg viewBox="0 0 72 72" class="w-20 h-20 shrink-0" role="img" aria-label="{{ $daysShown }} of 30 cooling-off days remaining">

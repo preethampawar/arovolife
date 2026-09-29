@@ -1,9 +1,9 @@
 {{-- Messages —— mirrors the topnav bell. Same unread-count source
      (Message::unreadFor), so the badge here and the badge in the
      top-right corner always agree. --}}
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+<div class="rounded-2xl border border-brand-200 bg-brand-50/60 shadow-sm p-6">
     <div class="flex items-center justify-between gap-2 mb-2">
-        <p class="text-xs text-gray-700 uppercase tracking-wider font-semibold">Messages</p>
+        <p class="text-xs text-brand-700 uppercase tracking-wider font-semibold">Messages</p>
         @if($unreadMessagesCount > 0)
             <span class="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-brand-700 text-white text-[10px] font-bold leading-none">
                 {{ $unreadMessagesCount > 99 ? '99+' : $unreadMessagesCount }}

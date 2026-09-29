@@ -2,14 +2,14 @@
 
      Lived on the hero's glass panel until the repurchase cycle took that
      slot. Same URL, same copy button, same slot-aware hint; restyled as the
-     plain white card the rest of this column uses (_messages, _cooling-off)
+     brand-tinted card the rest of this column uses (_messages, _cooling-off)
      because it now sits on the page background, not on the dark hero.
 
      Expects: $inviteUrl, $bothFull, $maxObservedDepth — all set in
      dashboard/index.blade.php. --}}
-<div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+<div class="rounded-2xl border border-brand-200 bg-brand-50/60 shadow-sm p-6">
     <div class="flex items-center justify-between gap-3 mb-3">
-        <p class="text-xs text-gray-700 uppercase tracking-wider font-semibold">My Referral Link</p>
+        <p class="text-xs text-brand-700 uppercase tracking-wider font-semibold">My Referral Link</p>
         <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold bg-brand-50 text-brand-700 border border-brand-200">Personal invite</span>
     </div>
 
