@@ -10,10 +10,10 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Seeds the ten public content pages: ethics, terms, grievance, compensation,
- * privacy, returns, shipping, disclaimer, social-media, policies.
+ * Seeds the eleven public content pages: ethics, terms, grievance, compensation,
+ * privacy, returns, shipping, cancellation, disclaimer, social-media, policies.
  *
- * Nine of them are published. `compensation` is seeded as a draft and left
+ * Ten of them are published. `compensation` is seeded as a draft and left
  * unpublished — see {@see ContentPageSeeder::HELD_SLUGS} for why, and for the
  * one command that publishes it.
  *
@@ -76,6 +76,11 @@ final class ContentPageSeeder extends Seeder
             'slug' => 'shipping',
             'title' => 'Shipping & Delivery',
             'meta_description' => 'Where arovolife delivers, shipping charges, dispatch and delivery times, and who pays for return shipping.',
+        ],
+        [
+            'slug' => 'cancellation',
+            'title' => 'Order Cancellation Policy',
+            'meta_description' => 'How to cancel an arovolife order before it ships, orders that cannot be cancelled, refund timelines for cancelled orders, and the effect on BV.',
         ],
         [
             'slug' => 'disclaimer',

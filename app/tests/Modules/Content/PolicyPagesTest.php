@@ -8,7 +8,7 @@ declare(strict_types=1);
  *
  *   POL-01  every ContentPageSeeder slug has a markdown source file
  *   POL-02  a blanket seed publishes every slug except compensation
- *   POL-03  ProductionSeeder on an empty table creates all nine policy pages
+ *   POL-03  ProductionSeeder on an empty table creates all ten policy pages
  *   POL-04  ProductionSeeder never overwrites an existing edited row
  *   POL-05  the privacy body carries Part B, including the message-moderation
  *           disclosure (§4 item 5b — the page never contained the literal
@@ -52,11 +52,11 @@ it('POL-02: a blanket seed publishes every slug except compensation', function (
     }
 });
 
-it('POL-03: ProductionSeeder on an empty table creates all nine policy pages published', function (): void {
+it('POL-03: ProductionSeeder on an empty table creates all ten policy pages published', function (): void {
     $this->seed(ProductionSeeder::class);
 
     $slugs = array_values(array_diff(ContentPageSeeder::slugs(), ContentPageSeeder::HELD_SLUGS));
-    expect($slugs)->toHaveCount(9);
+    expect($slugs)->toHaveCount(10);
 
     foreach ($slugs as $slug) {
         $page = ContentPage::query()->where('slug', $slug)->first();

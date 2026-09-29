@@ -49,6 +49,19 @@ return [
     'support_email' => env('SUPPORT_EMAIL', 'support@arovolife.com'),
 
     /*
+    | Registered office of Arovolife Private Limited, as on the MCA record for
+    | the CIN. Printed in every footer and on the contact page from this key.
+    */
+    'registered_office' => 'H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak – 502001, Telangana, India',
+
+    /*
+    | Principal place of business, as on the GST registration certificate
+    | (Form GST REG-06, GSTIN 36ABECA8336M1Z9). A different record from the
+    | MCA registered office above — keep each under its own label.
+    */
+    'principal_place_of_business' => '6-51/2, LIG Phase 1, Bank Colony, Pothreddipalle, Sangareddy, Telangana – 502001, India',
+
+    /*
     | Helpline hours, in one place.
     |
     | The same sentence was typed into five footers and two policy pages, and

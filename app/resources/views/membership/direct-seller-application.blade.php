@@ -354,7 +354,7 @@
                 <p><strong>22. Service of Notices:</strong> Any notice required to be served by either Party to the other under this Agreement shall be deemed to be duly served if in the case of Arovolife, it is delivered by hand or registered post at the following address:</p>
 
                 <p class="pl-4 italic">
-                    Arovolife Pvt. Ltd. — 6-51/2, Bank Colony, Pothireddypally, Sangareddy, Dist: Sangareddy — 502001, Telangana, India.
+                    Arovolife Private Limited — H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak – 502001, Telangana, India.
                 </p>
 
                 <p>And in the case of Direct Seller, if the notice is delivered by hand or sent by registered post at the address available in the database of Arovolife as updated from time to time based upon the request from Direct Seller issued in this behalf to Arovolife.</p>

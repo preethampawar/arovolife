@@ -199,6 +199,7 @@
             <a href="mailto:support@arovolife.com" class="hover:text-gray-900">support@arovolife.com</a> ·
             {{ config('arovolife.support_hours') }}
         </p>
+        <p class="mt-2 text-gray-600">@include('partials._legal-entity')</p>
     </footer>
 
 </body>

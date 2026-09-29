@@ -38,13 +38,16 @@
     {{-- Footer --}}
     <footer class="bg-gray-900 text-gray-400 mt-16 py-10">
         <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
-            <p>&copy; {{ date('Y') }} Arovolife Private Limited. CIN U46909TS2026PTC210896.</p>
+            <p>&copy; {{ date('Y') }} @include('partials._legal-entity')</p>
             <div class="flex flex-wrap gap-4">
                 <a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Terms</a>
                 <a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy</a>
                 <a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance</a>
                 @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('returns'))
                 <a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Returns &amp; warranty</a>
+                @endif
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('cancellation'))
+                <a href="{{ route('content.show', 'cancellation') }}" class="hover:text-white">Order cancellation</a>
                 @endif
                 @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('shipping'))
                 <a href="{{ route('content.show', 'shipping') }}" class="hover:text-white">Shipping</a>

@@ -62,7 +62,7 @@
     </main>
 
     <footer class="border-t border-gray-200 mt-8 px-6 py-6 text-center text-xs text-gray-600">
-        Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896
+        @include('partials._legal-entity')
     </footer>
 
 </body>

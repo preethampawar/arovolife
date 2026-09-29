@@ -60,7 +60,7 @@
             <a href="mailto:support@arovolife.com" class="hover:text-gray-900">support@arovolife.com</a> ·
             {{ config('arovolife.support_hours') }}
         </p>
-        <p class="mt-2 text-gray-600">Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896</p>
+        <p class="mt-2 text-gray-600">@include('partials._legal-entity')</p>
     </footer>
 
     {{-- Platform-wide confirmation modal. Any form marked with data-confirm

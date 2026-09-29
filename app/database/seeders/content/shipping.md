@@ -1,4 +1,4 @@
-This page explains where and how arovolife delivers orders. For returns, refunds and buy-back see the [Product Return, Warranty & Guarantee Policy](/content/returns).
+This page explains where and how arovolife delivers orders. For returns, refunds and buy-back see the [Product Return, Warranty & Guarantee Policy](/p/returns).
 
 ## 1. Where we deliver
 
@@ -15,3 +15,11 @@ Orders are dispatched within 2 working days of payment. Delivery normally takes 
 ## 4. Return shipping
 
 Where the return is a cooling-off cancellation, or the goods were damaged on arrival or defective, arovolife bears the cost of return shipping. For other returns the cost of returning the goods to us is yours.
+
+## 5. Order cancellation
+
+An order can be cancelled before it is shipped. See the [Order Cancellation Policy](/p/cancellation).
+
+## 6. Contact us
+
+For any question about the delivery of your order, email support@arovolife.com or call +91 88866 62949 (9am to 5pm, Monday to Saturday, except national holidays), and quote your order ID.

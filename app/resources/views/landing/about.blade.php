@@ -536,6 +536,9 @@
                 @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('returns'))
                 <a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Returns &amp; warranty</a>
                 @endif
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('cancellation'))
+                <a href="{{ route('content.show', 'cancellation') }}" class="hover:text-white">Order cancellation</a>
+                @endif
                 @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('shipping'))
                 <a href="{{ route('content.show', 'shipping') }}" class="hover:text-white">Shipping &amp; delivery</a>
                 @endif
@@ -550,6 +553,7 @@
                 <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a> ·
                 {{ config('arovolife.support_hours') }}
             </p>
+            <p class="text-xs mb-1">@include('partials._legal-entity')</p>
             <p class="text-xs">&copy; {{ date('Y') }} Arovolife Private Limited. All rights reserved.</p>
         </div>
     </footer>

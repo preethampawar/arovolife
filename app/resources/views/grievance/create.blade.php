@@ -206,5 +206,8 @@
     </div>
 
     <x-confirm-modal />
+    <footer class="border-t border-gray-200 mt-8 px-6 py-6 text-center text-xs text-gray-600">
+        @include('partials._legal-entity')
+    </footer>
 </body>
 </html>

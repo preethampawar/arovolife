@@ -179,7 +179,7 @@ Both parties hereby agree that this Agreement may be terminated by either party,
 
 Any notice required to be served by either Party to the other under this Agreement shall be deemed to be duly served if in the case of arovolife, it is delivered by hand or registered post at the following address:
 
-arovolife private limited. H.No:6-51/2, Bank Colony, PothireddyPally, Sangareddy, Sangareddy Dist, Telangana State, India.
+Arovolife Private Limited, H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak – 502001, Telangana, India.
 
 And in the case of Direct Seller, if the notice is delivered by hand or sent by registered post at the address available in the database of arovolife as updated from time to time based upon the request from Direct Seller issued in this behalf to arovolife.
 

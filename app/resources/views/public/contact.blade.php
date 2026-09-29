@@ -109,6 +109,24 @@
                 </li>
             </ul>
             <div class="mt-6 pt-5 border-t border-slate-200/60">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Registered Office</h2>
+                <div class="flex gap-3.5">
+                    <span class="shrink-0 w-10 h-10 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center"><x-lucide-map-pin class="w-5 h-5" /></span>
+                    <div>
+                        <p class="text-sm font-semibold text-gray-900">Arovolife Private Limited</p>
+                        <p class="text-sm text-gray-700 leading-relaxed mt-0.5">{{ config('arovolife.registered_office') }}</p>
+                        <p class="text-sm text-gray-700 leading-relaxed mt-1">CIN: U46909TS2026PTC210896</p>
+                        <p class="text-sm text-gray-700 leading-relaxed">GSTIN: 36ABECA8336M1Z9</p>
+                        <p class="text-sm text-gray-700 leading-relaxed">Principal place of business (GST): {{ config('arovolife.principal_place_of_business') }}</p>
+                        <p class="text-sm text-gray-700 leading-relaxed mt-1">
+                            <a href="tel:+918886662949" class="hover:text-brand-700">+91 88866 62949</a>
+                            &middot; <a href="mailto:support@arovolife.com" class="hover:text-brand-700">support@arovolife.com</a>
+                        </p>
+                        <p class="text-sm text-gray-700 leading-relaxed">{{ config('arovolife.support_hours') }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 pt-5 border-t border-slate-200/60">
                 <p class="text-sm text-gray-600 leading-relaxed">
                     Have a complaint?
                     <a href="{{ route('content.show', 'grievance') }}" class="text-brand-700 hover:text-brand-800 font-medium underline-offset-4 hover:underline">Grievance Redressal →</a>
@@ -321,5 +339,8 @@
         </p>
     </div>
 
+    <footer class="border-t border-gray-200 mt-8 px-6 py-6 text-center text-xs text-gray-600">
+        @include('partials._legal-entity')
+    </footer>
 </body>
 </html>

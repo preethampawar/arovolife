@@ -89,7 +89,7 @@
             {{-- Contact footer (printable-page convention) --}}
             <div class="mt-10 pt-4 border-t border-gray-200 text-center">
                 <p class="text-[11px] text-gray-600 leading-snug">
-                    <span class="font-semibold text-gray-700">Arovolife Private Limited</span> · CIN U46909TS2026PTC210896
+                    <span class="font-semibold text-gray-700">@include('partials._legal-entity')</span>
                 </p>
                 <p class="text-[11px] text-gray-600 mt-1 leading-snug">
                     <a href="tel:+918886662949" class="hover:text-brand-800">+91 88866 62949</a>
@@ -104,7 +104,7 @@
 
     {{-- Footer --}}
     <footer class="no-print border-t border-gray-200 mt-8 px-6 py-6 text-center text-xs text-gray-600">
-        Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896
+        @include('partials._legal-entity')
     </footer>
 
 </body>

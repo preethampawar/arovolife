@@ -58,7 +58,7 @@ When no reply/response received within 2 weeks after complaint closure then comp
 |---|---|---|
 | Website | 24*7 | www.arovolife.com |
 | Email | 24*7 | support@arovolife.com |
-| Written through post/courier | 24*7 | arovolife Corporate Office: H NO:6-51/2, Bank Colony, Pothireddy Pally, Sangareddy, Telangana State, India |
+| Written through post/courier | 24*7 | Arovolife Private Limited, registered office: H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak – 502001, Telangana, India |
 | Customer Support Centre | Between 9am to 5pm from Monday to Saturday (Except National Holidays) | +91 88866 62949 |
 | Walk In | Between 9am to 5pm from Monday to Saturday (Except National Holidays) | In Grievances/Complaints drop box which is placed in arovolife Corporate Office |
 

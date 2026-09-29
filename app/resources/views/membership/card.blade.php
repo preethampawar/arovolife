@@ -170,7 +170,7 @@
                 <div class="relative pt-2 mt-2 border-t border-brand-200/40 text-center">
                     <p class="text-[10px] text-gray-600 leading-snug">
                         <span class="font-semibold text-gray-700">Arovolife Private Limited</span> · CIN U46909TS2026PTC210896<br>
-                        H. No. 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak — 502001, Telangana, India.
+                        H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak – 502001, Telangana, India.
                     </p>
                     <p class="text-[10px] text-gray-600 mt-1 leading-snug">
                         +91 88866 62949 <span class="text-gray-600">|</span> support@arovolife.com<br>

@@ -96,3 +96,7 @@ Once we receive you item, we will inspect it and notify you that we have receive
 
 - a. Inspection – Within 7 days after receipt of material in warehouse.
 - b. Refund – Within 7 days after inspection of material.
+
+## 9. Refunds
+
+Returned products are inspected within 7 days of receipt at the arovolife warehouse. Once the inspection is complete, the refund is made within 7 days, to the original payment method or by online money transfer through NEFT/RTGS. To cancel an order that has not yet shipped, see the [Order Cancellation Policy](/p/cancellation).

@@ -770,8 +770,7 @@
                 <div>
                     <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-12 w-auto mb-3">
                     <p class="text-sm leading-relaxed mb-4">
-                        Arovolife Private Limited — a direct-selling company incorporated in India.
-                        CIN U46909TS2026PTC210896.
+                        @include('partials._legal-entity')
                     </p>
                     <h4 class="text-white text-sm font-semibold mb-2">Customer Care</h4>
                     <ul class="space-y-1.5 text-sm">
@@ -806,6 +805,9 @@
                              taken offline never becomes a dead link. --}}
                         @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('returns'))
                         <li><a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Returns &amp; warranty</a></li>
+                        @endif
+                        @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('cancellation'))
+                        <li><a href="{{ route('content.show', 'cancellation') }}" class="hover:text-white">Order cancellation</a></li>
                         @endif
                         @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('shipping'))
                         <li><a href="{{ route('content.show', 'shipping') }}" class="hover:text-white">Shipping &amp; delivery</a></li>

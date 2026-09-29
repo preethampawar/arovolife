@@ -139,6 +139,8 @@ The Website user understands that the payment facility provided by arovolife is 
 
 Website user who shall be making payments for the products or services using arovolife's Website, would be making payments to the entities mentioned as per the link mentioned in the tab named SHOPPING MALL.
 
+Prices on the Website are in Indian Rupees (INR) and are inclusive of GST. Online payments are processed securely through Razorpay, a third party payment gateway. arovolife does not store your card details. For refunds, cancellations, delivery and personal data, see the [Product Return, Warranty & Guarantee Policy](/p/returns), the [Order Cancellation Policy](/p/cancellation), the [Shipping & Delivery](/p/shipping) page and the [Privacy Policy](/p/privacy).
+
 ## J. Use of Vendors
 
 We may employ vendors to perform functions on our behalf, such as fulfilling orders, delivering packages, processing payments, and providing customer service. These vendors are under a contractual obligation to use confidential data received from arovolife only for purposes that fall within the functions for which they were hired.
