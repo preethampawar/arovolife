@@ -72,7 +72,7 @@
                         </p>
                     @endif
                 </div>
-                <div class="bg-indigo-100 rounded-xl border border-indigo-200 px-4 py-3">
+                <div class="bg-emerald-100 rounded-xl border border-emerald-200 px-4 py-3">
                     <p class="text-xs text-gray-600 flex items-center gap-1">Right Genos BV today <x-help-tip text="Today's Right Genos BV plus any BV carried over on your Right side. This is the figure tonight's 23:59 cut-off will use. Your own purchase BV is not included — the cut-off adds it to the weaker side." /></p>
                     <p class="text-xl font-bold font-mono text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($slabProgress->rightEffectivePaise / 100, 0) }}</p>
                     @if ($pendingPersonalBvTip !== null)
