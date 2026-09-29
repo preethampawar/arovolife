@@ -187,7 +187,7 @@ We share personal data only with the categories of recipients listed below, only
 |---|---|---|
 | UIDAI-approved AUA/KUA partner | Aadhaar e-KYC | Full Aadhaar (in transit only); name; DOB. |
 | PAN validation partner (NSDL/UTIITSL, Phase 2+) | PAN existence + name match | PAN; name. |
-| Payment gateway (Phase 2+) | Payment authorisation, refund | Order ID; amount; customer name; email; mobile. |
+| Payment gateway (Phase 2+) | Payment authorisation, refund | Order ID; amount; customer name; email; mobile; ADN (purchases by a distributor). |
 | Banking partner | Penny-drop and payout | Account number; IFSC; holder name; amount. |
 | Logistics partner | Order delivery | Customer name; mobile; address. |
 | Communication providers (SMS, email, push) | Transactional and consented marketing messages | Mobile; email; the message body. |

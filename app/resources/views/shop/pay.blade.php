@@ -130,7 +130,7 @@
                 name: @json($order->ship_name),
                 contact: @json($order->ship_phone_e164),
             },
-            notes: { arovolife_order_no: @json($order->order_no) },
+            notes: @json(\App\Modules\Payments\Services\RazorpayGateway::notesFor($order)),
             theme: { color: '#0f766e' },
             retry: { enabled: false },
             modal: {

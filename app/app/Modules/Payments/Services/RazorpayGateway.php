@@ -78,10 +78,11 @@ final class RazorpayGateway implements PaymentGateway
                 $gatewayOrder = $this->client->createOrder(
                     amountPaise: $order->total_paise,
                     receipt: $order->order_no,
-                    // Our own reference only. No name, no phone, no ADN —
-                    // the Privacy Policy's processor table lists what the
-                    // gateway receives, and it is not on it.
-                    notes: ['arovolife_order_id' => (string) $order->id, 'arovolife_order_no' => $order->order_no],
+                    // Our own references only: the order, and the buyer's ADN
+                    // when the buyer is a distributor. No name, no phone — the
+                    // Privacy Policy's processor table lists what the gateway
+                    // receives.
+                    notes: self::notesFor($order),
                     refundSpeed: $this->settings->refundSpeed(),
                     orderId: $order->id,
                     intentId: $intent->id,
@@ -115,6 +116,24 @@ final class RazorpayGateway implements PaymentGateway
         ]);
 
         return $intent->fresh();
+    }
+
+    /**
+     * The notes on the Razorpay order and on the checkout's payment, so the
+     * dashboard can be searched by order number and by the buyer's ADN.
+     *
+     * @return array<string, string>
+     */
+    public static function notesFor(Order $order): array
+    {
+        $notes = ['arovolife_order_id' => (string) $order->id, 'arovolife_order_no' => $order->order_no];
+
+        $adn = $order->customer?->distributor?->adn;
+        if ($adn !== null && $adn !== '') {
+            $notes['arovolife_adn'] = $adn;
+        }
+
+        return $notes;
     }
 
     public function syncStatus(PaymentIntent $intent): ?GatewayPayment

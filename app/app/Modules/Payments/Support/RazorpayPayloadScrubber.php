@@ -46,7 +46,7 @@ final class RazorpayPayloadScrubber
         // netbanking bank code / wallet name (a code, not an account)
         'bank', 'wallet', 'flow',
         // our own notes: only the keys we ourselves set
-        'arovolife_order_id', 'arovolife_order_no',
+        'arovolife_order_id', 'arovolife_order_no', 'arovolife_adn',
         'count',
     ];
 

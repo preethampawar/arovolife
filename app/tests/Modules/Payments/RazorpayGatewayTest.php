@@ -12,10 +12,12 @@ declare(strict_types=1);
  * PAY-G16: syncStatus prefers a captured attempt over a later failure and updates the intent
  * PAY-G17: syncStatus with no attempts returns null and stamps last_synced_at
  * PAY-G18: the notes sent to Razorpay carry only our order reference
+ * PAY-G19: a distributor buyer's ADN is added to the notes, and survives the scrubber
  */
 
 use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Models\Order;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Payments\Exceptions\RazorpayApiException;
 use App\Modules\Payments\Models\PaymentIntent;
 use App\Modules\Payments\Services\RazorpayGateway;
@@ -191,4 +193,21 @@ it('PAY-G18: the notes sent to Razorpay carry only our order reference', functio
 
     Http::assertSent(fn (Request $r): bool => $r->method() === 'POST'
         && $r->data()['notes'] === ['arovolife_order_id' => (string) $order->id, 'arovolife_order_no' => $order->order_no]);
+});
+
+it('PAY-G19: a distributor buyer\'s ADN is added to the notes, and survives the scrubber', function () {
+    disableTestForeignKeys();
+    $order = razorpayOrder();
+    $distributor = Distributor::factory()->create();
+    $order->customer->update(['distributor_id' => $distributor->id]);
+    $notes = ['arovolife_order_id' => (string) $order->id, 'arovolife_order_no' => $order->order_no, 'arovolife_adn' => $distributor->adn];
+    Http::fake([
+        'api.razorpay.com/v1/orders?*' => Http::response(emptyOrders(), 200),
+        'api.razorpay.com/v1/orders' => Http::response(['id' => 'order_a', 'amount' => 118000, 'status' => 'created', 'notes' => $notes], 200),
+    ]);
+
+    $intent = app(RazorpayGateway::class)->createIntent($order->fresh(), 'order:'.$order->id);
+
+    Http::assertSent(fn (Request $r): bool => $r->method() === 'POST' && $r->data()['notes'] === $notes);
+    expect($intent->raw_payload['notes']['arovolife_adn'] ?? null)->toBe($distributor->adn);
 });
