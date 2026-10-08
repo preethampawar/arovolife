@@ -156,12 +156,19 @@
             <span class="font-semibold text-gray-900">Total</span>
             <span class="font-bold text-lg text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($finalTotal / 100, 2) }}</span>
         </div>
+        @cartOpen
         <a href="{{ route('shop.checkout') }}"
            class="block text-center w-full py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-colors">
             Proceed to Checkout
         </a>
         <p class="text-xs text-gray-600 mt-3 text-center">30-day return window on every order.</p>
+        @else
+        {{-- Pre-launch cart gate (CartGate): a cart built earlier can be viewed
+             and emptied but not checked out. Staff never see this branch. --}}
+        <p class="text-sm text-gray-700 text-center rounded-lg bg-gray-100 px-4 py-3">{{ \App\Modules\Commerce\Support\CartGate::CLOSED_MESSAGE }}</p>
+        @endcartOpen
 
+        @cartOpen
         @if(auth()->user()?->distributor)
         {{-- Easy Purchase (multi-product): a distributor can share this whole
              cart with a customer. The link sets the 30-day attribution cookie
@@ -193,6 +200,7 @@
             @endif
         </div>
         @endif
+        @endcartOpen
     </div>
 </div>
 @endif

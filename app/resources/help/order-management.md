@@ -328,3 +328,14 @@ the block is on consigning the parcel, not on choosing the centre.
 The wording is versioned. When it changes, every centre owes a fresh
 acceptance and is blocked until it gives one — that is intended, not a
 regression.
+
+## Pre-launch cart gate
+
+**Settings → Commerce → "Cart and ordering open".** OFF hides every Add to
+Cart button and refuses adds, Easy Purchase links and checkout for
+distributors and visitors; the catalogue stays browsable and shows
+"Available at launch". Carts built earlier can still be viewed and emptied,
+not checked out. Back-office roles are never gated, so test orders can
+continue. Turn ON at launch. This is independent of "Public storefront"
+(takes the whole shop down) and "Storefront checkout" (pauses checkout for
+everyone, staff included).

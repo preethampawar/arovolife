@@ -144,6 +144,7 @@
             </span>
         </div>
         @else
+        @cartOpen
         <form method="POST" action="{{ route('shop.cart.add') }}" class="mb-8">
             @csrf
             <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
@@ -170,6 +171,17 @@
                 </button>
             </div>
         </form>
+        @else
+        {{-- Pre-launch cart gate (CartGate): the catalogue is browsable, ordering
+             is not. Factual availability only — no date, no scarcity, no income
+             (hard rule #3). Staff never see this branch. --}}
+        <div class="mb-8">
+            <span class="inline-flex items-center px-4 py-2.5 rounded-full bg-gray-100 text-gray-700 text-sm font-semibold">
+                Available at launch
+            </span>
+            <p class="text-xs text-gray-600 mt-2">{{ \App\Modules\Commerce\Support\CartGate::CLOSED_MESSAGE }}</p>
+        </div>
+        @endcartOpen
         @endif
         @endif
 

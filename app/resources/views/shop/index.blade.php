@@ -63,6 +63,14 @@
 
 @section('content')
 
+{{-- A refused cart action (pre-launch cart gate, or an invalid Easy Purchase
+     link) redirects here; the layout prints only `status`, so say why. --}}
+@if($errors->hasAny(['cart', 'share']))
+<div class="max-w-7xl mx-auto px-4 sm:px-6 mt-4">
+    <div class="rounded-lg border border-gray-200 bg-gray-100 p-3 text-sm text-gray-700">{{ $errors->first('cart') ?: $errors->first('share') }}</div>
+</div>
+@endif
+
 @php
     // Whether THIS page renders a sliding carousel (mall on home, or the
     // category's banners on a category page) — drives the slider script below.

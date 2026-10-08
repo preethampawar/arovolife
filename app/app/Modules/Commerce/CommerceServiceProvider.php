@@ -19,6 +19,7 @@ use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Commerce\Services\ShippingService;
 use App\Modules\Commerce\Support\Bv;
+use App\Modules\Commerce\Support\CartGate;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -36,6 +37,7 @@ final class CommerceServiceProvider extends ServiceProvider
         $this->app->singleton(OrderStateMachine::class);
         $this->app->singleton(ShippingService::class);
         $this->app->singleton(BvLedgerService::class);
+        $this->app->singleton(CartGate::class);
     }
 
     public function boot(): void
@@ -60,5 +62,10 @@ final class CommerceServiceProvider extends ServiceProvider
         // `@bv($paise)` — the single Blade entry point for rendering a BV amount,
         // delegating to the Bv formatter so "N BV" is defined in one place.
         Blade::directive('bv', static fn (string $expr): string => '<?php echo '.Bv::class."::format($expr); ?>");
+
+        // `@cartOpen … @else … @endcartOpen` — the one Blade question for
+        // "may this visitor add to cart / check out right now" (pre-launch
+        // gate + staff bypass live in CartGate, never in a view).
+        Blade::if('cartOpen', static fn (): bool => app(CartGate::class)->isOpenFor(auth()->user()));
     }
 }

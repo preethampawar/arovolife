@@ -17,6 +17,7 @@ use App\Modules\Commerce\Services\CustomerAddressService;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Commerce\Services\RedeemPointsService;
 use App\Modules\Commerce\Services\ShippingService;
+use App\Modules\Commerce\Support\CartGate;
 use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Services\RepurchaseOrderNotice;
 use App\Modules\Compensation\Services\WalletService;
@@ -61,6 +62,7 @@ final class CheckoutController extends Controller
         private readonly RedeemPointsService $redeemPoints,
         private readonly OrderStateMachine $orderStateMachine,
         private readonly RazorpayClient $razorpay,
+        private readonly CartGate $cartGate,
     ) {}
 
     public function show(Request $request): View|RedirectResponse|Response
@@ -604,6 +606,11 @@ final class CheckoutController extends Controller
     {
         $enabled = DB::table('settings')->where('key', 'commerce.checkout.enabled')->value('value');
         if ($enabled !== 'true') {
+            throw new NotFoundHttpException;
+        }
+
+        // Pre-launch cart gate: same 404 as checkout-off, for non-staff only.
+        if (! $this->cartGate->isOpenFor(Auth::user())) {
             throw new NotFoundHttpException;
         }
     }
