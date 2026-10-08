@@ -7,8 +7,6 @@
       "Agent",
       "Read(**)",
       "Edit(**)",
-      "Grep(**)",
-      "Glob(**)",
       "mcp__playwright",
       "mcp__plugin_playwright_playwright",
       "mcp__claude_ai_Gmail__send_message",
