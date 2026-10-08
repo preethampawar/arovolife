@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Catalog\Models\ProductVariant;
+use App\Modules\Commerce\Models\Customer;
 use App\Modules\Commerce\Support\CartGate;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,6 +38,11 @@ function cgtUser(?string $role = null): User
         'status' => 'active',
         'email_verified_at' => now(),
     ]);
+
+    // A Customer row makes the cart resolve by customer_id across requests;
+    // without it the cart rides the anonymous cookie, which the test client
+    // does not carry from one request to the next.
+    Customer::create(['display_name' => $user->full_name, 'user_id' => $user->id]);
 
     if ($role !== null) {
         Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
@@ -113,4 +119,45 @@ it('CGT-03: every back-office role bypasses a closed gate', function (): void {
     foreach (User::STAFF_ROLES as $role) {
         expect(app(CartGate::class)->isOpenFor(cgtUser($role)))->toBeTrue($role.' should bypass');
     }
+});
+
+it('CGT-07: closed → the product page shows "Available at launch" instead of Add to Cart', function (): void {
+    cgtSetting(CartGate::SETTING_KEY, 'false');
+    $variant = cgtVariant();
+
+    $this->get(route('shop.product', ['slug' => $variant->product->slug]))
+        ->assertOk()
+        ->assertSee('Available at launch')
+        ->assertSee(CartGate::CLOSED_MESSAGE)
+        ->assertDontSee('Add to Cart');
+});
+
+it('CGT-08: closed → the listing card has no add-to-cart form; staff still get it', function (): void {
+    cgtSetting(CartGate::SETTING_KEY, 'false');
+    cgtVariant();
+
+    // `data-add-to-cart>` is the form tag's end; the page's JS selector string
+    // `form[data-add-to-cart]` is always present, so match the tag, not the name.
+    $this->get(route('shop.index'))->assertOk()->assertDontSee('data-add-to-cart>', false);
+
+    $this->actingAs(cgtUser('admin-operations'))
+        ->get(route('shop.index'))->assertOk()->assertSee('data-add-to-cart>', false);
+});
+
+it('CGT-09: closed → the cart page hides Proceed to Checkout and the share form, and explains why', function (): void {
+    cgtSetting(CartGate::SETTING_KEY, 'false');
+    $variant = cgtVariant();
+    $distributor = cgtUser();
+
+    // Build the cart while open, then close the gate.
+    cgtSetting(CartGate::SETTING_KEY, 'true');
+    $this->actingAs($distributor)->post(route('shop.cart.add'), ['product_variant_id' => $variant->id, 'qty' => 1]);
+    cgtSetting(CartGate::SETTING_KEY, 'false');
+    app()->forgetInstance(CartGate::class);
+
+    $this->actingAs($distributor)->get(route('shop.cart'))
+        ->assertOk()
+        ->assertSee(CartGate::CLOSED_MESSAGE)
+        ->assertDontSee('Proceed to Checkout')
+        ->assertDontSee(route('shop.cart.share'), false);
 });

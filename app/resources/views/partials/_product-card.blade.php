@@ -39,6 +39,7 @@
             <div class="flex items-baseline gap-1.5 min-w-0">
                 <span class="text-base font-bold text-gray-900">{{ $variant->displayPriceForTier($isDistributor) }}</span>
             </div>
+            @cartOpen
             <form method="POST" action="{{ route('shop.cart.add') }}" class="shrink-0" data-add-to-cart>
                 @csrf
                 <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
@@ -48,6 +49,7 @@
                     <x-lucide-shopping-cart class="w-5 h-5" />
                 </button>
             </form>
+            @endcartOpen
         </div>
         {{-- BV shown only to logged-in distributors — a factual point value
              for the compensation plan, never an earnings figure
