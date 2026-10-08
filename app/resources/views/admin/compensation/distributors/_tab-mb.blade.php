@@ -36,6 +36,9 @@
                 </td>
                 <td class="px-3 py-2 text-right font-semibold">
                     @if($row->msb_points !== null){{ $row->msb_points }}@else<span class="text-gray-600 font-normal">—</span>@endif
+                    @if((int) $row->royalty_cap_withheld_paise > 0)
+                    <div class="mt-0.5 text-[10px] font-normal text-amber-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->royalty_cap_withheld_paise / 100, 2) }} withheld by the daily royalty cap</div>
+                    @endif
                 </td>
                 <td class="px-3 py-2 text-right text-gray-600">
                     @if($row->msb_point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->msb_point_value_paise / 100, 2) }}@else<span class="text-gray-600">—</span>@endif

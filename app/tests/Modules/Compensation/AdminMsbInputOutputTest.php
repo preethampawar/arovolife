@@ -279,3 +279,38 @@ it('shows repurchase-gated points in a day banner and keeps them out of the earn
     )) === 18);
     $res->assertViewHas('gated', fn (array $gated): bool => $gated[$date] === ['sponsors' => 1, 'msb_points' => 21]);
 });
+
+it('shows what the Mentorship Royalty cap withheld, per sponsor and for the day (client 2026-10-09)', function () {
+    $date = today()->toDateString();
+    msbIoPool($date, 42, 12_000);
+
+    $sponsor = Distributor::factory()->create(['adn' => '200000030']);
+    MentorshipBonusResult::create([
+        'sponsor_id' => $sponsor->id,
+        'sponsee_id' => Distributor::factory()->create()->id,
+        'cutoff_date' => $date,
+        'sponsee_gsb_paise' => 200_000,
+        'slab' => 1,
+        'msb_points' => 21,
+        'msb_point_value_paise' => 12_000,
+        'mb_gross_paise' => 108_000,
+        'repurchase_deduction_paise' => 10_800,
+        'mb_admin_charge_paise' => 0,
+        'mb_tds_paise' => 0,
+        'mb_net_paise' => 97_200,
+        'status' => MentorshipBonusResult::STATUS_CREDITED,
+        'sponsor_repurchase_failed' => true,
+        'royalty_cap_paise' => 360_000,
+        // Deliberately past a lakh so the figure exercises Indian grouping.
+        'royalty_cap_withheld_paise' => 1_44_00_000,
+    ]);
+
+    $res = $this->actingAs(msbIoAdmin())
+        ->get(route('admin.compensation.msb-input-output.index'))
+        ->assertOk();
+
+    $res->assertSee('Royalty cap withheld');
+    // ₹1,44,000.00 in Indian grouping: once on the sponsor's line, once in the day total.
+    expect(substr_count($res->getContent(), '₹1,44,000.00'))->toBe(2);
+    $res->assertViewHas('earners', fn (array $earners): bool => (int) $earners[$date][0]->royalty_withheld_paise === 1_44_00_000);
+});

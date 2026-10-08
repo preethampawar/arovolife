@@ -97,6 +97,11 @@ final class CompensationPlanSettingsService
         // repurchase condition. Below it, a failed sponsor earns no MB points
         // that day. 1 switches the gate off (everyone is royalty).
         'comp.msb.royalty_min_rank' => 6,
+        // Client 2026-10-09: the most a royalty-rank sponsor can earn from
+        // Mentorship on one cut-off day while failed on their repurchase
+        // condition. ₹3,600 = 360,000 paise (₹1,08,000 a month); the excess is
+        // withheld. Not applied while the condition is met.
+        'comp.msb.royalty_failed_daily_cap_paise' => 360_000,
         'comp.gbb.pool_rate_bp' => 500,
         'comp.gbb.agp_cap' => 120,
         'comp.adc.rate_bp' => 300,
@@ -307,6 +312,28 @@ final class CompensationPlanSettingsService
         }
 
         return $rank;
+    }
+
+    /**
+     * Daily Mentorship Royalty cap for a sponsor at or above the royalty rank
+     * who is failed on their repurchase condition (client 2026-10-09: ₹3,600).
+     * Everything credited to the sponsor for the cut-off day counts against it;
+     * the excess is withheld.
+     *
+     * Fail-safe principle 1 / F-6: a cap under ₹1 would pay every failed royalty
+     * sponsor ₹0 and look like a quiet day, so it stops the credit instead of
+     * being clamped.
+     *
+     * @throws \RuntimeException when the stored value is below 100 paise
+     */
+    public function msbRoyaltyFailedDailyCapPaise(): int
+    {
+        $cap = $this->scalarInt('comp.msb.royalty_failed_daily_cap_paise');
+        if ($cap < 100) {
+            throw new \RuntimeException('comp.msb.royalty_failed_daily_cap_paise must be ≥ 100 paise (₹1); refusing to credit Mentorship Royalty with a cap of '.$cap);
+        }
+
+        return $cap;
     }
 
     /**

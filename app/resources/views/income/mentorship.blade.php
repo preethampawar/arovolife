@@ -96,6 +96,8 @@
                             @if($row->msb_points !== null){{ $row->msb_points }}@else<span class="text-gray-600 font-normal">—</span>@endif
                             @if($row->status === \App\Modules\Compensation\Models\MentorshipBonusResult::STATUS_REPURCHASE_GATED)
                             <div class="mt-0.5 text-[11px] font-sans font-normal text-amber-700">Not awarded — your repurchase condition was not met on this day</div>
+                            @elseif((int) $row->royalty_cap_withheld_paise > 0)
+                            <div class="mt-0.5 text-[11px] font-sans font-normal text-amber-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->royalty_cap_withheld_paise / 100, 2) }} withheld by the daily Mentorship Royalty cap</div>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono text-gray-600">

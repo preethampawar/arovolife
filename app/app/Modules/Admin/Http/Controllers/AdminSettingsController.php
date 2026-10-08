@@ -1299,6 +1299,18 @@ final class AdminSettingsController extends Controller
                 'max' => 9,
                 'default' => '6',
             ],
+            'comp.msb.royalty_failed_daily_cap_paise' => [
+                'group' => 'compensation_plan',
+                'feature' => MentorshipBonusFeature::class,
+                'label' => 'Mentorship Royalty daily cap while failed (paise)',
+                'description' => 'Most a rank-6+ sponsor can earn from Mentorship on one cut-off day while their repurchase condition is failed. 360000 = ₹3,600 (₹1,08,000 a month). Not applied while the condition is met. Must be at least 100 (₹1): a lower value stops the cut-off instead of paying ₹0. 100000000 (₹10 lakh) effectively switches the cap off.',
+                'impact' => 'Takes effect from the next daily cut-off; days already settled are unchanged (each row keeps the cap it was priced with).',
+                'display_unit' => 'rupees',
+                'type' => 'int',
+                'min' => 100,
+                'max' => 100_000_000,
+                'default' => '360000',
+            ],
             'comp.gbb.pool_rate_bp' => [
                 'group' => 'compensation_plan',
                 'feature' => GrowthBoosterBonusFeature::class,

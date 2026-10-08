@@ -18,6 +18,12 @@ namespace App\Modules\Compensation\Services\DTOs;
  * rank who is failed on the cut-off day) carries the points that WOULD have
  * accrued, but stays out of the day's denominator; creditAccrual() records it
  * as a `repurchase_gated` row at ₹0 so the verdict is frozen, never re-derived.
+ *
+ * $sponsorRepurchaseFailed is the very verdict the gate judged with, carried
+ * here so creditAccrual() freezes it on the row (F-3) and applies the daily
+ * Mentorship Royalty cap from it without reading the verdict a second time.
+ * $sponsorVerdictStale says the sponsor's own evaluation was deferred that
+ * night, so the verdict is the one known at the time (F-4).
  */
 final class MsbAccrual
 {
@@ -31,6 +37,8 @@ final class MsbAccrual
         public readonly bool $repurchaseGated = false,
         public readonly ?string $gateReason = null,
         public readonly ?int $sponsorRankAsOf = null,
+        public readonly bool $sponsorRepurchaseFailed = false,
+        public readonly bool $sponsorVerdictStale = false,
     ) {}
 
     /** Whether these points join the day's MSB denominator. */

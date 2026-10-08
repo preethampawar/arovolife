@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
+use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\MsbDailyPool;
@@ -67,14 +68,15 @@ final class MentorshipBonusService
      * per chunk instead of three per accrual. Strict accelerators — an id not
      * warmed falls through to the live query.
      *
-     * Also the nightly's first read of the royalty-rank setting: a value outside
-     * 1–9 throws here, before the MSB pool is frozen or any MB row is written, so
-     * the run fails whole (F-6) instead of one sponsor's accrual failing inside
-     * the per-accrual catch while everyone else is priced without them.
+     * Also the nightly's first read of the royalty-rank setting and the royalty
+     * daily cap: a rank outside 1–9 or a cap under ₹1 throws here, before the
+     * MSB pool is frozen or any MB row is written, so the run fails whole (F-6)
+     * instead of one sponsor's accrual failing inside the per-accrual catch
+     * while everyone else is priced without them.
      *
      * @param  array<int, int>  $sponseeIds
      *
-     * @throws \RuntimeException when comp.msb.royalty_min_rank is outside 1–9
+     * @throws \RuntimeException when comp.msb.royalty_min_rank is outside 1–9 or comp.msb.royalty_failed_daily_cap_paise is below 100
      */
     public function warmSponsorsFor(array $sponseeIds, Carbon $date): void
     {
@@ -85,6 +87,7 @@ final class MentorshipBonusService
         $this->forgetSponsors();
 
         $this->plan->msbRoyaltyMinRank();
+        $this->plan->msbRoyaltyFailedDailyCapPaise();
 
         if ($sponseeIds === []) {
             return;
@@ -149,6 +152,15 @@ final class MentorshipBonusService
             return null;
         }
 
+        // F-4: when the sponsor's own evaluation was deferred tonight, the
+        // verdict above is the one known at the time — eligible or failed. No
+        // machinery re-judges it; the row says so instead of hiding it.
+        $verdictStale = GsbCutoffDeferral::query()
+            ->open()
+            ->where('distributor_id', $owed['sponsor_id'])
+            ->whereDate('cutoff_date', $cutoffResult->cutoff_date->toDateString())
+            ->exists();
+
         return new MsbAccrual(
             sponsorId: $owed['sponsor_id'],
             sponseeId: $sponseeId,
@@ -159,6 +171,8 @@ final class MentorshipBonusService
             repurchaseGated: $owed['gated'],
             gateReason: $owed['reason'],
             sponsorRankAsOf: $owed['rank_as_of'],
+            sponsorRepurchaseFailed: $owed['failed'],
+            sponsorVerdictStale: $verdictStale,
         );
     }
 
@@ -182,7 +196,7 @@ final class MentorshipBonusService
      * the repurchase gate's verdict for $cutoffDate, or null when any of the
      * other gates shuts it.
      *
-     * @return array{sponsor_id: int, points: int, gated: bool, reason: string|null, rank_as_of: int|null}|null
+     * @return array{sponsor_id: int, points: int, gated: bool, failed: bool, reason: string|null, rank_as_of: int|null}|null
      */
     private function sponsorPointsFor(int $sponseeId, int $slab, Carbon $cutoffDate): ?array
     {
@@ -220,8 +234,6 @@ final class MentorshipBonusService
         // gate above: they can never be paid for the day. The rank is the one
         // decided BEFORE the cut-off's month (F-2), so a later qualification
         // never changes the answer for a day already judged.
-        // Task 4 records `sponsor_verdict_stale` when the sponsor has an open
-        // gsb_cutoff_deferrals row for the date (F-4).
         $verdict = $this->eligibility->verdictAsOf((int) $sponsorId, $cutoffDate);
         $gated = false;
         $rankAsOf = null;
@@ -238,6 +250,7 @@ final class MentorshipBonusService
             'sponsor_id' => (int) $sponsorId,
             'points' => $points,
             'gated' => $gated,
+            'failed' => ! $verdict->isEligible(),
             'reason' => $verdict->reason,
             'rank_as_of' => $rankAsOf,
         ];
@@ -251,6 +264,12 @@ final class MentorshipBonusService
      * date the nightly never covered. There is no fixed per-slab value left to
      * fall back on, so nothing is credited and the gap is logged for an
      * operator to re-run the day.
+     *
+     * A royalty-rank sponsor who is failed on the cut-off day is capped at the
+     * daily Mentorship Royalty cap across all their sponsees (client
+     * 2026-10-09); the excess is withheld, frozen on the row and audited.
+     *
+     * @throws \RuntimeException when the sponsor is failed and the cap setting is below ₹1 (nothing is written)
      */
     public function creditAccrual(MsbAccrual $accrual, ?MsbDailyPool $pool): ?MentorshipBonusResult
     {
@@ -281,7 +300,12 @@ final class MentorshipBonusService
         }
 
         $pointValuePaise = (int) $pool->point_value_paise;
-        $mbGross = $accrual->points * $pointValuePaise;
+
+        // Client 2026-10-09: a royalty-rank sponsor failed on the cut-off day is
+        // capped per day. Read once, before any write (F-5: the row freezes the
+        // cap it was priced with; F-6: a cap under ₹1 throws here, writing
+        // nothing). Never read for an eligible sponsor — the cap is not theirs.
+        $capPaise = $accrual->sponsorRepurchaseFailed ? $this->plan->msbRoyaltyFailedDailyCapPaise() : null;
 
         // A ₹0 point value is legitimate: the day's pool was starved, or nobody
         // had accrued points when it was frozen and this is a later retry. The
@@ -311,7 +335,43 @@ final class MentorshipBonusService
         // uniq_mb_result(sponsor_id, sponsee_id, cutoff_date) that stops the
         // second one — the surrounding transaction is what makes that rollback
         // atomic instead of leaving an orphan wallet entry behind.
-        return DB::transaction(function () use ($accrual, $pointValuePaise, $mbGross): MentorshipBonusResult {
+        return DB::transaction(function () use ($accrual, $pointValuePaise, $capPaise): MentorshipBonusResult {
+            $mbGross = $accrual->points * $pointValuePaise;
+            $withheld = 0;
+
+            if ($capPaise !== null) {
+                // Everything already credited to this sponsor for the day counts
+                // against the cap, whichever sponsee settled first; the excess is
+                // withheld for good. The cap comes before the repurchase
+                // deduction, which is taken from the capped gross below.
+                // lockForUpdate serialises two accruals of the same sponsor.
+                $alreadyPaid = (int) MentorshipBonusResult::query()
+                    ->where('sponsor_id', $accrual->sponsorId)
+                    ->whereDate('cutoff_date', $accrual->cutoffDate)
+                    ->lockForUpdate()
+                    ->sum('mb_gross_paise');
+                $room = max(0, $capPaise - $alreadyPaid);
+                $withheld = max(0, $mbGross - $room);
+                $mbGross -= $withheld;
+
+                if ($withheld > 0) {
+                    // Fail-safe principle 5: money a distributor did not get is
+                    // a statutory record, like msb.credit.zero_value above.
+                    AuditLog::create([
+                        'action' => 'msb.royalty.cap_withheld',
+                        'subject_type' => 'distributor',
+                        'subject_id' => $accrual->sponsorId,
+                        'details' => [
+                            'cutoff_date' => $accrual->cutoffDate,
+                            'sponsee_id' => $accrual->sponseeId,
+                            'cap_paise' => $capPaise,
+                            'already_paid_paise' => $alreadyPaid,
+                            'withheld_paise' => $withheld,
+                        ],
+                    ]);
+                }
+            }
+
             $result = MentorshipBonusResult::create([
                 'sponsor_id' => $accrual->sponsorId,
                 'sponsee_id' => $accrual->sponseeId,
@@ -320,12 +380,14 @@ final class MentorshipBonusService
                 'slab' => $accrual->slab,
                 'msb_points' => $accrual->points,
                 'msb_point_value_paise' => $pointValuePaise,
-                'mb_rate_pct' => null,
                 'mb_gross_paise' => $mbGross,
                 'mb_admin_charge_paise' => 0,
                 'mb_tds_paise' => 0,
-                'sponsee_cumulative_gsb_paise' => null,
                 'status' => MentorshipBonusResult::STATUS_CREDITED,
+                'sponsor_repurchase_failed' => $accrual->sponsorRepurchaseFailed,
+                'sponsor_verdict_stale' => $accrual->sponsorVerdictStale,
+                'royalty_cap_paise' => $capPaise,
+                'royalty_cap_withheld_paise' => $withheld,
             ]);
 
             if ($mbGross > 0) {
@@ -375,15 +437,19 @@ final class MentorshipBonusService
                 'slab' => $accrual->slab,
                 'msb_points' => $accrual->points,
                 'msb_point_value_paise' => $pool?->point_value_paise,
-                'mb_rate_pct' => null,
                 'mb_gross_paise' => 0,
                 'repurchase_deduction_paise' => 0,
                 'mb_admin_charge_paise' => 0,
                 'mb_tds_paise' => 0,
                 'mb_net_paise' => 0,
-                'sponsee_cumulative_gsb_paise' => null,
                 'status' => MentorshipBonusResult::STATUS_REPURCHASE_GATED,
                 'failure_reason' => $accrual->gateReason,
+                // A gated sponsor is failed by definition (F-3); the royalty
+                // cap never applies to a ₹0 row.
+                'sponsor_repurchase_failed' => true,
+                'sponsor_verdict_stale' => $accrual->sponsorVerdictStale,
+                'royalty_cap_paise' => null,
+                'royalty_cap_withheld_paise' => 0,
             ]);
 
             AuditLog::create([

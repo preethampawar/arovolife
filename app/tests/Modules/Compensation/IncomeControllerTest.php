@@ -1310,6 +1310,38 @@ it('tells the sponsor why a repurchase-gated Mentorship day paid nothing, withou
         ->assertDontSee('bv_short');
 });
 
+it('tells a royalty sponsor what the daily Mentorship Royalty cap withheld on a day (client 2026-10-09)', function (): void {
+    ['user' => $user, 'distributorId' => $sponsorId] = incomeDistributor();
+    ['distributorId' => $sponseeId] = incomeDistributor();
+    $this->actingAs($user);
+
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    DB::table('mentorship_bonus_results')->insert([
+        'sponsor_id' => $sponsorId,
+        'sponsee_id' => $sponseeId,
+        'cutoff_date' => '2026-09-06',
+        'sponsee_gsb_paise' => 1_000_00,
+        'slab' => 1,
+        'msb_points' => 21,
+        'msb_point_value_paise' => 12_000,
+        'mb_gross_paise' => 108_000,
+        'mb_net_paise' => 108_000,
+        'status' => 'credited',
+        'sponsor_repurchase_failed' => true,
+        'royalty_cap_paise' => 360_000,
+        'royalty_cap_withheld_paise' => 144_000,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $this->get(route('income.mentorship', ['f' => 1]))
+        ->assertOk()
+        ->assertSee('₹1,440.00 withheld by the daily Mentorship Royalty cap', false)
+        ->assertDontSee('royalty_cap_withheld_paise')
+        ->assertDontSee('sponsor_repurchase_failed');
+});
+
 it('dates the wallet ledger by when the money was earned, and names its bonus month and payout batch (F63)', function (): void {
     ['user' => $user, 'distributorId' => $id] = incomeDistributor();
 

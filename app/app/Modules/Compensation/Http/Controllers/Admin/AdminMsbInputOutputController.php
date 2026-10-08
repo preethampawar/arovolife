@@ -92,6 +92,7 @@ final class AdminMsbInputOutputController extends Controller
             ['key' => 'income',        'label' => 'Income (Rs)'],
             ['key' => 'deduction',     'label' => 'Repurchase Deduction (Rs)'],
             ['key' => 'credited',      'label' => 'Credited to Wallet (Rs)'],
+            ['key' => 'royalty_withheld', 'label' => 'Royalty Cap Withheld (Rs)'],
             ['key' => 'computed_at',   'label' => 'Computed At'],
         ];
 
@@ -106,12 +107,14 @@ final class AdminMsbInputOutputController extends Controller
             $totalIncome = 0;
             $totalDeduction = 0;
             $totalCredited = 0;
+            $totalRoyaltyWithheld = 0;
 
             foreach ($earners[$dateStr] ?? [] as $row) {
                 $totalPoints += (int) $row->msb_points;
                 $totalIncome += (int) $row->income_paise;
                 $totalDeduction += (int) $row->deduction_paise;
                 $totalCredited += (int) $row->credited_paise;
+                $totalRoyaltyWithheld += (int) $row->royalty_withheld_paise;
 
                 $out[] = [
                     'day' => $dayNo ?? '',
@@ -126,6 +129,7 @@ final class AdminMsbInputOutputController extends Controller
                     'income' => $row->income_paise / 100,
                     'deduction' => $row->deduction_paise / 100,
                     'credited' => $row->credited_paise / 100,
+                    'royalty_withheld' => $row->royalty_withheld_paise / 100,
                     'computed_at' => $computedAt,
                 ];
             }
@@ -143,6 +147,7 @@ final class AdminMsbInputOutputController extends Controller
                 'income' => $totalIncome / 100,
                 'deduction' => $totalDeduction / 100,
                 'credited' => $totalCredited / 100,
+                'royalty_withheld' => $totalRoyaltyWithheld / 100,
                 'computed_at' => $computedAt,
             ];
         }
@@ -218,7 +223,7 @@ final class AdminMsbInputOutputController extends Controller
      * — KP's sheet lists one line per earning distributor.
      *
      * @param  list<string>  $dates
-     * @return array<string, list<\stdClass>> date → rows {sponsor_id, adn, full_name, msb_points, point_value_paise, income_paise, deduction_paise, credited_paise}
+     * @return array<string, list<\stdClass>> date → rows {sponsor_id, adn, full_name, msb_points, point_value_paise, income_paise, deduction_paise, credited_paise, royalty_withheld_paise}
      */
     private function earners(array $dates): array
     {
@@ -238,6 +243,9 @@ final class AdminMsbInputOutputController extends Controller
             ->selectRaw('COALESCE(SUM(mbr.mb_gross_paise), 0) as income_paise')
             ->selectRaw('COALESCE(SUM(mbr.repurchase_deduction_paise), 0) as deduction_paise')
             ->selectRaw('COALESCE(SUM(mbr.mb_net_paise), 0) as credited_paise')
+            // Client 2026-10-09: what the daily Mentorship Royalty cap held back
+            // from a failed royalty-rank sponsor. Never part of income.
+            ->selectRaw('COALESCE(SUM(mbr.royalty_cap_withheld_paise), 0) as royalty_withheld_paise')
             ->orderByDesc('msb_points')
             ->get()
             ->groupBy(fn (\stdClass $row) => Carbon::parse($row->cutoff_date)->toDateString())

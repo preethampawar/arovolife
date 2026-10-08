@@ -59,6 +59,7 @@
         $totalIncome = (int) $rows->sum('income_paise');
         $totalDeduction = (int) $rows->sum('deduction_paise');
         $totalCredited = (int) $rows->sum('credited_paise');
+        $totalRoyaltyWithheld = (int) $rows->sum('royalty_withheld_paise');
         $gatedDay = $gated[$dateStr] ?? null;
     @endphp
     <x-ui.card flush>
@@ -103,6 +104,7 @@
                         <th class="px-3 py-2 text-left text-gray-600 font-medium">Individual distributor MSB points <x-help-tip text="Each sponsor who accrued Mentorship Bonus points on this day, with the points they accrued. A sponsor credited by more than one sponsee appears once with their points summed." /></th>
                         <th class="px-3 py-2 text-right text-gray-600 font-medium">Point value <x-help-tip text="The MSB pool divided by the day's total MSB score points, floored to whole rupees. One value applies to every earner that day." /></th>
                         <x-bonus-credit-head gross-label="Income" th-class="px-3 py-2 text-right text-gray-600 font-medium" />
+                        <th class="px-3 py-2 text-right text-gray-600 font-medium">Royalty cap withheld <x-help-tip text="From the royalty rank, a sponsor whose repurchase condition is failed keeps earning Mentorship, capped per cut-off day across all their sponsees. This is what the cap held back — it was never income and is not paid later." /></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -119,9 +121,10 @@
                         </td>
                         <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format(((int) $row->point_value_paise) / 100, 2) }}</td>
                         <x-bonus-credit-cells :gross="(int) $row->income_paise" :deduction="(int) $row->deduction_paise" :credited="(int) $row->credited_paise" td-class="px-3 py-2 text-right" />
+                        <td class="px-3 py-2 text-right {{ (int) $row->royalty_withheld_paise > 0 ? 'text-amber-700' : 'text-gray-500' }}">{{ (int) $row->royalty_withheld_paise > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format(((int) $row->royalty_withheld_paise) / 100, 2) : '—' }}</td>
                     </tr>
                     @empty
-                    <x-ui.empty-state colspan="8" title="No Mentorship Bonus earners this day." />
+                    <x-ui.empty-state colspan="9" title="No Mentorship Bonus earners this day." />
                     @endforelse
                 </tbody>
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
@@ -131,16 +134,17 @@
                         <td class="px-3 py-1.5 text-right text-[11px] text-gray-600">
                             {{ $totalPoints > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 0).' ÷ '.\App\Modules\Shared\Support\IndianNumber::format($totalPoints) : '—' }}
                         </td>
-                        <td colspan="3"></td>
+                        <td colspan="4"></td>
                     </tr>
                     <tr class="font-semibold">
-                        <td class="px-3 py-2 text-right text-xs" colspan="4">Total income / deduction / credited</td>
+                        <td class="px-3 py-2 text-right text-xs" colspan="4">Total income / deduction / credited / royalty cap withheld</td>
                         <td class="px-3 py-2 text-right {{ $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-600' }} text-[11px]">
                             leftover {{ $pool->leftover_paise < 0 ? '−' : '' }}₹{{ \App\Modules\Shared\Support\IndianNumber::format(abs($pool->leftover_paise) / 100, 2) }}
                         </td>
                         <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalIncome / 100, 2) }}</td>
                         <td class="px-3 py-2 text-right {{ $totalDeduction > 0 ? 'text-red-600' : 'text-gray-500' }}">{{ $totalDeduction > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($totalDeduction / 100, 2) : '—' }}</td>
                         <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalCredited / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right {{ $totalRoyaltyWithheld > 0 ? 'text-amber-700' : 'text-gray-500' }}">{{ $totalRoyaltyWithheld > 0 ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($totalRoyaltyWithheld / 100, 2) : '—' }}</td>
                     </tr>
                 </tfoot>
             </table>

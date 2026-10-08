@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
+use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\MsbDailyPool;
@@ -96,9 +97,6 @@ it('credits the sponsor with slab points × the day\'s pooled point value (slab 
     expect($mb->msb_points)->toBe(21);
     expect($mb->msb_point_value_paise)->toBe(25_000);
     expect($mb->mb_gross_paise)->toBe(525_000);   // 21 × 25,000 paise = ₹5,250
-    // Ladder fields retired — points engine writes null.
-    expect($mb->mb_rate_pct)->toBeNull();
-    expect($mb->sponsee_cumulative_gsb_paise)->toBeNull();
     // Deductions are deferred to payout time.
     expect($mb->mb_admin_charge_paise)->toBe(0);
     expect($mb->mb_tds_paise)->toBe(0);
@@ -474,7 +472,13 @@ it('awards no MB points to a sponsor (rank ≤ 5) who is failed on the cut-off d
         ->and($row->mb_gross_paise)->toBe(0)
         ->and($row->mb_net_paise)->toBe(0)
         ->and($row->repurchase_deduction_paise)->toBe(0)
-        ->and($row->failure_reason)->toBe('bv_short');
+        ->and($row->failure_reason)->toBe('bv_short')
+        // F-3: a gated sponsor is by definition failed; the royalty cap never
+        // touches a gated row.
+        ->and($row->sponsor_repurchase_failed)->toBeTrue()
+        ->and($row->sponsor_verdict_stale)->toBeFalse()
+        ->and($row->royalty_cap_paise)->toBeNull()
+        ->and($row->royalty_cap_withheld_paise)->toBe(0);
     expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->count())->toBe(0);
 
     $audit = DB::table('audit_log')->where('action', 'msb.credit.repurchase_gated')->sole();
@@ -651,4 +655,214 @@ it('reads the sponsors\' cycles and ranks once per warm, not once per accrual', 
         ->and($queries->filter(fn (string $q): bool => str_contains($q, 'rank_qualifications'))->count())->toBeLessThanOrEqual(2);
 
     $svc->forgetSponsors();
+});
+
+// ── Mentorship Royalty daily cap (client 2026-10-09) ────────────────────────
+// From the royalty rank a failed sponsor keeps earning Mentorship, capped at
+// ₹3,600 per cut-off day across all sponsees; the excess is withheld for good.
+// Every row freezes the verdict it was judged with (F-3) and the cap it was
+// priced with (F-5).
+
+/** A further sponsee directly sponsored by $sponsor. */
+function msbSponseeFor(Distributor $sponsor): Distributor
+{
+    $sponsee = Distributor::factory()->create();
+    makeSponsorship($sponsor, $sponsee);
+
+    return $sponsee;
+}
+
+function msbSetRoyaltyFailedDailyCap(string $value): void
+{
+    DB::table('settings')->updateOrInsert(['key' => 'comp.msb.royalty_failed_daily_cap_paise'], ['value' => $value]);
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+    app()->forgetInstance(MentorshipBonusService::class);
+}
+
+/**
+ * A failed rank-6 sponsor with two sponsees and a ₹120-point day: each slab-1
+ * sponsee is worth 21 × ₹120 = ₹2,520, so the second one overruns the ₹3,600 cap.
+ *
+ * @return array{0: Distributor, 1: Distributor, 2: Distributor, 3: MsbDailyPool} [sponsor, a, b, pool]
+ */
+function msbFailedRoyaltySponsor(bool $failed = true): array
+{
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    [$sponsor, $a] = msbSponsorPair();
+    $b = msbSponseeFor($sponsor);
+    if ($failed) {
+        msbSeedFailedCycle($sponsor, '2026-08-06');
+    }
+    msbSeedRankQualification($sponsor->id, 6, '2026-07-01');
+
+    return [$sponsor, $a, $b, msbFreezePoolOn('2026-08-10', 12_000, 42)];
+}
+
+function msbCredit(Distributor $sponsee, MsbDailyPool $pool): ?MentorshipBonusResult
+{
+    $svc = app(MentorshipBonusService::class);
+
+    return $svc->creditAccrual($svc->accrueForSponsee($sponsee->id, msbCreditedCutoff($sponsee, 1, '2026-08-10')), $pool);
+}
+
+it('caps a failed rank-6+ sponsor at ₹3,600 across all accruals of the day, withholding the rest', function () {
+    [$sponsor, $a, $b, $pool] = msbFailedRoyaltySponsor();
+
+    $r1 = msbCredit($a, $pool);   // 21 × ₹120 = ₹2,520
+    $r2 = msbCredit($b, $pool);   // ₹2,520 → only ₹1,080 fits
+
+    expect($r1->status)->toBe(MentorshipBonusResult::STATUS_CREDITED)
+        ->and($r1->mb_gross_paise)->toBe(252_000)
+        ->and($r1->royalty_cap_withheld_paise)->toBe(0)
+        ->and($r1->royalty_cap_paise)->toBe(360_000)
+        ->and($r1->sponsor_repurchase_failed)->toBeTrue()
+        ->and($r1->sponsor_verdict_stale)->toBeFalse();
+    expect($r2->status)->toBe(MentorshipBonusResult::STATUS_CREDITED)
+        ->and($r2->mb_gross_paise)->toBe(108_000)
+        ->and($r2->royalty_cap_withheld_paise)->toBe(144_000)
+        ->and($r2->royalty_cap_paise)->toBe(360_000)
+        ->and($r2->sponsor_repurchase_failed)->toBeTrue()
+        // Cap first, then the 10% repurchase deduction on what is left.
+        ->and($r2->repurchase_deduction_paise)->toBe(10_800)
+        ->and($r2->mb_net_paise)->toBe(97_200);
+
+    expect((int) WalletLedgerEntry::where('distributor_id', $sponsor->id)->where('type', 'mb_credit')->sum('amount_paise'))
+        ->toBe(360_000);
+
+    $audit = DB::table('audit_log')->where('action', 'msb.royalty.cap_withheld')->sole();
+    $details = json_decode((string) $audit->details, true);
+    expect((int) $audit->subject_id)->toBe($sponsor->id)
+        ->and($details['cutoff_date'])->toBe('2026-08-10')
+        ->and($details['sponsee_id'])->toBe($b->id)
+        ->and($details['cap_paise'])->toBe(360_000)
+        ->and($details['already_paid_paise'])->toBe(252_000)
+        ->and($details['withheld_paise'])->toBe(144_000);
+});
+
+it('settles the cap to the same day total whichever sponsee is credited first (F-5)', function () {
+    [, $a, $b, $pool] = msbFailedRoyaltySponsor();
+
+    $first = msbCredit($b, $pool);
+    $second = msbCredit($a, $pool);
+
+    expect($first->mb_gross_paise)->toBe(252_000)
+        ->and($second->mb_gross_paise)->toBe(108_000)
+        ->and($second->royalty_cap_withheld_paise)->toBe(144_000);
+    expect((int) MentorshipBonusResult::sum('mb_gross_paise'))->toBe(360_000)
+        ->and((int) MentorshipBonusResult::sum('royalty_cap_withheld_paise'))->toBe(144_000);
+});
+
+it('withholds a further sponsee in full once the day\'s cap is spent, with no wallet entry', function () {
+    [$sponsor, $a, $b, $pool] = msbFailedRoyaltySponsor();
+    $c = msbSponseeFor($sponsor);
+
+    msbCredit($a, $pool);
+    msbCredit($b, $pool);
+    $r3 = msbCredit($c, $pool);
+
+    expect($r3->status)->toBe(MentorshipBonusResult::STATUS_CREDITED)
+        ->and($r3->mb_gross_paise)->toBe(0)
+        ->and($r3->royalty_cap_withheld_paise)->toBe(252_000);
+    expect(WalletLedgerEntry::where('reference_type', 'mentorship_bonus_result')->where('reference_id', $r3->id)->exists())->toBeFalse();
+    expect((int) WalletLedgerEntry::where('distributor_id', $sponsor->id)->where('type', 'mb_credit')->sum('amount_paise'))
+        ->toBe(360_000);
+    expect(DB::table('audit_log')->where('action', 'msb.royalty.cap_withheld')->count())->toBe(2);
+});
+
+it('does not cap an eligible rank-6 sponsor', function () {
+    [$sponsor, $a, $b, $pool] = msbFailedRoyaltySponsor(failed: false);
+
+    $r1 = msbCredit($a, $pool);
+    $r2 = msbCredit($b, $pool);
+
+    foreach ([$r1, $r2] as $row) {
+        expect($row->mb_gross_paise)->toBe(252_000)
+            ->and($row->royalty_cap_withheld_paise)->toBe(0)
+            ->and($row->royalty_cap_paise)->toBeNull()
+            ->and($row->sponsor_repurchase_failed)->toBeFalse();
+    }
+    expect((int) WalletLedgerEntry::where('distributor_id', $sponsor->id)->where('type', 'mb_credit')->sum('amount_paise'))
+        ->toBe(504_000);
+    expect(DB::table('audit_log')->where('action', 'msb.royalty.cap_withheld')->exists())->toBeFalse();
+});
+
+it('keeps each row\'s frozen cap when the setting changes mid-day (F-5)', function () {
+    [, $a, $b, $pool] = msbFailedRoyaltySponsor();
+
+    $r1 = msbCredit($a, $pool);
+    msbSetRoyaltyFailedDailyCap('300000');
+    $r2 = msbCredit($b, $pool);
+
+    expect($r1->fresh()->royalty_cap_paise)->toBe(360_000)
+        ->and($r1->fresh()->mb_gross_paise)->toBe(252_000);
+    // Room = the NEW ₹3,000 cap − the ₹2,520 already paid.
+    expect($r2->royalty_cap_paise)->toBe(300_000)
+        ->and($r2->mb_gross_paise)->toBe(48_000)
+        ->and($r2->royalty_cap_withheld_paise)->toBe(204_000);
+});
+
+it('refuses to credit a failed royalty sponsor with a cap under ₹1, writing nothing (F-6)', function (string $value) {
+    [$sponsor, $a, , $pool] = msbFailedRoyaltySponsor();
+    msbSetRoyaltyFailedDailyCap($value);
+
+    expect(fn () => app(CompensationPlanSettingsService::class)->msbRoyaltyFailedDailyCapPaise())
+        ->toThrow(RuntimeException::class, 'comp.msb.royalty_failed_daily_cap_paise must be');
+    expect(fn () => msbCredit($a, $pool))->toThrow(RuntimeException::class);
+
+    expect(MentorshipBonusResult::count())->toBe(0)
+        ->and(WalletLedgerEntry::where('distributor_id', $sponsor->id)->exists())->toBeFalse()
+        ->and(DB::table('audit_log')->where('action', 'msb.royalty.cap_withheld')->exists())->toBeFalse();
+})->with(['zero' => '0', 'fifty' => '50']);
+
+it('refuses the whole nightly when the royalty cap is under ₹1, before any MSB write (F-6)', function () {
+    [, $a] = msbFailedRoyaltySponsor();
+    msbSetRoyaltyFailedDailyCap('50');
+
+    expect(fn () => app(MentorshipBonusService::class)->warmSponsorsFor([$a->id], Carbon::parse('2026-08-10')))
+        ->toThrow(RuntimeException::class, 'comp.msb.royalty_failed_daily_cap_paise must be');
+    expect(MentorshipBonusResult::count())->toBe(0);
+});
+
+it('marks a repurchase-gated row too when the sponsor\'s own evaluation was deferred that night (F-4)', function () {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    [$sponsor, $sponsee] = msbSponsorPair();
+    msbSeedFailedCycle($sponsor, '2026-08-06');
+    msbSeedRankQualification($sponsor->id, 5, '2026-06-01');
+    GsbCutoffDeferral::create([
+        'distributor_id' => $sponsor->id,
+        'cutoff_date' => '2026-08-10',
+        'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+        'reserved_gsb_paise' => 0,
+        'reserved_msb_points' => 0,
+    ]);
+
+    $row = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, msbCreditedCutoff($sponsee, 1, '2026-08-10'));
+
+    expect($row?->status)->toBe(MentorshipBonusResult::STATUS_REPURCHASE_GATED)
+        ->and($row->sponsor_verdict_stale)->toBeTrue()
+        ->and($row->sponsor_repurchase_failed)->toBeTrue();
+});
+
+it('marks the row when the sponsor\'s own evaluation was deferred that night (F-4)', function () {
+    [$sponsor, $a, $b, $pool] = msbFailedRoyaltySponsor();
+
+    $fresh = msbCredit($a, $pool);
+    expect($fresh->sponsor_verdict_stale)->toBeFalse();
+
+    GsbCutoffDeferral::create([
+        'distributor_id' => $sponsor->id,
+        'cutoff_date' => '2026-08-10',
+        'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+        'reserved_gsb_paise' => 0,
+        'reserved_msb_points' => 0,
+    ]);
+
+    $svc = app(MentorshipBonusService::class);
+    $accrual = $svc->accrueForSponsee($b->id, msbCreditedCutoff($b, 1, '2026-08-10'));
+    expect($accrual->sponsorVerdictStale)->toBeTrue()
+        ->and($accrual->sponsorRepurchaseFailed)->toBeTrue();
+
+    $stale = $svc->creditAccrual($accrual, $pool);
+    expect($stale->sponsor_verdict_stale)->toBeTrue()
+        ->and($stale->sponsor_repurchase_failed)->toBeTrue();
 });
