@@ -704,15 +704,17 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
                 @foreach([
-                    ['DSR 2021',     'Direct Selling Rules compliant',       'scale'],
-                    ['DPDP 2023',    'Digital Personal Data Protection Act', 'lock-keyhole'],
-                    ['IT Act §10A',  'Electronic contracts as binding',      'file-pen-line'],
-                    ['Audit Trail',  'Every admin action logged',            'history'],
+                    {{-- Each card carries its own soft tint so the row reads as four
+                         distinct pieces on the flat brand blue (client, 2026-10-09). --}}
+                    ['DSR 2021',     'Direct Selling Rules compliant',       'scale',         'from-sunrise-300/30 to-sunrise-300/5 border-t-sunrise-400',  'bg-sunrise-400/25 text-sunrise-100'],
+                    ['DPDP 2023',    'Digital Personal Data Protection Act', 'lock-keyhole',  'from-leaf-300/30 to-leaf-300/5 border-t-leaf-400',           'bg-leaf-400/25 text-leaf-100'],
+                    ['IT Act §10A',  'Electronic contracts as binding',      'file-pen-line', 'from-violet-300/30 to-violet-300/5 border-t-violet-400',     'bg-violet-400/25 text-violet-100'],
+                    ['Audit Trail',  'Every admin action logged',            'history',       'from-amber-300/30 to-amber-300/5 border-t-amber-400',        'bg-amber-400/25 text-amber-100'],
                 ] as $item)
-                <div class="rounded-xl bg-white/[0.07] border border-white/15 border-t-4 border-t-sunrise-500 p-5 transition hover:bg-white/[0.12] hover:-translate-y-0.5">
+                <div class="rounded-xl bg-gradient-to-br {{ $item[3] }} border border-white/20 border-t-4 p-5 shadow-sm shadow-brand-900/10 transition hover:-translate-y-0.5 hover:border-white/40">
                     <div class="flex items-center justify-between mb-3">
-                        <p class="text-xs uppercase tracking-wider text-sunrise-300 font-semibold">Statute</p>
-                        <span class="flex items-center justify-center w-9 h-9 rounded-lg bg-sunrise-500/15 text-sunrise-300">
+                        <p class="text-xs uppercase tracking-wider text-white/80 font-semibold">Statute</p>
+                        <span class="flex items-center justify-center w-9 h-9 rounded-lg {{ $item[4] }}">
                             {{ svg('lucide-'.$item[2], 'w-5 h-5') }}
                         </span>
                     </div>
@@ -725,15 +727,15 @@
             <h3 class="text-xl md:text-2xl text-white font-bold text-center mt-16 mb-6">Our Commitment to Responsible Business</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                 @foreach([
-                    ['Direct Selling Rules',              'We strive to operate in alignment with the applicable Direct Selling framework, with a clear focus on genuine product sales, fair practices and responsible representation.', 'handshake'],
-                    ['Data & Privacy Protection',         'We respect personal information and aim to handle customer and direct seller data responsibly, securely and in accordance with applicable privacy requirements.', 'shield-check'],
-                    ['Clear Agreements & Policies',       'Our direct seller relationship is supported by documented terms, policies and procedures designed to create clarity around rights, responsibilities and business conduct.', 'file-text'],
-                    ['Transparent Records & Audit Trail', 'We maintain structured records and processes to support accountability, traceability and responsible administration across our business operations.', 'clipboard-list'],
-                    ['Ethical Product Communication',     'We encourage accurate, responsible and compliant product communication without misleading claims, exaggerated promises or inappropriate representations.', 'message-square-check'],
-                    ['Continuous Review',                 'Compliance is an ongoing responsibility. We aim to review and strengthen our processes as laws, standards and business requirements evolve.', 'refresh-cw'],
+                    ['Direct Selling Rules',              'We strive to operate in alignment with the applicable Direct Selling framework, with a clear focus on genuine product sales, fair practices and responsible representation.', 'handshake',            'from-leaf-300/25 to-leaf-300/5',       'bg-leaf-400/25 text-leaf-100 ring-leaf-300/40'],
+                    ['Data & Privacy Protection',         'We respect personal information and aim to handle customer and direct seller data responsibly, securely and in accordance with applicable privacy requirements.', 'shield-check',         'from-sunrise-300/25 to-sunrise-300/5', 'bg-sunrise-400/25 text-sunrise-100 ring-sunrise-300/40'],
+                    ['Clear Agreements & Policies',       'Our direct seller relationship is supported by documented terms, policies and procedures designed to create clarity around rights, responsibilities and business conduct.', 'file-text',            'from-violet-300/25 to-violet-300/5',   'bg-violet-400/25 text-violet-100 ring-violet-300/40'],
+                    ['Transparent Records & Audit Trail', 'We maintain structured records and processes to support accountability, traceability and responsible administration across our business operations.', 'clipboard-list',       'from-amber-300/25 to-amber-300/5',     'bg-amber-400/25 text-amber-100 ring-amber-300/40'],
+                    ['Ethical Product Communication',     'We encourage accurate, responsible and compliant product communication without misleading claims, exaggerated promises or inappropriate representations.', 'message-square-check', 'from-rose-300/25 to-rose-300/5',       'bg-rose-400/25 text-rose-100 ring-rose-300/40'],
+                    ['Continuous Review',                 'Compliance is an ongoing responsibility. We aim to review and strengthen our processes as laws, standards and business requirements evolve.', 'refresh-cw',           'from-teal-300/25 to-teal-300/5',       'bg-teal-400/25 text-teal-100 ring-teal-300/40'],
                 ] as $item)
-                <div class="flex gap-4 rounded-xl bg-white/[0.05] border border-white/10 p-5 transition hover:bg-white/[0.10] hover:border-brand-400/40">
-                    <span class="shrink-0 flex items-center justify-center w-11 h-11 rounded-full bg-brand-500/20 text-brand-300 ring-1 ring-brand-400/30">
+                <div class="flex gap-4 rounded-xl bg-gradient-to-br {{ $item[3] }} border border-white/20 p-5 shadow-sm shadow-brand-900/10 transition hover:border-white/40 hover:-translate-y-0.5">
+                    <span class="shrink-0 flex items-center justify-center w-11 h-11 rounded-full ring-1 {{ $item[4] }}">
                         {{ svg('lucide-'.$item[2], 'w-5 h-5') }}
                     </span>
                     <div>
@@ -744,7 +746,7 @@
                 @endforeach
             </div>
 
-            <div class="mt-14 max-w-3xl mx-auto rounded-2xl bg-white/[0.06] border border-white/15 border-l-4 border-l-sunrise-500 p-6 md:p-8 text-center">
+            <div class="mt-14 max-w-3xl mx-auto rounded-2xl bg-gradient-to-br from-sunrise-300/20 to-white/5 border border-white/20 border-l-4 border-l-sunrise-400 p-6 md:p-8 text-center shadow-sm shadow-brand-900/10">
                 <p class="inline-flex items-center gap-2 text-lg text-sunrise-300 font-bold mb-2">
                     <x-lucide-badge-check class="w-5 h-5" />
                     Our Promise
