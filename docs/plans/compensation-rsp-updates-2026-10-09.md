@@ -457,7 +457,7 @@ Add `'raw_point_value_paise' => $rawValuePaise, 'point_value_cap_paise' => $capP
 - Consumes: `IncomeEligibilityService::verdictAsOf(int, Carbon): RepurchaseVerdict` (`->isEligible()`), `RepurchaseCycleService::currentRank(int): int`.
 - Produces: `MentorshipBonusService::reservedPointsFor(int $sponseeId, int $slab, Carbon $cutoffDate): int`; `CompensationPlanSettingsService::msbRoyaltyMinRank(): int`.
 
-- [ ] **Step 1: Failing tests** (append; reuse the file's existing helpers for a sponsor/sponsee pair and a credited `GsbCutoffResult`; seed a failed cycle the way `RankBonusServiceTest` / `IncomeEligibilityService` tests do — a resolved `RepurchaseCycle` with `due_date` before the cut-off and `fulfilled_on` null, `status` failed — and enable `RepurchaseEngineFeature`):
+- [x] **Step 1: Failing tests** (append; reuse the file's existing helpers for a sponsor/sponsee pair and a credited `GsbCutoffResult`; seed a failed cycle the way `RankBonusServiceTest` / `IncomeEligibilityService` tests do — a resolved `RepurchaseCycle` with `due_date` before the cut-off and `fulfilled_on` null, `status` failed — and enable `RepurchaseEngineFeature`):
 
 ```php
 it('awards no MB points to a sponsor (rank ≤ 5) who is failed on the cut-off day', function (): void {
@@ -487,11 +487,11 @@ it('accrues normally for an eligible sponsor', function (): void {
 });
 ```
 
-- [ ] **Step 2: Run** → FAIL (signature / gate missing).
+- [x] **Step 2: Run** → FAIL (signature / gate missing).
 
-- [ ] **Step 3: Setting** `comp.msb.royalty_min_rank` (default `6`) in `SCALAR_DEFAULTS`, `SettingsSeeder` (`'6'`), registry (label `Mentorship Royalty from rank`, description `From this rank the Mentorship Bonus becomes Mentorship Royalty: it is paid even while the sponsor's repurchase condition is failed, subject to the daily royalty cap. Below it, a failed sponsor earns no MB points that day.`, type int, min 1, max 9, default `'6'`), accessor `msbRoyaltyMinRank(): int`.
+- [x] **Step 3: Setting** `comp.msb.royalty_min_rank` (default `6`) in `SCALAR_DEFAULTS`, `SettingsSeeder` (`'6'`), registry (label `Mentorship Royalty from rank`, description `From this rank the Mentorship Bonus becomes Mentorship Royalty: it is paid even while the sponsor's repurchase condition is failed, subject to the daily royalty cap. Below it, a failed sponsor earns no MB points that day.`, type int, min 1, max 9, default `'6'`), accessor `msbRoyaltyMinRank(): int`.
 
-- [ ] **Step 4: Inject and gate**
+- [x] **Step 4: Inject and gate**
 
 Constructor: add `private readonly IncomeEligibilityService $eligibility, private readonly RepurchaseCycleService $cycles,`.
 
@@ -518,9 +518,9 @@ Update the call in `GsbDailyCutoffCommand.php:522` to `->reservedPointsFor($dist
 
 **Scale (10-lakh roster):** the gate adds one verdict and one rank lookup per sponsor. The command already warms `IncomeEligibilityService::warmCycleCache($ids)` for the distributors being cut off (line 72–73); extend it to their sponsors in the same place — one query `DB::table('sponsorship')->whereIn('distributor_id', $ids)->pluck('sponsor_id')`, merged into the warmed id list — and add `RepurchaseCycleService::warmRanksAsOf(array $ids, Carbon $date)` next to the new `rankAsOf()` (F-2) so the per-sponsor rank read is one query per chunk, not one per accrual. Pin with a query-count test in the style of `RepurchaseCycleStartedAtTest` ("reads the anchor only once"): 50 sponsees under 5 sponsors → the MB gate issues ≤ 2 queries against `repurchase_cycles` and ≤ 2 against `rank_qualifications`.
 
-- [ ] **Step 5: Run** the MSB tests and `GsbDailyCutoffCommandTest.php` → PASS. Help doc: under Mentorship add "A sponsor below rank 6 who is failed on their repurchase condition on a cut-off day earns no Mentorship points that day."
+- [x] **Step 5: Run** the MSB tests and `GsbDailyCutoffCommandTest.php` → PASS. Help doc: under Mentorship add "A sponsor below rank 6 who is failed on their repurchase condition on a cut-off day earns no Mentorship points that day."
 
-- [ ] **Step 6: Commit** `feat(msb): failed sponsors below the royalty rank earn no MB points` with the compliance trailer.
+- [x] **Step 6: Commit** `feat(msb): failed sponsors below the royalty rank earn no MB points` with the compliance trailer.
 
 ---
 
