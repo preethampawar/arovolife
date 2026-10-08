@@ -41,7 +41,7 @@
         <a href="{{ route('tree.sponsorship') }}"
            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50 transition-colors">
             <x-lucide-users class="w-4 h-4 text-leaf-600" />
-            Direct referrals →
+            My Direct Referrals →
         </a>
     </div>
 </div>

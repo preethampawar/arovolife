@@ -96,7 +96,7 @@
     @if($rows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <p class="text-gray-600 font-medium">No Growth Booster Bonus recorded yet.</p>
-            <p class="text-sm text-gray-600 mt-1">Months in which you recorded AGP from a Slab 1, 2 or 3 Genos Sales Bonus match appear here.</p>
+            <p class="text-sm text-gray-600 mt-1">Months in which you recorded GBB from a Slab 1, 2 or 3 Genos Sales Bonus match appear here.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">

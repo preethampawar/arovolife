@@ -682,7 +682,7 @@
     </section>
 
     {{-- Compliance commitment banner (replaces "Absolute Skincare set") --}}
-    <section class="relative bg-gradient-to-br from-brand-950 via-brand-900 to-brand-800 text-white overflow-hidden">
+    <section class="relative bg-brand-600 text-white overflow-hidden">
         <div class="absolute -top-24 -right-24 w-[420px] h-[420px] bg-brand-500/25 rounded-full blur-3xl"></div>
         <div class="absolute -bottom-24 -left-24 w-[380px] h-[380px] bg-sunrise-500/15 rounded-full blur-3xl"></div>
 
@@ -697,8 +697,8 @@
                 <p class="text-white/90 font-medium mb-5">Every promise is backed by code and audit.</p>
                 <div class="mx-auto mb-5 h-1 w-16 rounded-full bg-gradient-to-r from-brand-400 to-sunrise-500"></div>
                 <div class="max-w-3xl mx-auto space-y-3 leading-relaxed">
-                    <p class="text-brand-100">At arovolife, compliance is more than a legal requirement—it is a fundamental part of how we build trust, protect people and create a responsible direct selling ecosystem.</p>
-                    <p class="text-brand-100">We are committed to conducting our business with clarity, accountability and respect for applicable laws, regulations and ethical standards. From registration and product communication to data protection, contracts and business practices, our goal is to ensure that every interaction is responsible and transparent.</p>
+                    <p class="text-white/90">At arovolife, compliance is more than a legal requirement—it is a fundamental part of how we build trust, protect people and create a responsible direct selling ecosystem.</p>
+                    <p class="text-white/90">We are committed to conducting our business with clarity, accountability and respect for applicable laws, regulations and ethical standards. From registration and product communication to data protection, contracts and business practices, our goal is to ensure that every interaction is responsible and transparent.</p>
                 </div>
             </div>
 

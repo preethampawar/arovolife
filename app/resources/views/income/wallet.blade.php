@@ -39,7 +39,7 @@
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <div class="bg-sky-100 rounded-2xl border border-sky-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-600">Wallet Balance</p>
+                <p class="text-xs text-gray-600">Income Wallet Balance</p>
                 <x-help-tip text="Your current wallet balance — GSB and other bonus credits net of any debits. This will be transferred to your bank account on the next payout date." />
             </div>
             <p class="text-2xl font-bold {{ $walletBalancePaise > 0 ? 'text-green-700' : 'text-gray-900' }}">
@@ -74,7 +74,7 @@
         </div>
         <div class="bg-green-100 rounded-2xl border border-green-200 p-5">
             <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-gray-600">Repurchase Wallet</p>
+                <p class="text-xs text-gray-600">Repurchase Wallet Balance</p>
                 <x-help-tip text="This balance is applied automatically at checkout toward your mandatory monthly repurchase and carries forward each month. It cannot be withdrawn." />
             </div>
             <p class="text-2xl font-bold {{ $repurchaseWalletBalancePaise > 0 ? 'text-green-700' : 'text-gray-900' }}">
@@ -88,7 +88,7 @@
 
     {{-- Wallet ledger --}}
     <div class="flex items-center justify-between mb-3">
-        <h2 class="text-base font-semibold text-gray-800">Wallet Ledger</h2>
+        <h2 class="text-base font-semibold text-gray-800">Income Wallet Ledger</h2>
         <div class="flex items-center gap-2">
             {{-- The export carries the filters in force, so the file matches the table. --}}
             <a href="{{ route('income.wallet.export', $filters->toQuery() + ['format' => 'xlsx']) }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">&#11015; Excel</a>

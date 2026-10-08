@@ -44,7 +44,7 @@
         ],
         'My Network' => [
             ['label' => 'My Genos',           'route' => 'tree.binary',         'icon' => 'network'],
-            ['label' => 'Sponsorship Tree',   'route' => 'tree.sponsorship',    'icon' => 'git-branch'],
+            ['label' => 'My Direct Referrals','route' => 'tree.sponsorship',    'icon' => 'git-branch'],
             ...($messagingOn
                 ? [['label' => 'Messages',    'route' => 'messages.index',      'icon' => 'mail', 'prefix' => 'messages.']]
                 : []),

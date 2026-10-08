@@ -163,10 +163,10 @@ it('renders all four my business groups with the flag-gated menu tiles hidden', 
         ->assertDontSee('Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday')
         ->assertDontSee('transfer covers earnings through')
         // Group 3 — Left before Right
-        ->assertSee('Left carry forward')
+        ->assertSee('Left Genos carry forward')
         ->assertSee('Carried-over Left Genos BV')
         ->assertSee('Carried-over Right Genos BV')
-        ->assertSee('Right carry forward')
+        ->assertSee('Right Genos carry forward')
         // Group 4
         ->assertSee('Left Genos total team')
         ->assertSee('Today Left Genos BV')
@@ -302,7 +302,6 @@ it('shows carry forward as the remainder of the last slab match only', function 
         'power_side_after' => 'L',
         'status' => GsbCutoffResult::STATUS_CREDITED,
     ]);
-
 
     $this->get(route('my-business'))
         ->assertOk()

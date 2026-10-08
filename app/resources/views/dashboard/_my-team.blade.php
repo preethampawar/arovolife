@@ -1,15 +1,15 @@
-{{-- ── My Team — genealogy + status summary ─────────────────────── --}}
+{{-- ── My Genos — genealogy + status summary ─────────────────────── --}}
 @if($teamStats !== null)
 <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
     <div class="flex items-baseline justify-between mb-4 gap-3 flex-wrap">
         <div>
-            <p class="text-xs text-gray-700 uppercase tracking-wider mb-1 font-semibold">My Team</p>
+            <p class="text-xs text-gray-700 uppercase tracking-wider mb-1 font-semibold">My Genos</p>
             <p class="text-sm text-gray-800">A live view of your Genos downline and direct referrals.</p>
         </div>
         <div class="flex items-center gap-3 text-xs">
-            <a href="{{ route('tree.binary') }}" class="text-brand-700 hover:text-brand-800 underline">Genos →</a>
+            <a href="{{ route('tree.binary') }}" class="text-brand-700 hover:text-brand-800 underline">My Genos →</a>
             <span class="text-gray-600">·</span>
-            <a href="{{ route('tree.sponsorship') }}" class="text-brand-700 hover:text-brand-800 underline">Direct referrals →</a>
+            <a href="{{ route('tree.sponsorship') }}" class="text-brand-700 hover:text-brand-800 underline">My Direct Referrals →</a>
         </div>
     </div>
 
@@ -36,29 +36,29 @@
              name, state, status) and Download Excel / CSV buttons. JSON +
              Excel / CSV come from TeamRosterController. --}}
         <div class="lg:pr-6">
-            <p class="text-[11px] text-gray-700 uppercase tracking-wider font-semibold mb-3">Team size</p>
+            <p class="text-[11px] text-gray-700 uppercase tracking-wider font-semibold mb-3">Genos size</p>
             <div class="grid grid-cols-2 gap-3">
                 <button type="button" data-team-roster="total"
                     class="text-left rounded-xl border border-brand-200 bg-brand-50/60 p-4 hover:bg-brand-50 hover:border-brand-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-500">
-                    <p class="text-[11px] text-brand-700 uppercase tracking-wider font-semibold mb-1">Total team</p>
+                    <p class="text-[11px] text-brand-700 uppercase tracking-wider font-semibold mb-1">Total Genos</p>
                     <p class="text-3xl font-bold text-brand-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['total_team']) }}</p>
                     <p class="text-[11px] text-gray-700 mt-1.5">members in your Genos downline</p>
                 </button>
                 <button type="button" data-team-roster="direct"
                     class="text-left rounded-xl border border-leaf-200 bg-leaf-50/60 p-4 hover:bg-leaf-50 hover:border-leaf-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-leaf-500">
-                    <p class="text-[11px] text-leaf-700 uppercase tracking-wider font-semibold mb-1">Direct referrals</p>
+                    <p class="text-[11px] text-leaf-700 uppercase tracking-wider font-semibold mb-1">My Direct Referrals</p>
                     <p class="text-3xl font-bold text-leaf-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['direct_referrals']) }}</p>
                     <p class="text-[11px] text-gray-700 mt-1.5">people you personally invited</p>
                 </button>
                 <button type="button" data-team-roster="left"
                     class="text-left rounded-xl border border-sky-200 bg-sky-50/60 p-4 hover:bg-sky-50 hover:border-sky-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-sky-500">
-                    <p class="text-[11px] text-sky-700 uppercase tracking-wider font-semibold mb-1">← Left team</p>
+                    <p class="text-[11px] text-sky-700 uppercase tracking-wider font-semibold mb-1">← Left Genos</p>
                     <p class="text-3xl font-bold text-sky-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['left_team']) }}</p>
                     <p class="text-[11px] text-gray-700 mt-1.5">members under your left Genos</p>
                 </button>
                 <button type="button" data-team-roster="right"
                     class="text-left rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-sm transition focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                    <p class="text-[11px] text-emerald-700 uppercase tracking-wider font-semibold mb-1">Right team →</p>
+                    <p class="text-[11px] text-emerald-700 uppercase tracking-wider font-semibold mb-1">Right Genos →</p>
                     <p class="text-3xl font-bold text-emerald-700 leading-none">{{ \App\Modules\Shared\Support\IndianNumber::format($teamStats['right_team']) }}</p>
                     <p class="text-[11px] text-gray-700 mt-1.5">members under your right Genos</p>
                 </button>

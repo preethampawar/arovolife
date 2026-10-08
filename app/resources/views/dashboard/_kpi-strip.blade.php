@@ -9,7 +9,7 @@
     // the two Genos groups side by side on the second so Left and Right sit
     // next to each other rather than wrapping apart.
     $tiles[] = [
-        'label' => 'Total team',
+        'label' => 'Total Genos',
         'value' => $fmt::format((int) ($teamStats['total_team'] ?? 0)),
         'sub'   => 'Members in your Genos downline',
         'roster' => 'total',
@@ -61,7 +61,7 @@
         ];
     }
     $tiles[] = [
-        'label' => 'Direct referrals',
+        'label' => 'My Direct Referrals',
         'value' => $fmt::format((int) ($teamStats['direct_referrals'] ?? 0)),
         'sub'   => 'People you personally invited',
         'roster' => 'direct',

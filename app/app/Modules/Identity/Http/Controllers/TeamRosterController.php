@@ -21,10 +21,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 final class TeamRosterController extends Controller
 {
     private const SCOPE_LABELS = [
-        'total' => 'Total team',
-        'direct' => 'Direct referrals',
-        'left' => 'Left team',
-        'right' => 'Right team',
+        'total' => 'Total Genos',
+        'direct' => 'My Direct Referrals',
+        'left' => 'Left Genos',
+        'right' => 'Right Genos',
     ];
 
     public function index(Request $request, TeamStatsService $teamStats, string $scope): JsonResponse

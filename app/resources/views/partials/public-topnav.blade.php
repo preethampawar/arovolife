@@ -35,6 +35,12 @@
 <div class="hidden sm:block bg-brand-600 text-white text-xs">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-end gap-3 sm:gap-4 flex-wrap">
         @guest
+            {{-- Sign in sits in this strip, before Register (client, 2026-09-30);
+                 the main nav no longer carries a Sign In button. Phones keep
+                 the Sign in entry in the hamburger menu — this strip is hidden
+                 below sm. --}}
+            <a href="{{ route('login') }}" data-signin-link class="hover:text-brand-50 transition-colors">Sign in</a>
+            <span class="text-brand-200">|</span>
             <a href="{{ route('join.show') }}" class="hover:text-brand-50 transition-colors">Register with us</a>
         @else
             @php
@@ -145,6 +151,10 @@
                 <span class="inline-flex items-center gap-2 px-2 py-0.5">
                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white text-brand-700 text-[10px] font-bold leading-none">{{ $initials }}</span>
                     <span class="font-medium">{{ $name }}</span>
+                    {{-- The ADN beside the name so every page says whose
+                         account this is (client, 2026-10-01). --}}
+                    <span class="text-brand-200">·</span>
+                    <span class="font-mono tracking-wider" data-header-adn>{{ $user->distributor->adn }}</span>
                 </span>
             @endif
         @endguest
@@ -337,12 +347,6 @@
                 </span>
             </a>
 
-            @guest
-            <a href="{{ route('login') }}"
-               class="px-4 py-2 rounded-full bg-white hover:bg-brand-50 text-brand-700 text-xs font-semibold transition-colors shadow-sm">
-                Sign In
-            </a>
-            @endguest
         </div>
 
         {{-- Mobile/tablet right side: bell + cart + hamburger --}}
@@ -469,7 +473,7 @@
                 <a href="{{ route('login') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-700 transition-colors font-medium">Sign in</a>
                 <a href="{{ route('contact.show') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-700 transition-colors font-medium">Become a Direct Seller</a>
             @else
-                <p class="px-2 pt-2 pb-1 text-xs text-brand-200 font-semibold uppercase tracking-wider">Signed in as {{ auth()->user()->full_name ?: auth()->user()->email }}</p>
+                <p class="px-2 pt-2 pb-1 text-xs text-brand-200 font-semibold uppercase tracking-wider">Signed in as {{ auth()->user()->full_name ?: auth()->user()->email }}@if(auth()->user()->distributor) <span class="font-mono normal-case tracking-wider">· {{ auth()->user()->distributor->adn }}</span>@endif</p>
                 @if(auth()->user()->isSuperStaff())
                     <a href="{{ route('admin.dashboard') }}" class="py-2.5 px-2 rounded-md text-brand-50 hover:text-white hover:bg-brand-700 transition-colors font-medium">Admin Console</a>
                 @else

@@ -145,7 +145,7 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div class="rounded-2xl border p-5 shadow-sm {{ $gl['card'] }}">
             <div class="flex items-center justify-between mb-1">
-                <p class="{{ $statLabelClasses }}">Left carry forward</p>
+                <p class="{{ $statLabelClasses }}">Left Genos carry forward</p>
                 <x-help-tip text="The BV remaining on your Left side after your last slab match — when a slab pays, the weaker side resets to 0 and the power side's remaining BV is carried forward. Until your first slab matches this is 0: BV building up before a match is carry over, shown in the Carried-over cards.{{ $eligibilityTipSuffix }}" />
             </div>
             <p class="{{ $statValueClasses }}">{{ \App\Modules\Shared\Support\IndianNumber::format($leftCarryForwardBv, 0) }}</p>
@@ -168,7 +168,7 @@
         </div>
         <div class="rounded-2xl border p-5 shadow-sm {{ $gr['card'] }}">
             <div class="flex items-center justify-between mb-1">
-                <p class="{{ $statLabelClasses }}">Right carry forward</p>
+                <p class="{{ $statLabelClasses }}">Right Genos carry forward</p>
                 <x-help-tip text="The BV remaining on your Right side after your last slab match — when a slab pays, the weaker side resets to 0 and the power side's remaining BV is carried forward. Until your first slab matches this is 0: BV building up before a match is carry over, shown in the Carried-over cards.{{ $eligibilityTipSuffix }}" />
             </div>
             <p class="{{ $statValueClasses }}">{{ \App\Modules\Shared\Support\IndianNumber::format($rightCarryForwardBv, 0) }}</p>

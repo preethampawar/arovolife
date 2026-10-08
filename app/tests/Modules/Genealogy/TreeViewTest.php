@@ -147,8 +147,8 @@ it('TV-02: distributor /tree shows ONLY own subtree, never an ancestor or siblin
 
     $response->assertSee($middleAdn);
     $response->assertSee($leafAdn);
-    $response->assertDontSee($rootAdn);
-    $response->assertDontSee($siblingAdn);
+    $response->assertDontSee('data-node-adn="'.$rootAdn.'"', false); // the header chip now carries the signed-in root's own ADN
+    $response->assertDontSee('data-node-adn="'.$siblingAdn.'"', false);
 });
 
 it('TV-03: /tree/sponsorship default depth shows ONLY direct referrals (depth 1)', function () {
@@ -215,8 +215,8 @@ it('TV-04: /tree/{adn} re-roots at a descendant ADN — root and sibling are hid
     // the original root and the sibling-subtree are not in this pivot.
     $response->assertSee($middleAdn);
     $response->assertSee($leafAdn);
-    $response->assertDontSee($rootAdn);
-    $response->assertDontSee($siblingAdn);
+    $response->assertDontSee('data-node-adn="'.$rootAdn.'"', false); // the header chip now carries the signed-in root's own ADN
+    $response->assertDontSee('data-node-adn="'.$siblingAdn.'"', false);
 });
 
 it('TV-04b: a re-rooted /tree/{adn} carries no "You" ribbon and names whose placement it is (F67)', function () {

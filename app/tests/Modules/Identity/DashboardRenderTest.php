@@ -91,7 +91,7 @@ it('DSH-02: dashboard renders the ID-card panel for a distributor', function () 
         ->get(route('dashboard'))
         ->assertOk()
         ->assertSee('Profile Stats', false)
-        ->assertSee('ID Number', false)
+        ->assertSeeInOrder(['Name', 'ADN', 'Registration Date'], false)
         ->assertSee('Status', false);
 });
 
@@ -133,7 +133,7 @@ it('PS-01: profile-stats prints the ID-card panel with the company header for a 
         ->assertOk()
         ->assertSee('Profile Stats', false)
         ->assertSee('Arovolife Private Limited', false)
-        ->assertSee('ID Number', false);
+        ->assertSeeInOrder(['Name', 'ADN', 'Registration Date'], false);
 });
 
 it('PS-02: profile-stats redirects to the dashboard when registration is incomplete (no distributor)', function () {
@@ -171,10 +171,10 @@ it('DSH-04: dashboard keeps every legacy element alongside the new KPI strip and
         'Manage my KYC documents', 'My Referral Link', 'Personal invite', 'Copy',
         'Profile Stats', 'Download PDF', 'My Business', 'Request line-change',
         'Cooling-Off Period', 'Cancel registration', 'Messages', 'Documents', 'Membership Card',
-        'My Team', 'data-team-roster="total"', 'data-team-roster="direct"',
+        'My Genos', 'data-team-roster="total"', 'data-team-roster="direct"',
         'data-team-roster="left"', 'data-team-roster="right"', 'id="team-roster-modal"',
         // New surfaces.
-        'Personal BV', 'Wallet balance', 'Total team', 'Direct referrals',
+        'Personal BV', 'Wallet balance', 'Total Genos', 'My Direct Referrals',
         'Quick actions', 'Genos balance', 'Team growth', 'Member since',
     ] as $needle) {
         $response->assertSee($needle, false);

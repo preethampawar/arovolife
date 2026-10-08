@@ -70,10 +70,10 @@
                             <span class="flex items-center gap-1">Member <x-help-tip text="The ADN of the Genos member whose purchase generated this BV." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Left BV <x-help-tip text="BV added to your Left Genos by this purchase." /></span>
+                            <span class="flex items-center justify-end gap-1">Left Genos BV <x-help-tip text="BV added to your Left Genos by this purchase." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">Right BV <x-help-tip text="BV added to your Right Genos by this purchase." /></span>
+                            <span class="flex items-center justify-end gap-1">Right Genos BV <x-help-tip text="BV added to your Right Genos by this purchase." /></span>
                         </th>
                     </tr>
                 </thead>
@@ -166,7 +166,7 @@
                             @endif
                         </td>
                         <td colspan="2" class="px-4 py-2.5 text-right text-green-900 text-xs">
-                            {{ $c->slab ? 'carried forward' : 'carried over' }}: <span class="font-mono font-medium">power {{ match ($c->power_side_after) { 'L' => '(Left) ', 'R' => '(Right) ', default => '' } }}{{ \App\Modules\Shared\Support\IndianNumber::format($c->power_cf_after_paise / 100, 0) }}</span>
+                            {{ $c->slab ? 'carried forward' : 'carried over' }}: <span class="font-mono font-medium">power {{ match ($c->power_side_after) { 'L' => '(Left Genos) ', 'R' => '(Right Genos) ', default => '' } }}{{ \App\Modules\Shared\Support\IndianNumber::format($c->power_cf_after_paise / 100, 0) }}</span>
                             · <span class="font-mono font-medium">slab-1 weaker {{ \App\Modules\Shared\Support\IndianNumber::format($c->slab1_weaker_cf_after_paise / 100, 0) }}</span>
                         </td>
                     </tr>
