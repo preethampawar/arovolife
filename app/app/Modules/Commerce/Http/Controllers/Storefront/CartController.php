@@ -12,6 +12,7 @@ use App\Modules\Commerce\Services\AttributionService;
 use App\Modules\Commerce\Services\CartService;
 use App\Modules\Commerce\Services\CouponService;
 use App\Modules\Commerce\Services\ShippingService;
+use App\Modules\Commerce\Support\CartGate;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +27,7 @@ final class CartController extends Controller
         private readonly CouponService $coupons,
         private readonly ShippingService $shipping,
         private readonly AttributionService $attribution,
+        private readonly CartGate $cartGate,
     ) {}
 
     public function show(Request $request): View
@@ -89,8 +91,31 @@ final class CartController extends Controller
         return $userId !== null ? Customer::where('user_id', $userId)->first() : null;
     }
 
+    /**
+     * Pre-launch cart gate: null when this visitor may change the cart, else
+     * the refusal — JSON 403 for the listing-card AJAX add (its JS shows the
+     * error toast on any non-2xx), otherwise a redirect to the shop with the
+     * message under the `cart` error key.
+     */
+    private function closedResponse(Request $request, string $errorKey = 'cart'): RedirectResponse|JsonResponse|null
+    {
+        if ($this->cartGate->isOpenFor($request->user())) {
+            return null;
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json(['ok' => false, 'message' => CartGate::CLOSED_MESSAGE], 403);
+        }
+
+        return redirect()->route('shop.index')->withErrors([$errorKey => CartGate::CLOSED_MESSAGE]);
+    }
+
     public function add(Request $request): RedirectResponse|JsonResponse
     {
+        if ($closed = $this->closedResponse($request)) {
+            return $closed;
+        }
+
         $validated = $request->validate([
             'product_variant_id' => ['required', 'integer', 'exists:product_variants,id'],
             'qty' => ['nullable', 'integer', 'min:1', 'max:10'],
@@ -116,11 +141,17 @@ final class CartController extends Controller
             ->with('added_variant_id', $variantId);
     }
 
-    public function update(Request $request, CartItem $item): RedirectResponse
+    public function update(Request $request, CartItem $item): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'qty' => ['required', 'integer', 'min:0', 'max:10'],
         ]);
+
+        // Pre-launch gate refuses only an increase: reducing, removing and
+        // clearing stay open so an earlier cart can always be emptied.
+        if ((int) $validated['qty'] > $item->qty && ($closed = $this->closedResponse($request))) {
+            return $closed;
+        }
 
         $this->cartService->updateQty($item, (int) $validated['qty']);
 
@@ -149,6 +180,10 @@ final class CartController extends Controller
      */
     public function share(Request $request): RedirectResponse
     {
+        if (! $this->cartGate->isOpenFor($request->user())) {
+            return redirect()->route('shop.cart')->withErrors(['share' => CartGate::CLOSED_MESSAGE]);
+        }
+
         $adn = $request->user()?->distributor?->adn;
         if ($adn === null) {
             return redirect()->route('shop.cart')
@@ -187,8 +222,14 @@ final class CartController extends Controller
      * snapshot into the visitor's own cart, re-pricing each line from the live
      * variant. Inactive / removed products are skipped silently.
      */
-    public function openShared(Request $request, string $code): RedirectResponse
+    public function openShared(Request $request, string $code): RedirectResponse|JsonResponse
     {
+        // Before the lookup: a closed gate neither credits the sharer nor
+        // loads the snapshot.
+        if ($closed = $this->closedResponse($request, 'share')) {
+            return $closed;
+        }
+
         $shared = SharedCart::where('code', $code)->first();
 
         if ($shared === null || $shared->isExpired()) {

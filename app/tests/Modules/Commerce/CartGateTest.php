@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductCategory;
 use App\Modules\Catalog\Models\ProductVariant;
+use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
+use App\Modules\Commerce\Models\SharedCart;
 use App\Modules\Commerce\Support\CartGate;
 use App\Modules\Identity\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -160,4 +162,81 @@ it('CGT-09: closed → the cart page hides Proceed to Checkout and the share for
         ->assertSee(CartGate::CLOSED_MESSAGE)
         ->assertDontSee('Proceed to Checkout')
         ->assertDontSee(route('shop.cart.share'), false);
+});
+
+it('CGT-04: closed → a guest add is refused: redirect with an error, 403 JSON for the AJAX card', function (): void {
+    cgtSetting(CartGate::SETTING_KEY, 'false');
+    $variant = cgtVariant();
+
+    $this->post(route('shop.cart.add'), ['product_variant_id' => $variant->id, 'qty' => 1])
+        ->assertRedirect(route('shop.index'))
+        ->assertSessionHasErrors(['cart' => CartGate::CLOSED_MESSAGE]);
+
+    $this->postJson(route('shop.cart.add'), ['product_variant_id' => $variant->id, 'qty' => 1])
+        ->assertStatus(403)
+        ->assertJson(['ok' => false, 'message' => CartGate::CLOSED_MESSAGE]);
+
+    expect(DB::table('cart_items')->count())->toBe(0);
+});
+
+it('CGT-05: closed → a staff add still lands in the cart', function (): void {
+    cgtSetting(CartGate::SETTING_KEY, 'false');
+    $variant = cgtVariant();
+
+    $this->actingAs(cgtUser('admin'))
+        ->post(route('shop.cart.add'), ['product_variant_id' => $variant->id, 'qty' => 1])
+        ->assertRedirect(route('shop.cart'))
+        ->assertSessionHas('added_variant_id', $variant->id);
+});
+
+it('CGT-06: closed → an Easy Purchase link does not load the shared cart; the sharer cannot create one', function (): void {
+    $variant = cgtVariant();
+    $sharer = cgtDistributorUser();
+
+    // A link shared while open (seeded directly: the router keeps the
+    // controller — and the gate it was built with — for the rest of the
+    // test, so the share route must first be hit while closed) …
+    cgtSetting(CartGate::SETTING_KEY, 'true');
+    $this->actingAs($sharer)->post(route('shop.cart.add'), ['product_variant_id' => $variant->id, 'qty' => 1]);
+    $code = 'CGTSHARE01';
+    SharedCart::create([
+        'code' => $code, 'distributor_id' => $sharer->distributor->id, 'ref_adn' => $sharer->distributor->adn,
+        'created_by_user_id' => $sharer->id,
+        'items' => [['variant_id' => $variant->id, 'qty' => 1]],
+        'expires_at' => now()->addDays(30),
+    ]);
+
+    // … then close the gate.
+    cgtSetting(CartGate::SETTING_KEY, 'false');
+    app()->forgetInstance(CartGate::class);
+
+    $this->get(route('shop.easy-cart', ['code' => $code]))
+        ->assertRedirect(route('shop.index'))
+        ->assertSessionHasErrors(['share' => CartGate::CLOSED_MESSAGE]);
+    expect(DB::table('cart_items')->count())->toBe(1); // only the sharer's own line
+
+    $this->actingAs($sharer)->post(route('shop.cart.share'))
+        ->assertRedirect(route('shop.cart'))
+        ->assertSessionHasErrors(['share' => CartGate::CLOSED_MESSAGE]);
+});
+
+it('CGT-12: closed → quantity cannot go up, but a line can still be reduced, removed and the cart cleared', function (): void {
+    $variant = cgtVariant();
+    $user = cgtUser();
+    cgtSetting(CartGate::SETTING_KEY, 'true');
+    $this->actingAs($user)->post(route('shop.cart.add'), ['product_variant_id' => $variant->id, 'qty' => 3]);
+    $item = CartItem::query()->firstOrFail();
+    cgtSetting(CartGate::SETTING_KEY, 'false');
+    app()->forgetInstance(CartGate::class);
+
+    $this->actingAs($user)->patch(route('shop.cart.update', $item), ['qty' => 4])
+        ->assertRedirect(route('shop.index'))
+        ->assertSessionHasErrors(['cart' => CartGate::CLOSED_MESSAGE]);
+    expect($item->fresh()->qty)->toBe(3);
+
+    $this->actingAs($user)->patch(route('shop.cart.update', $item), ['qty' => 2])->assertRedirect(route('shop.cart'));
+    expect($item->fresh()->qty)->toBe(2);
+
+    $this->actingAs($user)->delete(route('shop.cart.remove', $item))->assertRedirect(route('shop.cart'));
+    expect(DB::table('cart_items')->count())->toBe(0);
 });
