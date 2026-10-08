@@ -31,7 +31,7 @@
                 <h1 class="text-base sm:text-lg font-bold text-gray-900 truncate">{{ $isTaxInvoice ? 'Tax invoice' : 'Order summary' }}</h1>
             </div>
             <button type="button" onclick="window.print()"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-sm font-medium text-white transition-colors">
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-sm font-medium text-white transition-colors">
                 <x-lucide-upload class="w-4 h-4" />
                 Download / Print
             </button>

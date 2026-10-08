@@ -106,7 +106,7 @@
 
         <div class="flex items-center justify-between pt-2">
             <a href="{{ route('profile.password.show') }}" class="text-sm text-brand-700 hover:text-brand-800 font-medium">Change password →</a>
-            <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold shadow-sm transition-colors">Save changes</button>
+            <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm transition-colors">Save changes</button>
         </div>
     </form>
 
@@ -200,7 +200,7 @@
             <div class="flex items-center justify-between gap-3 pt-2">
                 <button type="button" onclick="document.getElementById('areteCentreModal').classList.add('hidden')"
                         class="text-sm text-gray-600 hover:text-gray-700">Cancel</button>
-                <button type="submit" class="px-5 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">Send verification code</button>
+                <button type="submit" class="px-5 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors">Send verification code</button>
             </div>
         </form>
     </div>
@@ -228,7 +228,7 @@
                        placeholder="••••••">
             </div>
             <div class="flex items-center justify-between gap-3">
-                <button type="submit" class="flex-1 px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">Confirm change</button>
+                <button type="submit" class="flex-1 px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors">Confirm change</button>
             </div>
         </form>
         <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm">
@@ -279,7 +279,7 @@
                        placeholder="••••••">
             </div>
             <div class="flex items-center justify-between gap-3">
-                <button type="submit" class="flex-1 px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">Confirm</button>
+                <button type="submit" class="flex-1 px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors">Confirm</button>
             </div>
         </form>
         <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm">

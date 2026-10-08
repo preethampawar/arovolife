@@ -48,7 +48,7 @@
                         <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="off"
                                class="mt-1 block w-32 rounded-lg border-gray-300 font-mono text-sm" title="The six-digit code the buyer received by email">
                     </label>
-                    <button type="submit" class="rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-4 py-2 text-sm">Hand over</button>
+                    <button type="submit" class="rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium px-4 py-2 text-sm">Hand over</button>
                 </form>
             </div>
             @if($errors->has('code') && session('handover_order') === $order->order_no)

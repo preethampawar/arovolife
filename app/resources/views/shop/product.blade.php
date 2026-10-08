@@ -164,7 +164,7 @@
                     </div>
                 </div>
                 <button type="submit"
-                    class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors shadow-md shadow-brand-500/20">
+                    class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors shadow-md shadow-brand-500/20">
                     <x-lucide-shopping-cart class="w-5 h-5" />
                     Add to Cart
                 </button>

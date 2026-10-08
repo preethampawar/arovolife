@@ -134,7 +134,7 @@
             @endif
         </div>
         @unless($isSponsorshipMode)
-            <button type="submit" class="px-3 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">Apply</button>
+            <button type="submit" class="px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors">Apply</button>
         @endunless
     </form>
 </div>
@@ -207,7 +207,7 @@
                 <ul id="treeSearchResults" class="absolute z-30 left-0 right-0 mt-1 max-h-72 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm hidden" role="listbox"></ul>
             </div>
             <button type="button" id="treeSearchBtn"
-                class="px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors whitespace-nowrap">Find</button>
+                class="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors whitespace-nowrap">Find</button>
         </div>
         <p id="treeSearchStatus" class="mt-1 text-[11px] text-gray-600 min-h-[1rem]" role="status" aria-live="polite"></p>
     </div>
@@ -249,10 +249,10 @@
     @endphp
     <span class="inline-flex items-center rounded-lg border border-gray-300 bg-white p-0.5 text-[11px] font-semibold">
         <a href="{{ $binaryHref }}"
-            class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ ! $isSponsorshipView ? 'bg-brand-700 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
+            class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ ! $isSponsorshipView ? 'bg-brand-600 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
             title="Genos placement tree (L/R)">Genos</a>
         <a href="{{ $directHref }}"
-            class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ $isSponsorshipView ? 'bg-brand-700 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
+            class="px-3 h-7 inline-flex items-center rounded-md transition-colors {{ $isSponsorshipView ? 'bg-brand-600 text-white' : 'text-gray-700 hover:bg-gray-50' }}"
             title="Sponsorship tree — distributors you directly introduced">Direct</a>
     </span>
 
@@ -378,7 +378,7 @@
             </p>
             <div class="flex items-stretch gap-2 mb-3">
                 <input id="inviteUrl" type="text" readonly value="" class="flex-1 min-w-0 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-xs font-mono text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-500" onclick="this.select()">
-                <button type="button" id="inviteCopyBtn" onclick="copyInviteUrl()" class="px-4 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">Copy</button>
+                <button type="button" id="inviteCopyBtn" onclick="copyInviteUrl()" class="px-4 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors">Copy</button>
             </div>
             <p class="text-[11px] text-slate-500 leading-relaxed">If the slot fills before they register, the link will redirect them to Contact Us.</p>
         </div>

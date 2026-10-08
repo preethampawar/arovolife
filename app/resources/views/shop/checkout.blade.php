@@ -504,7 +504,7 @@
         @endforeach
 
         <button type="submit" @disabled(! empty($stockShortfalls))
-           class="block w-full text-center py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand-700">
+           class="block w-full text-center py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand-700">
             Place Order
         </button>
         @if(($gatewayState ?? '') === \App\Modules\Payments\Services\PaymentGatewayResolver::STATE_RAZORPAY)

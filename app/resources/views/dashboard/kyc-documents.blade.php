@@ -88,7 +88,7 @@
                     <input type="file" name="document" accept="image/jpeg,image/png,application/pdf" required
                         class="text-xs text-gray-800 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold hover:file:bg-gray-200">
                     <button type="submit"
-                        class="px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-medium transition-colors">
+                        class="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-colors">
                         {{ $isPending ? 'Replace' : 'Upload' }}
                     </button>
                 </form>

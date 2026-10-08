@@ -86,7 +86,7 @@
                     <p class="text-lg text-gray-800 mb-8 max-w-lg">{{ $s['body'] }}</p>
                     <div class="flex flex-wrap items-center gap-4">
                         <a href="{{ $s['cta_primary']['url'] }}"
-                           class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors shadow-lg shadow-brand-500/30">
+                           class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors shadow-lg shadow-brand-500/30">
                             {{ $s['cta_primary']['label'] }}
                         </a>
                         <a href="{{ $s['cta_secondary']['url'] }}"

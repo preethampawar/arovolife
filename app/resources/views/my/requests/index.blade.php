@@ -15,7 +15,7 @@
             <h1 class="text-2xl font-bold text-gray-900">My requests</h1>
             <p class="text-sm text-gray-600">Formal requests about your own record, and where each one stands.</p>
         </div>
-        <a href="{{ route('my.requests.create') }}" class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800">New request</a>
+        <a href="{{ route('my.requests.create') }}" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">New request</a>
     </div>
 
     <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 mb-6 text-sm text-blue-900">

@@ -43,7 +43,7 @@
                     </div>
                 </div>
                 <a href="{{ route('compliance-documents.download', $doc->id) }}"
-                   class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-medium transition-colors">
+                   class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium transition-colors">
                     <x-lucide-download class="w-4 h-4" />
                     Download
                 </a>

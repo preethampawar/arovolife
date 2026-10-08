@@ -43,7 +43,7 @@
                     </button>
                     <button type="submit"
                         data-submit-btn
-                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 disabled:bg-gray-300 text-white text-sm font-semibold transition-colors">
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 text-white text-sm font-semibold transition-colors">
                         <span data-submit-label>Send</span>
                         <x-lucide-send class="w-4 h-4" />
                     </button>

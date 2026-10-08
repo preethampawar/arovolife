@@ -157,7 +157,7 @@
             <span class="font-bold text-lg text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format($finalTotal / 100, 2) }}</span>
         </div>
         <a href="{{ route('shop.checkout') }}"
-           class="block text-center w-full py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors">
+           class="block text-center w-full py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-colors">
             Proceed to Checkout
         </a>
         <p class="text-xs text-gray-600 mt-3 text-center">30-day return window on every order.</p>

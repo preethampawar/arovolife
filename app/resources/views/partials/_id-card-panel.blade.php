@@ -170,7 +170,7 @@
                             Cancel
                         </button>
                         <button type="button" id="idPhotoCropSave"
-                            class="flex-1 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-bold py-2.5 text-sm transition-colors">
+                            class="flex-1 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold py-2.5 text-sm transition-colors">
                             Save photo
                         </button>
                     </div>

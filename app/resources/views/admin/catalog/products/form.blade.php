@@ -268,7 +268,7 @@
         </div>
         @endif
         <input type="file" name="images[]" accept="image/jpeg,image/png" multiple
-            class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-700 file:text-white file:text-sm file:font-medium hover:file:bg-brand-800">
+            class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-600 file:text-white file:text-sm file:font-medium hover:file:bg-brand-800">
         <p class="text-xs text-gray-600">JPG or PNG, up to 5 MB each. Stored on S3. <x-help-tip text="Upload one or more gallery images shown on the product page. JPG or PNG, up to 5 MB each." /></p>
 
         <label class="block pt-2 border-t border-gray-100">

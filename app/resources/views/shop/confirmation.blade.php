@@ -72,7 +72,7 @@
     </div>
 
     <div class="flex justify-center gap-3">
-        <a href="{{ route('shop.index') }}" class="inline-block px-6 py-2.5 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors">Continue Shopping</a>
+        <a href="{{ route('shop.index') }}" class="inline-block px-6 py-2.5 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-colors">Continue Shopping</a>
     </div>
 </div>
 

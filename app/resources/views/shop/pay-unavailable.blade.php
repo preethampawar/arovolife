@@ -20,7 +20,7 @@
         @endif
         <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             @if ($reason === 'gateway')
-                <a href="{{ route('shop.pay', $order->order_no) }}" class="inline-block px-6 py-2.5 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm">Try again</a>
+                <a href="{{ route('shop.pay', $order->order_no) }}" class="inline-block px-6 py-2.5 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm">Try again</a>
             @endif
             <a href="{{ route('shop.index') }}" class="inline-block px-6 py-2.5 rounded-full border border-gray-300 text-gray-800 font-semibold text-sm hover:bg-gray-50">Back to the shop</a>
         </div>

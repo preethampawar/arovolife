@@ -111,7 +111,7 @@
 
         <div class="flex items-center justify-between pt-2">
             <a href="{{ route('profile.show') }}" class="text-sm text-gray-600 hover:text-gray-700">← Back to my profile</a>
-            <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold shadow-sm transition-colors">
+            <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm transition-colors">
                 {{ $hasBank ? 'Update bank details' : 'Add bank details' }}
             </button>
         </div>
@@ -139,7 +139,7 @@
                        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-center text-lg font-mono tracking-[0.4em] focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                        placeholder="••••••">
             </div>
-            <button type="submit" class="w-full px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">Confirm</button>
+            <button type="submit" class="w-full px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors">Confirm</button>
         </form>
         <div class="px-6 py-4 border-t border-gray-100 flex items-center justify-between text-sm">
             <form method="POST" action="{{ route('profile.bank.otp.resend') }}">

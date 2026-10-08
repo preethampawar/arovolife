@@ -187,7 +187,7 @@
             </div>
 
             <button type="submit"
-                    class="w-full rounded-lg bg-brand-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    class="w-full rounded-lg bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400">
                 Submit grievance
             </button>
         </form>

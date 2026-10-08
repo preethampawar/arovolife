@@ -14,7 +14,7 @@
 <div class="flex items-center gap-2 mb-6">
     <a href="{{ request()->fullUrlWithQuery(['tab' => 'pending', 'page' => null]) }}"
         class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors
-            {{ $currentTab === 'rejected' ? 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' : 'border-brand-500 bg-brand-700 text-white' }}">
+            {{ $currentTab === 'rejected' ? 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' : 'border-brand-500 bg-brand-600 text-white' }}">
         Pending review
         <span class="inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold
             {{ $currentTab === 'rejected' ? 'bg-gray-100 text-gray-700' : 'bg-brand-900 text-white' }}">
@@ -108,7 +108,7 @@
                     @else
                         <a href="{{ route('admin.kyc.show', $row->id) }}"
                             class="inline-flex items-center rounded-lg
-                                {{ $currentTab === 'rejected' ? 'bg-red-500 hover:bg-red-600' : 'bg-brand-700 hover:bg-brand-800' }}
+                                {{ $currentTab === 'rejected' ? 'bg-red-500 hover:bg-red-600' : 'bg-brand-600 hover:bg-brand-700' }}
                                 text-white font-medium px-3 py-1.5 text-xs transition-colors">
                             Review {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
                         </a>

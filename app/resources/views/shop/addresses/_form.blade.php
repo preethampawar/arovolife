@@ -73,7 +73,7 @@
                class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
     </div>
     <div class="md:col-span-2 flex items-center gap-3 pt-1">
-        <button type="submit" class="px-5 py-2.5 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
+        <button type="submit" class="px-5 py-2.5 rounded-full bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors">
             {{ $submitLabel ?? 'Save address' }}
         </button>
         @if(isset($cancelTarget))

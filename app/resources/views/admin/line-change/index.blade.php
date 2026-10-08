@@ -14,14 +14,14 @@
 <div class="flex items-center gap-2 mb-6">
     <a href="{{ request()->fullUrlWithQuery(['tab' => 'pending', 'page' => null]) }}"
         class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors
-            {{ $currentTab === 'decided' ? 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' : 'border-brand-500 bg-brand-700 text-white' }}">
+            {{ $currentTab === 'decided' ? 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' : 'border-brand-500 bg-brand-600 text-white' }}">
         Pending
         <span class="inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold
             {{ $currentTab === 'decided' ? 'bg-gray-100 text-gray-700' : 'bg-brand-900 text-white' }}">{{ $pendingCount }}</span>
     </a>
     <a href="{{ request()->fullUrlWithQuery(['tab' => 'decided', 'page' => null]) }}"
         class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors
-            {{ $currentTab === 'decided' ? 'border-brand-500 bg-brand-700 text-white' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' }}">
+            {{ $currentTab === 'decided' ? 'border-brand-500 bg-brand-600 text-white' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50' }}">
         Decided
         <span class="inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold
             {{ $currentTab === 'decided' ? 'bg-brand-900 text-white' : 'bg-gray-100 text-gray-700' }}">{{ $decidedCount }}</span>
@@ -60,7 +60,7 @@
                 <td class="px-5 py-3 text-gray-700">{{ ucfirst($row->status) }}</td>
                 <td class="px-5 py-3 text-right">
                     <a href="{{ route('admin.line-changes.show', $row->id) }}"
-                        class="inline-flex items-center rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-3 py-1.5 text-xs transition-colors">
+                        class="inline-flex items-center rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium px-3 py-1.5 text-xs transition-colors">
                         {{ $row->status === 'pending' ? 'Review →' : 'View →' }}
                     </a>
                 </td>

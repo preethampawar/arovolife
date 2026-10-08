@@ -57,7 +57,7 @@
                     <img src="{{ $banner->url() }}" alt="" class="w-full max-w-md aspect-[1520/350] object-cover rounded-lg border border-gray-200 mb-2">
                 @endif
                 <input type="file" name="image" accept="image/jpeg,image/png"
-                    class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-700 file:text-white file:text-sm file:font-medium hover:file:bg-brand-800">
+                    class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-brand-600 file:text-white file:text-sm file:font-medium hover:file:bg-brand-800">
                 <span class="block text-xs text-gray-600 mt-1">Upload to S3. Leave empty to keep the current image or use the URL below.</span>
             </div>
             <label class="block sm:col-span-2">

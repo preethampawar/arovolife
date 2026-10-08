@@ -131,7 +131,7 @@
             </div>
             <div class="flex items-center gap-2">
                 <a id="team-roster-download" href="#"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold transition">
+                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition">
                     <x-lucide-download class="w-4 h-4" />
                     Download Excel
                 </a>

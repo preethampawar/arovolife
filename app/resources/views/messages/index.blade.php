@@ -61,7 +61,7 @@
                             </td>
                             <td class="px-4 py-3 align-top text-right">
                                 <a href="{{ route('messages.show', ['user' => $otherId]) }}"
-                                   class="inline-flex items-center rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-3 py-1.5 text-xs transition-colors">
+                                   class="inline-flex items-center rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium px-3 py-1.5 text-xs transition-colors">
                                     Reply →
                                 </a>
                             </td>

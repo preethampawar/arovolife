@@ -228,7 +228,7 @@
         </label>
         @endforeach
         <button type="submit"
-            class="inline-flex items-center rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-5 py-2.5 text-sm transition-colors">
+            class="inline-flex items-center rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium px-5 py-2.5 text-sm transition-colors">
             Accept declarations
         </button>
     </form>

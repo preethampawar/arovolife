@@ -47,7 +47,7 @@
                     Download PDF
                 </button>
                 <button type="button" onclick="window.print()"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-sm font-medium text-white transition-colors">
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-sm font-medium text-white transition-colors">
                     <x-lucide-scale class="w-4 h-4" />
                     Print
                 </button>

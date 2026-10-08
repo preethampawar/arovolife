@@ -30,7 +30,7 @@
 <div class="mb-4 flex flex-wrap gap-2">
     @foreach($tabs as $value => $label)
         <a href="{{ route('admin.messaging.reports.index', ['status' => $value]) }}"
-           class="rounded-lg px-3 py-1.5 text-sm font-medium {{ $status === $value ? 'bg-brand-700 text-white' : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
+           class="rounded-lg px-3 py-1.5 text-sm font-medium {{ $status === $value ? 'bg-brand-600 text-white' : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
             {{ $label }}
             @if($value !== 'all')
                 <span class="ml-1 opacity-75">{{ IndianNumber::format($counts[$value] ?? 0) }}</span>

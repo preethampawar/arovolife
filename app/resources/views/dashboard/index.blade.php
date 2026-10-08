@@ -81,7 +81,7 @@
         <p class="text-amber-700 font-semibold mb-2">Registration not yet complete</p>
         <p class="text-sm text-gray-800 mb-4">Complete your registration to receive your ADN.</p>
         <a href="{{ route('register.orientation') }}"
-            class="inline-flex items-center gap-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-6 py-2.5 text-sm transition-colors">
+            class="inline-flex items-center gap-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium px-6 py-2.5 text-sm transition-colors">
             Continue Registration →
         </a>
     </div>

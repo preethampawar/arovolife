@@ -59,7 +59,7 @@
                 </div>
 
                 <button type="submit"
-                    class="btn-cta group w-full rounded-full bg-brand-700 hover:bg-brand-800 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
+                    class="btn-cta group w-full rounded-full bg-brand-600 hover:bg-brand-700 text-white py-3.5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-brand-300/40 lift-in shadow-lg shadow-brand-500/30 hover:shadow-xl hover:shadow-brand-500/40"
                     style="animation-delay: 380ms;">
                     <span class="inline-flex items-center justify-center gap-2.5">
                         Send reset link

@@ -25,7 +25,7 @@
             <label class="block text-xs text-gray-600 mb-1">To</label>
             <input type="date" name="to" value="{{ request('to') }}" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
         </div>
-        <button type="submit" class="px-4 py-1.5 bg-brand-700 text-white text-sm rounded-lg hover:bg-brand-800 transition-colors">Filter</button>
+        <button type="submit" class="px-4 py-1.5 bg-brand-600 text-white text-sm rounded-lg hover:bg-brand-700 transition-colors">Filter</button>
         <a href="{{ route('income.gsb-history', ['f' => 1]) }}" class="px-4 py-1.5 text-sm text-gray-600 hover:text-gray-800">Clear</a>
         <a href="{{ route('income.gsb-history.export', array_merge(request()->query(), ['format' => 'xlsx'])) }}" class="ml-auto px-4 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors font-medium">&#11015; Excel</a>
         <a href="{{ route('income.gsb-history.export', array_merge(request()->query(), ['format' => 'csv'])) }}" class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm text-gray-700 hover:bg-gray-50">CSV</a>

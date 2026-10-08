@@ -125,7 +125,7 @@
             class="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500"
             onkeydown="if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { this.form.submit(); }"></textarea>
         <button type="submit"
-            class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
+            class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors">
             Send
             <x-lucide-send class="w-4 h-4" />
         </button>
@@ -161,7 +161,7 @@
 
             <div class="flex justify-end gap-3">
                 <button type="button" id="reportCancel" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
-                <button type="submit" class="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">Send report</button>
+                <button type="submit" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700">Send report</button>
             </div>
         </form>
     </div>

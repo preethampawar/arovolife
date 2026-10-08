@@ -17,7 +17,7 @@
     $sizes = ['sm' => 'px-2.5 py-1.5 text-xs', 'md' => 'px-3.5 py-2 text-sm'];
 
     $variants = [
-        'primary'   => 'bg-brand-700 text-white shadow-sm hover:bg-brand-800',
+        'primary'   => 'bg-brand-600 text-white shadow-sm hover:bg-brand-700',
         'secondary' => 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900',
         'ghost'     => 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
         'danger'    => 'bg-red-600 text-white shadow-sm hover:bg-red-700',

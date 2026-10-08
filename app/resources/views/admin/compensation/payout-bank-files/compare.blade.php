@@ -30,7 +30,7 @@
         'unrecognised_status' => 'skipped — unrecognised status',
     ];
     $tabCls = fn (bool $active) => $active
-        ? 'px-3 py-1.5 rounded-lg bg-brand-700 text-white text-sm font-medium'
+        ? 'px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium'
         : 'px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50';
     $cell = function ($row, string $kind) use ($rupees, $resultLabels) {
         if ($row === null) {

@@ -38,7 +38,7 @@
     <div class="flex items-center gap-2">
         @foreach(['summary' => 'Summary', 'entries' => 'All entries'] as $key => $lbl)
         <a href="{{ route('admin.commerce.bv-ledger.index', array_merge($baseQuery, ['tab' => $key])) }}"
-           class="px-3 py-1 rounded-full text-xs font-medium border {{ $tab === $key ? 'bg-brand-700 text-white border-brand-500' : 'bg-white text-gray-700 border-gray-200 hover:border-brand-500' }}">
+           class="px-3 py-1 rounded-full text-xs font-medium border {{ $tab === $key ? 'bg-brand-600 text-white border-brand-500' : 'bg-white text-gray-700 border-gray-200 hover:border-brand-500' }}">
             {{ $lbl }}
         </a>
         @endforeach

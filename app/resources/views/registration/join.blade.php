@@ -69,7 +69,7 @@
         </div>
 
         <button type="submit" id="join-submit"
-            class="w-full rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand-700">
+            class="w-full rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-brand-700">
             Continue to Orientation →
         </button>
     </form>

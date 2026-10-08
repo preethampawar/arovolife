@@ -94,7 +94,7 @@
             </div>
 
             <button type="submit"
-                class="w-full sm:w-auto rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-6 py-2.5 text-sm transition-colors">
+                class="w-full sm:w-auto rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium px-6 py-2.5 text-sm transition-colors">
                 Resubmit for review
             </button>
         </form>

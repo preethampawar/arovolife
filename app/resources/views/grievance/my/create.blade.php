@@ -91,7 +91,7 @@
         </div>
 
         <button type="submit"
-                class="w-full rounded-lg bg-brand-700 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-800">
+                class="w-full rounded-lg bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700">
             Submit grievance
         </button>
     </form>

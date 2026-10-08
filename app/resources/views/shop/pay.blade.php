@@ -28,7 +28,7 @@
         {{-- Idle state: open the Razorpay Checkout modal. --}}
         <div id="pay-idle" @if($confirming) hidden @endif>
             <button type="button" id="pay-button"
-                class="block w-full text-center py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors">
+                class="block w-full text-center py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-colors">
                 Pay ₹{{ \App\Modules\Shared\Support\IndianNumber::format($order->total_paise / 100, 2) }} securely
             </button>
             <p class="text-xs text-gray-600 mt-3 text-center">
@@ -56,7 +56,7 @@
                 <span id="pay-retry-message">The payment was not completed. You have not been charged.</span>
             </div>
             <button type="button" id="pay-retry-button"
-                class="block w-full text-center py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white font-semibold text-sm transition-colors">
+                class="block w-full text-center py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-colors">
                 Try again
             </button>
             <a href="{{ route('shop.index') }}" class="block text-center text-sm text-gray-600 hover:underline mt-3">Back to the shop</a>

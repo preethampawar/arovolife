@@ -23,7 +23,7 @@
         <a href="{{ route('admin.staff.index', array_merge(request()->query(), ['role' => $r])) }}"
            class="px-3 py-1 rounded-full text-xs font-medium border transition-colors
                   {{ $isActive
-                     ? 'bg-brand-700 text-white border-brand-500'
+                     ? 'bg-brand-600 text-white border-brand-500'
                      : 'bg-white text-gray-700 border-gray-200 hover:border-brand-400' }}">
             {{ $r }}
         </a>

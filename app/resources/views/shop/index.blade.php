@@ -135,7 +135,7 @@
      pill; the rest are neutral outlined pills that tint on hover. --}}
 @php
     $pillBase   = 'shrink-0 px-4 py-2 rounded-full text-sm font-medium border transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-brand-500/40';
-    $pillActive = 'bg-brand-700 text-white border-brand-500 shadow-sm shadow-brand-500/30';
+    $pillActive = 'bg-brand-600 text-white border-brand-500 shadow-sm shadow-brand-500/30';
     $pillIdle   = 'bg-white text-gray-600 border-gray-200 hover:border-brand-300 hover:text-brand-800 hover:bg-brand-50';
 @endphp
 <div class="hidden lg:flex items-center gap-2 mb-8 overflow-x-auto pb-1">

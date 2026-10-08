@@ -19,7 +19,7 @@
             onclick="this.select()">
         <button type="button"
             onclick="navigator.clipboard.writeText('{{ $inviteUrl }}'); this.innerText='Copied'; setTimeout(()=>this.innerText='Copy', 1200);"
-            class="px-3 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold transition-colors">
+            class="px-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition-colors">
             Copy
         </button>
     </div>

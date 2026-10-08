@@ -44,7 +44,7 @@
                 <input type="hidden" name="product_variant_id" value="{{ $variant->id }}">
                 <input type="hidden" name="qty" value="1">
                 <button type="submit" aria-label="Add {{ $product->name }} to cart" title="Add to cart"
-                    class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-brand-700 hover:bg-brand-800 text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400">
+                    class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400">
                     <x-lucide-shopping-cart class="w-5 h-5" />
                 </button>
             </form>

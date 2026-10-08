@@ -54,7 +54,7 @@
                 <p class="text-xs uppercase tracking-wider text-gray-600 mb-1">Your Distributor Number (ADN)</p>
                 <p class="text-3xl font-bold font-mono text-gray-900 tracking-wider">{{ $result['adn'] }}</p>
                 <a href="{{ route('login') }}"
-                   class="inline-block mt-5 px-6 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold transition-colors">
+                   class="inline-block mt-5 px-6 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors">
                     Log in →
                 </a>
             </div>
@@ -85,7 +85,7 @@
                 </div>
 
                 <button type="submit"
-                    class="w-full rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-bold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    class="w-full rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                     Verify &amp; reveal my ADN
                 </button>
             </form>
@@ -136,7 +136,7 @@
                 </div>
 
                 <button type="submit"
-                    class="w-full rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-bold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    class="w-full rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500">
                     Find my ID
                 </button>
             </form>

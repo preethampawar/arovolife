@@ -78,7 +78,7 @@
                 <td class="px-4 py-3 text-gray-600 text-xs">{{ $row->reason ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
                     <a href="{{ route('admin.contact-inquiries.show', $row->id) }}"
-                        class="inline-flex items-center rounded-lg bg-brand-700 hover:bg-brand-800 text-white font-medium px-3 py-1.5 text-xs transition-colors">
+                        class="inline-flex items-center rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-medium px-3 py-1.5 text-xs transition-colors">
                         View {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}
                     </a>
                 </td>

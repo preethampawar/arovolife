@@ -46,7 +46,7 @@
 
         <div class="flex items-center justify-between pt-2">
             <a href="{{ route('profile.show') }}" class="text-sm text-gray-600 hover:text-gray-800">← Back to profile</a>
-            <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold shadow-sm transition-colors">Change password</button>
+            <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm transition-colors">Change password</button>
         </div>
     </form>
 </div>

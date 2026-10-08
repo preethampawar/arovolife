@@ -69,7 +69,7 @@
                 </p>
                 <p class="text-base text-gray-900 font-semibold mb-8">arovolife — Best in Class. Best for Life.</p>
                 <div class="flex flex-wrap items-center gap-3">
-                    <a href="{{ route('contact.show') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold shadow-lg shadow-brand-500/30 transition-colors">
+                    <a href="{{ route('contact.show') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-lg shadow-brand-500/30 transition-colors">
                         Become a Direct Seller →
                     </a>
                     <a href="{{ route('shop.index') }}" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white border border-gray-300 hover:border-brand-500 text-gray-700 hover:text-brand-800 text-sm font-semibold transition-colors">
@@ -505,7 +505,7 @@
                     <p class="text-sm text-brand-700 font-semibold group-hover:translate-x-1 transition-transform">Explore Products →</p>
                 </a>
 
-                <a href="{{ route('contact.show') }}" class="group rounded-2xl bg-brand-700 hover:bg-brand-800 text-white p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1 shadow-lg shadow-brand-500/30">
+                <a href="{{ route('contact.show') }}" class="group rounded-2xl bg-brand-600 hover:bg-brand-700 text-white p-6 text-left transition-all hover:shadow-xl hover:-translate-y-1 shadow-lg shadow-brand-500/30">
                     <p class="text-[11px] uppercase tracking-wider text-brand-100 font-semibold mb-1">For aspiring distributors</p>
                     <p class="text-xl font-bold mb-2">Turn Your Ambition into Opportunity</p>
                     <p class="text-sm text-brand-50 mb-3">Become an independent arovolife Direct Seller and begin a product-focused entrepreneurial journey. Develop your product knowledge, customer-service skills and leadership capabilities while building at your own pace.</p>
