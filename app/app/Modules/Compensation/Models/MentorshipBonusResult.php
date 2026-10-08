@@ -25,14 +25,22 @@ use Illuminate\Support\Carbon;
  * @property int $mb_tds_paise
  * @property int $mb_net_paise gross − repurchase deduction; what landed in the main wallet
  * @property int|null $sponsee_cumulative_gsb_paise legacy rate-ladder field; null on points-engine rows
- * @property string $status
- * @property string|null $failure_reason
+ * @property string $status credited | failed | repurchase_gated
+ * @property string|null $failure_reason on a repurchase_gated row: the verdict's reason (bv_short, wallet_nonzero, both)
  */
 final class MentorshipBonusResult extends Model
 {
     public const STATUS_CREDITED = 'credited';
 
     public const STATUS_FAILED = 'failed';
+
+    /**
+     * Client 2026-10-09: the sponsor was below the royalty rank and failed on
+     * their repurchase condition on the cut-off day. The row carries the points
+     * that would have accrued at ₹0 and the verdict's reason in failure_reason;
+     * the points were kept out of the day's denominator.
+     */
+    public const STATUS_REPURCHASE_GATED = 'repurchase_gated';
 
     protected $table = 'mentorship_bonus_results';
 

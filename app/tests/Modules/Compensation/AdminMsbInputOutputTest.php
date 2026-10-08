@@ -235,3 +235,47 @@ it('embeds the collapsible point-value formula strip inside each day block', fun
         ->assertOk()
         ->assertSee('border-gray-200" open>', false);
 });
+
+it('shows repurchase-gated points in a day banner and keeps them out of the earners\' total points (client 2026-10-09)', function () {
+    $date = today()->toDateString();
+    msbIoPool($date, 18, 4_000);
+    msbIoCredit('200000020', 'Eligible Sponsor', 18, 4_000, $date);
+
+    $gatedSponsor = Distributor::factory()->create(['adn' => '200000021']);
+    MentorshipBonusResult::create([
+        'sponsor_id' => $gatedSponsor->id,
+        'sponsee_id' => Distributor::factory()->create()->id,
+        'cutoff_date' => $date,
+        'sponsee_gsb_paise' => 200_000,
+        'slab' => 1,
+        'msb_points' => 21,
+        'msb_point_value_paise' => 4_000,
+        'mb_gross_paise' => 0,
+        'repurchase_deduction_paise' => 0,
+        'mb_admin_charge_paise' => 0,
+        'mb_tds_paise' => 0,
+        'mb_net_paise' => 0,
+        'status' => MentorshipBonusResult::STATUS_REPURCHASE_GATED,
+        'failure_reason' => 'bv_short',
+    ]);
+
+    $res = $this->actingAs(msbIoAdmin())
+        ->get(route('admin.compensation.msb-input-output.index'))
+        ->assertOk();
+
+    $res->assertSeeInOrder([
+        'sponsor below the royalty rank was',
+        'failed on their',
+        'repurchase condition:',
+        '21',
+        'Mentorship points not awarded and excluded from the day',
+    ], false);
+
+    // The gated sponsor is not an earner line, and the day's points foot to 18.
+    $res->assertDontSee('21 pts');
+    $res->assertViewHas('earners', fn (array $earners): bool => array_sum(array_map(
+        fn (stdClass $row): int => (int) $row->msb_points,
+        $earners[$date] ?? [],
+    )) === 18);
+    $res->assertViewHas('gated', fn (array $gated): bool => $gated[$date] === ['sponsors' => 1, 'msb_points' => 21]);
+});

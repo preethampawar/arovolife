@@ -42,8 +42,8 @@
                 </td>
                 <x-bonus-credit-cells td-class="px-3 py-2 text-right" :gross="$row->mb_gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->mb_net_paise" :is-credited="$row->status === 'credited'" />
                 <td class="px-3 py-2 text-center">
-                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $row->status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">
-                        {{ ucfirst($row->status) }}
+                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $row->status === 'credited' ? 'bg-green-100 text-green-700' : ($row->status === 'repurchase_gated' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600') }}">
+                        {{ $row->status === 'repurchase_gated' ? 'Repurchase gated' : ucfirst($row->status) }}
                     </span>
                 </td>
             </tr>

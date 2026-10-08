@@ -1279,6 +1279,37 @@ it('dates every mentorship bonus row on the distributor page (F62)', function ()
         ->assertSee('06 Sep 2026');
 });
 
+it('tells the sponsor why a repurchase-gated Mentorship day paid nothing, without internal names (client 2026-10-09)', function (): void {
+    ['user' => $user, 'distributorId' => $sponsorId] = incomeDistributor();
+    ['distributorId' => $sponseeId] = incomeDistributor();
+    $this->actingAs($user);
+
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    DB::table('mentorship_bonus_results')->insert([
+        'sponsor_id' => $sponsorId,
+        'sponsee_id' => $sponseeId,
+        'cutoff_date' => '2026-09-06',
+        'sponsee_gsb_paise' => 1_000_00,
+        'slab' => 1,
+        'msb_points' => 21,
+        'msb_point_value_paise' => 10_000,
+        'mb_gross_paise' => 0,
+        'mb_net_paise' => 0,
+        'status' => 'repurchase_gated',
+        'failure_reason' => 'bv_short',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $this->get(route('income.mentorship', ['f' => 1]))
+        ->assertOk()
+        ->assertSee('Not awarded')
+        ->assertSee('your repurchase condition was not met on this day')
+        ->assertDontSee('repurchase_gated')
+        ->assertDontSee('bv_short');
+});
+
 it('dates the wallet ledger by when the money was earned, and names its bonus month and payout batch (F63)', function (): void {
     ['user' => $user, 'distributorId' => $id] = incomeDistributor();
 

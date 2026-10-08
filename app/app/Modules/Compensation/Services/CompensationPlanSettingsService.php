@@ -92,6 +92,11 @@ final class CompensationPlanSettingsService
         // ₹120 = 12,000 paise. Pool ÷ points above this is capped; the excess
         // stays with the company as leftover.
         'comp.msb.point_value_cap_paise' => 12_000,
+        // Client 2026-10-09: from this rank the Mentorship Bonus is Mentorship
+        // Royalty and is paid even while the sponsor is failed on their
+        // repurchase condition. Below it, a failed sponsor earns no MB points
+        // that day. 1 switches the gate off (everyone is royalty).
+        'comp.msb.royalty_min_rank' => 6,
         'comp.gbb.pool_rate_bp' => 500,
         'comp.gbb.agp_cap' => 120,
         'comp.adc.rate_bp' => 300,
@@ -280,6 +285,28 @@ final class CompensationPlanSettingsService
         }
 
         return $cap;
+    }
+
+    /**
+     * The rank from which the Mentorship Bonus becomes Mentorship Royalty
+     * (client 2026-10-09: rank 6). A sponsor below it who is failed on their
+     * repurchase condition on a cut-off day earns no MB points that day; at or
+     * above it the accrual stands. 1 neutralises the gate.
+     *
+     * Fail-safe principle 1 / F-6: a value outside 1–9 stops the cut-off rather
+     * than being clamped — 0 would silently pay every failed sponsor, 10 would
+     * silently gate every rank.
+     *
+     * @throws \RuntimeException when the stored value is outside 1–9
+     */
+    public function msbRoyaltyMinRank(): int
+    {
+        $rank = $this->scalarInt('comp.msb.royalty_min_rank');
+        if ($rank < 1 || $rank > 9) {
+            throw new \RuntimeException('comp.msb.royalty_min_rank must be between 1 and 9; refusing to gate Mentorship with '.$rank);
+        }
+
+        return $rank;
     }
 
     /**

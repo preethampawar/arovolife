@@ -59,6 +59,7 @@
         $totalIncome = (int) $rows->sum('income_paise');
         $totalDeduction = (int) $rows->sum('deduction_paise');
         $totalCredited = (int) $rows->sum('credited_paise');
+        $gatedDay = $gated[$dateStr] ?? null;
     @endphp
     <x-ui.card flush>
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
@@ -80,6 +81,15 @@
         <div class="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800">
             No MSB score points were accrued on this day, so the pool went unspent and the day's point value is
             frozen at ₹0. A later retry of this day's cut-off therefore credits ₹0.
+        </div>
+        @endif
+
+        @if($gatedDay !== null && $gatedDay['sponsors'] > 0)
+        <div class="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800">
+            {{ \App\Modules\Shared\Support\IndianNumber::format($gatedDay['sponsors']) }}
+            {{ $gatedDay['sponsors'] === 1 ? 'sponsor below the royalty rank was' : 'sponsors below the royalty rank were' }} failed on their
+            repurchase condition: {{ \App\Modules\Shared\Support\IndianNumber::format($gatedDay['msb_points']) }}
+            Mentorship points not awarded and excluded from the day's points.
         </div>
         @endif
 

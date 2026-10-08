@@ -45,19 +45,93 @@ use Illuminate\Support\Facades\Log;
  */
 final class MentorshipBonusService
 {
+    /**
+     * Ids per `whereIn` while warming: a placeholder each, and MySQL refuses a
+     * prepared statement past 65,535 of them (R-90).
+     */
+    private const WARM_CHUNK = 500;
+
     public function __construct(
         private readonly WalletService $wallet,
         private readonly BvLedgerService $bvLedger,
         private readonly CompensationPlanSettingsService $plan,
         private readonly MsbDailyPoolService $pools,
+        private readonly IncomeEligibilityService $eligibility,
+        private readonly RepurchaseCycleService $cycles,
     ) {}
+
+    /**
+     * Warm, on THIS instance, everything the repurchase gate reads for the
+     * sponsors of $sponseeIds on $date: their repurchase cycles and their rank
+     * as of the date. One sponsorship query, one cycle query and one rank query
+     * per chunk instead of three per accrual. Strict accelerators — an id not
+     * warmed falls through to the live query.
+     *
+     * Also the nightly's first read of the royalty-rank setting: a value outside
+     * 1–9 throws here, before the MSB pool is frozen or any MB row is written, so
+     * the run fails whole (F-6) instead of one sponsor's accrual failing inside
+     * the per-accrual catch while everyone else is priced without them.
+     *
+     * @param  array<int, int>  $sponseeIds
+     *
+     * @throws \RuntimeException when comp.msb.royalty_min_rank is outside 1–9
+     */
+    public function warmSponsorsFor(array $sponseeIds, Carbon $date): void
+    {
+        // Start clean: the command is a process-lifetime singleton under the
+        // scheduler and the recompute replay, and an exception escaping the
+        // previous run (e.g. the MSB cap refusing to price) would otherwise
+        // leave that run's cycles and ranks here to be read as this run's.
+        $this->forgetSponsors();
+
+        $this->plan->msbRoyaltyMinRank();
+
+        if ($sponseeIds === []) {
+            return;
+        }
+
+        $sponsorIds = [];
+
+        foreach (array_chunk($sponseeIds, self::WARM_CHUNK) as $chunk) {
+            foreach (DB::table('sponsorship')->whereIn('distributor_id', $chunk)->pluck('sponsor_id') as $sponsorId) {
+                if ($sponsorId !== null) {
+                    $sponsorIds[(int) $sponsorId] = (int) $sponsorId;
+                }
+            }
+        }
+
+        $sponsorIds = array_values($sponsorIds);
+
+        if ($sponsorIds === []) {
+            return;
+        }
+
+        if ($this->eligibility->engineActive()) {
+            $this->eligibility->warmCycleCache($sponsorIds);
+        }
+
+        $this->cycles->warmRanksAsOf($sponsorIds, $date);
+    }
+
+    /** Release what {@see warmSponsorsFor()} loaded. */
+    public function forgetSponsors(): void
+    {
+        $this->eligibility->forgetCycleCache();
+        $this->cycles->forgetRanksAsOf();
+    }
 
     /**
      * Compute (without writing) what the sponsor of $sponseeId is owed for this
      * cut-off, in MSB score points. Returns null — and so contributes nothing
      * to the day's denominator — if the sponsee has no sponsor, did not earn
      * GSB, the sponsor is below the personal-BV gate, the matched slab carries
-     * no MSB points, or the sponsor was already credited for this date.
+     * no MSB points, or the sponsor was already credited (or gated) for this
+     * date.
+     *
+     * A sponsor below the royalty rank who is failed on their repurchase
+     * condition on the cut-off day is NOT null: the accrual comes back with
+     * repurchaseGated = true, so creditAccrual() records the verdict on a row
+     * while countsInDenominator() keeps the points out of the day's divisor.
      */
     public function accrueForSponsee(int $sponseeId, GsbCutoffResult $cutoffResult): ?MsbAccrual
     {
@@ -65,25 +139,26 @@ final class MentorshipBonusService
             return null;
         }
 
-        $owed = $this->sponsorPointsFor($sponseeId, (int) $cutoffResult->slab);
+        $owed = $this->sponsorPointsFor($sponseeId, (int) $cutoffResult->slab, $cutoffResult->cutoff_date);
 
         if ($owed === null) {
             return null;
         }
 
-        [$sponsorId, $points] = $owed;
-
-        if ($this->existingCredit($sponseeId, $cutoffResult, $points) !== null) {
+        if ($this->existingCredit($sponseeId, $cutoffResult, $owed['points']) !== null) {
             return null;
         }
 
         return new MsbAccrual(
-            sponsorId: $sponsorId,
+            sponsorId: $owed['sponsor_id'],
             sponseeId: $sponseeId,
             slab: (int) $cutoffResult->slab,
-            points: $points,
+            points: $owed['points'],
             sponseeGsbPaise: (int) $cutoffResult->gross_gsb_paise,
             cutoffDate: $cutoffResult->cutoff_date->toDateString(),
+            repurchaseGated: $owed['gated'],
+            gateReason: $owed['reason'],
+            sponsorRankAsOf: $owed['rank_as_of'],
         );
     }
 
@@ -91,21 +166,25 @@ final class MentorshipBonusService
      * The MSB points a sponsee's matched slab would earn their sponsor, from a
      * computation rather than a credited row — what the full cut-off reserves
      * in the day's denominator for a distributor whose settle it defers.
-     * 0 when the sponsee has no sponsor, the sponsor is under the min BV, or
-     * the slab carries no MSB points; the same gates accrueForSponsee() applies.
+     * 0 when the sponsee has no sponsor, the sponsor is under the min BV, the
+     * slab carries no MSB points, or the sponsor is repurchase-gated on
+     * $cutoffDate; the same gates accrueForSponsee() applies.
      */
-    public function reservedPointsFor(int $sponseeId, int $slab): int
+    public function reservedPointsFor(int $sponseeId, int $slab, Carbon $cutoffDate): int
     {
-        return $this->sponsorPointsFor($sponseeId, $slab)[1] ?? 0;
+        $owed = $this->sponsorPointsFor($sponseeId, $slab, $cutoffDate);
+
+        return $owed === null || $owed['gated'] ? 0 : $owed['points'];
     }
 
     /**
-     * The sponsor and the points they are owed for the sponsee matching $slab,
-     * or null when any gate shuts it.
+     * The sponsor, the points they are owed for the sponsee matching $slab and
+     * the repurchase gate's verdict for $cutoffDate, or null when any of the
+     * other gates shuts it.
      *
-     * @return array{0: int, 1: int}|null
+     * @return array{sponsor_id: int, points: int, gated: bool, reason: string|null, rank_as_of: int|null}|null
      */
-    private function sponsorPointsFor(int $sponseeId, int $slab): ?array
+    private function sponsorPointsFor(int $sponseeId, int $slab, Carbon $cutoffDate): ?array
     {
         // Look up the sponsee's sponsor.
         $sponsorId = DB::table('sponsorship')
@@ -133,7 +212,35 @@ final class MentorshipBonusService
             return null;
         }
 
-        return [(int) $sponsorId, $points];
+        // Client 2026-10-09: a sponsor who is failed on their repurchase
+        // condition on the cut-off day earns nothing from their sponsees' slabs
+        // — unless they hold the royalty rank (6+), where the accrual stands and
+        // only the daily royalty cap applies at credit time (creditAccrual()).
+        // Failed sub-royalty sponsors leave the day's denominator like the BV
+        // gate above: they can never be paid for the day. The rank is the one
+        // decided BEFORE the cut-off's month (F-2), so a later qualification
+        // never changes the answer for a day already judged.
+        // Task 4 records `sponsor_verdict_stale` when the sponsor has an open
+        // gsb_cutoff_deferrals row for the date (F-4).
+        $verdict = $this->eligibility->verdictAsOf((int) $sponsorId, $cutoffDate);
+        $gated = false;
+        $rankAsOf = null;
+
+        if (! $verdict->isEligible()) {
+            $royaltyMinRank = $this->plan->msbRoyaltyMinRank();
+            $rankAsOf = $this->cycles->rankAsOf((int) $sponsorId, $cutoffDate);
+            // 1 is the documented off switch (F-12: everyone is royalty), and
+            // that includes sponsors who have never ranked (rank 0).
+            $gated = $royaltyMinRank > 1 && $rankAsOf < $royaltyMinRank;
+        }
+
+        return [
+            'sponsor_id' => (int) $sponsorId,
+            'points' => $points,
+            'gated' => $gated,
+            'reason' => $verdict->reason,
+            'rank_as_of' => $rankAsOf,
+        ];
     }
 
     /**
@@ -147,6 +254,12 @@ final class MentorshipBonusService
      */
     public function creditAccrual(MsbAccrual $accrual, ?MsbDailyPool $pool): ?MentorshipBonusResult
     {
+        // A gated sponsor is recorded whether or not the day has a pool: the
+        // row is the frozen answer to "why was I not paid on this day" (F-3).
+        if ($accrual->repurchaseGated) {
+            return $this->recordGated($accrual, $pool);
+        }
+
         if ($pool === null) {
             $details = [
                 'sponsor_id' => $accrual->sponsorId,
@@ -245,6 +358,55 @@ final class MentorshipBonusService
     }
 
     /**
+     * Write the `repurchase_gated` row for a sponsor below the royalty rank who
+     * was failed on the cut-off day: the points that would have accrued, at ₹0,
+     * with the verdict's reason, plus its audit row. No wallet entry.
+     */
+    private function recordGated(MsbAccrual $accrual, ?MsbDailyPool $pool): MentorshipBonusResult
+    {
+        $royaltyMinRank = $this->plan->msbRoyaltyMinRank();
+
+        return DB::transaction(function () use ($accrual, $pool, $royaltyMinRank): MentorshipBonusResult {
+            $result = MentorshipBonusResult::create([
+                'sponsor_id' => $accrual->sponsorId,
+                'sponsee_id' => $accrual->sponseeId,
+                'cutoff_date' => $accrual->cutoffDate,
+                'sponsee_gsb_paise' => $accrual->sponseeGsbPaise,
+                'slab' => $accrual->slab,
+                'msb_points' => $accrual->points,
+                'msb_point_value_paise' => $pool?->point_value_paise,
+                'mb_rate_pct' => null,
+                'mb_gross_paise' => 0,
+                'repurchase_deduction_paise' => 0,
+                'mb_admin_charge_paise' => 0,
+                'mb_tds_paise' => 0,
+                'mb_net_paise' => 0,
+                'sponsee_cumulative_gsb_paise' => null,
+                'status' => MentorshipBonusResult::STATUS_REPURCHASE_GATED,
+                'failure_reason' => $accrual->gateReason,
+            ]);
+
+            AuditLog::create([
+                'action' => 'msb.credit.repurchase_gated',
+                'subject_type' => 'distributor',
+                'subject_id' => $accrual->sponsorId,
+                'details' => [
+                    'sponsor_id' => $accrual->sponsorId,
+                    'sponsee_id' => $accrual->sponseeId,
+                    'cutoff_date' => $accrual->cutoffDate,
+                    'msb_points' => $accrual->points,
+                    'slab' => $accrual->slab,
+                    'sponsor_rank_as_of' => (int) $accrual->sponsorRankAsOf,
+                    'royalty_min_rank' => $royaltyMinRank,
+                    'verdict_reason' => $accrual->gateReason,
+                ],
+            ]);
+
+            return $result;
+        });
+    }
+
+    /**
      * Accrue and credit in one call, pricing against the date's already-frozen
      * pool. This is the single-distributor path (CLI `--distributor=N` and the
      * admin retry); it never freezes a pool, because one distributor's points
@@ -255,16 +417,18 @@ final class MentorshipBonusService
         $accrual = $this->accrueForSponsee($sponseeId, $cutoffResult);
 
         if ($accrual === null) {
-            // Either nothing is owed, or it was already paid — in which case
-            // return the existing row so a retry reports what was credited.
-            return $this->creditedRowFor($sponseeId, $cutoffResult);
+            // Either nothing is owed, or it was already paid or gated — in which
+            // case return the existing row so a retry reports what was recorded.
+            return $this->recordedRowFor($sponseeId, $cutoffResult);
         }
 
         return $this->creditAccrual($accrual, $this->pools->poolForDate($cutoffResult->cutoff_date));
     }
 
     /**
-     * An MB row already credited for this sponsee/date, if any.
+     * An MB row already recorded for this sponsee/date — credited, or gated by
+     * the repurchase rule — if any. A gated row is final: the verdict it was
+     * judged with stands, and a re-run must not write a second row.
      *
      * A re-run against a DIFFERENT slab (admin corrected the GSB cut-off after
      * MB was credited) cannot be silently absorbed — the wallet credit already
@@ -272,13 +436,15 @@ final class MentorshipBonusService
      */
     private function existingCredit(int $sponseeId, GsbCutoffResult $cutoffResult, int $points): ?MentorshipBonusResult
     {
-        $alreadyCredited = $this->creditedRowFor($sponseeId, $cutoffResult);
+        $alreadyCredited = $this->recordedRowFor($sponseeId, $cutoffResult);
 
         if ($alreadyCredited === null) {
             return null;
         }
 
-        if ($alreadyCredited->msb_points !== null && (int) $alreadyCredited->msb_points !== $points) {
+        if ($alreadyCredited->status === MentorshipBonusResult::STATUS_CREDITED
+            && $alreadyCredited->msb_points !== null
+            && (int) $alreadyCredited->msb_points !== $points) {
             $mismatch = [
                 'sponsor_id' => $alreadyCredited->sponsor_id,
                 'sponsee_id' => $sponseeId,
@@ -298,12 +464,12 @@ final class MentorshipBonusService
         return $alreadyCredited;
     }
 
-    /** The credited MB row for this sponsee/date, if one exists. */
-    private function creditedRowFor(int $sponseeId, GsbCutoffResult $cutoffResult): ?MentorshipBonusResult
+    /** The credited or repurchase-gated MB row for this sponsee/date, if one exists. */
+    private function recordedRowFor(int $sponseeId, GsbCutoffResult $cutoffResult): ?MentorshipBonusResult
     {
         return MentorshipBonusResult::where('sponsee_id', $sponseeId)
             ->whereDate('cutoff_date', $cutoffResult->cutoff_date->toDateString())
-            ->where('status', MentorshipBonusResult::STATUS_CREDITED)
+            ->whereIn('status', [MentorshipBonusResult::STATUS_CREDITED, MentorshipBonusResult::STATUS_REPURCHASE_GATED])
             ->first();
     }
 }

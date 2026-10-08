@@ -86,6 +86,7 @@ final class SettingsSeeder extends Seeder
             'comp.gsb.topup_golive_date' => '1970-01-01',   // permissive default; production pins it in GsbSlabsSeeder
             'comp.msb.pool_rate_bp' => '300',               // 3% daily MSB pool (÷ the day's total MSB points)
             'comp.msb.point_value_cap_paise' => '12000',    // ₹120 ceiling per MB point (client 2026-10-09)
+            'comp.msb.royalty_min_rank' => '6',             // Mentorship Royalty from rank 6; below it a failed sponsor earns no MB (client 2026-10-09)
             'comp.gbb.pool_rate_bp' => '500',               // 5% of the month's company BV
             'comp.gbb.agp_cap' => '120',
             'comp.rank.envelope_bp' => '2000',              // 20% of company BV funds all nine rank pools

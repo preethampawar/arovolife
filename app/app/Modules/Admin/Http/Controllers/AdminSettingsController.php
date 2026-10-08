@@ -1288,6 +1288,17 @@ final class AdminSettingsController extends Controller
                 'max' => 1_000_000,
                 'default' => '12000',
             ],
+            'comp.msb.royalty_min_rank' => [
+                'group' => 'compensation_plan',
+                'feature' => MentorshipBonusFeature::class,
+                'label' => 'Mentorship Royalty from rank',
+                'description' => 'From this rank the Mentorship Bonus becomes Mentorship Royalty: it is paid even while the sponsor\'s repurchase condition is failed, subject to the daily royalty cap. Below it, a failed sponsor earns no MB points that day. Set to 1 to switch the gate off (every sponsor is treated as royalty). Must be between 1 and 9: any other value stops the cut-off instead of guessing.',
+                'impact' => 'Takes effect from the next daily cut-off; days already settled are unchanged (each gated row keeps the verdict it was judged with).',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 9,
+                'default' => '6',
+            ],
             'comp.gbb.pool_rate_bp' => [
                 'group' => 'compensation_plan',
                 'feature' => GrowthBoosterBonusFeature::class,

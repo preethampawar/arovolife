@@ -142,7 +142,7 @@ final class AdminMsbCalculationController extends Controller
             'q' => ['nullable', 'string', 'max:64'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:credited,failed'],
+            'status' => ['nullable', 'in:credited,failed,repurchase_gated'],
             'slab' => ['nullable', 'integer', 'min:1', 'max:7'],
         ]);
 

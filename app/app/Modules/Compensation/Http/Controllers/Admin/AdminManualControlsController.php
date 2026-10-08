@@ -166,7 +166,8 @@ final class AdminManualControlsController extends Controller
                         $msbOutcome = $mb === null
                             ? ['status' => 'skipped']   // no sponsor, gate failed, or no frozen pool
                             : [
-                                'status' => 'credited',
+                                // credited, or repurchase_gated (client 2026-10-09)
+                                'status' => $mb->status,
                                 'result_id' => $mb->id,
                                 'sponsor_id' => $mb->sponsor_id,
                                 'msb_points' => $mb->msb_points,

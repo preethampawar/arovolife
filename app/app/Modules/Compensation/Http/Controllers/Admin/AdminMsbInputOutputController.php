@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\GsbDailyPool;
+use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Support\ReportExport;
@@ -57,6 +58,7 @@ final class AdminMsbInputOutputController extends Controller
         return view('admin.compensation.msb-input-output.index', [
             'pools' => $pools,
             'earners' => $this->earners($dates),
+            'gated' => $this->gatedByDate($dates),
             'anchor' => $anchor,
             'day' => $day,
             'week' => $week,
@@ -240,6 +242,38 @@ final class AdminMsbInputOutputController extends Controller
             ->get()
             ->groupBy(fn (\stdClass $row) => Carbon::parse($row->cutoff_date)->toDateString())
             ->map(fn ($rows) => array_values($rows->all()))
+            ->all();
+    }
+
+    /**
+     * Per-day repurchase-gated Mentorship rows (client 2026-10-09): sponsors
+     * below the royalty rank who were failed on the cut-off day. Kept apart
+     * from the earners — their points were excluded from the day's
+     * denominator, so they must never foot into the day's total points.
+     *
+     * @param  list<string>  $dates
+     * @return array<string, array{sponsors: int, msb_points: int}> date → counts
+     */
+    private function gatedByDate(array $dates): array
+    {
+        if ($dates === []) {
+            return [];
+        }
+
+        return DB::table('mentorship_bonus_results')
+            ->where('status', MentorshipBonusResult::STATUS_REPURCHASE_GATED)
+            ->whereIn(DB::raw('DATE(cutoff_date)'), $dates)
+            ->groupBy('cutoff_date')
+            ->select('cutoff_date')
+            ->selectRaw('COUNT(DISTINCT sponsor_id) as sponsors')
+            ->selectRaw('COALESCE(SUM(msb_points), 0) as msb_points')
+            ->get()
+            ->mapWithKeys(fn (\stdClass $row): array => [
+                Carbon::parse($row->cutoff_date)->toDateString() => [
+                    'sponsors' => (int) $row->sponsors,
+                    'msb_points' => (int) $row->msb_points,
+                ],
+            ])
             ->all();
     }
 }
