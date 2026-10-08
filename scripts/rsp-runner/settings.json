@@ -109,7 +109,19 @@
       "mcp__claude_ai_Gmail",
       "mcp__claude_ai_Google_Drive",
       "mcp__claude-in-chrome",
-      "mcp__computer-use"
+      "mcp__computer-use",
+      "Bash(docker exec arovolife-rsp-app php artisan tinker:*)",
+      "Bash(docker exec arovolife-rsp-app php artisan serve:*)",
+      "Bash(git -c:*)",
+      "Bash(git diff --output:*)",
+      "Bash(git log --output:*)",
+      "Edit(**/.git/**)",
+      "Edit(//Users/preetham/Documents/arovolife/arovolife/arovolife-code/**)",
+      "Edit(//Users/preetham/.claude/**)",
+      "Edit(//Users/preetham/.ssh/**)",
+      "Read(//Users/preetham/.ssh/**)",
+      "Read(//Users/preetham/Documents/arovolife-prod-details/**)",
+      "Read(**/.env)"
     ]
   }
 }
