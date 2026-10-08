@@ -34,11 +34,17 @@ while [ $# -gt 0 ]; do
     --dry-run) MODE="dry" ;;
     --smoke) MODE="smoke" ;;
     --once) MODE="once" ;;
-    --task) shift; FORCE_TASK="$1"; MODE="once" ;;
+    --task) shift; FORCE_TASK="${1:-}"; MODE="once" ;;
     *) echo "unknown arg $1" >&2; exit 2 ;;
   esac
   shift
 done
+
+# A task id is digits, optionally joined by '+' (e.g. 8+9). Nothing else ever
+# reaches a prompt, a file name or a Python argument.
+if [ -n "$FORCE_TASK" ] && ! [[ "$FORCE_TASK" =~ ^[0-9]+(\+[0-9]+)*$ ]]; then
+  echo "invalid --task value: $FORCE_TASK" >&2; exit 2
+fi
 
 mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/$(date +%Y-%m-%d).log"
@@ -65,8 +71,10 @@ command -v claude >/dev/null || fail "claude CLI not on PATH"
 command -v docker >/dev/null || fail "docker not on PATH"
 command -v python3 >/dev/null || fail "python3 not on PATH"
 
-BRANCH="$(python3 -c "import json;print(json.load(open('$STATE'))['branch'])")"
-PLAN="$(python3 -c "import json;print(json.load(open('$STATE'))['plan'])")"
+# State is read with the path and keys passed as argv, never spliced into source.
+state_get() { python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))[sys.argv[2]])' "$STATE" "$1"; }
+BRANCH="$(state_get branch)"
+PLAN="$(state_get plan)"
 
 # --- one task -----------------------------------------------------------------
 run_task() {
@@ -129,7 +137,8 @@ PY
     echo "all tasks done"; notify "Complete" "All plan tasks done. Read docs/plans/rsp-reports/FINAL-QA-signoff.md and merge."; return 3
   fi
 
-  ATTEMPT="$(python3 -c "import json;s=json.load(open('$STATE'));print(int(s.get('attempts',{}).get('$TASK',0))+1)")"
+  [[ "$TASK" =~ ^[0-9]+(\+[0-9]+)*$ ]] || fail "state.json yielded an invalid task id"
+  ATTEMPT="$(python3 -c 'import json,sys;s=json.load(open(sys.argv[1]));print(int(s.get("attempts",{}).get(sys.argv[2],0))+1)' "$STATE" "$TASK")"
   if [ "$ATTEMPT" -gt 3 ]; then
     echo "Task $TASK already failed 3 times; refusing to loop"; echo "Task $TASK failed 3 attempts" > "$PAUSE"; notify "Paused" "Task $TASK failed three times"; return 2
   fi
@@ -189,7 +198,7 @@ PY
   notify "Task $TASK finished" "$OUTCOME"
 
   # Advanced?  Only then does the loop continue.
-  if python3 -c "import json,sys;s=json.load(open('$STATE'));sys.exit(0 if '$TASK' in s['done'] else 1)"; then
+  if python3 -c 'import json,sys;s=json.load(open(sys.argv[1]));sys.exit(0 if sys.argv[2] in s["done"] else 1)' "$STATE" "$TASK"; then
     echo "Task $TASK done"; return 0
   fi
   echo "Task $TASK not completed ($OUTCOME); stopping"; return 1

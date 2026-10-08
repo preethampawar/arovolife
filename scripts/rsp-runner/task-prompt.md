@@ -30,7 +30,10 @@ The user lands small UI changes and enhancements on `main` regularly. The runner
 | Lint | `docker exec arovolife-rsp-app vendor/bin/pint --dirty` |
 | Static analysis | `docker exec arovolife-rsp-app vendor/bin/phpstan analyse --no-progress --memory-limit=1G` (level 7 must pass) |
 | Migrate (forward only) | `docker exec arovolife-rsp-app php artisan migrate --force` |
-| Front-end build | from the worktree: `cd app && npm run build` (Tailwind needs a build; `view:clear` is not enough) |
+| Front-end build | exactly `cd app && npm run build` from the worktree root (Tailwind needs a build; `view:clear` is not enough). `node_modules` is installed; never run `npm install`/`npm ci`, never edit `package.json` or the Vite/Tailwind config. |
+| DB inspection | `docker exec arovolife-rsp-db mysql -uarovolife -psecret arovolife -e "<SQL>"` (this stack's disposable copy only) |
+
+Shell interpreters (`python3`, `node`, `bash -c`, `sh`), `rm`, `curl`, `docker run`, `git checkout/switch/merge/reset/push` and edits to `.env`, `docker/`, `.claude/` and `scripts/rsp-runner/run.sh|settings.json` are denied. Edit `scripts/rsp-runner/state.json` with the Edit tool. To delete a file you created by mistake, empty it and mention it in the report.
 | Views | `docker exec arovolife-rsp-app php artisan view:clear` |
 
 No PostToolUse hooks run in this session (project settings are not loaded), so nothing formats or analyses your edits automatically: run pint and phpstan yourself with the commands above before every review and every commit. Permission rules come from `scripts/rsp-runner/settings.json`; a refused command means the action is outside the guardrails, so find the allowed way (for example `docker exec arovolife-rsp-app ...`) instead of retrying.
@@ -136,7 +139,7 @@ Append one line to `docs/plans/rsp-reports/PROGRESS.md`: `| __DATE__ | Task __TA
 
 Commit the report (with the task commits if approved, alone if blocked).
 
-If a Gmail send tool is available, email the report body to the user at `urskp1980@gmail.com` with subject `[arovolife rsp-runner] Task __TASK__ — <outcome>`. If not available, skip silently; the file is the record.
+The committed report file is the record the user reads; the runner raises a macOS notification with its Outcome line. Do not send email or use any connector.
 
 ## Finish
 End with a one-paragraph summary: outcome, commits, next task. Then stop.

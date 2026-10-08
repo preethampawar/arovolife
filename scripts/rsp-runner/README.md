@@ -15,7 +15,7 @@ migrations drop columns `main` still reads, so the runner lives in:
 
 - git worktree `/Users/preetham/Documents/arovolife/arovolife/arovolife-rsp`
 - Docker project `arovolife-rsp` from `docker/docker-compose.rsp.yml`
-  (app `arovolife-rsp-app`, web http://localhost:8094, MySQL :3317, Redis :6389, Mailpit :8037)
+  (app `arovolife-rsp-app`, web http://localhost:8094, MySQL :3317, Redis :6389, Mailpit :8037 — all bound to 127.0.0.1)
 - its own DB volume `arovolife_rsp_dbdata`, seeded once from a dump of the dev DB
 
 Before every task the runner merges `main` (and `origin/main` when reachable)
@@ -52,7 +52,7 @@ Order: 1, 2, 3, 4, 5, 6, 7, 8+9 (one run), 10, 11, 13, 12.
 
 No blanket bypass. The session runs with `--permission-mode acceptEdits`,
 `--setting-sources user` and `--settings scripts/rsp-runner/settings.json`,
-which holds an explicit allow list and a deny list (`git push/merge/rebase`,
+which holds an exact-prefix allow list (only the `arovolife-rsp-*` containers) and a deny list (`git push/merge/rebase/checkout`, interpreters, `rm`, `docker run`, Gmail/Drive/Cloudways/GitHub/Razorpay connectors,
 `gh`, `curl`, `ssh`, `rm -rf`, `.env` edits, destructive artisan commands, a
 bare `php artisan test`, the user's `arovolife-app`/`arovolife-db` containers,
 Cloudways/GitHub/Razorpay MCPs). Project settings are deliberately not loaded:

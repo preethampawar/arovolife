@@ -53,7 +53,7 @@ services:
   web:
     image: nginx:1.27-alpine
     container_name: arovolife-rsp-web
-    ports: ["8094:80"]
+    ports: ["127.0.0.1:8094:80"]
     volumes:
       - ../app:/var/www/html:ro
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
@@ -70,7 +70,7 @@ services:
       MYSQL_USER: arovolife
       MYSQL_PASSWORD: secret
       TZ: Asia/Kolkata
-    ports: ["3317:3306"]
+    ports: ["127.0.0.1:3317:3306"]
     volumes:
       - rspdbdata:/var/lib/mysql
       - ./mysql/my.cnf:/etc/mysql/conf.d/arovolife.cnf:ro
@@ -84,7 +84,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: arovolife-rsp-redis
-    ports: ["6389:6379"]
+    ports: ["127.0.0.1:6389:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -95,8 +95,8 @@ services:
     image: axllent/mailpit:latest
     container_name: arovolife-rsp-mailpit
     ports:
-      - "1037:1025"
-      - "8037:8025"
+      - "127.0.0.1:1037:1025"
+      - "127.0.0.1:8037:8025"
     networks: [arovolife-rsp]
 
   queue:
