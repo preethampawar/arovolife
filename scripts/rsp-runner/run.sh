@@ -197,7 +197,9 @@ PY
 
 # --- main -----------------------------------------------------------------
 if [ "$MODE" != "loop" ]; then
-  run_task; rc=$?; [ $rc -eq 3 ] && exit 0; exit $rc
+  set +e; run_task; rc=$?; set -e
+  [ $rc -eq 3 ] && exit 0
+  exit $rc
 fi
 
 for i in $(seq 1 14); do
