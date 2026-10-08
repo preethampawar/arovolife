@@ -167,7 +167,7 @@ PY
 
   if [ "$MODE" = "smoke" ]; then
     local out
-    out="$(claude -p "Reply with exactly: RSP-RUNNER-OK" --model "$MODEL" "${PERMS[@]}" --output-format text --max-turns 1 2>&1 || true)"
+    out="$(claude -p "Reply with exactly: RSP-RUNNER-OK" --model "$MODEL" "${PERMS[@]}" --output-format text --max-turns 1 < /dev/null 2>&1 || true)"
     echo "smoke output: $out"
     echo "$out" | grep -q "RSP-RUNNER-OK" && { echo "smoke OK"; return 3; } || fail "smoke test did not get the expected reply"
   fi
@@ -175,7 +175,7 @@ PY
   notify "Task $TASK started" "attempt $ATTEMPT on $BRANCH"
   claude -p "$PROMPT" --model "$MODEL" "${PERMS[@]}" --output-format text \
     --append-system-prompt "You are running headless under a runner. There is no user to answer you. Never ask a question; decide and proceed within the guardrails in the prompt." \
-    > "$LOG_DIR/$TODAY.task-$TASK_SLUG.out" 2>&1 &
+    < /dev/null > "$LOG_DIR/$TODAY.task-$TASK_SLUG.out" 2>&1 &
   CLAUDE_PID=$!
   ( sleep $(( MAX_HOURS * 3600 )); kill -0 "$CLAUDE_PID" 2>/dev/null && { echo "watchdog: killing after ${MAX_HOURS}h"; kill "$CLAUDE_PID"; } ) &
   WATCHDOG=$!
