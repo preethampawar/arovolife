@@ -7,3 +7,4 @@ Order: 1, 2, 3, 4, 5, 6, 7, 8+9, 10, 11, 13, 12. One task per day. The user merg
 | Date | Task | Outcome | Commits / blocker |
 |---|---|---|---|
 | 2026-10-09 | Task 1 | APPROVED and committed | 900e46b7 fix(repurchase): the 30-day window is inclusive of the anchor day; report commit follows. Main-side: 3 stale tests + phpstan baseline drift noted, not fixed |
+| 2026-10-09 | Task 2 | APPROVED and committed | feat(msb): cap the daily MB point value at ₹120; report commit follows. Follow-up: settings form has no whole-rupee check on save (engine refuses, F-6) |

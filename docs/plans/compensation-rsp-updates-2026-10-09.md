@@ -341,7 +341,7 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 **Interfaces:**
 - Produces: `CompensationPlanSettingsService::msbPointValueCapPaise(): int` (default 12_000). `msb_daily_pools.point_value_cap_paise` (unsigned big int) and `raw_point_value_paise` (the uncapped floored value).
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 Append to `MsbDailyPoolServiceTest.php` (reuse the file's existing helper that seeds company BV for a date):
 
@@ -375,9 +375,9 @@ it('a negative-BV day freezes a zero value, never a negative one', function (): 
 
 (50L BV in paise is `5_000_000 * 100 = 500_000_000`; write the literal as `500_000_000`.)
 
-- [ ] **Step 2: Run** `php artisan test tests/Modules/Compensation/MsbDailyPoolServiceTest.php` → FAIL (unknown column / method).
+- [x] **Step 2: Run** `php artisan test tests/Modules/Compensation/MsbDailyPoolServiceTest.php` → FAIL (unknown column / method).
 
-- [ ] **Step 3: Setting, accessor, seeder, registry**
+- [x] **Step 3: Setting, accessor, seeder, registry**
 
 `SCALAR_DEFAULTS`: 
 ```php
@@ -397,7 +397,7 @@ Accessor:
 `SettingsSeeder`: `'comp.msb.point_value_cap_paise' => '12000',           // ₹120 ceiling per MB point`.
 `AdminSettingsController` registry (same shape as `comp.msb.pool_rate_bp`): group `compensation_plan`, feature `MentorshipBonusFeature::class`, label `MSB point value cap (paise)`, description `Highest rupee value one Mentorship Bonus point can be worth on a day. 12000 = ₹120. When the day's pool ÷ points exceeds it, every earner is paid at the cap and the difference stays with the company.`, impact `Lowers what Mentorship earners receive on strong days. Takes effect from the next daily cut-off.`, type `int`, min 0, max 1_000_000, default `'12000'`.
 
-- [ ] **Step 4: Migration + model**
+- [x] **Step 4: Migration + model**
 
 ```php
 return new class extends Migration
@@ -420,7 +420,7 @@ return new class extends Migration
 ```
 Add both to `MsbDailyPool::$fillable` and cast as `'integer'`.
 
-- [ ] **Step 5: Apply the cap in `freezePoolForDate()`** (guard first, then arithmetic, then write)
+- [x] **Step 5: Apply the cap in `freezePoolForDate()`** (guard first, then arithmetic, then write)
 
 ```php
         $capPaise = $this->plan->msbPointValueCapPaise();
@@ -438,9 +438,9 @@ Add both to `MsbDailyPool::$fillable` and cast as `'integer'`.
 ```
 Add `'raw_point_value_paise' => $rawValuePaise, 'point_value_cap_paise' => $capPaise,` to the `create([...])` and to `$details`. Registry entry: `min` 100 (₹1), not 0. Add a test: with the setting set to `0`, `freezePoolForDate()` throws and writes no `msb_daily_pools` row.
 
-- [ ] **Step 6: Run** the file → PASS. Add to `resources/help/compensation.md` under the Mentorship heading: "The day's point value is capped at ₹120 (setting *MSB point value cap*); the excess stays with the company."
+- [x] **Step 6: Run** the file → PASS. Add to `resources/help/compensation.md` under the Mentorship heading: "The day's point value is capped at ₹120 (setting *MSB point value cap*); the excess stays with the company."
 
-- [ ] **Step 7: Commit** `feat(msb): cap the daily MB point value at ₹120` with the compliance trailer.
+- [x] **Step 7: Commit** `feat(msb): cap the daily MB point value at ₹120` with the compliance trailer.
 
 ---
 
