@@ -88,6 +88,10 @@ final class CompensationPlanSettingsService
         // Mentorship Bonus. Divided by the day's total MSB score points to give
         // one point value for every earner. 300 bp = 3%.
         'comp.msb.pool_rate_bp' => 300,
+        // Client 2026-10-09: the highest MB point value the company pays.
+        // ₹120 = 12,000 paise. Pool ÷ points above this is capped; the excess
+        // stays with the company as leftover.
+        'comp.msb.point_value_cap_paise' => 12_000,
         'comp.gbb.pool_rate_bp' => 500,
         'comp.gbb.agp_cap' => 120,
         'comp.adc.rate_bp' => 300,
@@ -251,6 +255,31 @@ final class CompensationPlanSettingsService
     public function msbPoolRateBp(): int
     {
         return $this->scalarInt('comp.msb.pool_rate_bp');
+    }
+
+    /**
+     * Ceiling on the daily MSB point value (client 2026-10-09: ₹120).
+     * Fail-safe principle 1 / F-6: a cap under ₹1 would pay every sponsor ₹0 for
+     * the day and look like a quiet day, so it stops the engine instead of
+     * being clamped — a clamp pays a number nobody chose.
+     *
+     * Point values are whole rupees (Money::floorRupee), so the cap must be a
+     * whole rupee too — otherwise a capped day would pay a sub-rupee value
+     * that every display rounds away.
+     *
+     * @throws \RuntimeException when the stored value is below 100 paise or not a whole rupee
+     */
+    public function msbPointValueCapPaise(): int
+    {
+        $cap = $this->scalarInt('comp.msb.point_value_cap_paise');
+        if ($cap < 100) {
+            throw new \RuntimeException('comp.msb.point_value_cap_paise must be ≥ 100 paise (₹1); refusing to price the MSB pool with a cap of '.$cap);
+        }
+        if ($cap % 100 !== 0) {
+            throw new \RuntimeException('comp.msb.point_value_cap_paise must be a whole rupee (a multiple of 100 paise); refusing to price the MSB pool with a cap of '.$cap);
+        }
+
+        return $cap;
     }
 
     /**

@@ -1276,6 +1276,18 @@ final class AdminSettingsController extends Controller
                 'max' => 10000,
                 'default' => '300',
             ],
+            'comp.msb.point_value_cap_paise' => [
+                'group' => 'compensation_plan',
+                'feature' => MentorshipBonusFeature::class,
+                'label' => 'MSB point value cap (paise)',
+                'description' => 'Highest rupee value one Mentorship Bonus point can be worth on a day. 12000 = ₹120. When the day\'s pool ÷ points exceeds it, every earner is paid at the cap and the difference stays with the company. Must be a whole rupee (a multiple of 100) and at least 100 (₹1): any other value stops the cut-off instead of paying ₹0 or a sub-rupee value.',
+                'impact' => 'Lowers what Mentorship earners receive on strong days. Takes effect from the next daily cut-off; frozen days are unchanged (each day keeps the cap it was priced with).',
+                'display_unit' => 'rupees',
+                'type' => 'int',
+                'min' => 100,
+                'max' => 1_000_000,
+                'default' => '12000',
+            ],
             'comp.gbb.pool_rate_bp' => [
                 'group' => 'compensation_plan',
                 'feature' => GrowthBoosterBonusFeature::class,

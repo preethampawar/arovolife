@@ -20,10 +20,14 @@ use Illuminate\Support\Facades\Log;
  * is reused rather than reimplemented, so the two pools can never disagree on
  * what a day's BV was).
  *
- * Point value = pool ÷ the day's total MSB score points, floored to whole
- * rupees. There is no per-slab configured value and no cap any more: every
- * earner is paid their points × this one value, so the day's MSB spend is
- * exactly the 3% envelope minus the flooring remainder.
+ * Point value = min(cap, floor(pool ÷ the day's total MSB score points)), the
+ * floor taken to whole rupees. There is no per-slab configured value: every
+ * earner is paid their points × this one value. The cap is
+ * comp.msb.point_value_cap_paise (client 2026-10-09, default ₹120); on a day
+ * the uncapped value exceeds it, the excess stays with the company as
+ * leftover, so the day's MSB spend is at most the 3% envelope. Both the raw
+ * (uncapped, floored) value and the cap in force are frozen on the row, so a
+ * later setting change never moves a frozen day.
  *
  *   KP's worked example: 1,00,000 BV → ₹3,000 pool; two slab-1 matches (21+21)
  *   and one slab-2 match (18) = 60 points → ₹50/point → ₹1,050 + ₹1,050 + ₹900
@@ -69,6 +73,16 @@ final class MsbDailyPoolService
     public function freezePoolForDate(Carbon $date, int $totalPoints): MsbDailyPool
     {
         $existing = $this->poolForDate($date);
+        if ($existing !== null && ! $this->frozenBeforeDayEnd($existing)) {
+            return $existing; // The normal, final row — never recomputed.
+        }
+
+        // Client 2026-10-09: the point value never exceeds the company's cap.
+        // The accessor throws below ₹1 (F-6), so a bad setting stops the night
+        // here, before any row is written or a premature row replaced, instead
+        // of freezing a ₹0 value.
+        $capPaise = $this->plan->msbPointValueCapPaise();
+
         if ($existing !== null && ! $this->replacePrematureFreeze($existing)) {
             return $existing;
         }
@@ -79,7 +93,8 @@ final class MsbDailyPoolService
 
         // Floor to whole rupees (KP: 3,000 ÷ 60 = 50): truncate the per-point
         // paise value to a multiple of 100. max() guards a negative-BV day.
-        $valuePaise = Money::floorRupee($poolPaise, $totalPoints);
+        $rawValuePaise = Money::floorRupee($poolPaise, $totalPoints);
+        $valuePaise = min($rawValuePaise, $capPaise);
 
         $payoutPaise = $valuePaise * $totalPoints;
 
@@ -90,6 +105,8 @@ final class MsbDailyPoolService
             'pool_paise' => $poolPaise,
             'total_points' => $totalPoints,
             'point_value_paise' => $valuePaise,
+            'raw_point_value_paise' => $rawValuePaise,
+            'point_value_cap_paise' => $capPaise,
             'payout_paise' => $payoutPaise,
             'leftover_paise' => $poolPaise - $payoutPaise,
         ]);
@@ -101,6 +118,8 @@ final class MsbDailyPoolService
             'pool_paise' => $poolPaise,
             'total_points' => $totalPoints,
             'point_value_paise' => $valuePaise,
+            'raw_point_value_paise' => $rawValuePaise,
+            'point_value_cap_paise' => $capPaise,
             'payout_paise' => $payoutPaise,
             'leftover_paise' => $pool->leftover_paise,
         ];
@@ -132,8 +151,9 @@ final class MsbDailyPoolService
      */
     private function replacePrematureFreeze(MsbDailyPool $existing): bool
     {
-        $dayEnd = $existing->cutoff_date->copy()->addDay()->startOfDay();
-        if ($existing->created_at === null || $existing->created_at->gte($dayEnd)) {
+        // The explicit null check repeats what frozenBeforeDayEnd() already
+        // guarantees; it is here so static analysis knows created_at is set below.
+        if (! $this->frozenBeforeDayEnd($existing) || $existing->created_at === null) {
             return false; // Frozen after the day closed — the normal, final row.
         }
 
@@ -144,6 +164,8 @@ final class MsbDailyPoolService
             'pool_paise' => $existing->pool_paise,
             'total_points' => $existing->total_points,
             'point_value_paise' => $existing->point_value_paise,
+            'raw_point_value_paise' => $existing->raw_point_value_paise,
+            'point_value_cap_paise' => $existing->point_value_cap_paise,
         ];
 
         if (MentorshipBonusResult::whereDate('cutoff_date', $existing->cutoff_date->toDateString())
@@ -179,5 +201,12 @@ final class MsbDailyPoolService
         $existing->delete();
 
         return true;
+    }
+
+    /** Whether the row was written while its day was still in flight (a premature-freeze candidate). */
+    private function frozenBeforeDayEnd(MsbDailyPool $existing): bool
+    {
+        return $existing->created_at !== null
+            && $existing->created_at->lt($existing->cutoff_date->copy()->addDay()->startOfDay());
     }
 }

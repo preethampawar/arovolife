@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\MsbDailyPool;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\MsbDailyPoolService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -201,4 +202,90 @@ it('keeps a premature pool once a mentor was credited against it', function () {
     expect($kept->id)->toBe($premature->id);
     expect($kept->point_value_paise)->toBe(0);
     expect(DB::table('audit_log')->where('action', 'msb.pool.refrozen')->exists())->toBeFalse();
+});
+
+// Client 2026-10-09: the MSB point value is capped (default ₹120); the excess
+// stays with the company as leftover.
+it('caps the MSB point value at comp.msb.point_value_cap_paise (client example 1: 150 → 120)', function (): void {
+    // 50L BV × 3% = 1,50,000; 1,000 points → raw ₹150 → capped ₹120
+    seedCompanyBv(500_000_000, Carbon\Carbon::parse('2026-07-10 12:00:00'));
+    $pool = app(MsbDailyPoolService::class)->freezePoolForDate(Illuminate\Support\Carbon::parse('2026-07-10'), 1_000);
+
+    expect($pool->raw_point_value_paise)->toBe(15_000)
+        ->and($pool->point_value_paise)->toBe(12_000)
+        ->and($pool->point_value_cap_paise)->toBe(12_000)
+        ->and($pool->payout_paise)->toBe(12_000 * 1_000)
+        ->and($pool->leftover_paise)->toBe(15_000_000 - 12_000_000);
+
+    $details = json_decode((string) DB::table('audit_log')->where('action', 'msb.pool.frozen')->value('details'), true);
+    expect($details['raw_point_value_paise'])->toBe(15_000)
+        ->and($details['point_value_cap_paise'])->toBe(12_000);
+});
+
+it('leaves a sub-cap value alone (client example 2: 108.5383 → 108)', function (): void {
+    seedCompanyBv(500_000_000, Carbon\Carbon::parse('2026-07-11 12:00:00'));
+    $pool = app(MsbDailyPoolService::class)->freezePoolForDate(Illuminate\Support\Carbon::parse('2026-07-11'), 1_382);
+
+    expect($pool->point_value_paise)->toBe(10_800)->and($pool->raw_point_value_paise)->toBe(10_800);
+});
+
+it('a negative-BV day freezes a zero value, never a negative one', function (): void {
+    seedCompanyBv(-100_000_00, Carbon\Carbon::parse('2026-07-12 12:00:00'));
+    $pool = app(MsbDailyPoolService::class)->freezePoolForDate(Illuminate\Support\Carbon::parse('2026-07-12'), 40);
+
+    expect($pool->point_value_paise)->toBe(0)->and($pool->payout_paise)->toBe(0)->and($pool->leftover_paise)->toBe(0);
+});
+
+it('refuses to price the day when the cap setting is below ₹1 or not a whole rupee, writing nothing', function (string $cap): void {
+    seedCompanyBv(500_000_000, Carbon\Carbon::parse('2026-07-10 12:00:00'));
+    DB::table('settings')->updateOrInsert(['key' => 'comp.msb.point_value_cap_paise'], ['value' => $cap]);
+
+    expect(fn () => app(MsbDailyPoolService::class)->freezePoolForDate(Illuminate\Support\Carbon::parse('2026-07-10'), 1_000))
+        ->toThrow(RuntimeException::class);
+
+    expect(MsbDailyPool::count())->toBe(0);
+    expect(DB::table('audit_log')->where('action', 'msb.pool.frozen')->exists())->toBeFalse();
+})->with(['zero' => '0', 'under ₹1' => '99', 'not a whole rupee' => '12050']);
+
+// The cap is read BEFORE a premature row is replaced: a bad setting must not
+// delete the provisional row or write a refreeze audit row on its way to the error.
+it('refuses before touching a premature row — nothing deleted, no refreeze audit row', function (): void {
+    $date = Illuminate\Support\Carbon::parse('2026-08-24');
+
+    Illuminate\Support\Carbon::setTestNow($date->copy()->setTime(23, 27));
+    $premature = app(MsbDailyPoolService::class)->freezePoolForDate($date, 0);
+
+    seedCompanyBv(10_000_000, $date);
+    DB::table('settings')->updateOrInsert(['key' => 'comp.msb.point_value_cap_paise'], ['value' => '0']);
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+    app()->forgetInstance(MsbDailyPoolService::class);
+
+    Illuminate\Support\Carbon::setTestNow($date->copy()->addDay()->setTime(0, 10));
+    expect(fn () => app(MsbDailyPoolService::class)->freezePoolForDate($date, 60))
+        ->toThrow(RuntimeException::class);
+
+    expect(MsbDailyPool::count())->toBe(1);
+    expect(MsbDailyPool::first()->id)->toBe($premature->id);
+    expect(DB::table('audit_log')->where('action', 'msb.pool.refrozen')->exists())->toBeFalse();
+});
+
+it('freezes the cap on the row — a later setting change never moves a frozen day', function (): void {
+    seedCompanyBv(500_000_000, Carbon\Carbon::parse('2026-07-10 12:00:00'));
+    $date = Illuminate\Support\Carbon::parse('2026-07-10');
+
+    $first = app(MsbDailyPoolService::class)->freezePoolForDate($date, 1_000);
+
+    // The admin raises the cap afterwards; a fresh service (and a fresh
+    // settings cache) still returns the day exactly as it was frozen.
+    DB::table('settings')->updateOrInsert(['key' => 'comp.msb.point_value_cap_paise'], ['value' => '20000']);
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+    app()->forgetInstance(MsbDailyPoolService::class);
+
+    $second = app(MsbDailyPoolService::class)->freezePoolForDate($date, 1_000);
+
+    expect($second->id)->toBe($first->id);
+    expect($second->point_value_cap_paise)->toBe(12_000);
+    expect($second->point_value_paise)->toBe(12_000);
+    expect($second->raw_point_value_paise)->toBe(15_000);
+    expect(MsbDailyPool::count())->toBe(1);
 });

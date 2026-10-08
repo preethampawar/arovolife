@@ -31,7 +31,7 @@
             <ol class="space-y-1.5 font-mono text-gray-700">
                 <li><span class="text-gray-500">1.</span> MSB pool = Day total received BV × MSB pool %</li>
                 <li><span class="text-gray-500">2.</span> Total MSB points = Σ (each sponsor's points from their sponsees' slab matches)</li>
-                <li><span class="text-gray-500">3.</span> Point value = ⌊ MSB pool ÷ Total MSB points ⌋ <span class="font-sans text-gray-500">(floored to the whole rupee; remainder stays unspent)</span></li>
+                <li><span class="text-gray-500">3.</span> Point value = min( Cap, ⌊ MSB pool ÷ Total MSB points ⌋ ) <span class="font-sans text-gray-500">(floored to the whole rupee; above the cap every earner is paid the cap and the excess stays unspent)</span></li>
                 <li><span class="text-gray-500">4.</span> Sponsor income = Sponsor's MSB points × Point value</li>
             </ol>
         </div>
@@ -40,7 +40,14 @@
             <ol class="space-y-1.5 font-mono text-gray-700">
                 <li><span class="text-gray-500">1.</span> @bv($pool->company_bv_paise) × {{ $pct }} = <strong>{{ $inr($pool->pool_paise) }}</strong></li>
                 <li><span class="text-gray-500">2.</span> Total MSB points = <strong>{{ \App\Modules\Shared\Support\IndianNumber::format($pool->total_points) }}</strong></li>
-                @if($rawValue !== null)
+                @if($rawValue !== null && $pool->point_value_cap_paise !== null)
+                <li><span class="text-gray-500">3.</span> min( {{ $inr($pool->point_value_cap_paise, 0) }}, ⌊ {{ $inr($pool->pool_paise) }} ÷ {{ \App\Modules\Shared\Support\IndianNumber::format($pool->total_points) }} ⌋ = ⌊ {{ $inr($rawValue) }} ⌋ ) = <strong>{{ $inr($pool->point_value_paise, 0) }}</strong>
+                    @if($pool->raw_point_value_paise !== null && $pool->point_value_paise < $pool->raw_point_value_paise)
+                    <span class="font-sans text-amber-700">capped (raw {{ $inr($pool->raw_point_value_paise, 0) }})</span>
+                    @endif
+                </li>
+                <li><span class="text-gray-500">4.</span> e.g. 10 points → 10 × {{ $inr($pool->point_value_paise, 0) }} = <strong>{{ $inr(10 * $pool->point_value_paise, 0) }}</strong></li>
+                @elseif($rawValue !== null)
                 <li><span class="text-gray-500">3.</span> ⌊ {{ $inr($pool->pool_paise) }} ÷ {{ \App\Modules\Shared\Support\IndianNumber::format($pool->total_points) }} ⌋ = ⌊ {{ $inr($rawValue) }} ⌋ = <strong>{{ $inr($pool->point_value_paise, 0) }}</strong></li>
                 <li><span class="text-gray-500">4.</span> e.g. 10 points → 10 × {{ $inr($pool->point_value_paise, 0) }} = <strong>{{ $inr(10 * $pool->point_value_paise, 0) }}</strong></li>
                 @else
