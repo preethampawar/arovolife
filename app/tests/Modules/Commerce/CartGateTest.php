@@ -229,8 +229,10 @@ it('CGT-12: closed → quantity cannot go up, but a line can still be reduced, r
     cgtSetting(CartGate::SETTING_KEY, 'false');
     app()->forgetInstance(CartGate::class);
 
+    // Refused back to the cart page, whose summary already carries the
+    // closed message — never a silent bounce to the shop.
     $this->actingAs($user)->patch(route('shop.cart.update', $item), ['qty' => 4])
-        ->assertRedirect(route('shop.index'))
+        ->assertRedirect(route('shop.cart'))
         ->assertSessionHasErrors(['cart' => CartGate::CLOSED_MESSAGE]);
     expect($item->fresh()->qty)->toBe(3);
 
@@ -258,4 +260,21 @@ it('CGT-11: closed → staff reach checkout (empty cart sends them to the shop, 
     $this->actingAs(cgtUser('admin-finance'))
         ->get(route('shop.checkout'))
         ->assertRedirect(route('shop.index'));
+});
+
+it('CGT-13: closed → a guest following an Easy Purchase link lands on the shop and sees why', function (): void {
+    $variant = cgtVariant();
+    $sharer = cgtDistributorUser();
+    SharedCart::create([
+        'code' => 'CGTSHARE02', 'distributor_id' => $sharer->distributor->id, 'ref_adn' => $sharer->distributor->adn,
+        'created_by_user_id' => $sharer->id,
+        'items' => [['variant_id' => $variant->id, 'qty' => 1]],
+        'expires_at' => now()->addDays(30),
+    ]);
+    cgtSetting(CartGate::SETTING_KEY, 'false');
+
+    $this->followingRedirects()
+        ->get(route('shop.easy-cart', ['code' => 'CGTSHARE02']))
+        ->assertOk()
+        ->assertSee(CartGate::CLOSED_MESSAGE);
 });

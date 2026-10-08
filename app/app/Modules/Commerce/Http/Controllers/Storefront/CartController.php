@@ -141,16 +141,17 @@ final class CartController extends Controller
             ->with('added_variant_id', $variantId);
     }
 
-    public function update(Request $request, CartItem $item): RedirectResponse|JsonResponse
+    public function update(Request $request, CartItem $item): RedirectResponse
     {
         $validated = $request->validate([
             'qty' => ['required', 'integer', 'min:0', 'max:10'],
         ]);
 
         // Pre-launch gate refuses only an increase: reducing, removing and
-        // clearing stay open so an earlier cart can always be emptied.
-        if ((int) $validated['qty'] > $item->qty && ($closed = $this->closedResponse($request))) {
-            return $closed;
+        // clearing stay open so an earlier cart can always be emptied. Back
+        // to the cart, whose summary already explains the closed gate.
+        if ((int) $validated['qty'] > $item->qty && ! $this->cartGate->isOpenFor($request->user())) {
+            return redirect()->route('shop.cart')->withErrors(['cart' => CartGate::CLOSED_MESSAGE]);
         }
 
         $this->cartService->updateQty($item, (int) $validated['qty']);
