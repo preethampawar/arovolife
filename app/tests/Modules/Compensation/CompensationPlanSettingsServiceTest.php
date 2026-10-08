@@ -65,6 +65,35 @@ it('excludes Fortune ranks 6–9 by default and respects an override', function 
         ->toBe([5, 7, 8, 9]);
 });
 
+// ── Growth Booster (client 2026-10-09) ──────────────────────────────────────
+
+it('defaults the Growth Booster pool to 4% and the point value cap to ₹240', function () {
+    $plan = app(CompensationPlanSettingsService::class);
+
+    expect($plan->gbbPoolRateBp())->toBe(400);
+    expect($plan->gbbPointValueCapPaise())->toBe(24_000);
+    expect(method_exists($plan, 'gbbAgpCap'))->toBeFalse();   // per-distributor AGP cap retired
+});
+
+it('refuses a Growth Booster point value cap below ₹1 or not a whole rupee instead of clamping it (F-6)', function (string $value) {
+    DB::table('settings')->insert([
+        'key' => 'comp.gbb.point_value_cap_paise', 'value' => $value, 'version' => 1,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    expect(fn () => app(CompensationPlanSettingsService::class)->gbbPointValueCapPaise())
+        ->toThrow(RuntimeException::class, 'comp.gbb.point_value_cap_paise must be');
+})->with(['zero' => '0', 'ninety-nine' => '99', 'not a whole rupee' => '24050']);
+
+it('accepts ₹1 and the neutralise value as Growth Booster point value caps', function (string $value, int $expected) {
+    DB::table('settings')->insert([
+        'key' => 'comp.gbb.point_value_cap_paise', 'value' => $value, 'version' => 1,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    expect(app(CompensationPlanSettingsService::class)->gbbPointValueCapPaise())->toBe($expected);
+})->with(['₹1' => ['100', 100], 'neutralise' => ['100000000', 100_000_000]]);
+
 // ── Deduction helpers (basis-point math) ────────────────────────────────────
 
 it('computes TDS as a basis-point share of the supplied base', function () {

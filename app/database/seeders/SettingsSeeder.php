@@ -88,8 +88,8 @@ final class SettingsSeeder extends Seeder
             'comp.msb.point_value_cap_paise' => '12000',    // ₹120 ceiling per MB point (client 2026-10-09)
             'comp.msb.royalty_min_rank' => '6',             // Mentorship Royalty from rank 6; below it a failed sponsor earns no MB (client 2026-10-09)
             'comp.msb.royalty_failed_daily_cap_paise' => '360000', // ₹3,600/day Mentorship Royalty cap while failed (client 2026-10-09)
-            'comp.gbb.pool_rate_bp' => '500',               // 5% of the month's company BV
-            'comp.gbb.agp_cap' => '120',
+            'comp.gbb.pool_rate_bp' => '400',               // 4% of the month's company BV (client 2026-10-09)
+            'comp.gbb.point_value_cap_paise' => '24000',    // ₹240 ceiling per Growth Booster point (client 2026-10-09)
             'comp.rank.envelope_bp' => '2000',              // 20% of company BV funds all nine rank pools
             'comp.rank.pay_highest_rank_only' => 'true',    // exclusive rank pools (plan text); false = cumulative
             'comp.rank.aogo_points' => '5',                 // AO-GO points per grant (Rank-1 pool)

@@ -89,9 +89,11 @@ final class GbbMonthlyResult extends Model
         self::STATUS_REPURCHASE_WALLET_BLOCKED,
     ];
 
-    // AGP cap and per-slab AGP now live in the admin-editable `gsb_slabs` table
-    // (agp_per_occurrence column) and the `comp.gbb.agp_cap` setting — read them
-    // through CompensationPlanSettingsService, not constants on this model.
+    // Per-slab AGP lives in the admin-editable `gsb_slabs` table
+    // (agp_per_occurrence column) and the point value cap in the
+    // `comp.gbb.point_value_cap_paise` setting — read them through
+    // CompensationPlanSettingsService, not constants on this model. There is no
+    // per-distributor AGP cap (retired by the client 2026-10-09).
 
     protected $fillable = [
         'distributor_id',

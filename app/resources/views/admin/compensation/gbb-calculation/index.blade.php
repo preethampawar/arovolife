@@ -18,7 +18,7 @@
 @developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly Growth Booster Bonus (GBB) calculation table — one row per distributor per month.
-    AGP Points = slab occurrences earned that month. Point Value = the month's frozen pool ÷ total payable AGP.
+    AGP Points = slab occurrences earned that month. Point Value = the month's frozen pool ÷ total payable AGP, floored to the rupee and capped at the point value cap.
     "repurchase_wallet_blocked" = the distributor still held repurchase-wallet money at the last instant of the month, so the month is forfeited: gross ₹0, the AGP excluded from the denominator, never released. The repurchase cycle never withholds GBB — a failed day simply produced no slab match, so no AGP came from it.
     "repurchase_held" / "repurchase_suspended" are legacy rows only; no run writes them any more.
     Search by ADN or name, filter by month and status.
@@ -78,7 +78,7 @@
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         Point Value
-                        <x-help-tip text="The month's frozen point value: GBB pool ÷ total payable AGP, floored to the rupee. Blank (—) on rows recorded before this snapshot existed." />
+                        <x-help-tip text="The month's frozen point value: GBB pool ÷ total payable AGP, floored to the rupee and capped at the point value cap. Blank (—) on rows recorded before this snapshot existed." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600 font-medium">
                         AGP Value

@@ -102,8 +102,12 @@ final class CompensationPlanSettingsService
         // condition. ₹3,600 = 360,000 paise (₹1,08,000 a month); the excess is
         // withheld. Not applied while the condition is met.
         'comp.msb.royalty_failed_daily_cap_paise' => 360_000,
-        'comp.gbb.pool_rate_bp' => 500,
-        'comp.gbb.agp_cap' => 120,
+        // Client 2026-10-09: the GBB pool is 4% of the month's company BV.
+        'comp.gbb.pool_rate_bp' => 400,
+        // Client 2026-10-09: the highest GBB point value the company pays.
+        // ₹240 = 24,000 paise. Pool ÷ AGP above this is capped; the excess stays
+        // with the company as leftover. Replaced the per-distributor AGP cap.
+        'comp.gbb.point_value_cap_paise' => 24_000,
         'comp.adc.rate_bp' => 300,
         'comp.adc.cap_paise' => 10_000_000,
         // Rank Bonus envelope (KP 2026-08-05): share of company BV set aside for
@@ -350,9 +354,30 @@ final class CompensationPlanSettingsService
         return $this->scalarInt('comp.gbb.pool_rate_bp');
     }
 
-    public function gbbAgpCap(): int
+    /**
+     * Ceiling on the monthly Growth Booster point value (client 2026-10-09:
+     * ₹240). It replaced the retired per-distributor AGP cap.
+     * Fail-safe principle 1 / F-6: a cap under ₹1 would pay every earner ₹0 for
+     * the month and look like a quiet month, so it stops the freeze instead of
+     * being clamped — a clamp pays a number nobody chose.
+     *
+     * Point values are whole rupees (Money::floorRupee), so the cap must be a
+     * whole rupee too — otherwise a capped month would pay a sub-rupee value
+     * that every display rounds away.
+     *
+     * @throws \RuntimeException when the stored value is below 100 paise or not a whole rupee
+     */
+    public function gbbPointValueCapPaise(): int
     {
-        return $this->scalarInt('comp.gbb.agp_cap');
+        $cap = $this->scalarInt('comp.gbb.point_value_cap_paise');
+        if ($cap < 100) {
+            throw new \RuntimeException('comp.gbb.point_value_cap_paise must be ≥ 100 paise (₹1); refusing to price the Growth Booster pool with a cap of '.$cap);
+        }
+        if ($cap % 100 !== 0) {
+            throw new \RuntimeException('comp.gbb.point_value_cap_paise must be a whole rupee (a multiple of 100 paise); refusing to price the Growth Booster pool with a cap of '.$cap);
+        }
+
+        return $cap;
     }
 
     public function adcRateBp(): int

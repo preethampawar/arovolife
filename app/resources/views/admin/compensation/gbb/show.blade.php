@@ -21,12 +21,18 @@
             <x-help-tip text="The month's payable AGP — the denominator of the point value. AGP forfeited by the month-end repurchase wallet gate (repurchase_wallet_blocked) is excluded because it can never be paid, as are the legacy repurchase-suspended rows." />
             <strong class="text-gray-700">{{ $pool ? \App\Modules\Shared\Support\IndianNumber::format($pool->total_agp) : '—' }}</strong></span>
         <span class="text-gray-600">Point value
-            <x-help-tip text="Pool ÷ total payable AGP, floored to the whole rupee." />
+            <x-help-tip text="Pool ÷ total payable AGP, floored to the whole rupee, then capped at the point value cap." />
             <strong class="text-gray-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) : '—' }}</strong></span>
+        <span class="text-gray-600">Raw point value
+            <x-help-tip text="Pool ÷ total payable AGP, floored to the whole rupee, before the cap. Above the cap every earner is paid the cap and the difference stays with the company. — for months frozen before the cap existed." />
+            <strong class="text-gray-700">{{ $pool?->raw_point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->raw_point_value_paise / 100, 2) : '—' }}</strong></span>
+        <span class="text-gray-600">Cap
+            <x-help-tip text="The point value cap in force when this month was frozen. A later setting change never moves a frozen month." />
+            <strong class="text-gray-700">{{ $pool?->point_value_cap_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_cap_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-600">Payout
             <strong class="text-green-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->payout_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-600">Leftover
-            <x-help-tip text="The flooring remainder. Normally small and positive; a negative value means a row was credited whose AGP was not in the frozen denominator, and should be escalated." />
+            <x-help-tip text="The flooring remainder plus anything the point value cap kept with the company. Normally positive; a negative value means a row was credited whose AGP was not in the frozen denominator, and should be escalated." />
             <strong class="{{ $pool && $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-700' }}">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->leftover_paise / 100, 2) : '—' }}</strong></span>
     </div>
     @unless($pool)
@@ -72,7 +78,7 @@
                     <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-4 py-2 text-right text-gray-600">
-                        AGP <x-help-tip text="Arovolife Growth Points earned: Slab 1 = 12 AGP, Slab 2 = 5 AGP, Slab 3 = 2 AGP. Capped at 120." />
+                        AGP <x-help-tip text="Arovolife Growth Points earned: Slab 1 = 12 AGP, Slab 2 = 5 AGP, Slab 3 = 2 AGP. No per-distributor cap." />
                     </th>
                     <x-bonus-credit-head gross-label="Gross GBB" />
                     <th class="px-4 py-2 text-center text-gray-600">Status</th>

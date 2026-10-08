@@ -20,15 +20,22 @@ use Illuminate\Support\Facades\Log;
 /**
  * Growth Booster Bonus engine. Runs once per calendar month.
  *
- * POOL BASE — comp.gbb.pool_rate_bp (default 5%) of the month's company-wide
- * BV, read through GsbDailyPoolService::companyBvPaiseBetween() so GBB, GSB and
- * MSB can never disagree on what a period's BV was. (This replaced the old
- * "5% of order sales value" base: every bonus pool is a BV pool.)
+ * POOL BASE — comp.gbb.pool_rate_bp (default 4%, client 2026-10-09; was 5%)
+ * of the month's company-wide BV, read through
+ * GsbDailyPoolService::companyBvPaiseBetween() so GBB, GSB and MSB can never
+ * disagree on what a period's BV was. (This replaced the old "5% of order
+ * sales value" base: every bonus pool is a BV pool.)
  *
  * ENTITLEMENT — Arovolife Growth Points (AGP), earned from credited GSB
- * cut-offs: 1st slab → 12 AGP, 2nd → 5, 3rd → 2, 4th–7th → 0, capped per
- * distributor at comp.gbb.agp_cap (120). Per-slab AGP lives in the
- * admin-editable gsb_slabs table.
+ * cut-offs: 1st slab → 12 AGP, 2nd → 5, 3rd → 2, 4th–7th → 0. There is no
+ * per-distributor AGP cap (the 120 cap was retired by the client 2026-10-09).
+ * Per-slab AGP lives in the admin-editable gsb_slabs table.
+ *
+ * POINT VALUE CAP — ⌊pool ÷ total AGP⌋ is capped at
+ * comp.gbb.point_value_cap_paise (client 2026-10-09, default ₹240). Both the
+ * raw floored value and the cap in force are frozen on the pool row; the
+ * capped difference stays with the company as leftover. A cap under ₹1 stops
+ * the freeze before anything is written (F-6).
  *
  * RANK GATE — GBB rewards distributors who are still building. Anyone who held
  * a QUALIFIED rank in the PREVIOUS month is excluded outright: no AGP counted,
@@ -115,12 +122,20 @@ final class GrowthBoosterBonusService
 
         $pool = GbbMonthlyPool::where('month_start', $yearMonth)->first();
 
-        if ($pool !== null && $this->replacePrematureFreeze($pool, $monthEnd)) {
-            $pool = null;
-        }
+        if ($pool === null || $this->frozenBeforeMonthClosed($pool, $monthEnd)) {
+            // Client 2026-10-09: the point value never exceeds the company's
+            // cap. The accessor throws below ₹1 (F-6), so a bad setting stops
+            // the run here, before any row is written or a premature pool
+            // replaced, instead of freezing a ₹0 value.
+            $capPaise = $this->plan->gbbPointValueCapPaise();
 
-        if ($pool === null) {
-            $pool = $this->freezeMonth($monthStart, $monthEnd, $yearMonth);
+            if ($pool !== null && $this->replacePrematureFreeze($pool, $monthEnd)) {
+                $pool = null;
+            }
+
+            if ($pool === null) {
+                $pool = $this->freezeMonth($monthStart, $monthEnd, $yearMonth, $capPaise);
+            }
         }
 
         return $this->creditFromFrozenPool($monthStart, $monthEnd, $yearMonth, $pool);
@@ -191,10 +206,18 @@ final class GrowthBoosterBonusService
      * Freeze the month: pass 1, then the pool row and every roster row, in one
      * transaction. Nothing is credited here — pass 2 does that from what this
      * wrote.
+     *
+     * @param  int  $capPaise  comp.gbb.point_value_cap_paise, read by the caller before any write
      */
-    private function freezeMonth(Carbon $monthStart, Carbon $monthEnd, string $yearMonth): GbbMonthlyPool
+    private function freezeMonth(Carbon $monthStart, Carbon $monthEnd, string $yearMonth, int $capPaise): GbbMonthlyPool
     {
-        return DB::transaction(function () use ($monthStart, $monthEnd, $yearMonth): GbbMonthlyPool {
+        // Defence in depth: the accessor already refuses this, but a cap under
+        // ₹1 must never reach the transaction (F-6).
+        if ($capPaise < 100) {
+            throw new \RuntimeException('comp.gbb.point_value_cap_paise must be at least 100 paise (₹1); refusing to freeze the Growth Booster pool for '.$yearMonth);
+        }
+
+        return DB::transaction(function () use ($monthStart, $monthEnd, $yearMonth, $capPaise): GbbMonthlyPool {
             $roster = $this->resolveRoster($monthStart, $monthEnd);
             $totalAgp = $roster->totalAgp();
 
@@ -204,8 +227,12 @@ final class GrowthBoosterBonusService
 
             // Floor the per-AGP value to whole rupees: truncate to a multiple of
             // 100 paise. max() guards a refund-heavy (negative-BV) month, where
-            // intdiv() truncates toward zero.
-            $valuePaise = Money::floorRupee($poolPaise, $totalAgp);
+            // intdiv() truncates toward zero. Then cap it (client 2026-10-09):
+            // the leftover below is computed from the CAPPED value, so the
+            // capped difference stays with the company and
+            // Σ gross + leftover = pool still holds.
+            $rawValuePaise = Money::floorRupee($poolPaise, $totalAgp);
+            $valuePaise = min($rawValuePaise, $capPaise);
 
             $payoutPaise = $valuePaise * $totalAgp;
 
@@ -216,6 +243,8 @@ final class GrowthBoosterBonusService
                 'pool_paise' => $poolPaise,
                 'total_agp' => $totalAgp,
                 'point_value_paise' => $valuePaise,
+                'raw_point_value_paise' => $rawValuePaise,
+                'point_value_cap_paise' => $capPaise,
                 'payout_paise' => $payoutPaise,
                 'leftover_paise' => $poolPaise - $payoutPaise,
             ]);
@@ -309,6 +338,8 @@ final class GrowthBoosterBonusService
             'pool_paise' => (int) $pool->pool_paise,
             'total_agp' => (int) $pool->total_agp,
             'point_value_paise' => (int) $pool->point_value_paise,
+            'raw_point_value_paise' => $pool->raw_point_value_paise,
+            'point_value_cap_paise' => $pool->point_value_cap_paise,
             'payout_paise' => (int) $pool->payout_paise,
             'leftover_paise' => (int) $pool->leftover_paise,
         ];
@@ -354,8 +385,7 @@ final class GrowthBoosterBonusService
      */
     private function replacePrematureFreeze(GbbMonthlyPool $existing, Carbon $monthEnd): bool
     {
-        $monthClosedAt = $monthEnd->copy()->addDay()->startOfDay();
-        if ($existing->created_at === null || $existing->created_at->gte($monthClosedAt)) {
+        if (! $this->frozenBeforeMonthClosed($existing, $monthEnd) || $existing->created_at === null) {
             return false; // Frozen after the month closed — the normal, final row.
         }
 
@@ -366,6 +396,8 @@ final class GrowthBoosterBonusService
             'pool_paise' => $existing->pool_paise,
             'total_agp' => $existing->total_agp,
             'point_value_paise' => $existing->point_value_paise,
+            'raw_point_value_paise' => $existing->raw_point_value_paise,
+            'point_value_cap_paise' => $existing->point_value_cap_paise,
         ];
 
         $results = GbbMonthlyResult::where('year_month', $existing->month_start);
@@ -423,6 +455,17 @@ final class GrowthBoosterBonusService
         $existing->delete();
 
         return true;
+    }
+
+    /**
+     * Was this pool frozen before its month had closed? Such a row is a
+     * candidate for {@see replacePrematureFreeze()}, so a run reaching it may
+     * re-freeze the month and must read the cap first.
+     */
+    private function frozenBeforeMonthClosed(GbbMonthlyPool $pool, Carbon $monthEnd): bool
+    {
+        return $pool->created_at !== null
+            && $pool->created_at->lt($monthEnd->copy()->addDay()->startOfDay());
     }
 
     // ---------------------------------------------------------------- pass 2
@@ -713,8 +756,8 @@ final class GrowthBoosterBonusService
     }
 
     /**
-     * Build a map of distributor_id → capped AGP for the month, from credited
-     * GSB cut-offs in slabs 1–3.
+     * Build a map of distributor_id → AGP for the month, from credited GSB
+     * cut-offs in slabs 1–3.
      *
      * @return Collection<int, int>
      */
@@ -728,7 +771,7 @@ final class GrowthBoosterBonusService
             ->groupBy('distributor_id', 'slab')
             ->get();
 
-        /** @var Collection<int, int> $agpMap distributor_id → raw (pre-cap) AGP */
+        /** @var Collection<int, int> $agpMap distributor_id → AGP */
         $agpMap = collect();
 
         $agpBySlab = $this->plan->agpBySlab();
@@ -739,9 +782,8 @@ final class GrowthBoosterBonusService
             $agpMap[$distributorId] = ($agpMap[$distributorId] ?? 0) + ($agpPerOccurrence * (int) $row->occurrences);
         }
 
-        // Apply per-distributor cap.
-        $cap = $this->plan->gbbAgpCap();
-
-        return $agpMap->map(fn (int $agp) => min($agp, $cap));
+        // No per-distributor cap since the client's 2026-10-09 change: the point
+        // value is capped instead, at freeze time.
+        return $agpMap;
     }
 }

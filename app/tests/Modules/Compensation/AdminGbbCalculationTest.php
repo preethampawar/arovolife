@@ -410,8 +410,12 @@ it('shows the frozen month header and the AGP point-value formula with the month
     $res->assertSee('GBB pool (5%)');
     $res->assertSee('₹5,000.00');
     $res->assertSee('How the AGP point value is calculated');
-    $res->assertSee('Point value = ⌊ GBB pool ÷ Total AGP ⌋');
+    $res->assertSee('Point value = min( Cap, ⌊ GBB pool ÷ Total AGP ⌋ )');
+    // A month frozen before the cap existed keeps the uncapped worked line and
+    // shows "—" for the raw value and the cap — never throws.
     $res->assertSee('⌊ ₹5,000.00 ÷ 20 ⌋ = ⌊ ₹250.00 ⌋ = <strong>₹250</strong>', false);
+    $res->assertSee('Raw point value <strong class="text-gray-700">—</strong>', false);
+    $res->assertSee('Cap <strong class="text-gray-700">—</strong>', false);
     $res->assertSee('GBBAAA');
 
     // Unfiltered: one block per month among the rows on the page.
@@ -419,6 +423,35 @@ it('shows the frozen month header and the AGP point-value formula with the month
         ->get(route('admin.compensation.gbb-calculation.index'))
         ->assertOk()
         ->assertSee('How the AGP point value is calculated');
+});
+
+it('shows the GBB cap in the worked line and flags a capped month', function () {
+    $alice = gbbReportDistributor('GBBCAP', 'Alice');
+    makeGbbRow($alice, 125, 24_000, 3_000_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
+
+    // Client example 1 (2026-10-09): ₹2,00,000 ÷ 625 = ₹320 → capped at ₹240.
+    GbbMonthlyPool::create([
+        'month_start' => '2026-07-01',
+        'company_bv_paise' => 500_000_000,
+        'pool_rate_bp' => 400,
+        'pool_paise' => 20_000_000,
+        'total_agp' => 625,
+        'point_value_paise' => 24_000,
+        'raw_point_value_paise' => 32_000,
+        'point_value_cap_paise' => 24_000,
+        'payout_paise' => 15_000_000,
+        'leftover_paise' => 5_000_000,
+    ]);
+
+    $res = $this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb-calculation.index', ['month' => '2026-07']))
+        ->assertOk();
+
+    $res->assertSee('GBB pool (4%)');
+    $res->assertSee('min( ₹240, ⌊ ₹2,00,000.00 ÷ 625 ⌋ = ⌊ ₹320.00 ⌋ ) = <strong>₹240</strong>', false);
+    $res->assertSee('capped (raw ₹320)');
+    $res->assertSee('Raw point value <strong class="text-gray-700">₹320.00</strong>', false);
+    $res->assertSee('Cap <strong class="text-gray-700">₹240.00</strong>', false);
 });
 
 it('shows the repurchase deduction per row and counts only credited rows in the credited-to-wallets card — never TDS', function () {

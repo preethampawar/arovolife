@@ -645,7 +645,7 @@ Then add `'sponsor_repurchase_failed' => $sponsorFailed, 'royalty_cap_withheld_p
 **Interfaces:**
 - Produces: `gbbPointValueCapPaise(): int` (default 24_000); `gbb_monthly_pools.raw_point_value_paise`, `point_value_cap_paise`. `gbbAgpCap()` is **removed** — grep `gbbAgpCap\|agp_cap` across `app/`, `resources/`, `tests/`, `database/` and remove every use.
 
-- [ ] **Step 1: Failing tests** (use the file's existing helper that seeds credited slab cut-offs for a distributor and the company-BV helper):
+- [x] **Step 1: Failing tests** (use the file's existing helper that seeds credited slab cut-offs for a distributor and the company-BV helper):
 
 ```php
 it('caps the GBB point value at ₹240 (client example 1: 320 → 240)', function (): void {
@@ -665,9 +665,9 @@ it('no longer caps a single distributor\'s AGP at 120', function (): void {
 });
 ```
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Settings.** `SCALAR_DEFAULTS`: `'comp.gbb.pool_rate_bp' => 400,` remove `'comp.gbb.agp_cap'`, add `'comp.gbb.point_value_cap_paise' => 24_000,`. `SettingsSeeder`: `'400'`, remove `agp_cap`, add `'comp.gbb.point_value_cap_paise' => '24000',`. Registry: pool rate description `… 400 = 4%.`, default `'400'`; replace the `agp_cap` entry with `comp.gbb.point_value_cap_paise` (label `Growth Booster point value cap (paise)`, description `Highest rupee value one Growth Booster point can be worth in a month. 24000 = ₹240. Pool ÷ points above it is capped and the difference stays with the company.`, min 0, max 1_000_000, default `'24000'`). Accessor:
+- [x] **Step 3: Settings.** `SCALAR_DEFAULTS`: `'comp.gbb.pool_rate_bp' => 400,` remove `'comp.gbb.agp_cap'`, add `'comp.gbb.point_value_cap_paise' => 24_000,`. `SettingsSeeder`: `'400'`, remove `agp_cap`, add `'comp.gbb.point_value_cap_paise' => '24000',`. Registry: pool rate description `… 400 = 4%.`, default `'400'`; replace the `agp_cap` entry with `comp.gbb.point_value_cap_paise` (label `Growth Booster point value cap (paise)`, description `Highest rupee value one Growth Booster point can be worth in a month. 24000 = ₹240. Pool ÷ points above it is capped and the difference stays with the company.`, min 0, max 1_000_000, default `'24000'`). Accessor:
 
 ```php
     /** Ceiling on the monthly GBB point value (client 2026-10-09: ₹240). Raw value; the freeze refuses anything under ₹1. */
@@ -678,7 +678,7 @@ it('no longer caps a single distributor\'s AGP at 120', function (): void {
 ```
 Registry `min` for the cap is `100`, not 0.
 
-- [ ] **Step 4: Migration** (settings rows + pool columns):
+- [x] **Step 4: Migration** (settings rows + pool columns):
 
 ```php
     public function up(): void
@@ -697,7 +697,7 @@ Registry `min` for the cap is `100`, not 0.
 ```
 (Check the settings table's key/value column names in `SettingsSeeder` first.) `down()` drops the two columns; the setting changes are not reversed.
 
-- [ ] **Step 5: Engine.** In `freezeMonth()`, before `DB::transaction` opens:
+- [x] **Step 5: Engine.** In `freezeMonth()`, before `DB::transaction` opens:
 ```php
         $capPaise = $this->plan->gbbPointValueCapPaise();
         if ($capPaise < 100) {
@@ -711,7 +711,7 @@ and inside it:
 ```
 and write both new columns. Test: with the setting at `0`, `runForMonth()` throws and writes no `gbb_monthly_pools` row. In `buildAgpMap()` delete the cap block and return `$agpMap` as built. Fix the docblock at lines 29–30 and the `GbbMonthlyResult.php:93` comment. Run `grep -rn "agp_cap\|gbbAgpCap" app resources tests database` → must be empty.
 
-- [ ] **Step 6: Run** `--filter=Gbb` and `--filter=GrowthBooster` and `CompensationPlanSettingsServiceTest` and `AdminPlanSettingsTest` → PASS. Help: "The pool is 4% of the month's company BV; the point value is capped at ₹240." **Commit** `feat(gbb): 4% pool, ₹240 point-value cap, retire the 120 AGP cap` with the compliance trailer.
+- [x] **Step 6: Run** `--filter=Gbb` and `--filter=GrowthBooster` and `CompensationPlanSettingsServiceTest` and `AdminPlanSettingsTest` → PASS. Help: "The pool is 4% of the month's company BV; the point value is capped at ₹240." **Commit** `feat(gbb): 4% pool, ₹240 point-value cap, retire the 120 AGP cap` with the compliance trailer.
 
 ---
 

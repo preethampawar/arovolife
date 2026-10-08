@@ -68,6 +68,12 @@
             <span class="text-gray-500">Total AGP <strong class="text-gray-700">{{ \App\Modules\Shared\Support\IndianNumber::format($pool->total_agp) }}</strong></span>
             <span class="text-gray-500">Point value
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) }}</strong></span>
+            <span class="text-gray-500">Raw point value
+                <strong class="text-gray-700">{{ $pool->raw_point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->raw_point_value_paise / 100, 2) : '—' }}</strong>
+                <x-help-tip text="Pool ÷ total AGP, floored to the whole rupee, before the cap. Above the cap every earner is paid the cap and the difference stays with the company. — for months frozen before the cap existed." /></span>
+            <span class="text-gray-500">Cap
+                <strong class="text-gray-700">{{ $pool->point_value_cap_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_cap_paise / 100, 2) : '—' }}</strong>
+                <x-help-tip text="The point value cap in force when this month was frozen. A later setting change never moves a frozen month." /></span>
             <span class="text-gray-500 ml-auto">Computed
                 <strong class="text-gray-700">{{ $pool->created_at?->format('d M Y H:i') ?? '—' }}</strong>
                 <x-help-tip text="When this month's pool was frozen — the figures reflect the data as it stood at this moment. On a testing recompute this is the recompute time, not the month's end." /></span>

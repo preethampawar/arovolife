@@ -52,7 +52,7 @@
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        The Growth Booster Bonus comes from a monthly pool set at 5% of the company's business volume for that month, shared out through arovolife Growth Points (AGP). It is for distributors who held no rank in the previous month — achieving your first rank this month keeps you eligible for this month. AGP is recorded each time you match a Genos Sales Bonus slab — Slab 1 records 12 AGP, Slab 2 records 5 AGP, Slab 3 records 2 AGP, up to 120 AGP in a month. Each month's point value is that month's pool divided by the AGP of everyone eligible in it, and your bonus for the month is your AGP multiplied by that point value.
+        The Growth Booster Bonus comes from a monthly pool set at 4% of the company's business volume for that month, shared out through arovolife Growth Points (AGP). It is for distributors who held no rank in the previous month — achieving your first rank this month keeps you eligible for this month. AGP is recorded each time you match a Genos Sales Bonus slab — Slab 1 records 12 AGP, Slab 2 records 5 AGP, Slab 3 records 2 AGP. Each month's point value is that month's pool divided by the AGP of everyone eligible in it, up to ₹240 a point, and your bonus for the month is your AGP multiplied by that point value.
     </div>
     @enddeveloper
 
@@ -108,13 +108,13 @@
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">
                                 AGP earned
-                                <x-help-tip text="Your arovolife Growth Points for this month (Slab 1 = 12, Slab 2 = 5, Slab 3 = 2). Capped at 120." />
+                                <x-help-tip text="Your arovolife Growth Points for this month (Slab 1 = 12, Slab 2 = 5, Slab 3 = 2). There is no monthly cap on AGP." />
                             </span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">
                                 Point value
-                                <x-help-tip text="That month's Growth Booster pool divided by the AGP of every distributor eligible in it, floored to the rupee. It is fixed once the month is calculated." />
+                                <x-help-tip text="That month's Growth Booster pool divided by the AGP of every distributor eligible in it, floored to the rupee and never more than the month's point value cap. It is fixed once the month is calculated." />
                             </span>
                         </th>
                         <x-bonus-credit-head gross-label="Gross GBB" th-class="text-right px-4 py-3 font-semibold text-gray-600" />
