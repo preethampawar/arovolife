@@ -164,7 +164,7 @@ The GBB lifetime exclusion and the GBB verdict gate have **no** setting; they ar
 **Interfaces:**
 - Produces: unchanged signatures. `openCycle()` now writes `due_date = start + (cycle_days − 1)`.
 
-- [ ] **Step 1: Write the failing due-date test**
+- [x] **Step 1: Write the failing due-date test**
 
 ```php
 <?php
@@ -203,12 +203,12 @@ it('a rolled-over cycle also spans 30 calendar days inclusive', function (): voi
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run (from `app/`, with the test-DB overrides from `docs/local-dev-environment.md`): `php artisan test tests/Modules/Compensation/RepurchaseCycleDueDateTest.php`
 Expected: FAIL — due dates come back one day late (`2026-03-16`, `2026-08-06`).
 
-- [ ] **Step 3: Change `openCycle()`**
+- [x] **Step 3: Change `openCycle()`**
 
 ```php
         // 30 days INCLUSIVE of the start day (client 2026-10-09: 14 Feb → 15 Mar),
@@ -218,7 +218,7 @@ Expected: FAIL — due dates come back one day late (`2026-03-16`, `2026-08-06`)
 
 Update the class docblock (lines 22–30) to say "start 14 Feb, due 15 Mar: the start day is day 1 and the due date is cycle_days − 1 days after it", and the `SCALAR_DEFAULTS` comment above `comp.repurchase.cycle_days` to "due_date = start + days − 1 (14 Feb → 15 Mar)". Update the `AdminSettingsController` description for the same key and the `RepurchaseCycleCard.php` comment near line 180 to the same wording. Replace the §1 "Length" row of `docs/compensation/repurchase-client-examples-2026-09-07.md` with: `**due_date = start + 29 days** (30 days inclusive; client 2026-10-09 supersedes the +30 reading).`
 
-- [ ] **Step 4: Write the re-dating migration**
+- [x] **Step 4: Write the re-dating migration**
 
 ```php
 <?php
@@ -287,7 +287,7 @@ return new class extends Migration
 
 Add a migration test modelled on `tests/Modules/Compensation/RedateOpenRepurchaseCyclesMigrationTest.php` (copy its structure for loading and running a single migration file): one open cycle `2026-07-07 → 2026-08-06` becomes `2026-08-05`; one resolved cycle (`resolved_at` set) keeps `2026-08-06`; the audit row lists the moved id with before/after; `down()` throws. Also add to `RepurchaseCycleDueDateTest.php`: `evaluate($d, 2026-03-15)` leaves the 14 Feb cycle `active`; `evaluate($d, 2026-03-16)` resolves it (verdict taken the day after the due date, F-1c).
 
-- [ ] **Step 5: Pin the Easy Purchase wallet rule**
+- [x] **Step 5: Pin the Easy Purchase wallet rule**
 
 Create `app/tests/Modules/Commerce/EasyPurchaseWalletTest.php`. Look at `tests/Pest.php::uiCustomerFor()` and an existing storefront checkout test (grep `tests/Modules/Commerce` for `checkout.place` or `CheckoutController`) for the request shape, then assert: a customer (no distributor) checking out through `?ref=<ADN>` leaves `walletService->repurchaseWalletBalancePaise(<referrer id>)` unchanged and writes no `repurchase_wallet_used` ledger entry for the referrer.
 
@@ -305,12 +305,12 @@ it('an Easy Purchase order never debits the referring distributor\'s repurchase 
 });
 ```
 
-- [ ] **Step 6: Run the repurchase suite and fix stale expectations**
+- [x] **Step 6: Run the repurchase suite and fix stale expectations**
 
 Run: `php artisan test tests/Modules/Compensation --filter=Repurchase`
 Expected: the new tests PASS; some existing tests in `RepurchaseCycleServiceTest.php`, `RepurchaseCycleCardTest.php`, `RepurchaseEvaluateCommandTest.php` assert `+30` due dates — change each expected date back by one day (and any `'2026-08-06'` style fixture that the service itself is expected to produce). Do not change fixtures that are inserted directly as rows.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A app/app/Modules/Compensation app/app/Modules/Admin app/tests docs/compensation
