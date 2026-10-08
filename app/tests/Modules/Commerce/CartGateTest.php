@@ -240,3 +240,22 @@ it('CGT-12: closed → quantity cannot go up, but a line can still be reduced, r
     $this->actingAs($user)->delete(route('shop.cart.remove', $item))->assertRedirect(route('shop.cart'));
     expect(DB::table('cart_items')->count())->toBe(0);
 });
+
+it('CGT-10: closed → checkout is 404 for a distributor with a filled cart', function (): void {
+    $variant = cgtVariant();
+    $user = cgtUser();
+    cgtSetting(CartGate::SETTING_KEY, 'true');
+    $this->actingAs($user)->post(route('shop.cart.add'), ['product_variant_id' => $variant->id, 'qty' => 1]);
+    cgtSetting(CartGate::SETTING_KEY, 'false');
+    app()->forgetInstance(CartGate::class);
+
+    $this->actingAs($user)->get(route('shop.checkout'))->assertNotFound();
+});
+
+it('CGT-11: closed → staff reach checkout (empty cart sends them to the shop, proving the gate was passed)', function (): void {
+    cgtSetting(CartGate::SETTING_KEY, 'false');
+
+    $this->actingAs(cgtUser('admin-finance'))
+        ->get(route('shop.checkout'))
+        ->assertRedirect(route('shop.index'));
+});
