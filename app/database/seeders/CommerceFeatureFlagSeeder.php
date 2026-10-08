@@ -15,6 +15,7 @@ final class CommerceFeatureFlagSeeder extends Seeder
             // Storefront
             ['key' => 'commerce.storefront.enabled',              'value' => 'true'],
             ['key' => 'commerce.checkout.enabled',                'value' => 'true'],
+            ['key' => 'commerce.cart.enabled',                    'value' => 'true'],   // Pre-launch gate: OFF hides Add to Cart for non-staff (plan 2026-10-09)
             ['key' => 'commerce.guest_checkout.enabled',          'value' => 'false'],  // Default: OFF — members-only buying (partner spec 2026-05-31)
 
             // Attribution & cooling-off

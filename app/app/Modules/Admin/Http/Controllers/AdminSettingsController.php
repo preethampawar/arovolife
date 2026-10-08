@@ -594,6 +594,14 @@ final class AdminSettingsController extends Controller
                 'type' => 'bool',
                 'default' => 'true',
             ],
+            'commerce.cart.enabled' => [
+                'group' => 'commerce',
+                'label' => 'Cart and ordering open',
+                'description' => 'Turn OFF before launch to hide every Add to Cart button and refuse adds, Easy Purchase links and checkout for distributors and visitors while the catalogue stays browsable. Back-office roles are never gated, so the team can keep placing test orders. Turn ON at launch.',
+                'impact' => 'OFF stops all customer ordering immediately, including carts built earlier: their owners can still view and empty the cart but cannot check out. Staff accounts are unaffected. No data changes either way.',
+                'type' => 'bool',
+                'default' => 'true',
+            ],
             'commerce.guest_checkout.enabled' => [
                 'group' => 'commerce',
                 'label' => 'Guest checkout',
