@@ -108,9 +108,9 @@ final class CompensationPlanSettingsService
         'comp.rank.pay_highest_rank_only' => true,
         'comp.repurchase.rate_bp' => 1000,
         'comp.repurchase.cap_paise' => 1_000_000,
-        // Length of a distributor's repurchase window in days (client
-        // 2026-09-07, §1): the anchor day is day 0 and the verdict is taken
-        // this many days later, so due_date = start + days (7 Jul → 6 Aug).
+        // Length of a distributor's repurchase window in days, inclusive of
+        // the anchor day (client 2026-10-09, superseding 2026-09-07 §1): the
+        // anchor is day 1, so due_date = start + days − 1 (14 Feb → 15 Mar).
         'comp.repurchase.cycle_days' => 30,
         'comp.repurchase.non_ranked_bv_paise' => 60_000,
         'payout.min_threshold_paise' => 10_000,
@@ -292,7 +292,7 @@ final class CompensationPlanSettingsService
         return $this->scalarInt('comp.repurchase.cap_paise');
     }
 
-    /** Length of one repurchase window in days: due_date = start + this many. */
+    /** Length of one repurchase window in days, inclusive of the start day: due_date = start + (this many − 1). */
     public function repurchaseCycleDays(): int
     {
         return max(1, $this->scalarInt('comp.repurchase.cycle_days'));

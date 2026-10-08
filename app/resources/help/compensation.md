@@ -14,6 +14,8 @@ The day closes at midnight IST; the Nightly Run starts at 00:05 the next morning
 Distributors whose lifetime personal BV is below the minimum (default 600 BV, admin-editable) are skipped at cut-off with status `below_600bv`: their day's Genos BV is discarded, never carried forward, and never retroactively counted. Genos BV still *propagates* into the raw accumulator intraday, so on this page their Left/Right Genos BV cards show the raw figures struck through with an amber **"Not credited — personal BV below 600"** pill; the distributor's own income dashboard shows 0 instead. This is why a distributor can appear to "have" Genos BV yet earn no GSB.
 
 ### Repurchase interaction — a failed day is forfeited (client, 2026-09-07)
+**Window length (the client, 2026-10-09).** The repurchase window is **30 days inclusive of the start day**: start 14 Feb → due 15 Mar (due = start + 29 days; the 30 comes from the DB-driven cycle length setting). The verdict is taken by the 00:05 `repurchase:evaluate` run on the day **after** the due date (16 Mar), never on the due date itself. So a cycle whose due date is the last day of a month is judged on the 1st and, if failed, is forfeited from the 1st — it cannot block that month's Growth Booster. This is by design, not a bug (finding F-1).
+
 A distributor whose repurchase period closed without both conditions being met is **failed** from the day after the due date until the day they meet them again. Every failed day is **forfeited**, not held:
 
 - **No slab is matched and no income is ever earned** for that day. Nothing is released later — this is permanent, and it is why the cut-off has no "held GSB" state any more.

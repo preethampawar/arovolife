@@ -1059,8 +1059,9 @@ function recomputeSeedSelfPurchase(int $distributorId, int $bvPaise, string $dat
 }
 
 it('a full replay of the client GSB example produces forfeited rows for 7–8 Aug and a fresh cycle from 9 Aug', function (): void {
-    // The client's 2026-09-07 example: anchored 7 July, nothing repurchased
-    // until 9 August. The window closed unmet on 6 August, so 7 and 8 August are
+    // The client's 2026-09-07 example, anchored one day later (8 July) so the
+    // window still closes on 6 August under the 2026-10-09 30-days-inclusive
+    // rule; nothing is repurchased until 9 August, so 7 and 8 August are
     // forfeited outright and the fresh window opens on the fulfilment day.
     config(['arovolife.recompute.enabled' => true]);
     Feature::activate(GenosSalesBonusFeature::class);
@@ -1080,12 +1081,14 @@ it('a full replay of the client GSB example produces forfeited rows for 7–8 Au
     $rightForfeited = recomputePlaceChild($subject, 'R');
     $rightFulfilment = recomputePlaceChild($rightForfeited, 'R');
 
-    // The anchor: personal purchases reach the 600-BV minimum on 7 July, which
-    // is where the first window starts. Only the second half of that falls
-    // inside the window, so the 600-BV obligation is not met by the anchor
-    // itself — the distributor has to repurchase, and does not.
-    recomputeSeedSelfPurchase($subject->id, 30_000, '2026-07-05 10:00:00');
-    recomputeSeedSelfPurchase($subject->id, 30_000, '2026-07-07 10:00:00');
+    // The anchor: personal purchases reach the 600-BV minimum on 8 July, which
+    // is where the first window starts — one day after the client's 7 July so
+    // that, under the 2026-10-09 rule (30 days inclusive), the window still
+    // closes on 6 August. Only the second half of that falls inside the window,
+    // so the 600-BV obligation is not met by the anchor itself — the
+    // distributor has to repurchase, and does not.
+    recomputeSeedSelfPurchase($subject->id, 30_000, '2026-07-06 10:00:00');
+    recomputeSeedSelfPurchase($subject->id, 30_000, '2026-07-08 10:00:00');
     // The late fulfilment, three days after the window closed on 6 August.
     recomputeSeedSelfPurchase($subject->id, 30_000, '2026-08-09 10:00:00');
 
@@ -1140,7 +1143,7 @@ it('a full replay of the client GSB example produces forfeited rows for 7–8 Au
         ->get();
 
     expect($cycles->map(fn ($c): string => Carbon::parse($c->cycle_start_date)->toDateString())->all())
-        ->toBe(['2026-07-07', '2026-08-09']);
+        ->toBe(['2026-07-08', '2026-08-09']);
 
     $first = $cycles->first();
     expect(Carbon::parse($first->due_date)->toDateString())->toBe('2026-08-06')

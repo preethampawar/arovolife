@@ -18,14 +18,14 @@ work was built on.
 
 | Rule | Value | Evidence |
 |---|---|---|
-| Anchor | The day the distributor first reaches 600 BV of personal purchase. That day is **day 0** of the first cycle. | "completed his 600-BV on July 7th, therefore his Beginning Date is July 7th"; answer 4 |
-| Length | **due_date = start + 30 days** (inclusive end). Jul 7 → Aug 6, Jul 13 → Aug 12, Jul 24 → Aug 23, Aug 9 → Sep 8, Aug 17 → Sep 16, Aug 27 → Sep 26 — all six examples are exactly start + 30. | Doc; answer 4 |
+| Anchor | The day the distributor first reaches 600 BV of personal purchase. That day is **day 1** of the first cycle (client 2026-10-09; was read as day 0 in the 2026-09-07 doc). | "completed his 600-BV on July 7th, therefore his Beginning Date is July 7th"; answer 4 |
+| Length | **due_date = start + 29 days** (30 days inclusive; client 2026-10-09 supersedes the +30 reading). Feb 14 → Mar 15. | Client 2026-10-09 |
 | Condition A | Self-purchase BV inside `[start, due]` ≥ the rank's obligation (600 BV non-ranked; per-rank table otherwise). | Answer 2 (A) |
 | Condition B | Repurchase wallet = ₹0 at the end of `due_date`. | Answer 2 (B): "100% apply" |
-| Verdict | Taken once, on `due_date`; both conditions must hold. | Answer 2 |
+| Verdict | Taken once, as at the end of `due_date` (the 00:05 `repurchase:evaluate` run on the day after it); both conditions must hold. | Answer 2 |
 | On-time pass | Next cycle starts `due + 1`. | Unchanged (not contradicted) |
 | Fail | From `due + 1` the distributor is **failed** until the first day both conditions hold again (the *fulfilment day*). | Doc examples |
-| Late fulfilment | A fresh cycle starts **on** the fulfilment day: `start = fulfilled_on`, `due = fulfilled_on + 30`. | "reset to a fresh 30-day cycle starting from August 27 and extending to September 26"; answer 4 |
+| Late fulfilment | A fresh cycle starts **on** the fulfilment day: `start = fulfilled_on`, `due = fulfilled_on + 29` (same 30-days-inclusive length as the first cycle; client 2026-10-09). | "reset to a fresh 30-day cycle starting from August 27 and extending to September 26"; answer 4 |
 | Grace | **None.** Failure begins the day after `due_date`. There is no grace window and no "10-day grace". | Doc: 7 Aug fails for a 6 Aug due date |
 | Month-end shortness | Not an issue: the window is a day count, never "same date next month". | Answer 4 |
 
@@ -83,6 +83,8 @@ ones."*
 | 2 | same | 1–23 Aug: L 2.1L / R 2.9L | not granted (left short) |
 | 3 | fails 24–26 Aug, fulfils 27 Aug | 1–23 Aug + 27–31 Aug: L 2.3L + 0.2L / R 3.0L | Rank 1 granted; paid 8 Sep; new cycle 27 Aug–26 Sep |
 
+> The worked-example dates in this document are quoted as the client wrote them on 2026-09-07, on the start + 30 reading. Under the 2026-10-09 rule (30 days inclusive) each due date is one day earlier (24 Jul → 22 Aug, 27 Aug → 25 Sep, and so on); the forfeit/verdict logic in the examples is unchanged.
+
 ### 2.3 Growth Booster, Fortune
 
 Not covered by the doc. **Assumption A2 (to confirm with the client):** the
@@ -133,7 +135,7 @@ Awards & Rewards remain outside both the condition and the deduction.
 | # | Current branch (2026-09-06 work) | Required |
 |---|---|---|
 | 1 | Failed-day income is calculated, marked `repurchase_held`, kept in the Rank/GBB denominator and **released in full** on fulfilment by four `ReleaseHeld*OnReactivation` listeners. `IncomeEligibilityService` never returns BLOCKED. | Forfeit. No held rows, no release, no listeners. Failed days contribute nothing. |
-| 2 | `due_date = start + (cycle_days − 1)` = start + 29 with the 30 default. | `due_date = start + 30`. Every example is off by one otherwise. |
+| 2 | `due_date = start + (cycle_days − 1)` = start + 29 with the 30 default. | `due_date = start + 30`. Every example is off by one otherwise. **Reversed on 2026-10-09:** the client's 14 Feb → 15 Mar example restored start + 29 (30 days inclusive); open cycles were re-dated by migration `2026_10_09_100000`. |
 | 3 | GSB on a failed day consumes the weaker leg and advances the power carry-forward as if matched (the "frozen path" shape). | Do not touch either carry-forward; do not add the day's BV. |
 | 4 | Rank qualification sums `group_bv_daily` over the whole month. | Exclude each distributor's failed days. |
 | 5 | Rank Bonus writes `repurchase_held` for an achiever whose month-end verdict is failed. | Never held. Credit and pay normally. |

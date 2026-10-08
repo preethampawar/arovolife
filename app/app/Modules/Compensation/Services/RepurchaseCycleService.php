@@ -21,8 +21,9 @@ use Illuminate\Support\Facades\DB;
  *
  * A cycle is a fixed 30-day window (`comp.repurchase.cycle_days`) anchored on
  * the date the distributor first reached 600 BV of personal purchase. That day
- * is day 0 and the due date falls `cycle_days` days AFTER it — start 7 Jul,
- * due 6 Aug, as in every one of the client's worked examples. It passes only if
+ * is day 1 and the due date is `cycle_days − 1` days after it — start 14 Feb,
+ * due 15 Mar: 30 days inclusive of the start day (client 2026-10-09, which
+ * supersedes the earlier start + 30 reading). It passes only if
  * BOTH of the client's conditions hold:
  *
  *   (A) self-purchase BV inside the window >= the rank's obligation, and
@@ -653,7 +654,9 @@ final class RepurchaseCycleService
     private function openCycle(int $distributorId, Carbon $start): RepurchaseCycle
     {
         $start = $start->copy()->startOfDay();
-        $due = $start->copy()->addDays($this->plan->repurchaseCycleDays());
+        // 30 days INCLUSIVE of the start day (client 2026-10-09: 14 Feb → 15 Mar),
+        // so the verdict day is cycle_days − 1 after the anchor.
+        $due = $start->copy()->addDays($this->plan->repurchaseCycleDays() - 1);
 
         $cycle = RepurchaseCycle::create([
             'distributor_id' => $distributorId,

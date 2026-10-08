@@ -1384,7 +1384,7 @@ final class AdminSettingsController extends Controller
                 'group' => 'compensation_plan',
                 'feature' => RepurchaseEngineFeature::class,
                 'label' => 'Repurchase cycle length (days)',
-                'description' => 'Length of each distributor\'s repurchase window, counted from the day they completed 600 BV of personal purchase. The due date is this many days after the cycle start date (start 7 Jul → due 6 Aug).',
+                'description' => 'Length of each distributor\'s repurchase window, counted from the day they completed 600 BV of personal purchase, inclusive of that day. The due date is this many days minus one after the cycle start date (30 days: start 14 Feb → due 15 Mar).',
                 'type' => 'int',
                 'min' => 1,
                 'max' => 365,
