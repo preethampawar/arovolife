@@ -538,7 +538,7 @@ Update the call in `GsbDailyCutoffCommand.php:522` to `->reservedPointsFor($dist
 **Interfaces:**
 - Produces: `mentorship_bonus_results.sponsor_repurchase_failed` (bool), `royalty_cap_withheld_paise` (unsigned big int, default 0). `CompensationPlanSettingsService::msbRoyaltyFailedDailyCapPaise(): int`.
 
-- [ ] **Step 1: Failing test**
+- [x] **Step 1: Failing test**
 
 ```php
 it('caps a failed rank-6+ sponsor at ₹3,600 across all accruals of the day, withholding the rest', function (): void {
@@ -566,11 +566,11 @@ it('caps a failed rank-6+ sponsor at ₹3,600 across all accruals of the day, wi
 it('does not cap an eligible rank-6 sponsor', function (): void { /* same setup without the failed cycle; expect 2 × 252_000 */ });
 ```
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Setting** `comp.msb.royalty_failed_daily_cap_paise` default `360_000` (₹3,600/day = ₹1,08,000/30 days) in all three places; accessor `msbRoyaltyFailedDailyCapPaise(): int`. Registry label `Mentorship Royalty daily cap while failed (paise)`, description `Most a rank-6+ sponsor can earn from Mentorship on one cut-off day while their repurchase condition is failed. 360000 = ₹3,600 (₹1,08,000 a month). Not applied while the condition is met.`
+- [x] **Step 3: Setting** `comp.msb.royalty_failed_daily_cap_paise` default `360_000` (₹3,600/day = ₹1,08,000/30 days) in all three places; accessor `msbRoyaltyFailedDailyCapPaise(): int`. Registry label `Mentorship Royalty daily cap while failed (paise)`, description `Most a rank-6+ sponsor can earn from Mentorship on one cut-off day while their repurchase condition is failed. 360000 = ₹3,600 (₹1,08,000 a month). Not applied while the condition is met.`
 
-- [ ] **Step 4: Migration**
+- [x] **Step 4: Migration**
 
 ```php
         Schema::table('mentorship_bonus_results', function (Blueprint $table): void {
@@ -584,7 +584,7 @@ it('does not cap an eligible rank-6 sponsor', function (): void { /* same setup 
 ```
 `$fillable` + casts (`'boolean'`, `'integer'`); remove `mb_rate_pct` and `sponsee_cumulative_gsb_paise` from `$fillable`, `casts()`, the `@property` docblock and the two `=> null` lines in `creditAccrual()`. `down()` re-adds the two legacy columns nullable and drops the four new ones. Run `grep -rn "mb_rate_pct\|sponsee_cumulative_gsb_paise" app resources tests` → only historical migrations remain.
 
-- [ ] **Step 5: Apply in `creditAccrual()`**, inside the transaction before `MentorshipBonusResult::create`:
+- [x] **Step 5: Apply in `creditAccrual()`**, inside the transaction before `MentorshipBonusResult::create`:
 
 ```php
             $cutoffDate = Carbon::parse($accrual->cutoffDate);
@@ -624,9 +624,9 @@ it('does not cap an eligible rank-6 sponsor', function (): void { /* same setup 
 The 10% credit-time repurchase deduction (`creditWithRepurchaseDeduction`) runs on the **capped** gross: cap first, then deduction. State this in the help doc.
 Then add `'sponsor_repurchase_failed' => $sponsorFailed, 'royalty_cap_withheld_paise' => $withheld, 'royalty_cap_paise' => $sponsorFailed ? $capPaise : null,` to the `create([...])` (F-5: the cap is frozen on the row; F-3/F-4: `sponsor_repurchase_failed` is written on every row and `sponsor_verdict_stale` when the sponsor has an open deferral for the date — both columns in this task's migration). `$mbGross` must become non-`use`-by-value: move its computation inside the closure or pass by reference (`use (&$mbGross)` is acceptable; cleaner is to compute inside).
 
-- [ ] **Step 6: Report + help.** In `AdminMsbInputOutputController` add a `royalty_withheld_paise` total beside the gross total; show it in the blade as "Royalty cap withheld" with `IndianNumber::format`. Help: "From rank 6 the Mentorship Bonus is Mentorship Royalty: it continues while the repurchase condition is failed, capped at ₹3,600 a day; the excess is withheld."
+- [x] **Step 6: Report + help.** In `AdminMsbInputOutputController` add a `royalty_withheld_paise` total beside the gross total; show it in the blade as "Royalty cap withheld" with `IndianNumber::format`. Help: "From rank 6 the Mentorship Bonus is Mentorship Royalty: it continues while the repurchase condition is failed, capped at ₹3,600 a day; the excess is withheld."
 
-- [ ] **Step 7: Run** `php artisan test tests/Modules/Compensation --filter=Msb` and `--filter=Mentorship` → PASS. **Commit** `feat(msb): Mentorship Royalty daily cap for failed rank-6+ sponsors` with the compliance trailer.
+- [x] **Step 7: Run** `php artisan test tests/Modules/Compensation --filter=Msb` and `--filter=Mentorship` → PASS. **Commit** `feat(msb): Mentorship Royalty daily cap for failed rank-6+ sponsors` with the compliance trailer.
 
 ---
 
