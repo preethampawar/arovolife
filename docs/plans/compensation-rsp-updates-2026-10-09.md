@@ -900,7 +900,7 @@ Test: an earner with an **active** cycle due on the month's last day and no `res
 **Interfaces:**
 - Produces: `rankRapPoints(int $rank): int` (non-nullable, 0 if unset); `rankPointValueCapPaise(): int` (default 20_000); `rankFirstPassMaxRank(): int` (default 3); `aogoPointsPerGrant()` default 36. `rank_tiers.pool_pct` and `rank_monthly_pools.pool_pct` **no longer exist** (Task 9 drops the pools column together with the pool reshape; this task drops `rank_tiers.pool_pct`).
 
-- [ ] **Step 1: Failing tests** (in `CompensationPlanSettingsServiceTest.php`):
+- [x] **Step 1: Failing tests** (in `CompensationPlanSettingsServiceTest.php`):
 
 ```php
 it('exposes RAP points for every rank per the 05-10-2026 Rank Income Point System', function (): void {
@@ -914,9 +914,9 @@ it('exposes RAP points for every rank per the 05-10-2026 Rank Income Point Syste
 });
 ```
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Seeder rows** (replace the array; drop the `pool_pct` element and its header word; keep every other column):
+- [x] **Step 3: Seeder rows** (replace the array; drop the `pool_pct` element and its header word; keep every other column):
 
 ```php
             // rank, name, pyp, rap_points, personal_bv, group_bv, weaker_leg_topup_bv, structural_per_side, repurchase_bv_paise, lifetime_award_budget_paise
@@ -932,7 +932,7 @@ it('exposes RAP points for every rank per the 05-10-2026 Rank Income Point Syste
 ```
 Re-index the `array_map` keys accordingly and replace the `pool_pct`/RAP comment with: "rap_points (client 2026-10-05 Rank Income Point System): every rank carries Rank Achievement Points; the 20% envelope is one pool divided in two passes at a capped point value (see RankBonusService). lifetime_award_budget_paise = the sum of the rank's award tranches (client 2026-10-09)."
 
-- [ ] **Step 4: Migration 100500** — set `rank_tiers.rap_points` per rank (`[1=>72,…,9=>39501]`) **unconditionally** (the old values 10/null were never a client choice), make the column `NOT NULL`, drop `pool_pct` (user decision 2026-10-09: stale columns go now), and write the audit row:
+- [x] **Step 4: Migration 100500** — set `rank_tiers.rap_points` per rank (`[1=>72,…,9=>39501]`) **unconditionally** (the old values 10/null were never a client choice), make the column `NOT NULL`, drop `pool_pct` (user decision 2026-10-09: stale columns go now), and write the audit row:
 
 ```php
         $before = DB::table('rank_tiers')->orderBy('rank_number')->get(['rank_number', 'rap_points', 'pool_pct'])->keyBy('rank_number');
@@ -958,7 +958,7 @@ Re-index the `array_map` keys accordingly and replace the `pool_pct`/RAP comment
 
 **`BackfillRankMonthlyPoolsMigrationTest` / the 2026-09-11 backfill migration:** it reads `rank_tiers.pool_pct` and writes `rank_monthly_pools.pool_pct` (line 74). On a fresh schema it runs before both drops, so ordinary migrations are fine. Add a one-line guard at its top — `if (! Schema::hasColumn('rank_tiers', 'pool_pct') || ! Schema::hasColumn('rank_monthly_pools', 'pool_pct')) { return; }` — so re-running it against the final schema is a no-op rather than an error, and adjust its test to assert the no-op on the current schema.
 
-- [ ] **Step 5: Migration 100600** — settings rows:
+- [x] **Step 5: Migration 100600** — settings rows:
 ```php
         DB::table('settings')->where('key', 'comp.rank.aogo_points')->where('value', '5')->update(['value' => '36']);
         DB::table('settings')->insertOrIgnore([
@@ -968,7 +968,7 @@ Re-index the `array_map` keys accordingly and replace the `pool_pct`/RAP comment
 ```
 (Copy the exact column set from `SettingsSeeder::seedCompensationPlanScalars()`.)
 
-- [ ] **Step 6: Service + registry.** `SCALAR_DEFAULTS`: `'comp.rank.aogo_points' => 36,` plus
+- [x] **Step 6: Service + registry.** `SCALAR_DEFAULTS`: `'comp.rank.aogo_points' => 36,` plus
 ```php
         // Client 2026-10-05 Rank Income Point System: one 20% pool, two passes,
         // ₹200 ceiling per Rank Achievement Point.
@@ -979,9 +979,9 @@ Re-index the `array_map` keys accordingly and replace the `pool_pct`/RAP comment
 ```
 Accessors: `rankPointValueCapPaise(): int` (raw `scalarInt`; the freeze refuses < 100), `rankFirstPassMaxRank(): int` (`min(9, max(0, scalarInt))`), `rankRapPoints(int $rank): int` → `(int) ($this->rankTiers()[$rank]['rap_points'] ?? 0)`. Delete `rankPoolPct()` and the `'pool_pct'` line in `rankTiers()`; rewrite the `rankEnvelopeBp()` docblock: "The whole envelope is one pool, divided in two passes (see RankBonusService)". `SettingsSeeder`: `aogo_points` → `'36'`, add the two keys. Registry: envelope description → `Share of monthly company BV set aside for the Rank Bonus. 2000 = 20%. One pool: the AGO offer and Ranks 1–3 are priced from it first, Ranks 4–9 from the remainder, both at most ₹200 per point.`; `aogo_points` default `'36'`; new entries `Rank point value cap (paise)` (default `'20000'`, min 100, max 10_000_000, impact `Takes effect from the next monthly freeze; frozen months are unchanged.`) and `Ranks priced in pass 1 (1..N)` (default `'3'`, min 0, max 9, same impact text).
 
-- [ ] **Step 7: Admin form.** `AdminPlanSettingsController::updateRankTier()` (lines 134–164): remove `pool_pct` validation and assignment; `'rap_points' => ['required', 'integer', 'min:1', 'max:65535']`, assign `(int)`. Blade lines 435–455: delete the Pool % input, mark RAP `required min="1"`.
+- [x] **Step 7: Admin form.** `AdminPlanSettingsController::updateRankTier()` (lines 134–164): remove `pool_pct` validation and assignment; `'rap_points' => ['required', 'integer', 'min:1', 'max:65535']`, assign `(int)`. Blade lines 435–455: delete the Pool % input, mark RAP `required min="1"`.
 
-- [ ] **Step 8: Run** `CompensationPlanSettingsServiceTest`, `AdminPlanSettingsTest`, `BackfillRankMonthlyPoolsMigrationTest` → PASS (fix any assertion that read `pool_pct`). **Commit** `feat(rank): RAP points on every rank, AGO 36, drop per-rank pool percentages` with the compliance trailer. (Task 9 will temporarily break `RankBonusService` compile until its own commit — do Tasks 8 and 9 back to back; run the full Compensation suite only after Task 9.)
+- [x] **Step 8: Run** `CompensationPlanSettingsServiceTest`, `AdminPlanSettingsTest`, `BackfillRankMonthlyPoolsMigrationTest` → PASS (fix any assertion that read `pool_pct`). **Commit** `feat(rank): RAP points on every rank, AGO 36, drop per-rank pool percentages` with the compliance trailer. (Task 9 will temporarily break `RankBonusService` compile until its own commit — do Tasks 8 and 9 back to back; run the full Compensation suite only after Task 9.)
 
 ---
 
@@ -999,7 +999,7 @@ Accessors: `rankPointValueCapPaise(): int` (raw `scalarInt`; the freeze refuses 
 **Interfaces:**
 - Produces: table `rank_monthly_passes` (`month_start` date, `pass` tinyint 1|2, `company_turnover_paise` bigint, `envelope_bp` uint, `envelope_paise` bigint, `pool_paise` bigint — the amount this pass divided, `total_points` uint, `raw_point_value_paise` ubigint, `point_value_cap_paise` ubigint, `point_value_paise` ubigint, `payout_paise` bigint, `leftover_paise` bigint, timestamps, unique(`month_start`,`pass`)). `rank_monthly_pools` gains `pass` tinyint and loses `pool_pct`; for each rank row `pool_paise` = that rank's allotment (`total_points × point_value`), `leftover_paise` = 0; the pass row carries the real leftover. `runForMonth()` return gains `'passes' => array<int, array{pool_paise:int,total_points:int,raw_point_value_paise:int,point_value_paise:int,payout_paise:int,leftover_paise:int}>`.
 
-- [ ] **Step 1: Failing tests** (append to `RankBonusServiceTest.php`; `seedRankCompanyBv`, `seedRankQualification` exist in the file; `RankAogoGrant` rows can be created directly as the file's AO-GO tests do):
+- [x] **Step 1: Failing tests** (append to `RankBonusServiceTest.php`; `seedRankCompanyBv`, `seedRankQualification` exist in the file; `RankAogoGrant` rows can be created directly as the file's AO-GO tests do):
 
 ```php
 /** Qualify $n fresh distributors at $rank for the month. */
@@ -1084,9 +1084,9 @@ it('a refund-heavy month prices both passes at zero and credits nothing', functi
 ```
 (`seedAogoGrants(int $n, string $monthStart)` — write it in the test file by creating `RankAogoGrant` rows with `points => 36` the way the file's existing AO-GO tests do; the engine reads `$roster->aogoGrants->sum('points')`.) Pay the highest rank only is the default; cohorts here hold one rank each.
 
-- [ ] **Step 2: Run** `--filter=RankBonusService` → FAIL.
+- [x] **Step 2: Run** `--filter=RankBonusService` → FAIL.
 
-- [ ] **Step 3: Migration 100700**
+- [x] **Step 3: Migration 100700**
 
 ```php
     public function up(): void
@@ -1117,7 +1117,7 @@ it('a refund-heavy month prices both passes at zero and credits nothing', functi
 ```
 `down()` drops the new table and the `pass` column and re-adds `decimal('pool_pct', 8, 4)->nullable()`. Before committing Task 10, run `grep -rn "pool_pct" app resources tests database/seeders` → only the 2026-06-27 create, the 2026-09-07 create and the guarded 2026-09-11 backfill migrations remain. Model `RankMonthlyPass` (final, `$fillable` = every column, integer casts, `month_start` date cast). `RankMonthlyPool`: remove `pool_pct` from `$fillable`/casts, add `pass`.
 
-- [ ] **Step 4: Rewrite `freezeMonth()`**
+- [x] **Step 4: Rewrite `freezeMonth()`**
 
 ```php
     private function freezeMonth(Carbon $monthStartCarbon, string $monthStart, Carbon $monthEnd): Collection
@@ -1268,11 +1268,11 @@ The constructor gains `private readonly IncomeEligibilityService $eligibility` (
 
 `recordFreeze(string $monthStart, Collection $pools, Collection $passes)`: add `'passes' => $passes->map(fn (RankMonthlyPass $p): array => $p->only(['pool_paise','total_points','raw_point_value_paise','point_value_cap_paise','point_value_paise','payout_paise','leftover_paise']))->all()` to `$details`. In `replacePrematureFreeze()` also `RankMonthlyPass::where('month_start', $monthStart)->delete()` next to the pools delete. In `creditFromFrozenPools()` add `'passes' => RankMonthlyPass::where('month_start', $monthStart)->get()->keyBy('pass')->map(fn ($p) => [...same keys as ints...])->all()` to the return array and both docblock shapes. Rewrite the class docblock lines 24–50 to describe the two-pass rule with example D2 (3.2 Cr envelope; pass 1 points 5,796 → ₹200 cap; pass 2 3,08,40,800 ÷ 1,65,474 → ₹186).
 
-- [ ] **Step 5: Rebuild/wiper.** `MonthRebuilder`: add `'rank_monthly_passes' => $this->rankPasses($month)->count()/->delete()` beside the pools (private query helper `RankMonthlyPass::where('month_start', $month->toDateString())`). `DerivedTables`: add `'rank_monthly_passes'` to the table list and `'rank_monthly_passes' => ['column' => 'month_start', 'granularity' => 'month']`. Grep `rank_monthly_pools` across `app/` for any other wiper/snapshot list and add the passes table beside it.
+- [x] **Step 5: Rebuild/wiper.** `MonthRebuilder`: add `'rank_monthly_passes' => $this->rankPasses($month)->count()/->delete()` beside the pools (private query helper `RankMonthlyPass::where('month_start', $month->toDateString())`). `DerivedTables`: add `'rank_monthly_passes'` to the table list and `'rank_monthly_passes' => ['column' => 'month_start', 'granularity' => 'month']`. Grep `rank_monthly_pools` across `app/` for any other wiper/snapshot list and add the passes table beside it.
 
-- [ ] **Step 6: Run** `php artisan test tests/Modules/Compensation` (whole module) → PASS; fix the existing Rank tests that encoded 7%/equal-split arithmetic to the new values (the numbers change, the behaviours — frozen roster, held, AO-GO settle, premature freeze — do not). Help doc Rank Bonus section: the two-pass rule, RAP table, ₹200 cap, leftover stays with the company.
+- [x] **Step 6: Run** `php artisan test tests/Modules/Compensation` (whole module) → PASS; fix the existing Rank tests that encoded 7%/equal-split arithmetic to the new values (the numbers change, the behaviours — frozen roster, held, AO-GO settle, premature freeze — do not). Help doc Rank Bonus section: the two-pass rule, RAP table, ₹200 cap, leftover stays with the company.
 
-- [ ] **Step 7: Commit** `feat(rank): one 20% pool priced in two passes at a ₹200-capped point value` with the compliance trailer.
+- [x] **Step 7: Commit** `feat(rank): one 20% pool priced in two passes at a ₹200-capped point value` with the compliance trailer.
 
 ---
 
