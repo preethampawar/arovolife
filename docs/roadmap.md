@@ -303,6 +303,8 @@ at launch sign-off.
 
 Formerly sketched as "Phase 7–8, implied". Specced and shipped 2026-08-16/17.
 
+- **R.S.P. compensation updates (the client, 2026-10-09)** — repurchase 30-day inclusive window, MSB ₹120 cap + failed-sponsor gate + ₹3,600 royalty cap, GBB 4 % + ₹240 cap + lifetime rank exclusion + month-end verdict gate, Rank Bonus one 20 % pool priced in two passes at a ₹200 cap with RAP on every rank, Lifetime Awards per-tranche and merchandise only: `docs/compensation/rsp-new-updates-2026-10-09.md` (built on `feat/compensation-rsp-updates-2026-10`, deploy checklist inside)
+
 ### 1. Grievance redressal workflow (DSR Rule 4) — **statutory** ✅
 
 **Shipped 2026-08-16** (compliance PASS). Complaint intake from every
