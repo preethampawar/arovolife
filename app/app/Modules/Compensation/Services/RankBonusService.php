@@ -146,7 +146,14 @@ final class RankBonusService
 
         $pools = $this->frozenPools($monthStart);
 
-        if ($pools->isEmpty() || $this->frozenBeforeMonthClosed($pools, $monthEnd)) {
+        // Only a run that will WRITE a freeze is checked: none exists yet, or a
+        // premature one will be replaced. A premature freeze that money already
+        // moved on is kept ({@see replacePrematureFreeze()}), and a run over it
+        // only credits figures that freeze decided — refusing it over a setting
+        // changed since, or a verdict the frozen roster never reads again,
+        // would hold back payouts and protect nothing.
+        if ($pools->isEmpty()
+            || ($this->frozenBeforeMonthClosed($pools, $monthEnd) && ! $this->monthHasCreditedResults($monthStart))) {
             // A bad setting or a pending repurchase verdict stops the run here,
             // before a premature freeze is replaced, not after — a refusal must
             // never delete what it then cannot rebuild (the GBB twin).
@@ -781,10 +788,7 @@ final class RankBonusService
 
         $results = RankBonusResult::query()->where('month_start', $monthStart);
 
-        if ($results->clone()->whereIn('status', [
-            RankBonusResult::STATUS_CREDITED,
-            RankBonusResult::STATUS_REVERSED,
-        ])->exists()) {
+        if ($this->monthHasCreditedResults($monthStart)) {
             $reason = 'results were already credited against these pools; re-freezing would change economics money moved on';
 
             Log::warning('rank.pool.premature_freeze_kept', $details + ['reason' => $reason]);
@@ -838,6 +842,22 @@ final class RankBonusService
         RankMonthlyPool::where('month_start', $monthStart)->delete();
 
         return true;
+    }
+
+    /**
+     * True once a wallet has moved on the month's frozen figures — the line
+     * between a premature freeze {@see replacePrematureFreeze()} may replace
+     * and one it must keep.
+     */
+    private function monthHasCreditedResults(string $monthStart): bool
+    {
+        return RankBonusResult::query()
+            ->where('month_start', $monthStart)
+            ->whereIn('status', [
+                RankBonusResult::STATUS_CREDITED,
+                RankBonusResult::STATUS_REVERSED,
+            ])
+            ->exists();
     }
 
     /**
