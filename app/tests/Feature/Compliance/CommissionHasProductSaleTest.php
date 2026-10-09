@@ -57,7 +57,6 @@ final class CommissionHasProductSaleTest extends TestCase
         'rank_credit' => 'rank_bonus_results → rank qualification, itself a BV threshold',
         'fortune_credit' => 'fortune_bonus_results → the month\'s BV pool',
         'adc_credit' => 'adc_monthly_results → centre BV (orders collected at the centre)',
-        'awards_credit' => 'lifetime_award_milestones → lifetime BV thresholds',
     ];
 
     /**
@@ -98,6 +97,12 @@ final class CommissionHasProductSaleTest extends TestCase
         'repurchase_transfer',
         'admin_charge_debit',
         'tds_debit',
+        // Retired, not a live credit: Lifetime Awards are merchandise only
+        // (the client, 2026-10-09), so no code writes it and no payout group
+        // sweeps it. The value stays in the MySQL enum for rows already on
+        // disk; it is listed here so HR2-02b still finds every enum value
+        // classified.
+        'awards_credit',
     ];
 
     /** HR2-01: BV cannot exist without an order. */
@@ -137,7 +142,6 @@ final class CommissionHasProductSaleTest extends TestCase
         $declared = array_merge(
             CompensationPlanSettingsService::GROUP_A_TYPES,
             CompensationPlanSettingsService::GROUP_B_TYPES,
-            CompensationPlanSettingsService::GROUP_C_TYPES,
             CompensationPlanSettingsService::GROUP_D_TYPES,
         );
 

@@ -218,14 +218,14 @@ function seedCreditingMonth(): array
         referenceType: 'gbb_monthly_result',
         bonusMonth: Carbon::parse($month),
     );
-    // A lifetime award is released by hand, never by an engine — a rebuild does
+    // A manual credit is written by hand, never by an engine — a rebuild does
     // not take one back.
     $wallet->credit(
         distributorId: $distributor->id,
         amountPaise: 25_000,
-        type: 'awards_credit',
+        type: 'manual_credit',
         referenceId: walletRef(),
-        referenceType: 'lifetime_award_milestone',
+        referenceType: 'manual_adjustment',
         bonusMonth: Carbon::parse($month),
     );
 
@@ -274,10 +274,10 @@ it('wipes every one of the month\'s tables and leaves what the engines did not w
     expect(PurchaseOfferGrant::first()->consumed_order_id)->toBe(12_345);
     expect(RedeemPointEntry::count())->toBe(1);
 
-    // The month's credits and their repurchase halves are gone; the hand-released
-    // award credit is not.
+    // The month's credits and their repurchase halves are gone; the hand-written
+    // manual credit is not.
     expect(WalletLedgerEntry::whereIn('type', ['rank_credit', 'gbb_credit', 'repurchase_transfer', 'repurchase_deduction'])->count())->toBe(0);
-    expect(WalletLedgerEntry::where('type', 'awards_credit')->count())->toBe(1);
+    expect(WalletLedgerEntry::where('type', 'manual_credit')->count())->toBe(1);
 
     // The close was re-run for the month, with --restart.
     expect(StubMonthlyClose::$calls)->toBe([['month' => REBUILD_MONTH, 'restart' => true]]);

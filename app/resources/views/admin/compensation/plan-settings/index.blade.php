@@ -262,10 +262,10 @@
 
     <div class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
         <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
-            <li>Lifetime Awards are <strong>non-cash milestones</strong>, not a pool: a distributor's first qualification at a rank creates one milestone worth that rank's <strong>lifetime award budget</strong> (the itemised reward catalogue — insurance, trips, gold, down payments…).</li>
-            <li>A milestone becomes <strong>releasable only after re-qualification</strong>: ranks 1–2 need 1 lifetime qualification, ranks 3–5 need 2, ranks 6–9 need 3.</li>
-            <li>Awards delivered as <strong>goods</strong> carry no admin charge or TDS; only a component released as cash/cheque is charged.</li>
-            <li>Each rank is awarded <strong>once per lifetime</strong> — there is no monthly recurrence.</li>
+            <li>Lifetime Awards are <strong>merchandise milestones</strong>, not a pool: each rank's award is split into tranches (A, B, C) whose amounts sum to the rank's <strong>lifetime award budget</strong>; the catalogue lists the merchandise per tranche.</li>
+            <li>Tranche A is released on a distributor's <strong>1st</strong> qualification at the rank, B on the <strong>2nd</strong>, C on the <strong>3rd</strong>. Ranks 1–2 have one tranche, ranks 3–5 two, ranks 6–9 three (the client, 2026-10-09).</li>
+            <li>Awards are <strong>merchandise only, never cash</strong>: no admin charge, no TDS, no wallet credit.</li>
+            <li>Each tranche is awarded <strong>once per lifetime</strong> — there is no monthly recurrence.</li>
         </ol>
     </div>
 
@@ -273,10 +273,9 @@
         <p class="font-semibold mb-1">Worked example — an Emerald (Rank 3) milestone</p>
         <p class="mb-1 text-[11px] text-blue-700">Illustrative only — not an earnings projection.</p>
         <p>
-            A distributor's first Rank 3 qualification creates a milestone against the Rank 3 budget of
-            <strong>₹90,000</strong> (health insurance + a foreign trip + gold).
-            Rank 3 requires <strong>2</strong> lifetime qualifications, so the award is deliverable only after they
-            qualify at Rank 3 a second time — until then it stays pending.
+            Rank 3 carries a budget of <strong>₹1,08,000</strong> in two tranches. A distributor's first Rank 3
+            qualification opens tranche A (<strong>₹48,600</strong> of merchandise), releasable at once. Their second
+            Rank 3 qualification opens tranche B (<strong>₹59,400</strong>) — until then only tranche A can be delivered.
         </p>
     </div>
 

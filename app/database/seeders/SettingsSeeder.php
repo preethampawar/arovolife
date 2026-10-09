@@ -69,16 +69,17 @@ final class SettingsSeeder extends Seeder
     {
         $defaults = [
             'comp.admin_charge.rate_bp' => '300',          // 3%
-            // Admin-charge scope toggles — ON for the 6 cash bonuses; OFF for
-            // non-cash Lifetime Awards (KP 2026-06-27 Round-2 Q6: only cash/
-            // cheque releases carry admin charge + TDS).
+            'comp.admin_charge.weekly_cap_paise' => '2500000',  // ₹25,000 per group, weekly batch
+            'comp.admin_charge.monthly_cap_paise' => '2500000', // ₹25,000 per group, monthly batch
+            'comp.monthly_income_cap_paise' => '500000000', // ₹50,00,000 across the five cash bonuses
+            // Admin-charge scope toggles — ON for the 6 cash bonuses. Lifetime
+            // Awards are merchandise only and have no toggle.
             'comp.admin_charge.applies_to_gsb' => 'true',
             'comp.admin_charge.applies_to_mb' => 'true',
             'comp.admin_charge.applies_to_rank' => 'true',
             'comp.admin_charge.applies_to_gbb' => 'true',
             'comp.admin_charge.applies_to_fortune' => 'true',
             'comp.admin_charge.applies_to_adc' => 'true',
-            'comp.admin_charge.applies_to_awards' => 'false',
             'comp.tds.rate_bp' => '500',                    // 5%
             'comp.gsb.power_cf_cap_paise' => '45000000',    // 4,50,000 BV
             'comp.gsb.pool_rate_bp' => '4500',              // 45% daily GSB pool (slabs 3–7 pro-rated)
@@ -101,7 +102,9 @@ final class SettingsSeeder extends Seeder
             'comp.repurchase.rate_bp' => '1000',            // 10%
             'comp.repurchase.cap_paise' => '1000000',       // ₹10,000
             'comp.repurchase.non_ranked_bv_paise' => '60000', // 600 BV
+            'comp.repurchase.cycle_days' => '30',           // repurchase window, anchor day inclusive (client 2026-10-09)
             'comp.fortune.pool_rate_bp' => '500',           // 5% of the month's company BV (÷ the month's total FB points)
+            'comp.fortune.min_commission_paise' => '3000',  // ₹30 minimum per Fortune qualifier
             'comp.fortune.exclude_rank_6' => 'true',
             'comp.fortune.exclude_rank_7' => 'true',
             'comp.fortune.exclude_rank_8' => 'true',

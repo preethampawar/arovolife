@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
@@ -50,7 +52,7 @@ function lifetimeAwardMilestone(array $overrides = []): LifetimeAwardMilestone
     ], $overrides));
 }
 
-it('marks a releasable tranche delivered as goods and never credits the wallet', function (): void {
+it('marks a releasable tranche delivered as merchandise and never credits the wallet', function (): void {
     $milestone = lifetimeAwardMilestone();
 
     $this->actingAs(lifetimeAwardsAdmin())
@@ -61,11 +63,17 @@ it('marks a releasable tranche delivered as goods and never credits the wallet',
 
     $milestone->refresh();
     expect($milestone->status)->toBe(LifetimeAwardMilestone::STATUS_DELIVERED)
-        ->and($milestone->disbursement_type)->toBe(LifetimeAwardMilestone::DISBURSEMENT_GOODS)
-        ->and($milestone->gross_paise)->toBe(93_240_000)
-        ->and($milestone->tds_paise)->toBe(0)
-        ->and($milestone->admin_charge_paise)->toBe(0)
-        ->and(WalletLedgerEntry::where('type', 'awards_credit')->count())->toBe(0);
+        ->and($milestone->delivered_at)->not->toBeNull()
+        ->and($milestone->notes)->toBe('Handed over')
+        ->and($milestone->amount_paise)->toBe(93_240_000)
+        // The cash columns are gone (2026_10_09_101000).
+        ->and(Schema::hasColumn('lifetime_award_milestones', 'disbursement_type'))->toBeFalse()
+        ->and(Schema::hasColumn('lifetime_award_milestones', 'gross_paise'))->toBeFalse()
+        ->and(WalletLedgerEntry::where('distributor_id', $milestone->distributor_id)->count())->toBe(0);
+
+    $audit = AuditLog::query()->where('action', 'admin.lifetime_award.delivered')->where('subject_id', $milestone->id)->firstOrFail();
+    expect($audit->details['amount_paise'])->toBe(93_240_000)
+        ->and($audit->details)->not->toHaveKey('disbursement_type');
 });
 
 it('refuses to deliver a tranche the rank has not been qualified for enough times', function (): void {

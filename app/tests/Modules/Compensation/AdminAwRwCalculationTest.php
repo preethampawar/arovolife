@@ -87,7 +87,6 @@ it('shows the month header and how an award is valued, with the month\'s per-ran
         'qualification_count' => 2,
         'award_description' => 'Emerald Partner — tranche B, merchandise per plan',
         'status' => LifetimeAwardMilestone::STATUS_DELIVERED,
-        'disbursement_type' => LifetimeAwardMilestone::DISBURSEMENT_GOODS,
         'delivered_at' => now(),
     ]);
 

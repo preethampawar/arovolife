@@ -282,10 +282,10 @@ The Rank Bonus run writes one milestone per earned tranche, in the month the ran
 
 **"Release rule changed" badge.** Before 2026-10-09 an award was releasable only after 1 (Ranks 1–2), 2 (Ranks 3–5) or 3 (Ranks 6–9) qualifications. Every milestone that existed then became tranche A, which is releasable on the 1st qualification. A pending milestone that was not releasable under the old rule but is under the new one carries an amber **Release rule changed on (date)** badge on the Lifetime Awards page, so it is clear why it is suddenly due. Delivered milestones were not changed.
 
-## Monthly payout (Groups B/C/D: GBB, Rank, Fortune, Awards, ADC)
+## Monthly payout (Groups B/D: GBB, Rank, Fortune, ADC)
 
 The **Awards & Rewards (AW & RW) Monthly Report** shows one **month header** per month on view — milestones triggered, delivered, the award worth (Σ of the tranche amounts recorded on that month's milestones), Computed — followed by how an award is valued (tranche A/B/C = the rank's 1st/2nd/3rd qualification; award worth = the tranche amount, goods from the rank's catalogue; merchandise only, never cash; nothing is funded from a BV pool) and a per-rank, per-tranche table for the month (milestones, delivered, amount, the rank's current budget). Each row of the list shows its tranche and amount; there is no cash/goods filter.
-Runs monthly. A per-group admin charge (3%, each group capped ₹25,000/cycle) and TDS (5%) are applied. The repurchase deduction on GBB, Rank and Fortune was already taken at credit time (Awards and ADC carry none); the batch reports it and sweeps its ledger entries with the credits. Held lines and the list totals follow the same rules as the weekly batch.
+Runs monthly. A per-group admin charge (3%, each group capped ₹25,000/cycle) and TDS (5%) are applied. The repurchase deduction on GBB, Rank and Fortune was already taken at credit time (ADC carries none; Lifetime Awards are merchandise and never reach a payout); the batch reports it and sweeps its ledger entries with the credits. Held lines and the list totals follow the same rules as the weekly batch.
 
 ### Arete Development Center (ADC) Bonus
 

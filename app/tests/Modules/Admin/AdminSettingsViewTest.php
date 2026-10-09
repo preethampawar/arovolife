@@ -366,8 +366,7 @@ it('AS-FLAG-03: every stream config carries its feature flag — GSB, MSB, GBB, 
         ->assertDontSee('comp.rank.envelope_bp')
         ->assertDontSee('comp.repurchase.rate_bp')
         ->assertDontSee('comp.admin_charge.applies_to_gsb')
-        ->assertDontSee('comp.admin_charge.applies_to_mb')
-        ->assertDontSee('comp.admin_charge.applies_to_awards');
+        ->assertDontSee('comp.admin_charge.applies_to_mb');
 
     // Writes 404 while off.
     $this->actingAs(asvSeedAdmin())

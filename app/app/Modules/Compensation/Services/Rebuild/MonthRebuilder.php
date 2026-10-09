@@ -60,7 +60,7 @@ final class MonthRebuilder
      * The wallet rows a monthly credit consists of: the gross, and the two
      * halves of the credit-time repurchase deduction.
      *
-     * `awards_credit` is absent deliberately — a lifetime award is released by
+     * Lifetime awards have no wallet row — they are merchandise released by
      * hand, not by an engine, and a rebuild does not take one back.
      *
      * @var list<string>

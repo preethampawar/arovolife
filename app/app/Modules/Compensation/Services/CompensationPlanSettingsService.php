@@ -27,14 +27,13 @@ final class CompensationPlanSettingsService
     /**
      * Wallet ledger entry types belonging to each payout admin-charge group.
      * Each group has its own ₹25,000/cycle ceiling (KP 2026-06-30 Round-5).
-     * Group C (Awards) carries no admin charge by default (non-cash gifts).
+     * There is no Group C: Lifetime Awards are merchandise only and never
+     * reach the wallet (client 2026-10-09).
      * ADC is Group D — separate ceiling from the five cash bonuses.
      */
     public const GROUP_A_TYPES = ['gsb_credit', 'mb_credit'];
 
     public const GROUP_B_TYPES = ['gbb_credit', 'rank_credit', 'fortune_credit'];
-
-    public const GROUP_C_TYPES = ['awards_credit'];
 
     public const GROUP_D_TYPES = ['adc_credit'];
 
@@ -49,7 +48,7 @@ final class CompensationPlanSettingsService
     private const SCALAR_DEFAULTS = [
         'comp.admin_charge.rate_bp' => 300,
         // Per-group admin-charge ceilings (KP 2026-06-30 Round-5).
-        // Group A = GSB+MB (weekly), Groups B/C/D = monthly streams.
+        // Group A = GSB+MB (weekly), Groups B/D = monthly streams.
         // Each group has an independent ₹25,000/cycle ceiling.
         'comp.admin_charge.weekly_cap_paise' => 2_500_000,
         'comp.admin_charge.monthly_cap_paise' => 2_500_000,
@@ -59,16 +58,14 @@ final class CompensationPlanSettingsService
         // at payout with an income_cap_forfeit ledger debit.
         // ADC and Awards are excluded from this cap.
         'comp.monthly_income_cap_paise' => 500_000_000,
-        // Admin charge scope flags. ON for the six cash bonuses; OFF for
-        // Lifetime Awards — KP confirmed (2026-06-27 Round-2 Q6) that non-cash
-        // awards carry no admin charge or TDS (only cash/cheque releases do).
+        // Admin charge scope flags, ON for the six cash bonuses. Lifetime
+        // Awards are merchandise only and carry no admin charge or TDS.
         'comp.admin_charge.applies_to_gsb' => true,
         'comp.admin_charge.applies_to_mb' => true,
         'comp.admin_charge.applies_to_rank' => true,
         'comp.admin_charge.applies_to_gbb' => true,
         'comp.admin_charge.applies_to_fortune' => true,
         'comp.admin_charge.applies_to_adc' => true,
-        'comp.admin_charge.applies_to_awards' => false,
         'comp.tds.rate_bp' => 500,
         'comp.gsb.power_cf_cap_paise' => 45_000_000,
         'comp.gsb.min_bv_paise' => 60_000,
@@ -200,7 +197,7 @@ final class CompensationPlanSettingsService
         return $this->scalarInt('comp.admin_charge.weekly_cap_paise');
     }
 
-    /** Per-cycle admin-charge ceiling for Group B/C/D (GBB/Rank/Fortune/Awards/ADC, monthly). */
+    /** Per-cycle admin-charge ceiling for Group B/D (GBB/Rank/Fortune/ADC, monthly). */
     public function adminChargeMonthlyCapPaise(): int
     {
         return $this->scalarInt('comp.admin_charge.monthly_cap_paise');
@@ -215,7 +212,7 @@ final class CompensationPlanSettingsService
     /**
      * Whether the admin charge applies to the given bonus stream. Driven by the
      * per-bonus `comp.admin_charge.applies_to_{value}` toggle (default true for
-     * all seven, per KP 2026-06-27), so admins can exempt a stream from the UI.
+     * all six, per KP 2026-06-27), so admins can exempt a stream from the UI.
      */
     public function adminChargeAppliesTo(BonusType $bonus): bool
     {

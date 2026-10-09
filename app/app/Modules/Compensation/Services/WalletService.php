@@ -36,8 +36,8 @@ class WalletService
      * Note this is deliberately WIDER than the six rows
      * IncomeOverviewService::bonusSummaryFromTotals() shows a distributor:
      * that list is a feature-gated display of the bonuses they can earn, while
-     * this is every rupee that left the company as commission — awards,
-     * franchise payouts and manual credits included.
+     * this is every rupee that left the company as commission — franchise
+     * payouts and manual credits included.
      */
     public const BONUS_CREDIT_TYPES = [
         'gsb_credit',
@@ -46,7 +46,6 @@ class WalletService
         'rank_credit',
         'fortune_credit',
         'adc_credit',
-        'awards_credit',
         'franchise_credit',
         'manual_credit',
     ];
@@ -75,8 +74,8 @@ class WalletService
      *
      * The income dashboard's per-bonus summary reads the wallet ledger rather
      * than the per-engine result tables so that "credited to wallet" means
-     * exactly that for every bonus, from one source — held/suspended engine
-     * rows never appear here because they were never credited.
+     * exactly that for every bonus, from one source — blocked or uncredited
+     * engine rows never appear here because they were never credited.
      *
      * @return array<string, int> type => total paise
      */
@@ -207,7 +206,6 @@ class WalletService
         $saleDerived = array_merge(
             CompensationPlanSettingsService::GROUP_A_TYPES,
             CompensationPlanSettingsService::GROUP_B_TYPES,
-            CompensationPlanSettingsService::GROUP_C_TYPES,
             CompensationPlanSettingsService::GROUP_D_TYPES,
         );
 

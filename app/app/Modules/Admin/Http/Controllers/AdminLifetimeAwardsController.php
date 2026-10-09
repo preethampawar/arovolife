@@ -157,17 +157,10 @@ final class AdminLifetimeAwardsController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $grossPaise = $milestone->amount_paise;
-
         $before = AuditDigests::of($milestone);
 
         $milestone->update([
             'status' => LifetimeAwardMilestone::STATUS_DELIVERED,
-            'disbursement_type' => LifetimeAwardMilestone::DISBURSEMENT_GOODS,
-            'gross_paise' => $grossPaise ?: null,
-            'admin_charge_paise' => 0,
-            'tds_paise' => 0,
-            'net_paise' => $grossPaise ?: null,
             'delivered_at' => now(),
             'notes' => $data['notes'] ?? null,
         ]);
@@ -183,8 +176,7 @@ final class AdminLifetimeAwardsController extends Controller
                 'distributor_id' => $milestone->distributor_id,
                 'rank_number' => $milestone->rank_number,
                 'tranche' => $milestone->tranche,
-                'disbursement_type' => LifetimeAwardMilestone::DISBURSEMENT_GOODS,
-                'amount_paise' => $grossPaise,
+                'amount_paise' => $milestone->amount_paise,
             ],
             'ip' => $request->ip(),
         ]);

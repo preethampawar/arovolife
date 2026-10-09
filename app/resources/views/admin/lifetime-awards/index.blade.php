@@ -36,7 +36,6 @@
                     <th class="px-4 py-2 text-left text-gray-600">Award</th>
                     <th class="px-4 py-2 text-center text-gray-600">Status</th>
                     <th class="px-4 py-2 text-left text-gray-600">Delivered at</th>
-                    <th class="px-4 py-2 text-left text-gray-600">Disbursement</th>
                     <th class="px-4 py-2"></th>
                 </tr>
             </thead>
@@ -94,15 +93,6 @@
                     </td>
                     <td class="px-4 py-2 text-gray-600">
                         {{ $milestone->delivered_at ? $milestone->delivered_at->format('d M Y') : '—' }}
-                    </td>
-                    <td class="px-4 py-2 text-gray-600 text-xs">
-                        @if($milestone->disbursement_type)
-                            <span class="inline-flex px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-medium">
-                                {{ ucfirst($milestone->disbursement_type) }}
-                            </span>
-                        @else
-                            —
-                        @endif
                     </td>
                     <td class="px-4 py-2">
                         @if($milestone->status === 'pending')

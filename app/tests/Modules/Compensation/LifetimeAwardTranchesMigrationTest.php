@@ -66,9 +66,16 @@ function lifetimeAwardMigrationAudit(string $action): array
     return (array) AuditLog::query()->where('action', $action)->orderByDesc('id')->firstOrFail()->details;
 }
 
-/** Put lifetime_award_milestones back to its pre-100900 shape so up() can run again. */
+/**
+ * Put lifetime_award_milestones back to its pre-100900 shape so up() can run
+ * again — including the cash columns 101000 dropped, which 100900 reads.
+ */
 function revertMilestonesToSingleAwardShape(): void
 {
+    (require base_path(
+        'app/Modules/Compensation/Database/Migrations/2026_10_09_101000_drop_lifetime_award_cash_columns.php'
+    ))->down();
+
     Schema::table('lifetime_award_milestones', function (Blueprint $table): void {
         $table->unique(['distributor_id', 'rank_number'], 'uq_lifetime_award_dist_rank');
     });
@@ -123,6 +130,11 @@ it('backfills tranche 1 amounts and flags pending rows the per-tranche rule made
     DB::table('lifetime_award_milestones')->where('id', $crown)->update(['gross_paise' => 140_000_000, 'disbursement_type' => 'goods']);
 
     addTrancheToMilestonesMigration()->up();
+
+    // Back to the shape the full migration set leaves (cash columns dropped).
+    (require base_path(
+        'app/Modules/Compensation/Database/Migrations/2026_10_09_101000_drop_lifetime_award_cash_columns.php'
+    ))->up();
 
     $rows = LifetimeAwardMilestone::query()->get()->keyBy('id');
 

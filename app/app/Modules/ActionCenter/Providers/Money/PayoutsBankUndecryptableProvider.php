@@ -154,7 +154,6 @@ final class PayoutsBankUndecryptableProvider extends AbstractProvider
         $payableTypes = array_merge(
             CompensationPlanSettingsService::GROUP_A_TYPES,
             CompensationPlanSettingsService::GROUP_B_TYPES,
-            CompensationPlanSettingsService::GROUP_C_TYPES,
             CompensationPlanSettingsService::GROUP_D_TYPES,
         );
 

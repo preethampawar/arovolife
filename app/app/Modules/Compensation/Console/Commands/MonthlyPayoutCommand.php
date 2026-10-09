@@ -28,7 +28,7 @@ use Throwable;
  * so that never happens before somebody has checked the month — but it is the
  * less obvious of the two commands, and an operator debugging a missing payout
  * reaches for this one. Typed bare it used to default to the month in flight and
- * sweep every unswept Group B/C/D credit with no check at all, which is the
+ * sweep every unswept Group B/D credit with no check at all, which is the
  * whole 1st→8th buffer defeated by one line of shell.
  *
  * So: the same `MonthlyEngineCompletionGate` the close applies, on the month
@@ -48,7 +48,7 @@ final class MonthlyPayoutCommand extends Command
                             {--force : Build the batch even when the month it pays has incomplete crediting}
                             {--in-flight : Build a batch dated a month that has not ended — what compensation:monthly-payout-close passes on the 8th}';
 
-    protected $description = 'Run the monthly payout batch (GBB, Rank, Fortune, Awards, ADC — Groups B/C/D)';
+    protected $description = 'Run the monthly payout batch (GBB, Rank, Fortune, ADC — Groups B/D)';
 
     public function __construct(private readonly PayoutService $payoutService)
     {
@@ -73,7 +73,7 @@ final class MonthlyPayoutCommand extends Command
         // the batch month, for the month that ended the day before.
         $creditingMonth = $month->copy()->subMonthNoOverflow()->startOfMonth();
 
-        $this->info("Monthly payout (Groups B/C/D) — {$month->format('F Y')}, paying {$creditingMonth->format('F Y')} credits");
+        $this->info("Monthly payout (Groups B/D) — {$month->format('F Y')}, paying {$creditingMonth->format('F Y')} credits");
 
         $blocker = MonthlyEngineCompletionGate::blockingFailure($creditingMonth);
 

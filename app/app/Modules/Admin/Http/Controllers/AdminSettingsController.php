@@ -15,7 +15,6 @@ use App\Modules\Shared\Features\FaqLibraryFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
-use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\MessagingFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
@@ -1114,7 +1113,7 @@ final class AdminSettingsController extends Controller
             'comp.admin_charge.rate_bp' => [
                 'group' => 'compensation_plan',
                 'label' => 'Admin charge rate (basis points)',
-                'description' => 'Admin charge applied to all seven bonus streams (GSB, Mentorship, Rank, Growth Booster, Fortune, ADC, Lifetime Awards) — per the applies-to toggles below. 300 = 3%. Stored in basis points (100 bp = 1%).',
+                'description' => 'Admin charge applied to the six cash bonus streams (GSB, Mentorship, Rank, Growth Booster, Fortune, ADC) — per the applies-to toggles below. Lifetime Awards are merchandise only and carry no admin charge. 300 = 3%. Stored in basis points (100 bp = 1%).',
                 'impact' => 'Raising this reduces every distributor\'s net bonus. Takes effect from the next engine run.',
                 'type' => 'int',
                 'min' => 0,
@@ -1135,7 +1134,7 @@ final class AdminSettingsController extends Controller
             'comp.admin_charge.monthly_cap_paise' => [
                 'group' => 'compensation_plan',
                 'label' => 'Admin charge cap — monthly batch',
-                'description' => 'Maximum admin charge per distributor per bonus group in each monthly payout batch (Groups B/C/D: GBB, Rank, Fortune, Awards, ADC — each group capped independently). Edit in paise. KP-confirmed: ₹25,000.',
+                'description' => 'Maximum admin charge per distributor per bonus group in each monthly payout batch (Groups B/D: GBB, Rank, Fortune, ADC — each group capped independently). Edit in paise. KP-confirmed: ₹25,000.',
                 'impact' => 'Raising this lets each monthly bonus group deduct more admin charge before capping. Takes effect from the next monthly payout run.',
                 'display_unit' => 'rupees',
                 'type' => 'int',
@@ -1154,7 +1153,7 @@ final class AdminSettingsController extends Controller
                 'max' => 100_000_000_000,
                 'default' => '500000000',
             ],
-            // Admin-charge scope — KP Q&A 2026-06-27: applies to all 7 bonuses.
+            // Admin-charge scope — KP Q&A 2026-06-27: applies to all 6 cash bonuses.
             // Each toggle exempts one stream when turned OFF.
             'comp.admin_charge.applies_to_gsb' => [
                 'group' => 'compensation_plan',
@@ -1203,14 +1202,6 @@ final class AdminSettingsController extends Controller
                 'description' => 'When ON, the admin charge is deducted from ADC payouts. KP-confirmed ON (2026-06-27; previously exempt).',
                 'type' => 'bool',
                 'default' => 'true',
-            ],
-            'comp.admin_charge.applies_to_awards' => [
-                'group' => 'compensation_plan',
-                'feature' => LifetimeAwardsFeature::class,
-                'label' => 'Admin charge: apply to Lifetime Awards & Rewards',
-                'description' => 'When ON, the admin charge is deducted from Lifetime Awards. Default OFF: KP confirmed (2026-06-27 Round-2 Q6) that non-cash awards (gifts/goods) carry NO admin charge or TDS — only awards released as cash/cheque are charged. The Lifetime Awards payout engine ships in a later phase; turn this ON only if a cash award component is paid.',
-                'type' => 'bool',
-                'default' => 'false',
             ],
             'comp.tds.rate_bp' => [
                 'group' => 'compensation_plan',
