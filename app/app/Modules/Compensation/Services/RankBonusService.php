@@ -487,6 +487,12 @@ final class RankBonusService
             /** @var Collection<int, RankMonthlyPool> $pools */
             $pools = collect();
 
+            // The ids of the roster rows this freeze writes — the local
+            // accumulator reconcileFreeze() checks against, so a legacy
+            // `pending` row it did not write cannot block the freeze.
+            /** @var array<int, true> $writtenIds */
+            $writtenIds = [];
+
             foreach (self::RANKS as $rank) {
                 $pass = $this->passFor($rank, $firstPassMax);
                 $pointValuePaise = (int) $passes[$pass]->point_value_paise;
@@ -521,12 +527,14 @@ final class RankBonusService
                 // Requalification-held: recorded, never credited, never
                 // back-paid. Snapshot columns stay null — they were not in the
                 // denominator and no point value applies to them.
+                $written = [];
+
                 foreach ($heldIds as $distributorId) {
-                    $this->writeRosterRow($distributorId, $pool, RankBonusResult::STATUS_REQUALIFICATION_HELD, 0);
+                    $written[] = $this->writeRosterRow($distributorId, $pool, RankBonusResult::STATUS_REQUALIFICATION_HELD, 0);
                 }
 
                 foreach ($payableIds as $distributorId) {
-                    $this->writeRosterRow(
+                    $written[] = $this->writeRosterRow(
                         $distributorId,
                         $pool,
                         RankBonusResult::STATUS_PENDING,
@@ -538,7 +546,7 @@ final class RankBonusService
                 }
 
                 foreach ($grants as $grant) {
-                    $this->writeRosterRow(
+                    $written[] = $this->writeRosterRow(
                         (int) $grant->distributor_id,
                         $pool,
                         RankBonusResult::STATUS_PENDING,
@@ -548,9 +556,15 @@ final class RankBonusService
                         pointValuePaise: $pointValuePaise,
                     );
                 }
+
+                foreach ($written as $row) {
+                    if ($row !== null) {
+                        $writtenIds[(int) $row->id] = true;
+                    }
+                }
             }
 
-            $this->reconcileFreeze($monthStart, $envelopePaise, $passes, $pools);
+            $this->reconcileFreeze($monthStart, $envelopePaise, $passes, $pools, $writtenIds);
 
             $this->recordFreeze($monthStart, $pools, collect($passes));
 
@@ -570,14 +584,34 @@ final class RankBonusService
      * and pass 2 must have divided exactly what pass 1 left. Any mismatch is a
      * bug, and a bug rolls the whole freeze back rather than paying out.
      *
+     * The roster gross is summed over the rows THIS freeze wrote. A `pending`
+     * row of the month it did not write — a legacy row from before the freeze
+     * existed, for someone not on today's roster — is not part of the pools
+     * and would otherwise block every freeze of the month. It is reported
+     * ({@see reportStrayPendingRows()}) and never credited
+     * ({@see pricedByFreeze()}).
+     *
      * @param  array<int, RankMonthlyPass>  $passes
      * @param  Collection<int, RankMonthlyPool>  $pools
+     * @param  array<int, true>  $writtenIds  ids of the roster rows this freeze wrote
      */
-    private function reconcileFreeze(string $monthStart, int $envelopePaise, array $passes, Collection $pools): void
+    private function reconcileFreeze(string $monthStart, int $envelopePaise, array $passes, Collection $pools, array $writtenIds): void
     {
-        $rosterGross = (int) RankBonusResult::query()
+        $pending = RankBonusResult::query()
             ->where('month_start', $monthStart)
-            ->where('status', RankBonusResult::STATUS_PENDING)
+            ->where('status', RankBonusResult::STATUS_PENDING);
+
+        $strays = $pending->clone()
+            ->get(['id', 'distributor_id', 'rank_number', 'gross_paise'])
+            ->reject(fn (RankBonusResult $row): bool => isset($writtenIds[(int) $row->id]))
+            ->values();
+
+        if ($strays->isNotEmpty()) {
+            $this->reportStrayPendingRows($monthStart, $strays);
+        }
+
+        $rosterGross = (int) $pending->clone()
+            ->whereNotIn('id', $strays->pluck('id')->all())
             ->sum('gross_paise');
         $passPayout = (int) $passes[1]->payout_paise + (int) $passes[2]->payout_paise;
         $poolPayout = (int) $pools->sum('payout_paise');
@@ -595,6 +629,68 @@ final class RankBonusService
                 $envelopePaise,
             ));
         }
+    }
+
+    /**
+     * A `pending` row the freeze did not write is left exactly as it is —
+     * neither credited, re-priced nor deleted — and recorded in a
+     * retention-guaranteed audit_log row naming each one, beside the
+     * `rank.pool.frozen` row the same transaction writes (R-35). Only legacy
+     * or hand-made data produces one; `compensation:rebuild-month` (whose wipe
+     * clears the month's rows) is the way to resolve it.
+     *
+     * @param  Collection<int, RankBonusResult>  $strays
+     */
+    private function reportStrayPendingRows(string $monthStart, Collection $strays): void
+    {
+        $details = [
+            'month_start' => $monthStart,
+            'rows' => $strays->map(fn (RankBonusResult $row): array => [
+                'id' => (int) $row->id,
+                'distributor_id' => (int) $row->distributor_id,
+                'rank_number' => (int) $row->rank_number,
+                'gross_paise' => (int) $row->gross_paise,
+            ])->all(),
+            'reason' => 'pending rows this freeze did not write: not on the frozen roster, outside the pools, never credited',
+        ];
+
+        Log::warning('rank.freeze.stray_pending_rows', $details);
+
+        AuditLog::create([
+            'action' => 'rank.freeze.stray_pending_rows',
+            'subject_type' => 'rank_bonus_result',
+            'subject_id' => (int) $strays->first()?->id,
+            'details' => $details,
+        ]);
+    }
+
+    /**
+     * Whether a roster row carries the economics its rank's frozen pool row
+     * decided — the marker of a row a freeze wrote. {@see writeRosterRow()}
+     * copies the pool's turnover, allotment, payable count, total points and
+     * point value onto every row it writes; a legacy `pending` row priced by
+     * anything else (an older engine, a hand edit) does not carry all five, so
+     * the credit loop never pays it a share of a pool it was never in the
+     * denominator of. No column links a result to its pool, and adding one
+     * would leave every month frozen before it unreadable to this rule.
+     */
+    private function pricedByFreeze(RankBonusResult $row, RankMonthlyPool $pool): bool
+    {
+        return (int) $row->company_turnover_paise === max(0, (int) $pool->company_turnover_paise)
+            && (int) $row->pool_paise === max(0, (int) $pool->pool_paise)
+            && (int) $row->qualifier_count === (int) $pool->payable_count
+            && $row->total_points === $pool->total_points
+            && $row->point_value_paise === $pool->point_value_paise;
+    }
+
+    /**
+     * A `pending` row the credit loop never pays nor syncs an award for: one
+     * not priced by its rank's frozen pool, or whose rank has no pool at all.
+     */
+    private function isStrayPendingRow(RankBonusResult $row, ?RankMonthlyPool $pool): bool
+    {
+        return $row->status === RankBonusResult::STATUS_PENDING
+            && ($pool === null || ! $this->pricedByFreeze($row, $pool));
     }
 
     /**
@@ -927,15 +1023,23 @@ final class RankBonusService
      */
     private function creditFromFrozenPools(Carbon $monthStartCarbon, string $monthStart, Collection $pools): array
     {
+        /** @var Collection<int, Collection<int, RankBonusResult>> $rowsByRank */
+        $rowsByRank = RankBonusResult::query()
+            ->where('month_start', $monthStart)
+            ->get()
+            ->groupBy(fn (RankBonusResult $row): int => (int) $row->rank_number);
+
         // Every achiever row below syncs its Lifetime Award tranches; a rank
-        // without tranche rows stops the run here, before any write.
+        // without tranche rows stops the run here, before any write. A stray
+        // pending row is skipped by the loop, so its rank is not asked for.
         $this->assertAwardTranchesSeeded(
-            RankBonusResult::query()
-                ->where('month_start', $monthStart)
-                ->whereNull('aogo_points')
-                ->whereIn('status', self::AWARD_SYNC_STATUSES)
-                ->distinct()
-                ->pluck('rank_number')
+            $rowsByRank
+                ->filter(fn (Collection $rows, int $rank): bool => $rows->contains(
+                    fn (RankBonusResult $row): bool => $row->aogo_points === null
+                        && in_array($row->status, self::AWARD_SYNC_STATUSES, true)
+                        && ! $this->isStrayPendingRow($row, $pools[$rank] ?? null),
+                ))
+                ->keys()
                 ->map(fn ($rank): int => (int) $rank)
                 ->all(),
         );
@@ -973,7 +1077,7 @@ final class RankBonusService
         $credited = 0;
         $byRank = [];
 
-        DB::transaction(function () use ($monthStartCarbon, $monthStart, $pools, $grants, $late, &$credited, &$byRank): void {
+        DB::transaction(function () use ($monthStartCarbon, $monthStart, $pools, $rowsByRank, $grants, $late, &$credited, &$byRank): void {
             foreach (self::RANKS as $rank) {
                 $pool = $pools[$rank] ?? null;
 
@@ -982,10 +1086,7 @@ final class RankBonusService
                 }
 
                 /** @var Collection<int, RankBonusResult> $rows */
-                $rows = RankBonusResult::query()
-                    ->where('month_start', $monthStart)
-                    ->where('rank_number', $rank)
-                    ->get();
+                $rows = $rowsByRank->get($rank, collect());
 
                 $byRank[$rank] = [
                     'qualifiers' => (int) $pool->payable_count,
@@ -1000,6 +1101,23 @@ final class RankBonusService
 
                 foreach ($rows as $row) {
                     if (! in_array($row->status, self::AWARD_SYNC_STATUSES, true)) {
+                        continue;
+                    }
+
+                    // A stray legacy row (reportStrayPendingRows) is never paid,
+                    // and neither syncs an award: it is not on the frozen roster.
+                    // The freeze reports the strays it saw once; one written
+                    // after it (a hand edit, or a kept premature freeze that
+                    // never re-freezes) leaves this trace on every run.
+                    if ($this->isStrayPendingRow($row, $pool)) {
+                        Log::warning('rank.credit.stray_pending_row_skipped', [
+                            'month_start' => $monthStart,
+                            'result_id' => (int) $row->id,
+                            'distributor_id' => (int) $row->distributor_id,
+                            'rank_number' => (int) $row->rank_number,
+                            'gross_paise' => (int) $row->gross_paise,
+                        ]);
+
                         continue;
                     }
 

@@ -24,6 +24,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
@@ -544,6 +545,196 @@ it('keeps a premature freeze once something it funded was credited', function ()
         ->toBe(200_000);
     expect(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(1);
     expect((int) RankBonusResult::where('distributor_id', $dist->id)->value('gross_paise'))->toBe(194_400);
+});
+
+/**
+ * A credited premature freeze with one row the first run never reached — the
+ * shape a crash part-way through the credit loop leaves. The kept freeze has
+ * already decided every figure, so the re-run must credit that row.
+ *
+ * @return array{0: int, 1: int} [credited distributor id, still-pending distributor id]
+ */
+function rankKeptFreezeWithOnePendingRow(): array
+{
+    $a = Distributor::factory()->create()->id;
+    $b = Distributor::factory()->create()->id;
+    seedRankQualification($a, rank: 1, monthStart: '2026-06-01');
+    seedRankQualification($b, rank: 1, monthStart: '2026-06-01');
+    seedRankCompanyBv(1_000_000, Carbon::parse('2026-06-05'));
+
+    Carbon::setTestNow(Carbon::parse('2026-06-15 10:00:00'));
+    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    RankBonusResult::where('distributor_id', $b)->update([
+        'status' => RankBonusResult::STATUS_PENDING,
+        'credited_at' => null,
+        'repurchase_deduction_paise' => 0,
+    ]);
+    WalletLedgerEntry::where('distributor_id', $b)->delete();
+
+    Carbon::setTestNow(Carbon::parse('2026-07-01 04:00:00'));
+
+    return [$a, $b];
+}
+
+it('credits the rest of a kept premature freeze even when the cap has since become invalid', function (): void {
+    [, $b] = rankKeptFreezeWithOnePendingRow();
+    $poolBefore = RankMonthlyPool::where('month_start', '2026-06-01')->orderBy('rank_number')->pluck('point_value_paise')->all();
+    $grossBefore = (int) RankBonusResult::where('distributor_id', $b)->value('gross_paise');
+
+    // A cap the next freeze would refuse — but this run writes no freeze.
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.point_value_cap_paise'],
+        ['value' => '20050', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+
+    $result = app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    expect($result['credited'])->toBe(1)
+        ->and(RankBonusResult::where('distributor_id', $b)->value('status'))->toBe(RankBonusResult::STATUS_CREDITED)
+        ->and((int) RankBonusResult::where('distributor_id', $b)->value('gross_paise'))->toBe($grossBefore)
+        ->and(WalletLedgerEntry::where('distributor_id', $b)->where('type', 'rank_credit')->count())->toBe(1)
+        ->and(RankMonthlyPool::where('month_start', '2026-06-01')->orderBy('rank_number')->pluck('point_value_paise')->all())->toBe($poolBefore)
+        ->and(RankMonthlyPass::where('month_start', '2026-06-01')->count())->toBe(2);
+});
+
+it('credits the rest of a kept premature freeze even while a repurchase verdict is pending', function (): void {
+    [, $b] = rankKeptFreezeWithOnePendingRow();
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    rankSeedPendingCycle($b, '2026-06-25');
+
+    $result = app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    expect($result['credited'])->toBe(1)
+        ->and(RankBonusResult::where('distributor_id', $b)->value('status'))->toBe(RankBonusResult::STATUS_CREDITED)
+        ->and(WalletLedgerEntry::where('distributor_id', $b)->where('type', 'rank_credit')->count())->toBe(1);
+});
+
+it('freezes past a stray legacy pending row, reports it and never credits it', function (): void {
+    // A pre-freeze `pending` row for someone not on the roster this freeze
+    // writes: reconciling it against the pass payout would refuse every
+    // freeze of the month; crediting it would pay a share of a pool it was
+    // never in the denominator of.
+    $m = '2026-06-01';
+    $stray = Distributor::factory()->create()->id;
+    Carbon::setTestNow(Carbon::parse('2026-06-10 10:00:00'));
+    $strayRow = RankBonusResult::create([
+        'distributor_id' => $stray,
+        'month_start' => $m,
+        'rank_number' => 2,
+        'company_turnover_paise' => 0,
+        'pool_paise' => 50_000,
+        'qualifier_count' => 1,
+        'gross_paise' => 50_000,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_paise' => 50_000,
+        'status' => RankBonusResult::STATUS_PENDING,
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2026-07-01 04:00:00'));
+    seedRankCompanyBv(1_000_000, Carbon::parse('2026-06-05'));
+    $achiever = seedRankCohort(1, 1, $m)[0];
+
+    $svc = app(RankBonusService::class);
+    $result = $svc->runForMonth(Carbon::parse($m));
+
+    expect($result['credited'])->toBe(1)
+        ->and(RankBonusResult::where('distributor_id', $achiever)->value('status'))->toBe(RankBonusResult::STATUS_CREDITED)
+        ->and($strayRow->fresh()->status)->toBe(RankBonusResult::STATUS_PENDING)
+        ->and((int) $strayRow->fresh()->gross_paise)->toBe(50_000)
+        ->and(WalletLedgerEntry::where('distributor_id', $stray)->count())->toBe(0);
+
+    $audit = AuditLog::where('action', 'rank.freeze.stray_pending_rows')->sole();
+    expect($audit->details['month_start'])->toBe($m)
+        ->and($audit->details['rows'])->toHaveCount(1)
+        ->and($audit->details['rows'][0]['id'])->toBe($strayRow->id)
+        ->and($audit->details['rows'][0]['distributor_id'])->toBe($stray)
+        ->and($audit->details['rows'][0]['rank_number'])->toBe(2)
+        ->and($audit->details['rows'][0]['gross_paise'])->toBe(50_000);
+
+    // A re-run over the frozen month still never credits it.
+    $svc->runForMonth(Carbon::parse($m));
+
+    expect($strayRow->fresh()->status)->toBe(RankBonusResult::STATUS_PENDING)
+        ->and(WalletLedgerEntry::where('distributor_id', $stray)->count())->toBe(0)
+        ->and(LifetimeAwardMilestone::where('distributor_id', $stray)->count())->toBe(0);
+});
+
+it('traces a stray pending row that appears after the freeze and never lets its rank refuse the run', function (): void {
+    // A hand-made `pending` row written AFTER the freeze: freezeMonth() never
+    // runs again, so only the credit loop sees it. Its rank having no tranche
+    // rows must not refuse a run that will never sync it an award.
+    $m = '2026-06-01';
+    // A kept premature freeze with one rank-1 roster row still pending — it
+    // must still be credited below.
+    [, $achiever] = rankKeptFreezeWithOnePendingRow();
+
+    $stray = Distributor::factory()->create()->id;
+    $strayRow = RankBonusResult::create([
+        'distributor_id' => $stray,
+        'month_start' => $m,
+        'rank_number' => 7,
+        'company_turnover_paise' => 0,
+        'pool_paise' => 50_000,
+        'qualifier_count' => 1,
+        'gross_paise' => 50_000,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_paise' => 50_000,
+        'status' => RankBonusResult::STATUS_PENDING,
+    ]);
+
+    DB::table('lifetime_award_tranches')->where('rank_number', 7)->delete();
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+    app()->forgetInstance(RankBonusService::class);
+
+    Log::spy();
+
+    $result = app(RankBonusService::class)->runForMonth(Carbon::parse($m));
+
+    expect($result['credited'])->toBe(1)
+        ->and(RankBonusResult::where('distributor_id', $achiever)->value('status'))->toBe(RankBonusResult::STATUS_CREDITED)
+        ->and(WalletLedgerEntry::where('distributor_id', $achiever)->where('type', 'rank_credit')->count())->toBe(1)
+        ->and($strayRow->fresh()->status)->toBe(RankBonusResult::STATUS_PENDING)
+        ->and(WalletLedgerEntry::where('distributor_id', $stray)->count())->toBe(0)
+        ->and(LifetimeAwardMilestone::where('distributor_id', $stray)->count())->toBe(0);
+
+    Log::shouldHaveReceived('warning')
+        ->with('rank.credit.stray_pending_row_skipped', [
+            'month_start' => $m,
+            'result_id' => $strayRow->id,
+            'distributor_id' => $stray,
+            'rank_number' => 7,
+            'gross_paise' => 50_000,
+        ])
+        ->once();
+});
+
+it('refuses a pending verdict before replacing an uncredited premature freeze', function (): void {
+    $dist = Distributor::factory()->create()->id;
+    seedRankQualification($dist, rank: 1, monthStart: '2026-06-01');
+
+    // Mid-month, no BV yet: a ₹0 freeze that credited nothing — replaceable.
+    Carbon::setTestNow(Carbon::parse('2026-06-15 10:00:00'));
+    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    Carbon::setTestNow(Carbon::parse('2026-07-01 04:00:00'));
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-06-20'));
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    rankSeedPendingCycle($dist, '2026-06-25');
+    $resultIds = RankBonusResult::pluck('id')->all();
+
+    expect(fn () => app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01')))
+        ->toThrow(RepurchaseVerdictsPending::class);
+
+    // Nothing was deleted: the premature freeze is intact for the re-run.
+    expect(RankMonthlyPool::where('month_start', '2026-06-01')->count())->toBe(9)
+        ->and(RankMonthlyPass::where('month_start', '2026-06-01')->count())->toBe(2)
+        ->and(RankBonusResult::pluck('id')->all())->toBe($resultIds)
+        ->and(AuditLog::where('action', 'rank.pool.refrozen')->count())->toBe(0);
 });
 
 /**
