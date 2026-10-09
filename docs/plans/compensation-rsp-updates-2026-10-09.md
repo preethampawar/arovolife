@@ -1285,19 +1285,19 @@ The constructor gains `private readonly IncomeEligibilityService $eligibility` (
 - Modify: `app/app/Modules/Compensation/Services/BonusCalculationSnapshots.php` (its rank-month block feeding `rb-month.blade.php`: expose `passes` from `rank_monthly_passes`)
 - Test: `AdminRankBonusInputOutputTest.php`, `AdminRbCalculationTest.php`, `RankBonusStylingTest.php`
 
-- [ ] **Step 1: Failing test** — in `AdminRankBonusInputOutputTest.php` after freezing a month (reuse its fixture): assert the page shows `Pass 1`, `Pass 2`, the pass point value and leftover, and no `Pool %` header:
+- [x] **Step 1: Failing test** — in `AdminRankBonusInputOutputTest.php` after freezing a month (reuse its fixture): assert the page shows `Pass 1`, `Pass 2`, the pass point value and leftover, and no `Pool %` header:
 
 ```php
     $res->assertSee('Pass 1')->assertSee('Pass 2')->assertDontSee('Pool %');
 ```
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Controller.** Replace `['key' => 'pool_pct', 'label' => 'Pool % (current)']` with `['key' => 'pass', 'label' => 'Pass']`; in the per-rank array replace `'pool_pct' => …` with `'pass' => $pool?->pass ?? ($rank <= $this->plan->rankFirstPassMaxRank() ? 1 : 2)`; add a `passes` array to the month payload read from `RankMonthlyPass::where('month_start', …)->orderBy('pass')->get()`; update the docblock shape at line 255. Blade: render the `passes` summary above the rank table (pool, points, raw value, cap, value, payout, leftover — all through `IndianNumber`), and the `pass` cell in place of the percent cell.
+- [x] **Step 3: Controller.** Replace `['key' => 'pool_pct', 'label' => 'Pool % (current)']` with `['key' => 'pass', 'label' => 'Pass']`; in the per-rank array replace `'pool_pct' => …` with `'pass' => $pool?->pass ?? ($rank <= $this->plan->rankFirstPassMaxRank() ? 1 : 2)`; add a `passes` array to the month payload read from `RankMonthlyPass::where('month_start', …)->orderBy('pass')->get()`; update the docblock shape at line 255. Blade: render the `passes` summary above the rank table (pool, points, raw value, cap, value, payout, leftover — all through `IndianNumber`), and the `pass` cell in place of the percent cell.
 
-- [ ] **Step 4: Formula block.** `rb-month.blade.php` currently explains Rank 1 only (`$rank1['pool_pct']`). Rewrite as: 1. Turnover × envelope = envelope; 2. Pass 1 points = Σ(payable × RAP for ranks ≤ N) + AGO points; 3. value₁ = min(cap, floor(envelope ÷ points₁)); 4. payout₁; 5. remainder; 6. Pass 2 points; 7. value₂ = min(cap, floor(remainder ÷ points₂)); 8. leftover. Source the numbers from `BonusCalculationSnapshots` (add a `passes` key to its rank-month snapshot built from `RankMonthlyPass`).
+- [x] **Step 4: Formula block.** `rb-month.blade.php` currently explains Rank 1 only (`$rank1['pool_pct']`). Rewrite as: 1. Turnover × envelope = envelope; 2. Pass 1 points = Σ(payable × RAP for ranks ≤ N) + AGO points; 3. value₁ = min(cap, floor(envelope ÷ points₁)); 4. payout₁; 5. remainder; 6. Pass 2 points; 7. value₂ = min(cap, floor(remainder ÷ points₂)); 8. leftover. Source the numbers from `BonusCalculationSnapshots` (add a `passes` key to its rank-month snapshot built from `RankMonthlyPass`).
 
-- [ ] **Step 5: Run** the three tests + `php -l` on the compiled views (`php artisan view:cache` then lint, per memory "Blade component attrs + view lint") → PASS. **Commit** `feat(rank): admin report and formula show the two-pass pricing`.
+- [x] **Step 5: Run** the three tests + `php -l` on the compiled views (`php artisan view:cache` then lint, per memory "Blade component attrs + view lint") → PASS. **Commit** `feat(rank): admin report and formula show the two-pass pricing`.
 
 ---
 
