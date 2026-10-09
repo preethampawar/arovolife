@@ -194,7 +194,12 @@ it('persists a fortune level edit — points, payout mode and cap — with audit
     Event::assertDispatched(CompensationPlanChanged::class, fn ($e) => $e->area === 'fortune_level' && $e->key === '3');
 });
 
-/** A complete rank-tier form post for rank 4, as the page submits it. */
+/**
+ * A complete rank-tier form post for rank 4, as the page submits it.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
 function rankTierPayload(array $overrides = []): array
 {
     return array_merge([

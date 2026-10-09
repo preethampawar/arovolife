@@ -1302,21 +1302,4 @@ it('records a pending repurchase verdict as a failed Rank Bonus run', function (
         ->and(RankMonthlyPool::count())->toBe(0);
 });
 
-it('writes pass rows and pool rows atomically — a freeze that throws leaves no pass rows (F-10)', function (): void {
-    $m = '2026-09-01';
-    seedRankCompanyBv(100_000_000, Carbon::parse('2026-09-10'));
-    seedRankCohort(1, 1, $m);
-
-    RankMonthlyPool::creating(function (RankMonthlyPool $pool): void {
-        if ((int) $pool->rank_number === 9) {
-            throw new RuntimeException('forced failure on the 9th pool insert');
-        }
-    });
-
-    expect(fn () => app(RankBonusService::class)->runForMonth(Carbon::parse($m)))
-        ->toThrow(RuntimeException::class, 'forced failure on the 9th pool insert');
-
-    expect(RankMonthlyPass::count())->toBe(0)
-        ->and(RankMonthlyPool::count())->toBe(0)
-        ->and(RankBonusResult::count())->toBe(0);
-});
+// F-10 (a freeze that throws leaves no pass rows) is pinned in PlanInvariantsTest.php.

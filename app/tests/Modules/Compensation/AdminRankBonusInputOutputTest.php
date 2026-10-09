@@ -564,6 +564,12 @@ it('exports the Pass column and one summary row per pass for a two-pass month', 
     $poolCol = array_search('Pool (Rs)', $rows[0], true);
     $valueCol = array_search('Point Value / Share (Rs)', $rows[0], true);
     $leftoverCol = array_search('Leftover (Rs)', $rows[0], true);
+    expect($passCol)->toBeInt()
+        ->and($nameCol)->toBeInt()
+        ->and($poolCol)->toBeInt()
+        ->and($valueCol)->toBeInt()
+        ->and($leftoverCol)->toBeInt();
+    assert(is_int($passCol) && is_int($nameCol) && is_int($poolCol) && is_int($valueCol) && is_int($leftoverCol));
     expect($passCol)->toBe($nameCol + 1);
 
     $byName = collect($rows)->keyBy(fn (array $row): string => (string) ($row[$nameCol] ?? ''));
@@ -575,6 +581,58 @@ it('exports the Pass column and one summary row per pass for a two-pass month', 
     expect($byName->get('PASS 2')[$poolCol])->toBe('185600');
     expect($byName->get('PASS 2')[$leftoverCol])->toBe('185600');
     expect(XlsxReader::anyCellContains($rows, 'MONTH TOTAL'))->toBeTrue();
+});
+
+/**
+ * Task 10 hand-off: a month priced by the real engine with a Rank-1 achiever,
+ * one AO-GO grant (36 points, pass 1) and a Rank-4 achiever (pass 2). The page
+ * shows a Pass cell of 2 and labels the AO-GO line as priced in pass 1; the
+ * export names it `AO-GO (pass 1)`.
+ */
+it('labels the AO-GO line as pass 1 and shows a Pass cell of 2 for a month priced by the engine', function () {
+    $grantee = Distributor::factory()->create()->id;
+    RankAogoGrant::create([
+        'distributor_id' => $grantee,
+        'month_start' => '2026-07-01',
+        'grant_number' => 1,
+        'points' => 36,
+        'previous_rank_number' => 1,
+        'status' => RankAogoGrant::STATUS_GRANTED,
+    ]);
+    RankQualification::create([
+        'distributor_id' => Distributor::factory()->create()->id, 'rank_number' => 1, 'month_start' => '2026-07-01',
+        'occurrence_in_month' => 1, 'is_carry_forward' => false, 'status' => RankQualification::STATUS_QUALIFIED,
+    ]);
+    rbIoRunTwoPassMonth(4);
+
+    // The grant was priced through the engine, in pass 1.
+    expect(RankAogoGrant::where('distributor_id', $grantee)->value('status'))->toBe(RankAogoGrant::STATUS_CREDITED)
+        ->and(RankMonthlyPool::where('month_start', '2026-07-01')->where('rank_number', 4)->value('pass'))->toBe(2);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('data-pass-cell>1<', false)
+        ->assertSee('data-pass-cell>2<', false)
+        ->assertSee('priced in pass 1 with Rank 1')
+        ->assertDontSee('shared the Rank 1 pool');
+
+    $rows = XlsxReader::rows($this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.export'))
+        ->assertOk()
+        ->streamedContent());
+
+    $passCol = array_search('Pass', $rows[0], true);
+    $nameCol = array_search('Rank Name', $rows[0], true);
+    expect($passCol)->toBeInt()->and($nameCol)->toBeInt();
+    assert(is_int($passCol) && is_int($nameCol));
+
+    $byName = collect($rows)->keyBy(fn (array $row): string => (string) ($row[$nameCol] ?? ''));
+
+    expect(XlsxReader::anyCellContains($rows, 'AO-GO (pass 1)'))->toBeTrue()
+        ->and(XlsxReader::anyCellContains($rows, 'AO-GO (Rank 1 pool)'))->toBeFalse()
+        ->and($byName->get('AO-GO (pass 1)')[$passCol] ?? null)->toBe('1')
+        ->and($byName->get('Gold Partner')[$passCol] ?? null)->toBe('2');
 });
 
 /**

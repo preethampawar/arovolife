@@ -114,7 +114,7 @@ it('creates the tranche table with the nine ranks seeded and moves only budgets 
         ->and((int) DB::table('rank_tiers')->where('rank_number', 4)->value('lifetime_award_budget_paise'))->toBe(32_400_000)
         ->and((int) DB::table('rank_tiers')->where('rank_number', 5)->value('lifetime_award_budget_paise'))->toBe(77_700_000);
 
-    $budgets = collect(lifetimeAwardMigrationAudit('plan.migration.lifetime_award_tranches')['budgets'])->keyBy('rank');
+    $budgets = collect((array) lifetimeAwardMigrationAudit('plan.migration.lifetime_award_tranches')['budgets'])->keyBy('rank');
     expect($budgets[4])->toEqual(['rank' => 4, 'moved' => true, 'before' => 36_500_000, 'after' => 32_400_000])
         ->and($budgets[5])->toEqual(['rank' => 5, 'moved' => false, 'before' => 77_700_000, 'after' => 77_700_000]);
 });
@@ -160,12 +160,12 @@ it('backfills tranche 1 amounts and flags pending rows the per-tranche rule made
         ->and($audit['rows_release_rule_changed'])->toBe(1)
         ->and(array_column($audit['changed'], 'id'))->toEqualCanonicalizing([$gold, $silver, $royal])
         ->and($audit['rows_delivered_amount_recorded'])->toBe(2)
-        ->and(collect($audit['delivered_amount_recorded'])->keyBy('id')->map(fn (array $e): array => $e['after'])->all())->toEqual([
+        ->and(collect((array) $audit['delivered_amount_recorded'])->keyBy('id')->map(fn (array $e): array => $e['after'])->all())->toEqual([
             $blue => ['amount_paise' => 84_780_000, 'source' => 'tranche_a'],
             $crown => ['amount_paise' => 140_000_000, 'source' => 'gross_paise'],
         ]);
 
-    $goldEntry = collect($audit['changed'])->firstWhere('id', $gold);
+    $goldEntry = collect((array) $audit['changed'])->firstWhere('id', $gold);
     expect($goldEntry['before'])->toEqual(['amount_paise' => 0, 'releasable' => false])
         ->and($goldEntry['after']['amount_paise'])->toBe(14_580_000)
         ->and($goldEntry['after']['releasable'])->toBeTrue()
@@ -219,7 +219,7 @@ it('replaces a rank catalogue still equal to the old seeded list and keeps an ad
         ->and(DB::table('lifetime_award_rewards')->where('rank_number', 4)->orderBy('sort_order')->pluck('worth_paise')->map(fn ($w): int => (int) $w)->all())
         ->toBe([20_000_000, 3_500_000, 13_500_000]);
 
-    $ranks = collect(lifetimeAwardMigrationAudit('plan.migration.lifetime_award_catalogue')['ranks'])->keyBy('rank');
+    $ranks = collect((array) lifetimeAwardMigrationAudit('plan.migration.lifetime_award_catalogue')['ranks'])->keyBy('rank');
     expect($ranks)->toHaveCount(9)
         ->and($ranks[9]['moved'])->toBeTrue()
         ->and($ranks[9]['before'])->toHaveCount(9)
