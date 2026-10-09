@@ -62,6 +62,8 @@ Never run anything against `arovolife-app`, `arovolife-db`, `localhost:8084` or 
 
 **Never end your turn while a subagent is still running.** This session is headless: the moment you stop and wait for a notification, the process exits and kills every running subagent with it (Task 8+9's first attempt died this way at 07:33 on 2026-10-09). Dispatch subagents in the foreground and wait for each to return its result. If an Agent call comes back saying it runs in the background, keep the turn alive by waiting on it with the available wait/output tool until it finishes; never write "waiting for its completion notification" and stop.
 
+**Never wait on a marker file.** Do not ask a subagent to `touch` a file and then loop until it exists: permissions may refuse the write and the loop runs until the Bash timeout (Task 13 stalled this way on 2026-10-09). A foreground subagent's return IS the completion signal.
+
 ### 0. Resume check
 If the working tree already has uncommitted changes:
 - If the previous report says they belong to **this** task (a previous failed attempt), continue from them.
@@ -92,7 +94,7 @@ If REJECTED: fix the reasons (steps 1–4 again, scoped), and ask QA again. At m
 1. Tick the task's `- [ ]` boxes to `- [x]` in `__PLAN__`.
 2. Commit in the atomic pieces the task prescribes (the plan gives the messages); include the plan-file tick and the screenshots folder in the last commit of the task. `git add` specific paths — never `git add -A`.
 3. Update `scripts/rsp-runner/state.json`: append `"__TASK__"` to `done`, record `attempts["__TASK__"]`, set `last_run` to today. If `done` now contains every entry of `order`, set `completed` to `true`.
-4. If this task was **Task 12** (the last one): also dispatch the `qa` agent once more for a **branch-wide** sign-off — the full diff `main...__BRANCH__`, the full module suites, and a Playwright pass over every page listed in the reports — and write its report to `docs/plans/rsp-reports/FINAL-QA-signoff.md`, ending with the same `QA VERDICT:` line. Commit it. This is the document the user reads before merging.
+4. If this task is the **last entry of `order`** in `state.json` (Task 14 since 2026-10-09; Task 12 before): also dispatch the `qa` agent once more for a **branch-wide** sign-off — the full diff `main...__BRANCH__`, the full module suites, and a Playwright pass over every page listed in the reports — and write its report to `docs/plans/rsp-reports/FINAL-QA-signoff.md`, ending with the same `QA VERDICT:` line. Overwrite the earlier sign-off (it is in git history) and commit it. This is the document the user reads before merging.
 
 **If still REJECTED after three rounds, or blocked by anything you cannot fix (Docker down, a missing tool, a plan step that cannot be done as written):**
 - Do not commit code. Leave the changes in the working tree. Record `attempts["__TASK__"]` += 1 in `state.json` and commit **only** `state.json` and the report (`chore(rsp-runner): report __DATE__ — Task __TASK__ blocked`).
