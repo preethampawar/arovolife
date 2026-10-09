@@ -1507,10 +1507,10 @@ then narrows the MySQL `ENUM`s and the SQLite `CHECK` constraints (copy the exac
 - Modify: `docs/roadmap.md` — one line under the current phase pointing at the new spec doc.
 - Modify: `docs/compliance/risk-register.md` — add **R-1xx**: "Lifetime Awards are flat per-rank merchandise values with no stated turnover share; hard rule 2 requires every reward to trace to product sales. Ranks derive from sale BV, so the link is indirect. Open question to the client: state the funding source (e.g. a % of monthly turnover) before launch." Status open.
 
-- [ ] **Step 1:** `vendor/bin/pint --dirty` and `vendor/bin/phpstan analyse` (level 7) → clean.
-- [ ] **Step 2:** Full module suite with the test-DB overrides: `php artisan test tests/Modules/Compensation tests/Modules/Commerce tests/Modules/Admin` → PASS. Paste the summary line into the final report.
-- [ ] **Step 3:** Compile-check views: `php artisan view:clear && php artisan view:cache` then `for f in storage/framework/views/*.php; do php -l "$f" >/dev/null || echo "$f"; done` → no output.
-- [ ] **Step 4:** Write the deploy checklist into the spec doc:
+- [x] **Step 1:** `vendor/bin/pint --dirty` and `vendor/bin/phpstan analyse` (level 7) → clean.
+- [x] **Step 2:** Full module suite with the test-DB overrides: `php artisan test tests/Modules/Compensation tests/Modules/Commerce tests/Modules/Admin` → PASS. Paste the summary line into the final report.
+- [x] **Step 3:** Compile-check views: `php artisan view:clear && php artisan view:cache` then `for f in storage/framework/views/*.php; do php -l "$f" >/dev/null || echo "$f"; done` → no output.
+- [x] **Step 4:** Write the deploy checklist into the spec doc:
   1. **Snapshot first**: `mysqldump` of the environment's DB to the server's backup path (staging: `/home/master/applications/ahdhesuhty/`, prod: per `cloudways_prod_deploy` memory). Record the file name in the deploy log.
   2. **Stop the workers and the scheduler** (`app:deploy --maintenance` does this). No migration in this plan may run against a live 00:05 evaluate or a 1st-of-month freeze (fail-safe rules above).
   3. `php artisan migrate` (adds columns/tables, re-dates open cycles, moves settings; each data migration writes its `plan.migration.*` audit row). Read the audit rows back: the number of re-dated cycles, how many are now past due (F-1), and whether `comp.gbb.pool_rate_bp` / `comp.rank.aogo_points` were moved or left.
@@ -1520,7 +1520,7 @@ then narrows the MySQL `ENUM`s and the SQLite `CHECK` constraints (copy the exac
   7. Restart scheduler + queue workers; `php artisan migrate:status --pending` must be empty.
   8. `php artisan view:cache` and `npm run build` on the server (blades changed). Use `/usr/bin/php8.4` for every artisan call on Cloudways.
   9. First night after deploy: read the engine-health digest and the `gsb_cutoff_deferrals` count; first 1st-of-month: check `rank_monthly_passes` has exactly two rows for the month and the F-9 identities hold on the admin Rank report.
-- [ ] **Step 5: Commit** `docs(compensation): record the 2026-10-09 R.S.P. updates, decisions and deploy steps`.
+- [x] **Step 5: Commit** `docs(compensation): record the 2026-10-09 R.S.P. updates, decisions and deploy steps`.
 
 ---
 
