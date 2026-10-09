@@ -97,12 +97,6 @@ final class CommissionHasProductSaleTest extends TestCase
         'repurchase_transfer',
         'admin_charge_debit',
         'tds_debit',
-        // Retired, not a live credit: Lifetime Awards are merchandise only
-        // (the client, 2026-10-09), so no code writes it and no payout group
-        // sweeps it. The value stays in the MySQL enum for rows already on
-        // disk; it is listed here so HR2-02b still finds every enum value
-        // classified.
-        'awards_credit',
     ];
 
     /** HR2-01: BV cannot exist without an order. */

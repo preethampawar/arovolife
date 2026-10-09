@@ -102,13 +102,20 @@ it('records deleted false when the applies_to_awards setting is already absent',
 });
 
 it('refuses to retire the awards cash path while an unswept awards_credit ledger row exists', function (): void {
+    // RefreshDatabase already ran 2026_10_09_101300, which drops awards_credit
+    // from the MySQL enum; widen it back so a legacy row can exist. The DDL
+    // commits the test transaction on MySQL, so the row is removed by hand.
+    $narrowAwardsCredit = require base_path(
+        'app/Modules/Compensation/Database/Migrations/2026_10_09_101300_narrow_awards_credit_wallet_type.php'
+    );
+    $narrowAwardsCredit->down();
+
     DB::table('settings')->insertOrIgnore([
         'key' => 'comp.admin_charge.applies_to_awards', 'value' => 'false', 'version' => 1,
         'updated_by' => null, 'created_at' => now(), 'updated_at' => now(),
     ]);
-    $distributorId = Distributor::factory()->create()->id;
     $stranded = WalletLedgerEntry::create([
-        'distributor_id' => $distributorId,
+        'distributor_id' => 990_201,
         'type' => 'awards_credit',
         'amount_paise' => 100_000,
         'reference_id' => walletRef(),
@@ -116,24 +123,29 @@ it('refuses to retire the awards cash path while an unswept awards_credit ledger
         'memo' => 'cash award delivered before the 2026-10-09 rule',
     ]);
 
-    // The migration set already ran once under RefreshDatabase, so count from there.
-    $auditRowsBefore = AuditLog::where('action', 'plan.migration.remove_admin_charge_applies_to_awards_setting')->count();
+    try {
+        // The migration set already ran once under RefreshDatabase, so count from there.
+        $auditRowsBefore = AuditLog::where('action', 'plan.migration.remove_admin_charge_applies_to_awards_setting')->count();
 
-    expect(fn () => removeAdminChargeAppliesToAwardsMigration()->up())
-        ->toThrow(RuntimeException::class, '1 unswept awards_credit wallet ledger row(s)');
+        expect(fn () => removeAdminChargeAppliesToAwardsMigration()->up())
+            ->toThrow(RuntimeException::class, '1 unswept awards_credit wallet ledger row(s)');
 
-    // Nothing written: the setting row and the ledger row are untouched and no new audit row exists.
-    expect(DB::table('settings')->where('key', 'comp.admin_charge.applies_to_awards')->value('value'))->toBe('false')
-        ->and(WalletLedgerEntry::whereKey($stranded->id)->exists())->toBeTrue()
-        ->and(AuditLog::where('action', 'plan.migration.remove_admin_charge_applies_to_awards_setting')->count())->toBe($auditRowsBefore);
+        // Nothing written: the setting row and the ledger row are untouched and no new audit row exists.
+        expect(DB::table('settings')->where('key', 'comp.admin_charge.applies_to_awards')->value('value'))->toBe('false')
+            ->and(WalletLedgerEntry::whereKey($stranded->id)->exists())->toBeTrue()
+            ->and(AuditLog::where('action', 'plan.migration.remove_admin_charge_applies_to_awards_setting')->count())->toBe($auditRowsBefore);
 
-    // A swept row is history, not a stranded payout: counted on the audit row, no refusal.
-    $stranded->update(['swept_by_payout_batch_id' => 1]);
+        // A swept row is history, not a stranded payout: counted on the audit row, no refusal.
+        $stranded->update(['swept_by_payout_batch_id' => 1]);
 
-    removeAdminChargeAppliesToAwardsMigration()->up();
+        removeAdminChargeAppliesToAwardsMigration()->up();
 
-    expect(latestCashRemovalAudit('plan.migration.remove_admin_charge_applies_to_awards_setting'))
-        ->toMatchArray(['deleted' => true, 'awards_credit_ledger_rows' => 1, 'awards_credit_unswept' => 0]);
+        expect(latestCashRemovalAudit('plan.migration.remove_admin_charge_applies_to_awards_setting'))
+            ->toMatchArray(['deleted' => true, 'awards_credit_ledger_rows' => 1, 'awards_credit_unswept' => 0]);
+    } finally {
+        WalletLedgerEntry::whereKey($stranded->id)->delete();
+        $narrowAwardsCredit->up();
+    }
 });
 
 it('refuses to guess the deleted setting on rollback', function (): void {
