@@ -58,6 +58,14 @@ it('has exactly one registry entry per compensation console command', function (
         // Test-environment fixture: writes the paid orders a rehearsal needs,
         // then leaves every derived row to the recompute. Produces no bonus.
         'SeedPayingPeriodCommand',
+        // Closes one owed GSB cut-off day by a human decision, with a required
+        // reason, and credits nothing. Writing off money someone was owed must
+        // never be a button on the Engine Runs page.
+        'GsbWriteOffDeferralCommand',
+        // Backstop for transfers already computed and approved: asks Razorpay
+        // where in-flight lines stand and re-queues lines a killed job never
+        // sent. Takes no period and cannot change what anyone is owed.
+        'PayoutsReconcileCommand',
     ];
 
     $commandClasses = collect($commandFiles ?: [])

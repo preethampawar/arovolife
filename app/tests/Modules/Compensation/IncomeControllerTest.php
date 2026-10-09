@@ -1103,7 +1103,8 @@ it('counts a wallet-blocked month out of the fortune page total', function (): v
         'updated_at' => now()->toDateTimeString(),
     ]);
 
-    $this->get(route('income.fortune-bonus'))
+    // f=1: the page otherwise opens on last month only (IncomeFilterDefaults).
+    $this->get(route('income.fortune-bonus', ['f' => 1]))
         ->assertOk()
         ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
         // Neither the net in the credited column nor the arithmetic behind it.
@@ -1248,7 +1249,7 @@ it('gives the personal-BV top-up its own genos ledger line instead of "No Genos 
         ->assertSee('Your own purchase BV added to your weaker group')
         ->assertSee('applied at the cut-off to your Right Genos')
         ->assertSee('+600')
-        ->assertSee('power (Left)')
+        ->assertSee('power (Left Genos)')
         ->assertDontSee('No Genos BV added this day.');
 });
 
