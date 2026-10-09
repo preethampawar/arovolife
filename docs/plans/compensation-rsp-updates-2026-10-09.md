@@ -1321,7 +1321,7 @@ The constructor gains `private readonly IncomeEligibilityService $eligibility` (
 **Interfaces:**
 - Produces: `lifetime_award_tranches` (`rank_number` tinyint, `tranche` tinyint, `amount_paise` ubigint, unique(rank, tranche)); `lifetimeAwardTranches(int $rank): list<array{tranche:int, amount_paise:int}>`; `lifetime_award_milestones.tranche` tinyint default 1, `amount_paise` ubigint default 0, unique becomes (`distributor_id`,`rank_number`,`tranche`) — read the existing unique index name at `2026_06_25_200004…:24` and drop/recreate it. `LifetimeAwardMilestone::isReleasable()` → `qualification_count >= tranche`.
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 `LifetimeAwardCatalogTest.php` — replace the budget expectations:
 ```php
@@ -1359,9 +1359,9 @@ it('opens award tranche A on the first qualification and tranche B on the second
 });
 ```
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Tranches table + seeder**
+- [x] **Step 3: Tranches table + seeder**
 
 ```php
         Schema::create('lifetime_award_tranches', function (Blueprint $table): void {
@@ -1403,7 +1403,7 @@ Model `LifetimeAwardTranche` (final, fillable, int casts). Accessor:
 ```
 Catalogue seeder: replace the itemised list with, per rank and tranche, `['Merchandise, tranche A — items to be specified by the company', <amount>]` (A/B/C by index) so the reconciliation holds; keep the header comment noting the client will supply the item list.
 
-- [ ] **Step 4: Milestone per tranche.** Migration 100900: add `tranche` (`unsignedTinyInteger`, default 1, after `rank_number`), `amount_paise` (`unsignedBigInteger`, default 0), drop the old unique on (`distributor_id`,`rank_number`) and add unique (`distributor_id`,`rank_number`,`tranche`) named `uq_award_milestone_dist_rank_tranche`. Model: add both to `$fillable`/casts; replace `releaseThreshold()`+`isReleasable()` with
+- [x] **Step 4: Milestone per tranche.** Migration 100900: add `tranche` (`unsignedTinyInteger`, default 1, after `rank_number`), `amount_paise` (`unsignedBigInteger`, default 0), drop the old unique on (`distributor_id`,`rank_number`) and add unique (`distributor_id`,`rank_number`,`tranche`) named `uq_award_milestone_dist_rank_tranche`. Model: add both to `$fillable`/casts; replace `releaseThreshold()`+`isReleasable()` with
 
 ```php
     /** A tranche is released once the rank has been qualified at least `tranche` times (client 2026-10-09). */
@@ -1461,9 +1461,9 @@ After the loop, prune what a rebuild can leave behind (fail-safe principle 7): a
 ```
 Test: qualify rank 3 in July and August (tranches A, B), wipe August with `MonthRebuilder`, re-run July → tranche B is gone, tranche A pending, audit row present.
 
-- [ ] **Step 5: Merchandise only.** `AdminLifetimeAwardsController::markDelivered()`: drop the `disbursement_type` input entirely (there is one kind now) and delete the cash branch (lines 165–190 compute gross/TDS and credit `awards_credit` to the wallet — delete, keep the goods path). `AdminAwRwCalculationController::index()`: remove the `type` filter. Blades: remove the "cash"/"goods" option and filter, add a "Tranche" column (A/B/C via `chr(64 + $row->tranche)`) and the `amount_paise` via `IndianNumber`. `BonusCalculationSnapshots::awRwMonths()`: group counts by tranche as well as rank and drop the cash gross/TDS/net fields from the shape (keep the budget). The cash columns, constants and the `awards_credit` payout path are removed in Task 13 (one place, with the enum guard).
+- [x] **Step 5: Merchandise only.** `AdminLifetimeAwardsController::markDelivered()`: drop the `disbursement_type` input entirely (there is one kind now) and delete the cash branch (lines 165–190 compute gross/TDS and credit `awards_credit` to the wallet — delete, keep the goods path). `AdminAwRwCalculationController::index()`: remove the `type` filter. Blades: remove the "cash"/"goods" option and filter, add a "Tranche" column (A/B/C via `chr(64 + $row->tranche)`) and the `amount_paise` via `IndianNumber`. `BonusCalculationSnapshots::awRwMonths()`: group counts by tranche as well as rank and drop the cash gross/TDS/net fields from the shape (keep the budget). The cash columns, constants and the `awards_credit` payout path are removed in Task 13 (one place, with the enum guard).
 
-- [ ] **Step 6: Run** `--filter=LifetimeAward`, `--filter=AwRw`, `--filter=RankBonusService`, `MonthRebuildTest` (pending milestones are deleted on rebuild — the per-tranche rows must still be matched by `pendingMilestones($month)`) → PASS. Help: Awards section = the tranche table, release rule, "merchandise only, never cash". **Commit** `feat(awards): per-tranche lifetime awards with the 2026-10-09 amounts, merchandise only` with the compliance trailer.
+- [x] **Step 6: Run** `--filter=LifetimeAward`, `--filter=AwRw`, `--filter=RankBonusService`, `MonthRebuildTest` (pending milestones are deleted on rebuild — the per-tranche rows must still be matched by `pendingMilestones($month)`) → PASS. Help: Awards section = the tranche table, release rule, "merchandise only, never cash". **Commit** `feat(awards): per-tranche lifetime awards with the 2026-10-09 amounts, merchandise only` with the compliance trailer.
 
 ---
 
