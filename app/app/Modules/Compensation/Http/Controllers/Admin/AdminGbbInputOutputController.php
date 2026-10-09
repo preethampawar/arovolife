@@ -92,7 +92,9 @@ final class AdminGbbInputOutputController extends Controller
             ['key' => 'gbb_pool',       'label' => 'GBB Pool (Rs)'],
             ['key' => 'total_agp',      'label' => 'Total AGP'],
             ['key' => 'point_value',    'label' => 'Point Value (Rs)'],
-            ['key' => 'adn',            'label' => 'Distributor ADN'],
+            ['key' => 'raw_point_value', 'label' => 'Raw Point Value (Rs)'],
+            ['key' => 'point_value_cap', 'label' => 'Point Value Cap (Rs)'],
+            ['key' => 'adn',           'label' => 'Distributor ADN'],
             ['key' => 'name',           'label' => 'Distributor Name'],
             ['key' => 'agp',            'label' => 'AGP'],
             ['key' => 'income',         'label' => 'Income (Rs)'],
@@ -107,6 +109,10 @@ final class AdminGbbInputOutputController extends Controller
         foreach ($pools as $pool) {
             $monthLabel = Carbon::parse($pool->month_start)->format('Y-m');
             $computedAt = $pool->created_at?->format('Y-m-d H:i:s') ?? '';
+            // Frozen with the month; months frozen before the cap existed
+            // carry neither, and export an empty cell rather than a false 0.
+            $rawPointValue = $pool->raw_point_value_paise !== null ? $pool->raw_point_value_paise / 100 : '';
+            $pointValueCap = $pool->point_value_cap_paise !== null ? $pool->point_value_cap_paise / 100 : '';
             $totalIncome = 0;
             $totalDeduction = 0;
             $totalCredited = 0;
@@ -122,6 +128,8 @@ final class AdminGbbInputOutputController extends Controller
                     'gbb_pool' => $pool->pool_paise / 100,
                     'total_agp' => $pool->total_agp,
                     'point_value' => $pool->point_value_paise / 100,
+                    'raw_point_value' => $rawPointValue,
+                    'point_value_cap' => $pointValueCap,
                     'adn' => (string) ($row->adn ?? ''),
                     'name' => (string) ($row->full_name ?? ''),
                     'agp' => (int) $row->agp_earned,
@@ -139,6 +147,8 @@ final class AdminGbbInputOutputController extends Controller
                 'gbb_pool' => $pool->pool_paise / 100,
                 'total_agp' => $pool->total_agp,
                 'point_value' => $pool->point_value_paise / 100,
+                'raw_point_value' => $rawPointValue,
+                'point_value_cap' => $pointValueCap,
                 'adn' => '',
                 'name' => 'MONTH TOTAL',
                 'agp' => $pool->total_agp,

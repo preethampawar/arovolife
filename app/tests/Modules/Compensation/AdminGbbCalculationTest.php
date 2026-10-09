@@ -166,15 +166,57 @@ it('exports the point value column', function () {
     $res->assertOk();
     $rows = XlsxReader::rows($res->streamedContent());
 
-    expect($rows[0])->toBe(['SNo', 'ADN', 'Name', 'Title', 'Month', 'AGP Points', 'Point Value (Rs)', 'AGP Value Per Point (Rs)', 'Gross GBB (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status']);
+    expect($rows[0])->toBe(['SNo', 'ADN', 'Name', 'Title', 'Month', 'AGP Points', 'Point Value (Rs)', 'Raw Point Value (Rs)', 'Point Value Cap (Rs)', 'AGP Value Per Point (Rs)', 'Gross GBB (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status']);
 
-    // frozen value then realised value
+    // frozen value then realised value; no pool row for the month, so no raw value or cap
     $aliceRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'GBBAAA');
-    expect($aliceRow)->toBe(['2', 'GBBAAA', 'Alice', '', '2026-07', '12', '250', '250', '3000', '0', '3000', 'credited']);
+    expect($aliceRow)->toBe(['2', 'GBBAAA', 'Alice', '', '2026-07', '12', '250', '', '', '250', '3000', '0', '3000', 'credited']);
 
     // legacy row: empty frozen value
     $legacyRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'GBBBBB');
-    expect($legacyRow)->toBe(['1', 'GBBBBB', 'Bob', '', '2026-07', '5', '', '200', '1000', '0', '1000', 'credited']);
+    expect($legacyRow)->toBe(['1', 'GBBBBB', 'Bob', '', '2026-07', '5', '', '', '', '200', '1000', '0', '1000', 'credited']);
+});
+
+it('exports the frozen raw point value and cap next to the point value, empty for a legacy month', function () {
+    $capped = gbbReportDistributor('GBBCP1', 'Capped');
+    $legacy = gbbReportDistributor('GBBLG1', 'Legacy');
+    makeGbbRow($capped, 125, 24_000, 3_000_000, GbbMonthlyResult::STATUS_CREDITED, '2026-08-01');
+    makeGbbRow($legacy, 20, 25_000, 500_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
+
+    // Client example 1 (2026-10-09): ₹2,00,000 ÷ 625 = ₹320 → capped at ₹240.
+    GbbMonthlyPool::create([
+        'month_start' => '2026-08-01', 'company_bv_paise' => 500_000_000, 'pool_rate_bp' => 400,
+        'pool_paise' => 20_000_000, 'total_agp' => 625, 'point_value_paise' => 24_000,
+        'raw_point_value_paise' => 32_000, 'point_value_cap_paise' => 24_000,
+        'payout_paise' => 15_000_000, 'leftover_paise' => 5_000_000,
+    ]);
+    // Frozen before the cap existed: no raw value, no cap.
+    GbbMonthlyPool::create([
+        'month_start' => '2026-07-01', 'company_bv_paise' => 10_000_000, 'pool_rate_bp' => 500,
+        'pool_paise' => 500_000, 'total_agp' => 20, 'point_value_paise' => 25_000,
+        'payout_paise' => 500_000, 'leftover_paise' => 0,
+    ]);
+
+    $rows = XlsxReader::rows($this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb-calculation.export'))
+        ->assertOk()
+        ->streamedContent());
+
+    $pointValueAt = array_search('Point Value (Rs)', $rows[0], true);
+    expect($pointValueAt)->toBeInt();
+    assert(is_int($pointValueAt));
+    expect(array_search('Raw Point Value (Rs)', $rows[0], true))->toBe($pointValueAt + 1)
+        ->and(array_search('Point Value Cap (Rs)', $rows[0], true))->toBe($pointValueAt + 2);
+
+    $cappedRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'GBBCP1');
+    expect($cappedRow)->toBeArray();
+    assert(is_array($cappedRow));
+    expect(array_slice($cappedRow, $pointValueAt, 3))->toBe(['240', '320', '240']);
+
+    $legacyRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'GBBLG1');
+    expect($legacyRow)->toBeArray();
+    assert(is_array($legacyRow));
+    expect(array_slice($legacyRow, $pointValueAt, 3))->toBe(['250', '', '']);
 });
 
 it('surfaces the frozen monthly pool on the GBB month screen', function () {

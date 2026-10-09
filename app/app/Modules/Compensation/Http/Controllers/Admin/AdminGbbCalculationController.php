@@ -80,6 +80,12 @@ final class AdminGbbCalculationController extends Controller
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
 
+        // The frozen month rows the page's formula strips read the raw point
+        // value and cap from — one query for every month in the export.
+        $monthPools = $this->snapshots->gbbMonths(array_values(
+            $rows->map(fn ($row): string => Carbon::parse($row->year_month)->toDateString())->unique()->all(),
+        ));
+
         $columns = [
             ['key' => 'sno',          'label' => 'SNo'],
             ['key' => 'adn',         'label' => 'ADN'],
@@ -88,6 +94,8 @@ final class AdminGbbCalculationController extends Controller
             ['key' => 'month',       'label' => 'Month'],
             ['key' => 'agp_points',  'label' => 'AGP Points'],
             ['key' => 'point_value', 'label' => 'Point Value (Rs)'],
+            ['key' => 'raw_point_value', 'label' => 'Raw Point Value (Rs)'],
+            ['key' => 'point_value_cap', 'label' => 'Point Value Cap (Rs)'],
             ['key' => 'value_per_point', 'label' => 'AGP Value Per Point (Rs)'],
             ['key' => 'gross',       'label' => 'Gross GBB (Rs)'],
             ['key' => 'deduction',   'label' => 'Repurchase Deduction (Rs)'],
@@ -95,7 +103,7 @@ final class AdminGbbCalculationController extends Controller
             ['key' => 'status',      'label' => 'Status'],
         ];
 
-        $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap): array {
+        $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap, $monthPools): array {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
             $agpValuePerPoint = $row->agp_earned > 0
                 ? $row->gbb_gross_paise / $row->agp_earned / 100
@@ -104,6 +112,11 @@ final class AdminGbbCalculationController extends Controller
             $pointValue = $row->point_value_paise !== null
                 ? (int) $row->point_value_paise / 100
                 : '';
+            // Raw value and cap come from the frozen month row; a month with
+            // no pool row, or frozen before the cap existed, exports empty.
+            $pool = $monthPools->get(Carbon::parse($row->year_month)->toDateString());
+            $rawPointValue = $pool?->raw_point_value_paise !== null ? $pool->raw_point_value_paise / 100 : '';
+            $pointValueCap = $pool?->point_value_cap_paise !== null ? $pool->point_value_cap_paise / 100 : '';
 
             return [
                 'sno' => $i + 1,
@@ -113,6 +126,8 @@ final class AdminGbbCalculationController extends Controller
                 'month' => Carbon::parse($row->year_month)->format('Y-m'),
                 'agp_points' => $row->agp_earned,
                 'point_value' => $pointValue,
+                'raw_point_value' => $rawPointValue,
+                'point_value_cap' => $pointValueCap,
                 'value_per_point' => $agpValuePerPoint,
                 'gross' => $row->gbb_gross_paise / 100,
                 'deduction' => $row->repurchase_deduction_paise / 100,

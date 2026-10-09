@@ -192,14 +192,61 @@ it('exports a CSV with per-earner rows and a month total', function () {
 
     $rows = XlsxReader::rows($res->streamedContent());
 
-    expect($rows[0])->toBe(['Month', 'Month Total BV', 'GBB Pool (Rs)', 'Total AGP', 'Point Value (Rs)', 'Distributor ADN', 'Distributor Name', 'AGP', 'Income (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status', 'Computed At']);
+    expect($rows[0])->toBe(['Month', 'Month Total BV', 'GBB Pool (Rs)', 'Total AGP', 'Point Value (Rs)', 'Raw Point Value (Rs)', 'Point Value Cap (Rs)', 'Distributor ADN', 'Distributor Name', 'AGP', 'Income (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status', 'Computed At']);
 
-    $earnerRow = collect($rows)->first(fn (array $row): bool => ($row[5] ?? null) === '200000040');
-    expect($earnerRow[6])->toBe('Csv Earner')
-        ->and($earnerRow[8])->toBe('3000');   // 60 × ₹50, ungrouped
+    $earnerRow = collect($rows)->first(fn (array $row): bool => ($row[7] ?? null) === '200000040');
+    expect($earnerRow[8])->toBe('Csv Earner')
+        ->and($earnerRow[10])->toBe('3000');   // 60 × ₹50, ungrouped
 
-    $totalRow = collect($rows)->first(fn (array $row): bool => ($row[6] ?? null) === 'MONTH TOTAL');
+    $totalRow = collect($rows)->first(fn (array $row): bool => ($row[8] ?? null) === 'MONTH TOTAL');
     expect($totalRow)->not->toBeNull();
+});
+
+it('exports the frozen raw point value and cap next to the point value, empty for a legacy month', function () {
+    // Client example 1 (2026-10-09): ₹2,00,000 ÷ 625 = ₹320 → capped at ₹240.
+    GbbMonthlyPool::create([
+        'month_start' => '2026-08-01', 'company_bv_paise' => 500_000_000, 'pool_rate_bp' => 400,
+        'pool_paise' => 20_000_000, 'total_agp' => 625, 'point_value_paise' => 24_000,
+        'raw_point_value_paise' => 32_000, 'point_value_cap_paise' => 24_000,
+        'payout_paise' => 15_000_000, 'leftover_paise' => 5_000_000,
+    ]);
+    gbbIoRow('200000050', 'Capped Earner', 125, 24_000, '2026-08-01', GbbMonthlyResult::STATUS_CREDITED);
+
+    // Frozen before the cap existed: no raw value, no cap.
+    gbbIoPool('2026-07-01', 60, 5_000);
+    gbbIoRow('200000051', 'Legacy Earner', 60, 5_000, '2026-07-01', GbbMonthlyResult::STATUS_CREDITED);
+
+    $rows = XlsxReader::rows($this->actingAs(gbbIoAdmin())
+        ->get(route('admin.compensation.gbb-input-output.export'))
+        ->assertOk()
+        ->streamedContent());
+
+    $pointValueAt = array_search('Point Value (Rs)', $rows[0], true);
+    expect($pointValueAt)->toBeInt();
+    assert(is_int($pointValueAt));
+    expect(array_search('Raw Point Value (Rs)', $rows[0], true))->toBe($pointValueAt + 1)
+        ->and(array_search('Point Value Cap (Rs)', $rows[0], true))->toBe($pointValueAt + 2);
+
+    $cappedRow = collect($rows)->first(fn (array $row): bool => ($row[7] ?? null) === '200000050');
+    expect($cappedRow)->toBeArray();
+    assert(is_array($cappedRow));
+    expect(array_slice($cappedRow, $pointValueAt, 3))->toBe(['240', '320', '240']);
+
+    // The month-total row carries the same frozen figures.
+    $augustTotal = collect($rows)->first(fn (array $row): bool => $row[0] === '2026-08' && ($row[8] ?? null) === 'MONTH TOTAL');
+    expect($augustTotal)->toBeArray();
+    assert(is_array($augustTotal));
+    expect(array_slice($augustTotal, $pointValueAt, 3))->toBe(['240', '320', '240']);
+
+    $legacyRow = collect($rows)->first(fn (array $row): bool => ($row[7] ?? null) === '200000051');
+    expect($legacyRow)->toBeArray();
+    assert(is_array($legacyRow));
+    expect(array_slice($legacyRow, $pointValueAt, 3))->toBe(['50', '', '']);
+
+    $julyTotal = collect($rows)->first(fn (array $row): bool => $row[0] === '2026-07' && ($row[8] ?? null) === 'MONTH TOTAL');
+    expect($julyTotal)->toBeArray();
+    assert(is_array($julyTotal));
+    expect(array_slice($julyTotal, $pointValueAt, 3))->toBe(['50', '', '']);
 });
 
 it('is hidden behind the Growth Booster flag', function () {
@@ -284,11 +331,11 @@ it('carries the deduction and credited columns into the GBB per-month CSV', func
         ->assertOk()
         ->streamedContent());
 
-    expect($rows[0])->toBe(['Month', 'Month Total BV', 'GBB Pool (Rs)', 'Total AGP', 'Point Value (Rs)', 'Distributor ADN', 'Distributor Name', 'AGP', 'Income (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status', 'Computed At']);
+    expect($rows[0])->toBe(['Month', 'Month Total BV', 'GBB Pool (Rs)', 'Total AGP', 'Point Value (Rs)', 'Raw Point Value (Rs)', 'Point Value Cap (Rs)', 'Distributor ADN', 'Distributor Name', 'AGP', 'Income (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status', 'Computed At']);
 
-    $earnerRow = collect($rows)->first(fn (array $row): bool => ($row[5] ?? null) === '200000041');
-    expect($earnerRow[9])->toBe('300')
-        ->and($earnerRow[10])->toBe('2700');
+    $earnerRow = collect($rows)->first(fn (array $row): bool => ($row[7] ?? null) === '200000041');
+    expect($earnerRow[11])->toBe('300')
+        ->and($earnerRow[12])->toBe('2700');
 });
 
 it('lists a repurchase-wallet-blocked earner so the blocked AGP is visible on the month', function () {
@@ -329,9 +376,9 @@ it('lists a repurchase-failed earner at ₹0 with its own badge and a count bann
         ->assertOk()
         ->streamedContent());
 
-    $failedRow = collect($rows)->first(fn (array $row): bool => ($row[5] ?? null) === 'AD-IO-RF2');
+    $failedRow = collect($rows)->first(fn (array $row): bool => ($row[7] ?? null) === 'AD-IO-RF2');
     expect($failedRow)->not->toBeNull()
-        ->and($failedRow[7])->toBe('17')
-        ->and($failedRow[8])->toBe('0')
-        ->and($failedRow[11])->toBe(GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED);
+        ->and($failedRow[9])->toBe('17')
+        ->and($failedRow[10])->toBe('0')
+        ->and($failedRow[13])->toBe(GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED);
 });
