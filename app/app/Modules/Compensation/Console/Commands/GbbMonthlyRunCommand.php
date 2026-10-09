@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Exceptions\RepurchaseWalletVerdictNotAvailable;
+use App\Modules\Compensation\Models\GroupBvDaily;
+use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Services\GrowthBoosterBonusService;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\FrozenPayoutGuard;
@@ -64,28 +66,47 @@ final class GbbMonthlyRunCommand extends Command
             return self::FAILURE;
         }
 
-        // GBB reads the month BEFORE the one it pays: rejectRankedLastMonth()
-        // excludes anyone who held a qualified rank in M-1. With that month
-        // unchecked the rejection list is empty, so every excluded distributor
-        // is credited and the inflated denominator dilutes everyone else.
-        $rankMonth = $month->copy()->subMonthNoOverflow()->startOfMonth();
+        // GBB reads EVERY month before the one it pays: rejectEverRanked()
+        // excludes anyone who held a qualified rank in any earlier month (the
+        // client 2026-10-09). An unchecked month's rankers are missing from the
+        // rejection list, so they are credited and dilute everyone else — and
+        // M-1's own check does not prove the older ones ran (a close that
+        // aborted at the rank check and was never re-run leaves a gap behind a
+        // later green month). So every month from the first one with Genos BV
+        // or a qualification row up to M-1 must be checked, oldest first.
+        if (! $this->option('force')) {
+            $rankMonth = $month->copy()->subMonthNoOverflow()->startOfMonth();
 
-        if (! $this->option('force') && ! RankQualificationsGate::checkedFor($rankMonth)) {
-            // A month with zero Genos BV could not have produced a rank
-            // qualification, so the exclusion set is provably empty — this is
-            // the first replayed month (no BV precedes it) and never fires in
-            // production, where every month has a scheduled check.
-            if (! RankQualificationsGate::monthHadNoGenosBv($rankMonth)) {
-                $this->error(RankQualificationsGate::refusalMessage(
-                    $rankMonth,
-                    'Growth Booster excludes anyone who ranked that month. Running now would exclude nobody,'
-                    ."\ncredit distributors the plan bars, and dilute the point value for the eligible.",
-                ));
+            foreach ($this->rankMonthsToVerify($rankMonth) as $checkMonth) {
+                // Before M-1, a flag-off skipped check counts whatever the flag
+                // is now: the engine was off, so no qualification row exists
+                // for that month and nobody can be missed. M-1 stays strict.
+                if (RankQualificationsGate::checkedFor($checkMonth)
+                    || ($checkMonth->lt($rankMonth) && RankQualificationsGate::skippedForFeatureFlagOff($checkMonth))) {
+                    continue;
+                }
 
-                return self::FAILURE;
+                // A month with zero Genos BV could not have produced a rank
+                // qualification, so its exclusion set is provably empty — the
+                // first replayed month of a recompute (no BV precedes it).
+                // Together with the flag-off acceptance above, these are the
+                // only two ways a month passes without a succeeded check.
+                if (! RankQualificationsGate::monthHadNoGenosBv($checkMonth)) {
+                    $refusal = RankQualificationsGate::refusalMessage(
+                        $checkMonth,
+                        'Growth Booster excludes anyone who has ever ranked. Running now would miss that month\'s rankers,'
+                        ."\ncredit distributors the plan bars, and dilute the point value for the eligible.",
+                    );
+
+                    $this->error($refusal);
+
+                    app(EngineRunContext::class)->noteSkipped($refusal);
+
+                    return self::FAILURE;
+                }
+
+                Log::info('gbb.monthly.prior_month_check_waived', ['month' => $checkMonth->format('Y-m')]);
             }
-
-            Log::info('gbb.monthly.prior_month_check_waived', ['month' => $rankMonth->format('Y-m')]);
         }
 
         $this->info("Growth Booster Bonus — {$month->format('F Y')}");
@@ -124,5 +145,32 @@ final class GbbMonthlyRunCommand extends Command
         );
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Every month whose rank qualifications the lifetime exclusion reads, oldest
+     * first: from the first month with a group_bv_daily or rank_qualifications
+     * row up to and including $lastMonth (M-1 is always included, as before).
+     *
+     * @return list<Carbon>
+     */
+    private function rankMonthsToVerify(Carbon $lastMonth): array
+    {
+        $first = $lastMonth->copy();
+
+        foreach ([GroupBvDaily::query()->min('date'), RankQualification::query()->min('month_start')] as $earliest) {
+            if ($earliest !== null) {
+                $candidate = Carbon::parse((string) $earliest)->startOfMonth();
+                $first = $candidate->lt($first) ? $candidate : $first;
+            }
+        }
+
+        $months = [];
+
+        for ($m = $first; $m->lte($lastMonth); $m = $m->copy()->addMonthNoOverflow()) {
+            $months[] = $m->copy();
+        }
+
+        return $months;
     }
 }

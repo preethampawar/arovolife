@@ -38,12 +38,12 @@ use Illuminate\Support\Facades\Log;
  * the freeze before anything is written (F-6).
  *
  * RANK GATE — GBB rewards distributors who are still building. Anyone who held
- * a QUALIFIED rank in the PREVIOUS month is excluded outright: no AGP counted,
- * no row, no credit. Carry-forward qualifications count as "ranked" (a paid
- * carry row still means ranked — same precedent as AogoOfferService). Read
- * literally, this means a first-time ranker keeps the current month's GBB (they
- * had no prior-month row), and someone who ranked two months ago but not last
- * month becomes eligible again.
+ * a QUALIFIED rank in ANY month before this one is excluded outright: no AGP
+ * counted, no row, no credit. Carry-forward qualifications count as "ranked" (a
+ * paid carry row still means ranked — same precedent as AogoOfferService). The
+ * month a distributor first ranks still pays GBB alongside the Rank Bonus; from
+ * the next month on, never again (the client 2026-10-09; replaces the
+ * previous-month rule, under which a lapsed ranker became eligible again).
  *
  * REPURCHASE — two independent things, and only one of them reaches GBB.
  *   • The repurchase CYCLE never withholds Growth Booster (client spec
@@ -66,7 +66,7 @@ use Illuminate\Support\Facades\Log;
  *
  * THREE PHASES (the RankBonusService shape):
  *  1. Pass 1 — {@see resolveRoster()} decides the month's population and each
- *     member's AGP: the cut-off earners, the prior-month rank gate and the
+ *     member's AGP: the cut-off earners, the lifetime rank gate and the
  *     month-end repurchase-wallet gate.
  *  2. Freeze — {@see freezeMonth()} writes, in ONE transaction, the
  *     gbb_monthly_pools row AND a gbb_monthly_results row for every roster
@@ -80,7 +80,7 @@ use Illuminate\Support\Facades\Log;
  * WHY THE FREEZE COVERS THE ROSTER — freezing only the pool was not enough.
  * The month's credited GSB set can still move after the freeze (a
  * `gsb:daily-cutoff` re-run for a date in the closed month, or a `rank:check`
- * re-run for M−1 changing the rank gate), and the engine then recomputed AGP
+ * re-run for any earlier month changing the rank gate), and the engine then recomputed AGP
  * from live data on every run: a distributor with no row at freeze was created
  * fresh and paid at the frozen point value although their AGP was never in the
  * frozen denominator, and a held row was re-priced to the larger live AGP that
@@ -701,7 +701,7 @@ final class GrowthBoosterBonusService
     // ------------------------------------------------------------- population
 
     /**
-     * The month's AGP earners after the prior-month rank gate — the population
+     * The month's AGP earners after the lifetime rank gate — the population
      * the freeze partitions, and the population a later run diffs against the
      * roster to find late arrivals. Both callers already hold the raw AGP map
      * (they report `skipped_no_agp` off it), so it is passed in rather than
@@ -712,7 +712,7 @@ final class GrowthBoosterBonusService
      */
     private function eligibleEarners(Collection $agpMap, Carbon $monthStart): Collection
     {
-        return $this->rejectRankedLastMonth($this->agpEarners($agpMap), $monthStart);
+        return $this->rejectEverRanked($this->agpEarners($agpMap), $monthStart);
     }
 
     /**
@@ -731,21 +731,23 @@ final class GrowthBoosterBonusService
     }
 
     /**
-     * Drop every distributor who held a qualified rank in the month before
-     * $monthStart. Carry-forward rows count — a paid carry row still means
-     * "ranked" (same reading as AogoOfferService::grantForMonth()).
+     * Drop every distributor who held a qualified rank in ANY month before
+     * $monthStart (the client 2026-10-09: once ranked, never GBB again). The
+     * month a distributor first ranks still pays GBB alongside the Rank Bonus.
+     * Carry-forward rows count — a paid carry row still means "ranked" (same
+     * reading as AogoOfferService::grantForMonth()).
      *
      * @param  Collection<int, int>  $agpMap
      * @return Collection<int, int>
      */
-    private function rejectRankedLastMonth(Collection $agpMap, Carbon $monthStart): Collection
+    private function rejectEverRanked(Collection $agpMap, Carbon $monthStart): Collection
     {
         if ($agpMap->isEmpty()) {
             return $agpMap;
         }
 
         $rankedIds = RankQualification::query()
-            ->rankedInMonth($monthStart->copy()->subMonth()->startOfMonth()->toDateString())
+            ->rankedBefore($monthStart->copy()->startOfMonth()->toDateString())
             ->whereIn('distributor_id', $agpMap->keys()->all())
             ->distinct()
             ->pluck('distributor_id')

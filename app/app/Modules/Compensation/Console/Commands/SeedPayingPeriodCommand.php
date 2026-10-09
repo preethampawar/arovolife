@@ -229,9 +229,10 @@ final class SeedPayingPeriodCommand extends Command
         }
 
         $titles = $this->seedTitles($titlesOn);
-        // The month before the target month as well, and not for symmetry: the
-        // Growth Booster pool is gated on the PRIOR month's rank, so a single
-        // seeded month produces a rank nothing can spend and GBB pays nobody.
+        // The month before the target month as well, and not for symmetry:
+        // Growth Booster excludes anyone ranked in ANY earlier month (the
+        // lifetime rule), so a single seeded month leaves that exclusion with
+        // no earlier ranks to read and the target month never exercises it.
         $runway = $this->seedGroupBv($month->copy()->subMonth());
         $target = $this->seedGroupBv($month);
         $group = [

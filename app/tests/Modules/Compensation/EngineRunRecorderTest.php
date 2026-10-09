@@ -11,6 +11,7 @@ use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
@@ -18,6 +19,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithConsoleEvents;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\NullOutput;
@@ -263,6 +265,29 @@ it('records a deliberate refusal as skipped, with the reason, not as a failure',
     expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
     expect($run->error)->toContain('is a Wednesday');
     expect($run->summary['reason'])->toContain('is a Wednesday');
+});
+
+it('records a Growth Booster rank-gate refusal as skipped, naming the unchecked month', function (): void {
+    // The lifetime walk names the month at fault; recorded as an anonymous
+    // `failed` run, that month lived only in console output.
+    Feature::activate(GrowthBoosterBonusFeature::class);
+    DB::table('group_bv_daily')->insert([
+        'distributor_id' => Distributor::factory()->create()->id,
+        'date' => '2026-06-15',
+        'left_bv_paise' => 1_000_000,
+        'right_bv_paise' => 0,
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+
+    $exitCode = Artisan::call('gbb:monthly-run', ['--month' => '2026-07']);
+
+    expect($exitCode)->toBe(1);
+
+    $run = EngineRun::where('engine_key', 'gbb.monthly')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->period_start->toDateString())->toBe('2026-07-01');
+    expect($run->summary['reason'])->toContain('rank:check-qualifications --month=2026-06');
 });
 
 it('keeps the engine declared reason when the run is closed out by the run service', function (): void {

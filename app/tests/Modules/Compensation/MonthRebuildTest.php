@@ -321,6 +321,7 @@ it('un-builds the month\'s pending payout batch first and says the batch has to 
     expect(implode("\n", $plan->warnings))->toContain('compensation:rebuild-payout --month='.REBUILD_MONTH);
     expect(implode("\n", $plan->warnings))->toContain('1 purchase-offer grant(s) already used on an order are kept');
     expect(implode("\n", $plan->warnings))->toContain('Repurchase cycle verdicts');
+    expect(implode("\n", $plan->warnings))->toContain('Growth Booster eligibility in later months depends on this month\'s rank qualifications.');
 
     expect(Artisan::call('compensation:rebuild-month', [
         '--month' => REBUILD_MONTH,

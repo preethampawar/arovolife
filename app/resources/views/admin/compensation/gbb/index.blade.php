@@ -6,7 +6,7 @@
 
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    The Growth Booster Bonus (GBB) is 4% of the month's company-wide BV, distributed proportionally via arovolife Growth Points (AGP). Eligible distributors are those who held no rank in the previous month; they earn AGP every time they qualify for Slab 1 (12 AGP), Slab 2 (5 AGP) or Slab 3 (2 AGP) of the GSB during the month, with no per-distributor cap. The point value is capped at ₹240; the difference stays with the company. The month's pool, total AGP, point value and cap are frozen before any credit and are never recomputed. Runs automatically on the 1st of each month.
+    The Growth Booster Bonus (GBB) is 4% of the month's company-wide BV, distributed proportionally via arovolife Growth Points (AGP). Eligible distributors are those who have never held a rank — the month a distributor first reaches a rank still pays GBB, and from the next month it stops for good; they earn AGP every time they qualify for Slab 1 (12 AGP), Slab 2 (5 AGP) or Slab 3 (2 AGP) of the GSB during the month, with no per-distributor cap. The point value is capped at ₹240; the difference stays with the company. The month's pool, total AGP, point value and cap are frozen before any credit and are never recomputed. Runs automatically on the 1st of each month.
 </div>
 @enddeveloper
 

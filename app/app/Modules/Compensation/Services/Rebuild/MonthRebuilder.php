@@ -295,6 +295,7 @@ final class MonthRebuilder
         }
 
         $warnings[] = 'Repurchase cycle verdicts taken between the original close and now are not re-taken.';
+        $warnings[] = 'Growth Booster eligibility in later months depends on this month\'s rank qualifications.';
 
         return $warnings;
     }

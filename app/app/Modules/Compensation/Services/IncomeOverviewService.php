@@ -57,7 +57,7 @@ final class IncomeOverviewService
             ['type' => 'mb_credit', 'label' => 'Mentorship Bonus', 'route' => 'income.mentorship', 'active' => Feature::for(null)->active(MentorshipBonusFeature::class),
                 'tip' => 'Earned when a distributor you directly sponsored matches a Genos Sales Bonus slab.'],
             ['type' => 'gbb_credit', 'label' => 'Growth Booster Bonus', 'route' => 'income.growth-booster', 'active' => Feature::for(null)->active(GrowthBoosterBonusFeature::class),
-                'tip' => 'Monthly bonus from arovolife Growth Points (AGP) recorded on Slab 1–3 matches, for distributors who held no rank in the previous month.'],
+                'tip' => 'Monthly bonus from arovolife Growth Points (AGP) recorded on Slab 1–3 matches, for distributors who have never held a rank (the month of a first rank still counts).'],
             ['type' => 'rank_credit', 'label' => 'Rank Bonus', 'route' => 'income.rank-bonus', 'active' => Feature::for(null)->active(RankBonusFeature::class),
                 'tip' => 'Monthly bonus from your rank\'s pool, credited on the 1st of the following month.'],
             ['type' => 'fortune_credit', 'label' => 'Fortune Bonus', 'route' => 'income.fortune-bonus', 'active' => Feature::for(null)->active(FortuneBonusFeature::class),

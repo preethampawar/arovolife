@@ -52,7 +52,7 @@
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        The Growth Booster Bonus comes from a monthly pool set at 4% of the company's business volume for that month, shared out through arovolife Growth Points (AGP). It is for distributors who held no rank in the previous month — achieving your first rank this month keeps you eligible for this month. AGP is recorded each time you match a Genos Sales Bonus slab — Slab 1 records 12 AGP, Slab 2 records 5 AGP, Slab 3 records 2 AGP. Each month's point value is that month's pool divided by the AGP of everyone eligible in it, up to ₹240 a point, and your bonus for the month is your AGP multiplied by that point value.
+        The Growth Booster Bonus comes from a monthly pool set at 4% of the company's business volume for that month, shared out through arovolife Growth Points (AGP). It is for distributors who have never held a rank — the month you achieve your first rank still pays it, and from the next month it stops for good. AGP is recorded each time you match a Genos Sales Bonus slab — Slab 1 records 12 AGP, Slab 2 records 5 AGP, Slab 3 records 2 AGP. Each month's point value is that month's pool divided by the AGP of everyone eligible in it, up to ₹240 a point, and your bonus for the month is your AGP multiplied by that point value.
     </div>
     @enddeveloper
 

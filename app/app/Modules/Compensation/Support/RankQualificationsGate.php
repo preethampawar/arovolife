@@ -23,9 +23,10 @@ use Laravel\Pennant\Feature;
  *   • Rank Bonus prices the pool from turnover, pays no RAP achiever, and still
  *     issues AO-GO grants against the whole Rank 1 pool, consuming a lifetime
  *     use that `alreadyGrantedThisMonth` will not re-issue.
- *   • Growth Booster's `rejectRankedLastMonth()` rejects NOBODY, so every
- *     distributor the plan excludes is credited and the inflated denominator
- *     dilutes the point value for the genuinely eligible.
+ *   • Growth Booster's `rejectEverRanked()` misses that month's rankers
+ *     (earlier months' rankers are still rejected), so distributors the plan
+ *     excludes are credited and the inflated denominator dilutes the point
+ *     value for the genuinely eligible.
  *   • Fortune's `buildIneligibleRankIds()` returns [], so rank 6–9 seniors are
  *     enrolled into the capacity-capped 29,524-position FCFS matrix and
  *     permanently displace eligible distributors for that month.
@@ -37,7 +38,8 @@ use Laravel\Pennant\Feature;
  *
  * The MONTH DIFFERS PER ENGINE, which is exactly why this lives in one place:
  * Rank Bonus and Fortune enrolment for month M read month M, while Growth
- * Booster for month M reads M-1 (`rejectRankedLastMonth`).
+ * Booster for month M reads every month before M (`rejectEverRanked`), M-1
+ * being the latest — earlier months were checked before their own closes.
  */
 final class RankQualificationsGate
 {
@@ -75,6 +77,28 @@ final class RankQualificationsGate
                 ->where('status', EngineRun::STATUS_SKIPPED)
                 ->where('summary->reason', 'feature_flag_off')
                 ->exists();
+    }
+
+    /**
+     * Whether the month's `rank:check-qualifications` was a flag-off no-op
+     * (STATUS_SKIPPED, reason `feature_flag_off`), whatever the flag is now.
+     *
+     * FOR MONTHS BEFORE M-1 ONLY, in Growth Booster's lifetime walk. With the
+     * Rank Bonus engine off that month no qualification row was written, so
+     * there is nobody that month for the lifetime exclusion to miss. Without
+     * this, turning the flag on would make every flag-off month a permanent
+     * refusal — and running the check retroactively would lifetime-exclude
+     * people for months the engine was off. M-1 keeps {@see checkedFor()}'s
+     * strict reading.
+     */
+    public static function skippedForFeatureFlagOff(Carbon $month): bool
+    {
+        return EngineRun::query()
+            ->where('engine_key', 'rank.check')
+            ->whereDate('period_start', $month->copy()->startOfMonth()->toDateString())
+            ->where('status', EngineRun::STATUS_SKIPPED)
+            ->where('summary->reason', 'feature_flag_off')
+            ->exists();
     }
 
     /**
