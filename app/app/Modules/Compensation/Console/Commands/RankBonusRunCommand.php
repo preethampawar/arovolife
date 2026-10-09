@@ -69,11 +69,15 @@ final class RankBonusRunCommand extends Command
 
         // Reads the month it pays.
         if (! $this->option('force') && ! RankQualificationsGate::checkedFor($month)) {
-            $this->error(RankQualificationsGate::refusalMessage(
+            $refusal = RankQualificationsGate::refusalMessage(
                 $month,
                 'Running now would pay no RAP achiever while still issuing AO-GO grants against the whole'
                 ."\nRank 1 pool and consuming a lifetime use.",
-            ));
+            );
+
+            $this->error($refusal);
+
+            app(EngineRunContext::class)->noteSkipped($refusal);
 
             return self::FAILURE;
         }

@@ -69,11 +69,15 @@ final class FortuneBonusEnrollCommand extends Command
         // capacity-capped 29,524-position FCFS matrix permanently displace
         // eligible distributors for that month.
         if (! $this->option('force') && ! RankQualificationsGate::checkedFor($month)) {
-            $this->error(RankQualificationsGate::refusalMessage(
+            $refusal = RankQualificationsGate::refusalMessage(
                 $month,
                 'Enrolling now would apply no rank 6–9 exclusion and let ineligible seniors take'
                 ."\nFCFS positions in the matrix, displacing eligible distributors for the month.",
-            ));
+            );
+
+            $this->error($refusal);
+
+            app(EngineRunContext::class)->noteSkipped($refusal);
 
             return self::FAILURE;
         }
