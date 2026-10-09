@@ -129,6 +129,20 @@ final class GbbMonthlyRunCommand extends Command
 
             return self::FAILURE;
         } catch (RepurchaseVerdictsPending $e) {
+            // An `--in-flight` run of an open month: the verdicts cannot exist
+            // until the month ends, so evaluate-and-re-run is no remedy. A
+            // refusal to wait, recorded as skipped. Nothing was written — the
+            // guard throws before any freeze or replacement.
+            if (OpenMonthGuard::isOpen($month)) {
+                $refusal = OpenMonthGuard::verdictsPendingRefusal($month, 'the Growth Booster Bonus');
+
+                $this->error($refusal);
+
+                app(EngineRunContext::class)->noteSkipped($refusal);
+
+                return self::FAILURE;
+            }
+
             // An earner's cycle due on or before the month end has no verdict
             // yet (A-G1, fail-safe principle 2). Recorded as FAILED with the
             // message — not skipped — because running `repurchase:evaluate`
