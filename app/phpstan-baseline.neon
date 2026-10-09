@@ -439,12 +439,6 @@ parameters:
 			path: app/Modules/Commerce/Models/Customer.php
 
 		-
-			message: '#^Method App\\Modules\\Commerce\\Models\\Customer\:\:distributor\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
-			identifier: missingType.generics
-			count: 1
-			path: app/Modules/Commerce/Models/Customer.php
-
-		-
 			message: '#^Method App\\Modules\\Commerce\\Models\\Customer\:\:orders\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\HasMany does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1
@@ -1223,12 +1217,6 @@ parameters:
 			identifier: missingType.generics
 			count: 1
 			path: app/Modules/Payments/Models/RefundIntent.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$adn\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Modules/Payments/Services/RazorpayGateway.php
 
 		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
