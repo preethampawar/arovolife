@@ -116,11 +116,12 @@
         </div>
 
         <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
-            <h3 class="text-xs font-semibold text-gray-700 mb-2">Paying — pool shares of the 20% envelope</h3>
+            <h3 class="text-xs font-semibold text-gray-700 mb-2">Paying — one 20% pool, two passes</h3>
             <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
-                <li>The month's <strong>envelope</strong> is the Rank envelope rate (20%) of the month's company-wide BV; each rank's <strong>pool</strong> is its Pool % share of that envelope.</li>
-                <li><strong>Rank 1 is points-based</strong>: every achiever earns the tier's RAP (10 points) and every AO-GO grantee 5 points. Point value = pool ÷ total points, floored to whole rupees; income = own points × value.</li>
-                <li><strong>Ranks 2–9 split their pool equally</strong> among that rank's paid achievers.</li>
+                <li>The month's <strong>envelope</strong> is the Rank envelope rate (20%) of the month's company-wide BV. It is one pool for every rank.</li>
+                <li><strong>Pass 1</strong>: the AO-GO grantees and the achievers of Ranks 1–3 share the whole envelope. Point value = envelope ÷ their total RAP, floored to whole rupees and capped at the Rank point value cap (₹200).</li>
+                <li><strong>Pass 2</strong>: the achievers of Ranks 4–9 share what pass 1 left, priced the same way. What pass 2 leaves stays with the company.</li>
+                <li>Income = own RAP × the point value of the pass. Every rank's RAP and both settings are listed on this page.</li>
                 <li>A distributor holding several ranks in one month is paid from their <strong>highest</strong> qualified rank only.</li>
             </ol>
         </div>
@@ -130,11 +131,11 @@
         <p class="font-semibold mb-1">Worked example — a 10,00,000 BV month</p>
         <p class="mb-1 text-[11px] text-blue-700">Illustrative arithmetic only — not an earnings projection.</p>
         <p>
-            Envelope = 20% = <strong>₹2,00,000</strong>, so the Rank 1 pool is its 7% share = <strong>₹14,000</strong>.
-            Two Silver achievers (10 RAP each) and one AO-GO grantee (5 points) make <strong>25 points</strong>.
-            Point value = 14,000 ÷ 25 = <strong>₹560</strong>.
-            Each achiever earns 10 × 560 = ₹5,600 and the AO-GO grantee 5 × 560 = ₹2,800 —
-            <strong>₹14,000</strong> in total, exactly the pool.
+            Envelope = 20% = <strong>₹2,00,000</strong>, one pool for every rank.
+            Two Silver achievers (72 RAP each) and one AO-GO grantee (36 points) make <strong>180 points</strong> in pass 1.
+            2,00,000 ÷ 180 = ₹1,111 a point, above the cap, so the point value is <strong>₹200</strong>.
+            Each achiever earns 72 × 200 = ₹14,400 and the AO-GO grantee 36 × 200 = ₹7,200 — <strong>₹36,000</strong>.
+            The remaining ₹1,64,000 is pass 2's pool for Ranks 4–9; with nobody there it stays with the company.
         </p>
     </div>
 
@@ -420,7 +421,7 @@
               data-editable
               data-confirm="Update rank {{ $row->rank_number }} ({{ $row->rank_name }})?"
               data-confirm-title="Confirm: Rank {{ $row->rank_number }}"
-              data-confirm-impact="Changes rank qualification and pool % for all distributors. Audit-logged; takes effect on the next monthly run."
+              data-confirm-impact="Changes rank qualification and Rank Achievement Points for all distributors. Audit-logged; takes effect on the next monthly run."
               class="rounded-xl border border-gray-200 bg-white p-4">
             @csrf
             {{-- Plan values are shown to every console role for monitoring;
@@ -435,18 +436,13 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Pool % <x-help-tip text="This rank's share of the company Rank Bonus pool, as a percent of monthly turnover." /></label>
-                    <input type="number" step="0.01" name="pool_pct" data-field-label="Pool %" value="{{ rtrim(rtrim(number_format($row->pool_pct, 2, '.', ''), '0'), '.') }}" required min="0" max="100"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
-                </div>
-                <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Q-Period (PYP) <x-help-tip text="Times this rank must be achieved (distinct months) before the NEXT rank opens for the distributor. KP 2026-08-05: R1/R2 = 1, R3–R5 = 2, R6–R9 = 3." /></label>
                     <input type="number" name="pyp_required" data-field-label="Q-Period (PYP)" value="{{ $row->pyp_required }}" required min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">RAP points <x-help-tip text="Rank Achievement Points per achiever. When set, this rank's pool is divided by total points (achievers × RAP + AO-GO points) and each participant is paid points × point value. Leave blank for an equal split among achievers (ranks 2–9). KP 2026-08-05: Rank 1 = 10." /></label>
-                    <input type="number" name="rap_points" data-field-label="RAP points" value="{{ $row->rap_points }}" min="0"
+                    <label class="block text-xs font-medium text-gray-600 mb-1">RAP points <x-help-tip text="Rank Achievement Points per achiever (client 2026-10-05: 72 / 189 / 468 / 1,125 / 2,583 / 5,688 / 11,934 / 23,877 / 39,501). Each achiever is paid RAP × the point value of their pass; the AGO offer and Ranks 1–3 are priced in pass 1, Ranks 4–9 in pass 2." /></label>
+                    <input type="number" name="rap_points" data-field-label="RAP points" value="{{ $row->rap_points }}" required min="1"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>

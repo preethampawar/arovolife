@@ -110,14 +110,21 @@ final class CompensationPlanSettingsService
         'comp.gbb.point_value_cap_paise' => 24_000,
         'comp.adc.rate_bp' => 300,
         'comp.adc.cap_paise' => 10_000_000,
-        // Rank Bonus envelope (KP 2026-08-05): share of company BV set aside for
-        // ALL nine rank pools together. 2000 bp = 20%.
+        // Rank Bonus envelope (client 2026-08-05): share of company BV set
+        // aside for the Rank Bonus. 2000 bp = 20%. One pool, two passes.
         'comp.rank.envelope_bp' => 2_000,
-        // AO-GO offer (KP 2026-08-05): points a degraded ex-rank-holder earns
-        // in the Rank-1 pool, and the lifetime cap on how many times the offer
-        // can be used.
-        'comp.rank.aogo_points' => 5,
+        // AO-GO offer (client 2026-08-05; 36 points per the client's 2026-10-05
+        // Rank Income Point System): points a degraded ex-rank-holder earns in
+        // pass 1 on the Rank-1 row, and the lifetime cap on how many times the
+        // offer can be used.
+        'comp.rank.aogo_points' => 36,
         'comp.rank.aogo_lifetime_max' => 3,
+        // Client 2026-10-05 Rank Income Point System: one 20% pool, two passes,
+        // ₹200 ceiling per Rank Achievement Point.
+        'comp.rank.point_value_cap_paise' => 20_000,
+        // Ranks 1..N (plus the AGO offer) are priced first from the whole
+        // envelope; ranks N+1..9 share what is left.
+        'comp.rank.first_pass_max_rank' => 3,
         // Exclusive (true) vs cumulative (false) rank pools. Exclusive pays a
         // multi-rank qualifier only their highest rank — the plan-text reading
         // ("reaching Rank 2 cancels the Rank-1 benefit"). Cumulative pays every
@@ -613,9 +620,8 @@ final class CompensationPlanSettingsService
                 $this->rankTierCache[(int) $row->rank_number] = [
                     'rank_number' => (int) $row->rank_number,
                     'rank_name' => (string) $row->rank_name,
-                    'pool_pct' => (float) $row->pool_pct,
                     'pyp_required' => (int) $row->pyp_required,
-                    'rap_points' => ($row->rap_points ?? null) !== null ? (int) $row->rap_points : null,
+                    'rap_points' => (int) ($row->rap_points ?? 0),
                     'personal_bv_required_paise' => (int) $row->personal_bv_required_paise,
                     'group_bv_required_paise' => $row->group_bv_required_paise !== null ? (int) $row->group_bv_required_paise : null,
                     'weaker_leg_topup_bv_paise' => (int) ($row->weaker_leg_topup_bv_paise ?? 0),
@@ -630,26 +636,37 @@ final class CompensationPlanSettingsService
         return $this->rankTierCache;
     }
 
-    public function rankPoolPct(int $rank): float
-    {
-        return (float) ($this->rankTiers()[$rank]['pool_pct'] ?? 0.0);
-    }
-
     /**
      * Share of company BV (the signed bv_ledger_entries sum for the month) that
      * funds the Rank Bonus envelope. Basis points: 2000 = 20%.
      *
-     * Each rank's `rank_tiers.pool_pct` is a share OF THIS ENVELOPE, not of
-     * turnover directly — which is why the seeded per-rank percentages
-     * (7.00, 3.40, 2.70, 2.20, 1.70, 1.20, 0.90, 0.60, 0.30) sum to exactly 20
-     * and are stored verbatim as the product owner writes them.
-     *
-     * Worked example (product owner 2026-08-05): 10,00,000 BV in the month →
-     * 20% envelope = 2,00,000 → Rank 1's 7% share = ₹14,000.
+     * The whole envelope is one pool, divided in two passes (see
+     * RankBonusService): the AGO offer and Ranks 1..N first, Ranks N+1..9
+     * from what is left, both at most {@see rankPointValueCapPaise()} a point.
      */
     public function rankEnvelopeBp(): int
     {
         return $this->scalarInt('comp.rank.envelope_bp');
+    }
+
+    /**
+     * Highest value one Rank Achievement Point can be worth (client 2026-10-05:
+     * ₹200 = 20,000 paise). Returned raw: the monthly freeze refuses a value
+     * under 100 paise (fail-safe principle 1 / F-6) rather than this accessor
+     * clamping it — a clamp pays a number nobody chose.
+     */
+    public function rankPointValueCapPaise(): int
+    {
+        return $this->scalarInt('comp.rank.point_value_cap_paise');
+    }
+
+    /**
+     * Ranks 1..N (plus the AGO offer) are priced in pass 1 from the whole
+     * envelope; ranks N+1..9 share the remainder in pass 2. 9 = one pass.
+     */
+    public function rankFirstPassMaxRank(): int
+    {
+        return min(9, max(0, $this->scalarInt('comp.rank.first_pass_max_rank')));
     }
 
     /**
@@ -672,18 +689,17 @@ final class CompensationPlanSettingsService
     }
 
     /**
-     * Rank Achievement Points per achiever (KP 2026-08-05). Non-null switches
-     * the rank's pool to points division (pool ÷ (Σ RAP + Σ AO-GO points));
-     * null keeps the equal split among achievers. Seeded: Rank 1 = 10, 2–9 null.
+     * Rank Achievement Points per achiever (client 2026-10-05 Rank Income
+     * Point System): 72 / 189 / 468 / 1,125 / 2,583 / 5,688 / 11,934 /
+     * 23,877 / 39,501. 0 when the rank is unset — the freeze refuses a rank
+     * with payable achievers and no points.
      */
-    public function rankRapPoints(int $rank): ?int
+    public function rankRapPoints(int $rank): int
     {
-        $value = $this->rankTiers()[$rank]['rap_points'] ?? null;
-
-        return $value !== null ? (int) $value : null;
+        return (int) ($this->rankTiers()[$rank]['rap_points'] ?? 0);
     }
 
-    /** AO-GO points a degraded ex-rank-holder earns in the Rank-1 pool. */
+    /** AO-GO points a degraded ex-rank-holder earns in pass 1 on the Rank-1 row. */
     public function aogoPointsPerGrant(): int
     {
         return $this->scalarInt('comp.rank.aogo_points');

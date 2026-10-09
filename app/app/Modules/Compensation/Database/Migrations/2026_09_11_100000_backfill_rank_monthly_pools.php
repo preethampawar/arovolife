@@ -33,12 +33,21 @@ use Illuminate\Support\Facades\Schema;
  *
  * Idempotent and forward-only: a month that already has a pool row is left
  * alone, and re-running inserts nothing.
+ *
+ * Both pool_pct columns were dropped on 2026-10-09 (client 2026-10-05 Rank
+ * Income Point System, two-pass pool). On a fresh install this migration runs
+ * before those drops; re-run against the final schema it is a no-op rather
+ * than an error.
  */
 return new class extends Migration
 {
     public function up(): void
     {
         if (! Schema::hasTable('rank_monthly_pools') || ! Schema::hasTable('rank_bonus_results')) {
+            return;
+        }
+
+        if (! Schema::hasColumn('rank_tiers', 'pool_pct') || ! Schema::hasColumn('rank_monthly_pools', 'pool_pct')) {
             return;
         }
 

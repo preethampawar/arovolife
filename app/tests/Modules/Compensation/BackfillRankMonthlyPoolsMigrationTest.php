@@ -3,11 +3,10 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\RankBonusResult;
-use App\Modules\Compensation\Services\RankBonusService;
 use App\Modules\Identity\Models\Distributor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
 
@@ -18,8 +17,11 @@ beforeEach(function (): void {
 });
 
 /**
- * The forward-only backfill that gives a month the pre-freeze engine already
- * paid the pool row the frozen engine requires.
+ * The forward-only backfill that gave a month the pre-freeze engine already
+ * paid the pool row the frozen engine requires. It reads rank_tiers.pool_pct
+ * and writes rank_monthly_pools.pool_pct, both dropped on 2026-10-09 (client
+ * 2026-10-05 two-pass pool); on a fresh install it runs before those drops.
+ * Re-run against the final schema it must be a no-op, never an error.
  */
 function runBackfillRankMonthlyPoolsMigration(): void
 {
@@ -35,19 +37,16 @@ function legacyRankResult(
     int $rank,
     int $gross,
     string $status = RankBonusResult::STATUS_CREDITED,
-    int $pool = 2_504_320,
-    int $qualifiers = 2,
-    ?int $aogoPoints = null,
 ): int {
     return DB::table('rank_bonus_results')->insertGetId([
         'distributor_id' => $distributorId,
         'month_start' => $month,
         'rank_number' => $rank,
         'company_turnover_paise' => 178_880_000,
-        'pool_paise' => $pool,
-        'qualifier_count' => $qualifiers,
+        'pool_paise' => 2_504_320,
+        'qualifier_count' => 2,
         'rap_points' => $rank === 1 ? 10 : null,
-        'aogo_points' => $aogoPoints,
+        'aogo_points' => null,
         'total_points' => $rank === 1 ? 25 : null,
         'point_value_paise' => $rank === 1 ? 100_100 : null,
         'gross_paise' => $gross,
@@ -61,75 +60,23 @@ function legacyRankResult(
     ]);
 }
 
-it('reconstructs the pool of a month that was paid before the pool table existed', function (): void {
-    $a = Distributor::factory()->create();
-    $b = Distributor::factory()->create();
-
-    legacyRankResult($a->id, '2026-09-01', 1, 1_001_000, aogoPoints: null);
-    legacyRankResult($b->id, '2026-09-01', 1, 500_500, aogoPoints: 5);
-
-    runBackfillRankMonthlyPoolsMigration();
-
-    $pool = DB::table('rank_monthly_pools')->where('rank_number', 1)->sole();
-
-    expect($pool->month_start)->toStartWith('2026-09-01')
-        ->and((int) $pool->company_turnover_paise)->toBe(178_880_000)
-        ->and((int) $pool->pool_paise)->toBe(2_504_320)
-        ->and((int) $pool->payable_count)->toBe(2)
-        ->and((int) $pool->aogo_points)->toBe(5)
-        ->and((int) $pool->total_points)->toBe(25)
-        ->and((int) $pool->point_value_paise)->toBe(100_100)
-        // Gross actually written, and what the pool did not spend.
-        ->and((int) $pool->payout_paise)->toBe(1_501_500)
-        ->and((int) $pool->leftover_paise)->toBe(1_002_820)
-        // Never snapshotted by the pre-freeze engine: 0 says so honestly.
-        ->and((int) $pool->envelope_bp)->toBe(0)
-        ->and((float) $pool->pool_pct)->toBe(0.0);
+it('runs on a schema whose pool_pct columns are gone', function (): void {
+    expect(Schema::hasColumn('rank_tiers', 'pool_pct'))->toBeFalse()
+        ->and(Schema::hasColumn('rank_monthly_pools', 'pool_pct'))->toBeFalse();
 });
 
-it('writes one row per rank the month paid', function (): void {
+it('is a no-op on the current schema even for a paid month without a pool row', function (): void {
     $a = Distributor::factory()->create();
     $b = Distributor::factory()->create();
 
     legacyRankResult($a->id, '2026-09-01', 1, 1_001_000);
-    legacyRankResult($b->id, '2026-09-01', 2, 1_216_384, pool: 1_216_384, qualifiers: 1);
-
-    runBackfillRankMonthlyPoolsMigration();
-
-    expect(DB::table('rank_monthly_pools')->orderBy('rank_number')->pluck('rank_number')->all())
-        ->toBe([1, 2]);
-});
-
-it('leaves a month that already has a frozen pool untouched, and is idempotent', function (): void {
-    $dist = Distributor::factory()->create();
-    legacyRankResult($dist->id, '2026-09-01', 1, 1_001_000);
-
-    DB::table('rank_monthly_pools')->insert([
-        'month_start' => '2026-09-01',
-        'rank_number' => 1,
-        'company_turnover_paise' => 999,
-        'envelope_bp' => 2_000,
-        'pool_pct' => 7,
-        'pool_paise' => 999,
-        'rap_points' => null,
-        'payable_count' => 1,
-        'aogo_points' => 0,
-        'total_points' => null,
-        'point_value_paise' => null,
-        'gross_per_qualifier_paise' => 999,
-        'payout_paise' => 999,
-        'leftover_paise' => 0,
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
+    legacyRankResult($b->id, '2026-09-01', 2, 1_216_384);
 
     runBackfillRankMonthlyPoolsMigration();
     runBackfillRankMonthlyPoolsMigration();
 
-    $pool = DB::table('rank_monthly_pools')->sole();
-
-    expect((int) $pool->company_turnover_paise)->toBe(999)
-        ->and((int) $pool->envelope_bp)->toBe(2_000);
+    expect(DB::table('rank_monthly_pools')->count())->toBe(0)
+        ->and(DB::table('rank_bonus_results')->count())->toBe(2);
 });
 
 it('leaves a month whose rows were never credited open to a real freeze', function (): void {
@@ -139,27 +86,4 @@ it('leaves a month whose rows were never credited open to a real freeze', functi
     runBackfillRankMonthlyPoolsMigration();
 
     expect(DB::table('rank_monthly_pools')->count())->toBe(0);
-});
-
-it('lets the Rank Bonus run for a backfilled month instead of throwing', function (): void {
-    // The point of the whole migration: `refuseUnfrozenPaidMonth()` used to
-    // abort `compensation:monthly-close --restart` at step 2 and take steps
-    // 3-7 with it.
-    $credited = Distributor::factory()->create();
-    $pending = Distributor::factory()->create();
-
-    legacyRankResult($credited->id, '2026-08-01', 1, 1_001_000);
-    legacyRankResult($pending->id, '2026-08-01', 1, 500_500, status: RankBonusResult::STATUS_PENDING);
-
-    runBackfillRankMonthlyPoolsMigration();
-
-    $service = app(RankBonusService::class);
-
-    expect(fn (): array => $service->runForMonth(Carbon::parse('2026-08-01')))
-        ->not->toThrow(RuntimeException::class);
-
-    // The already-paid row is untouched; the pending one is credited at the
-    // gross the frozen month recorded for it, never re-priced.
-    expect(RankBonusResult::where('distributor_id', $credited->id)->sole()->gross_paise)->toBe(1_001_000)
-        ->and(RankBonusResult::where('distributor_id', $pending->id)->sole()->gross_paise)->toBe(500_500);
 });

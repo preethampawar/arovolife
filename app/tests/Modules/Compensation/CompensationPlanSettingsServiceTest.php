@@ -94,6 +94,18 @@ it('accepts ₹1 and the neutralise value as Growth Booster point value caps', f
     expect(app(CompensationPlanSettingsService::class)->gbbPointValueCapPaise())->toBe($expected);
 })->with(['₹1' => ['100', 100], 'neutralise' => ['100000000', 100_000_000]]);
 
+// ── Rank Bonus (client 2026-10-05 Rank Income Point System) ─────────────────
+
+it('exposes RAP points for every rank per the 05-10-2026 Rank Income Point System', function (): void {
+    $plan = app(CompensationPlanSettingsService::class);
+    expect(array_map(fn (int $r) => $plan->rankRapPoints($r), range(1, 9)))
+        ->toBe([72, 189, 468, 1125, 2583, 5688, 11934, 23877, 39501]);
+    expect($plan->aogoPointsPerGrant())->toBe(36)
+        ->and($plan->rankPointValueCapPaise())->toBe(20_000)
+        ->and($plan->rankFirstPassMaxRank())->toBe(3)
+        ->and(method_exists($plan, 'rankPoolPct'))->toBeFalse();
+});
+
 // ── Deduction helpers (basis-point math) ────────────────────────────────────
 
 it('computes TDS as a basis-point share of the supplied base', function () {
@@ -123,7 +135,7 @@ it('exposes the seeded GSB slab ladder', function () {
     expect($plan->gsbSlab(7)['bonus_paise'])->toBe(7_000_000);
     expect($plan->gsbSlab(7)['msb_score'])->toBe(3);
 
-    expect($plan->rankPoolPct(1))->toBe(7.0);
+    expect($plan->rankRapPoints(1))->toBe(72);
     expect($plan->rankName(9))->toBe('Elite Diamond Partner');
     expect($plan->fortunePointsForDepth(1))->toBe(9); // KP 2026-08-09: 9/8/7/6/5/4/3/2/1
     expect($plan->fortunePointsForDepth(9))->toBe(1);

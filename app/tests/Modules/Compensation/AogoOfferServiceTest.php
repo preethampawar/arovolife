@@ -71,7 +71,7 @@ it('grants AO-GO points to a degraded ex-rank-holder meeting the monthly conditi
     $grant = $grants->first();
     expect($grant->distributor_id)->toBe($dist->id)
         ->and($grant->grant_number)->toBe(1)
-        ->and($grant->points)->toBe(5)
+        ->and($grant->points)->toBe(36) // comp.rank.aogo_points (client 2026-10-05)
         ->and($grant->previous_rank_number)->toBe(3) // highest rank ever held
         ->and($grant->status)->toBe(RankAogoGrant::STATUS_GRANTED);
 });
@@ -174,7 +174,7 @@ it('reports every AO-GO condition met for a degraded ex-rank-holder', function (
         ->and($status->usesUsed)->toBe(0)
         ->and($status->usesMax)->toBe(3)
         ->and($status->usesLeft())->toBe(3)
-        ->and($status->pointsPerGrant)->toBe(5)
+        ->and($status->pointsPerGrant)->toBe(36)
         ->and($status->granted())->toBeFalse()
         ->and($status->conditionsMet)->toBeTrue()
         // Three standing rules plus the month's requalification condition; the
@@ -220,7 +220,7 @@ it('shows the grant once the monthly run has created it', function (): void {
     $status = $svc->eligibilityFor((int) $dist->id, Carbon::parse('2026-06-15'));
 
     expect($status->granted())->toBeTrue()
-        ->and($status->grantedPoints)->toBe(5)
+        ->and($status->grantedPoints)->toBe(36)
         ->and($status->grantedStatus)->toBe(RankAogoGrant::STATUS_GRANTED)
         ->and($status->usesUsed)->toBe(1);
 });

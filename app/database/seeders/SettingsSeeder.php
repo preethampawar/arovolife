@@ -90,10 +90,12 @@ final class SettingsSeeder extends Seeder
             'comp.msb.royalty_failed_daily_cap_paise' => '360000', // ₹3,600/day Mentorship Royalty cap while failed (client 2026-10-09)
             'comp.gbb.pool_rate_bp' => '400',               // 4% of the month's company BV (client 2026-10-09)
             'comp.gbb.point_value_cap_paise' => '24000',    // ₹240 ceiling per Growth Booster point (client 2026-10-09)
-            'comp.rank.envelope_bp' => '2000',              // 20% of company BV funds all nine rank pools
+            'comp.rank.envelope_bp' => '2000',              // 20% of company BV funds the Rank Bonus (one pool, two passes)
             'comp.rank.pay_highest_rank_only' => 'true',    // exclusive rank pools (plan text); false = cumulative
-            'comp.rank.aogo_points' => '5',                 // AO-GO points per grant (Rank-1 pool)
+            'comp.rank.aogo_points' => '36',                // AO-GO points per grant, pass 1 (client 2026-10-05)
             'comp.rank.aogo_lifetime_max' => '3',           // AO-GO uses per distributor, lifetime
+            'comp.rank.point_value_cap_paise' => '20000',   // ₹200 ceiling per Rank Achievement Point (client 2026-10-05)
+            'comp.rank.first_pass_max_rank' => '3',         // AGO + Ranks 1–3 priced in pass 1 (client 2026-10-05)
             'comp.adc.rate_bp' => '300',                    // 3%
             'comp.adc.cap_paise' => '10000000',             // ₹1,00,000
             'comp.repurchase.rate_bp' => '1000',            // 10%
