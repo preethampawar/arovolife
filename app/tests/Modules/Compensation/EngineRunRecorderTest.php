@@ -13,6 +13,7 @@ use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -288,6 +289,57 @@ it('records a Growth Booster rank-gate refusal as skipped, naming the unchecked 
     expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
     expect($run->period_start->toDateString())->toBe('2026-07-01');
     expect($run->summary['reason'])->toContain('rank:check-qualifications --month=2026-06');
+});
+
+it('records a Growth Booster pending-verdict refusal as failed, naming the remedy (A-G1)', function (): void {
+    // An earner's cycle due on or before the month end has no verdict yet. The
+    // freeze refuses before any write; recorded as an anonymous `failed` run the
+    // ids and "run repurchase:evaluate" would live only in the console output.
+    Feature::activate(GrowthBoosterBonusFeature::class);
+    Feature::activate(RepurchaseEngineFeature::class);
+    $distributor = Distributor::factory()->create();
+    DB::table('gsb_cutoff_results')->insert([
+        'distributor_id' => $distributor->id,
+        'cutoff_date' => '2026-07-10',
+        'left_bv_paise' => 1_500_000,
+        'right_bv_paise' => 1_500_000,
+        'slab' => 1,
+        'gross_gsb_paise' => 100_000,
+        'admin_charge_paise' => 3_000,
+        'tds_paise' => 4_850,
+        'net_gsb_paise' => 92_150,
+        'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_after_paise' => 0,
+        'power_side_after' => 'L',
+        'status' => 'credited',
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+    DB::table('repurchase_cycles')->insert([
+        'distributor_id' => $distributor->id,
+        'cycle_start_date' => '2026-07-02',
+        'due_date' => '2026-07-31',
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 0,
+        'wallet_balance_paise' => 0,
+        'wallet_zeroed' => true,
+        'status' => 'active',
+        'resolved_at' => null,
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+
+    $exitCode = Artisan::call('gbb:monthly-run', ['--month' => '2026-07', '--force' => true]);
+
+    expect($exitCode)->toBe(1);
+
+    $run = EngineRun::where('engine_key', 'gbb.monthly')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_FAILED);
+    expect($run->error)->toContain('Run repurchase:evaluate first');
+    expect($run->error)->toContain((string) $distributor->id);
+    expect($run->summary['reason'])->toContain('Run repurchase:evaluate first');
+    expect(DB::table('gbb_monthly_pools')->count())->toBe(0);
 });
 
 it('keeps the engine declared reason when the run is closed out by the run service', function (): void {

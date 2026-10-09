@@ -18,7 +18,7 @@
         <span class="text-gray-600">Pool
             <strong class="text-indigo-700">{{ $pool ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->pool_paise / 100, 2) : '—' }}</strong></span>
         <span class="text-gray-600">Total AGP
-            <x-help-tip text="The month's payable AGP — the denominator of the point value. AGP forfeited by the month-end repurchase wallet gate (repurchase_wallet_blocked) is excluded because it can never be paid, as are the legacy repurchase-suspended rows." />
+            <x-help-tip text="The month's payable AGP — the denominator of the point value. AGP forfeited by the month-end repurchase wallet gate (repurchase_wallet_blocked) or by a repurchase condition failed on the month's last day (repurchase_failed_blocked) is excluded because it can never be paid, as are the legacy repurchase-suspended rows." />
             <strong class="text-gray-700">{{ $pool ? \App\Modules\Shared\Support\IndianNumber::format($pool->total_agp) : '—' }}</strong></span>
         <span class="text-gray-600">Point value
             <x-help-tip text="Pool ÷ total payable AGP, floored to the whole rupee, then capped at the point value cap." />
@@ -51,7 +51,7 @@
     </x-ui.card>
     <x-ui.card padding="p-4 text-center">
         <p class="text-xs text-gray-600 mb-1">
-            AGP Recorded <x-help-tip text="Sum of the AGP on every row for this month, including repurchase-wallet-blocked rows and the legacy repurchase-held and repurchase-suspended ones — none of which are in the frozen denominator above." />
+            AGP Recorded <x-help-tip text="Sum of the AGP on every row for this month, including repurchase-wallet-blocked and repurchase-failed rows and the legacy repurchase-held and repurchase-suspended ones — none of which are in the frozen denominator above." />
         </p>
         <p class="text-lg font-bold text-gray-900">{{ \App\Modules\Shared\Support\IndianNumber::format($summary->total_agp) }}</p>
     </x-ui.card>
@@ -107,6 +107,7 @@
                             'repurchase_held' => 'bg-orange-100 text-orange-700',
                             'repurchase_suspended' => 'bg-red-100 text-red-700',
                             'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
+                            'repurchase_failed_blocked' => 'bg-red-100 text-red-700',
                         ];
                         @endphp
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $sc[$row->status] ?? 'bg-gray-100 text-gray-600' }}">

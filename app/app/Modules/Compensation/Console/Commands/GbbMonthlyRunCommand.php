@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Console\Commands;
 
+use App\Modules\Compensation\Exceptions\RepurchaseVerdictsPending;
 use App\Modules\Compensation\Exceptions\RepurchaseWalletVerdictNotAvailable;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\RankQualification;
@@ -127,6 +128,16 @@ final class GbbMonthlyRunCommand extends Command
             app(EngineRunContext::class)->noteSkipped($e->getMessage());
 
             return self::FAILURE;
+        } catch (RepurchaseVerdictsPending $e) {
+            // An earner's cycle due on or before the month end has no verdict
+            // yet (A-G1, fail-safe principle 2). Recorded as FAILED with the
+            // message — not skipped — because running `repurchase:evaluate`
+            // and re-running fixes it, and the digest must say so.
+            $this->error($e->getMessage());
+
+            app(EngineRunContext::class)->noteFailed($e->getMessage());
+
+            return self::FAILURE;
         }
 
         $this->table(
@@ -136,6 +147,7 @@ final class GbbMonthlyRunCommand extends Command
                 ['Total AGP', Number::format($result['total_agp'])],
                 ['Point value', '₹'.Number::format($result['point_value_paise'] / 100, 2)],
                 ['Distributors credited', $result['credited']],
+                ['Blocked (repurchase condition failed at month end)', $result['repurchase_failed']],
                 ['Forfeited (repurchase wallet not cleared at month end)', $result['wallet_blocked']],
                 ['Held — legacy rows only', $result['held']],
                 ['Suspended — legacy rows only', $result['suspended']],

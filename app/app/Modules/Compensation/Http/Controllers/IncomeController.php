@@ -317,15 +317,17 @@ final class IncomeController extends Controller
         IncomeFilterDefaults::apply($request, 'monthly');
 
         try {
-            // Credited months and wallet-blocked months only. A blocked row
-            // carries no money, so the page's totals are unchanged, but the
+            // Credited months and blocked months only. A blocked row carries
+            // no money, so the page's totals are unchanged, but the
             // distributor is entitled to see the month the month-end
-            // repurchase-wallet condition cost them — client spec 2026-09-07
-            // §2. Every other status is engine bookkeeping, not history.
+            // repurchase-wallet condition (client spec 2026-09-07 §2) or the
+            // month-end repurchase verdict (client 2026-10-09, A-G1) cost
+            // them. Every other status is engine bookkeeping, not history.
             $rows = GbbMonthlyResult::where('distributor_id', $distributor->id)
                 ->whereIn('status', [
                     GbbMonthlyResult::STATUS_CREDITED,
                     GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED,
+                    GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED,
                 ])
                 ->when($request->filled('from'), fn ($q) => $q->where('year_month', '>=', $request->input('from').'-01'))
                 ->when($request->filled('to'), fn ($q) => $q->where('year_month', '<=', $request->input('to').'-01'))

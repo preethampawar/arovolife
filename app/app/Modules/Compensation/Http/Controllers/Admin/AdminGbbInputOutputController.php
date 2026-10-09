@@ -32,7 +32,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Driven FROM gbb_monthly_pools (the frozen economics row) so a month whose
  * pool went unspent still appears. Repurchase-wallet-blocked rows are listed
  * with ₹0 — the wallet was not cleared at the last instant of the month, so
- * their AGP was excluded from the denominator and is never paid. Legacy held
+ * their AGP was excluded from the denominator and is never paid — and so are
+ * repurchase-failed rows (client 2026-10-09, A-G1: failed on the repurchase
+ * condition on the month's last day), on the same terms. Legacy held
  * and suspended rows are listed too: no run writes them any more, but held rows
  * WERE priced into their month's pool, so the month only reconciles with them
  * on the page. The report renders the pool row verbatim; it never recomputes
@@ -48,6 +50,7 @@ final class AdminGbbInputOutputController extends Controller
         GbbMonthlyResult::STATUS_REPURCHASE_HELD,
         GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED,
         GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED,
+        GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED,
     ];
 
     public function __construct(private readonly GrowthBoosterBonusService $gbb) {}

@@ -60,6 +60,16 @@ final class GbbMonthlyResult extends Model
     public const STATUS_REPURCHASE_WALLET_BLOCKED = 'repurchase_wallet_blocked';
 
     /**
+     * Client 2026-10-09 (A-G1): the month was earned but the distributor was
+     * failed on their repurchase condition on the month's last day
+     * (IncomeEligibilityService::verdictAsOf() forfeited). Gross is 0, the AGP
+     * is excluded from the month's denominator, and the row is NEVER released —
+     * the verdict is decided once, at freeze time, and a later fulfilment does
+     * not reopen the month.
+     */
+    public const STATUS_REPURCHASE_FAILED_BLOCKED = 'repurchase_failed_blocked';
+
+    /**
      * Statuses whose gross was priced against the month's frozen pool. Used by
      * GrowthBoosterBonusService to decide whether a prematurely frozen pool row
      * may still be safely replaced. Suspended rows carry gross 0 and their AGP
@@ -87,6 +97,7 @@ final class GbbMonthlyResult extends Model
     public const POOL_EXCLUDED_STATUSES = [
         self::STATUS_REPURCHASE_SUSPENDED,
         self::STATUS_REPURCHASE_WALLET_BLOCKED,
+        self::STATUS_REPURCHASE_FAILED_BLOCKED,
     ];
 
     // Per-slab AGP lives in the admin-editable `gsb_slabs` table

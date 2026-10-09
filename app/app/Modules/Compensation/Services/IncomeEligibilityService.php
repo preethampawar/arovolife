@@ -152,6 +152,38 @@ final class IncomeEligibilityService
     }
 
     /**
+     * Ids among $distributorIds whose repurchase cycle is due on or before $date
+     * and still has no verdict. A monthly engine must refuse to freeze while this
+     * is non-empty: an unresolved cycle reads as eligible, which overpays.
+     *
+     * @param  int[]  $distributorIds
+     * @return list<int>
+     */
+    public function unresolvedDueOnOrBefore(Carbon $date, array $distributorIds): array
+    {
+        if (! $this->engineActive() || $distributorIds === []) {
+            return [];
+        }
+
+        $pending = [];
+
+        // Chunked for the same reason as warmCycleCache(): one placeholder per id.
+        foreach (array_chunk($distributorIds, self::WARM_CHUNK) as $chunk) {
+            $ids = RepurchaseCycle::query()
+                ->whereIn('distributor_id', $chunk)
+                ->whereNull('resolved_at')
+                ->whereDate('due_date', '<=', $date->toDateString())
+                ->pluck('distributor_id');
+
+            foreach ($ids as $id) {
+                $pending[(int) $id] = (int) $id;
+            }
+        }
+
+        return array_values($pending);
+    }
+
+    /**
      * Every distributor's forfeited days between $from and $to, clipped to that
      * range — what a monthly engine needs in order to subtract the lost days
      * from a month's group BV in one query instead of 31 per distributor.
