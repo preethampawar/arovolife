@@ -1,6 +1,6 @@
 # R.S.P. — New Updates (2026-10-09): compensation engine changes
 
-**Status:** Implemented on branch `feat/compensation-rsp-updates-2026-10` (Tasks 1–13 of
+**Status:** Implemented on branch `feat/compensation-rsp-updates-2026-10` (Tasks 1–14 of
 `docs/plans/compensation-rsp-updates-2026-10-09.md`, 2026-10-09). Local commits only;
 nothing is deployed. The user merges to `main` after `docs/plans/rsp-reports/FINAL-QA-signoff.md`
 says APPROVED, then deploys per §8 with a per-environment yes.
@@ -289,34 +289,73 @@ are where a sign error would show.) The same invariants are pinned on synthetic 
 `tests/Modules/Compensation/PlanInvariantsTest.php` (50 seeded random cohort draws with turnover from
 −1 Cr to 20 Cr BV).
 
-## 10. Leftovers recorded by the task reviews (not done; each needs its own decision)
+## 10. Leftovers recorded by the task reviews — closed by Task 14 (user request 2026-10-09)
 
-- `wallet_ledger_entries.type` enum still contains `awards_credit` (never written), and
-  `rank_bonus_results.status` still lists `repurchase_held` (101200 narrowed only the GSB and GBB result
-  tables; `RankBonusResult` has no constant for it); narrowing both is a separate migration decision.
-- Whole-rupee validation on Save for the cap settings: the registry cannot express "whole rupee", so
-  `24050` is accepted on Save and refused at the next freeze by the MSB and GBB accessors (fail-safe
-  direction). A Save-time check would be friendlier. The **Rank** cap guard (`RankBonusService::assertFreezable()`)
-  checks only `< 100`: a cap such as `20050` would be accepted and the pass point value would then not be
-  a whole rupee — align it with the MSB/GBB accessors (refuse any value not a multiple of 100).
-- CSV exports of the GBB Input & Output / calculation reports lack the raw and cap columns the HTML shows.
-- "₹240" and "4 %" are hardcoded in the two developer explainer blades (display only).
-- Mentorship: the F-4 stale-flag lookup is one query per accrual (not warmed); the locked day-SUM uses
-  `whereDate`.
-- Behaviour hand-offs tagged for the sweep but outside Task 13's "no rule change" scope: a pre-freeze
-  check on a kept premature freeze; legacy `pending` rows in `reconcileFreeze()`; `--in-flight` with the
-  repurchase engine on trips the verdict guard before the wallet tripwire; `RankBonusRunCommand` and
-  `FortuneBonusEnrollCommand` return exit 1 on the rank-gate refusal without `noteSkipped()`; the admin
-  manual-trigger path records two rows for any throwing engine; the `EngineRegistry` resolver fills only
-  M−1's `rank.check`.
-- The unfiltered rb-calculation page builds formula blocks only for months with Rank-1 rows (a pass-2-only
-  month gets its strip when filtered; drill-down and I&O always show it); September-style empty legacy
-  freezes are not listed by `monthQuery()` (pre-existing).
-- Larastan: `app/Modules/Payments/Services/RazorpayGateway.php:131` (main-side, undefined `$adn` on
-  `Model`) is now in the regenerated baseline rather than fixed — fix it on `main`.
-- Three tests fail on `main` itself and are untouched by this branch (the runner rule): `CarryOverDisplayTest`
-  "carry cards…" (emerald class string gone from `my-business.blade.php`) and `IncomeControllerTest`
-  "counts a wallet…" / "gives the pe…" (copy no longer rendered). Fix them on `main`.
+Every item below except the main-side ones was done on this branch by Task 14 (report
+`docs/plans/rsp-reports/2026-10-09-task-14.md`, which lists the commit hashes).
+
+- **Done (L1)** — `awards_credit` dropped from the `wallet_ledger_entries.type` enum
+  (migration `2026_10_09_101300`, audit `plan.migration.narrow_awards_credit_wallet_type`) and
+  `repurchase_held` from `rank_bonus_results.status` (`2026_10_09_101400`,
+  `plan.migration.narrow_rank_repurchase_held_status`). Both count first and refuse with
+  "Replay or wipe history first." while a row carries the value; `down()` widens back (MySQL only).
+  Commits `chore(wallet): drop the unused awards_credit ledger type`, `chore(rank): drop the unused
+  repurchase_held result status`. Note for staging/production: the rank value came from a migration
+  (`2026_09_06_100001`) later deleted from the repo as unrun, so a database that never ran it sees 101400
+  as a restatement of its current enum — safe either way. Still open, out of scope:
+  `fortune_bonus_results.status` also carries `repurchase_held` (0 rows, nothing writes it).
+- **Done (L2 + L8)** — Save refuses a cap that is not a multiple of 100 paise ("Enter a whole-rupee amount
+  (a multiple of 100 paise).") on `comp.msb.point_value_cap_paise`, `comp.msb.royalty_failed_daily_cap_paise`,
+  `comp.gbb.point_value_cap_paise`, `comp.rank.point_value_cap_paise` (registry key `multiple_of`);
+  `CompensationPlanSettingsService::rankPointValueCapPaise()` throws below 100 or off a whole rupee and
+  `rankFirstPassMaxRank()` throws outside 1–9 (registry `min` 1) instead of clamping;
+  `RankBonusService::assertFreezable()` reads both before any write (the first-pass read used to sit
+  after `replacePrematureFreeze()`). 100000000 still saves. Commit `fix(settings): refuse non-whole-rupee
+  caps on save and at the Rank freeze`.
+- **Done (L3)** — the GBB Input & Output and GBB calculation downloads carry "Raw Point Value (Rs)" and
+  "Point Value Cap (Rs)" right after "Point Value (Rs)" (earner rows and MONTH TOTAL rows; empty for a
+  month frozen before the cap). Commit `feat(gbb): add raw point value and cap to the GBB CSV exports`.
+- **Done (L4)** — the two developer explainers read `comp.gbb.pool_rate_bp` and
+  `comp.gbb.point_value_cap_paise` through the controllers (`IndianNumber::percentFromBp`, `intdiv`);
+  the GBB index renders a refusal note instead of a 500 when the stored cap is one the engine refuses.
+  Commit `fix(gbb): show the configured pool rate and cap in the developer explainers`.
+- **Done (L5)** — `MentorshipBonusService` loads the date's open `gsb_cutoff_deferrals` once per warmed
+  night (at the first accrual, after the command has written tonight's deferrals) and falls back to the
+  per-accrual `exists()` only on un-warmed paths; the locked day-SUM and the two other date lookups use
+  `where('cutoff_date', …)` on the `DATE` columns. Commit `perf(msb): warm the stale-verdict lookup and
+  lock the day by index`.
+- **Done (L6)** — six engine-run hand-offs, one commit each: (1) `RankBonusRunCommand` /
+  `FortuneBonusEnrollCommand` record the rank-gate refusal as `skipped`; (2) the "two rows on a throwing
+  manual trigger" did **not** reproduce — the recorder listener opens the row, the terminate event closes
+  it and `EngineRunService::finalise()` writes the message onto the same row — pinned by three tests
+  (run service, chain job, console); (3) `RepurchaseVerdictsPending` on an **open** month
+  (`OpenMonthGuard::isOpen()`) is recorded as `skipped` with `OpenMonthGuard::verdictsPendingRefusal()`
+  ("wait for the month to close"), closed months keep `failed`; (4) `RankQualificationsGate::monthsMissingCheck()`
+  holds the oldest-first walk, `GbbMonthlyRunCommand` and the `EngineChainResolver`
+  (`['key' => 'rank.check', 'expand' => 'prior-months']`) both use it, waived months logged
+  `rank.check.prerequisite_waived`; (5) `RankBonusService::runForMonth()` skips the pre-freeze check when a
+  credited premature freeze is kept (`monthHasCreditedResults()`); (6) `reconcileFreeze()` reconciles only
+  the roster `freezeMonth()` wrote, stray pre-freeze `pending` rows get an audit row
+  `rank.freeze.stray_pending_rows` in the freeze transaction, are never credited (`pricedByFreeze()` —
+  the five figures copied from the pool row; a row whose rank has no pool is stray too), are left out of
+  the tranche pre-check and log `rank.credit.stray_pending_row_skipped` on every run that skips them.
+- **Done (L7)** — the unfiltered Rank calculation page builds its month headers from the rows on the
+  current page of both tables plus (first page) every two-pass month frozen with nobody to pay;
+  `AdminRankBonusInputOutputController::monthQuery()` also unions `rank_monthly_pools`, so a
+  pools-only legacy month (September 2026 on dev) is listed with the legacy label and its frozen leftover.
+  A pools-only month still has no strip on the calculation page (`BonusCalculationSnapshots::rankBonusMonth()`
+  returns null for it); the I&O page is where it is listed. The I&O page falls back to the frozen pass
+  rows when `comp.rank.first_pass_max_rank` is unreadable (logged `rank.report.first_pass_max_rank_invalid`).
+  Commit `fix(rank): show every frozen month on the Rank calculation page`.
+- **Main-side, still open:** Larastan `app/Modules/Payments/Services/RazorpayGateway.php:131`
+  (baselined, not fixed); the three failing tests `CarryOverDisplayTest` "carry cards…" and
+  `IncomeControllerTest` "counts a wallet…" / "gives the pe…"; and a fourth,
+  `tests/Feature/EngineRegistryTest` "has exactly one registry entry per compensation console command"
+  (`GsbWriteOffDeferralCommand` and `PayoutsReconcileCommand`, both from `main`, are neither registered
+  nor in the test's non-engine list). Fix all four on `main`.
+- **Not changed (recorded):** the settings input keeps `step="1"`, so the browser does not pre-block a
+  value such as 24050 — the server refuses it. `EngineReplayService::unscheduledPrerequisites()` reads
+  only `shift` (inert for `rank.check`, which is scheduled); its docblock still names the prev-month shift.
 
 ## 11. Not in this plan (deliberately)
 - Renaming "Mentorship Bonus" to "Mentorship Royalty" in distributor-facing copy for rank 6+.
