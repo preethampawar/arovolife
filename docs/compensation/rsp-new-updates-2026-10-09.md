@@ -189,20 +189,27 @@ artisan call on Cloudways; bare `php` there is 8.2.
 1. **Snapshot first.** `mysqldump` of the environment's database to the server's backup path (staging:
    `/home/master/applications/ahdhesuhty/`; production: per the `cloudways_prod_deploy` memory). Record
    the file name in the deploy log.
-2. **Stop the workers and the scheduler** (`app:deploy --maintenance` does this). No migration in this
-   plan may run against a live 00:05 evaluate or a 1st-of-month freeze.
-3. `php artisan migrate`. Adds columns and tables, re-dates open cycles, moves settings; each data
+2. **Maintenance on, workers and scheduler stopped**: `php artisan down`, then stop the queue workers
+   and the scheduler (Cloudways supervisor / the flock'd master crontab, per
+   `docs/runbooks/cloudways-deployment.md`). No migration in this plan may run against a live 00:05
+   evaluate or a 1st-of-month freeze. **Do not run `app:deploy` yet** — its pipeline runs
+   `migrate --force` and `db:seed ProductionSeeder` on its own (`--skip-migrate` / `--skip-seed` turn
+   them off); steps 3–6 replace that migrate, and `app:deploy` comes back in step 7.
+3. `php artisan migrate --force`. Adds columns and tables, re-dates open cycles, moves settings; each data
    migration writes its `plan.migration.*` audit row. **Read the audit rows back:** the number of
    re-dated cycles and how many are now past due (F-1); whether `comp.gbb.pool_rate_bp`,
    `comp.rank.aogo_points` and the rank-4/5 award budgets were `moved` or left (an environment still on
    5 % / an admin override is visible there, never silent).
    - Migration **101200** refuses while any `gsb_cutoff_results` / `gbb_monthly_results` row still carries
      `repurchase_held` / `repurchase_suspended`, and **101100** refuses while an unswept `awards_credit`
-     ledger row exists. On dev/staging that means: `migrate` (it stops at the refusing migration; every
-     earlier one is applied), run step 6 (the replay wipes those rows and re-derives the months on the
-     new rules — the engines never write the retired statuses), then `migrate` again. On production
-     the counts are expected to be zero (the forfeit model shipped on 2026-09-07, before production
-     existed); if not, the pre-launch wipe clears them — do not delete rows by hand.
+     ledger row exists. **Linear order on dev/staging:** `migrate --force` (it stops at the first refusing
+     migration; every earlier one stays applied) → step 4 `repurchase:evaluate` → step 5 seeders if
+     wanted → step 6 replay (`compensation:recompute-all` wipes the held/suspended and `awards_credit`
+     rows and re-derives every month on the new rules; the engines never write the retired statuses)
+     → `migrate --force` again (101100/101200 now apply) → `migrate:status --pending` empty → step 7.
+     On production the counts are expected to be zero (the forfeit model shipped on 2026-09-07, before
+     production existed), so `migrate` runs through in one go; if a count is not zero, the pre-launch
+     wipe clears it — do not delete rows by hand.
    - The three award migrations (100800 / 100900 / 100950) are data migrations with audit rows; they
      keep an admin-edited catalogue and budgets and only replace the untouched defaults.
 4. `php artisan repurchase:evaluate` once, inside the same window (F-1): resolves every cycle the re-date
@@ -226,9 +233,13 @@ artisan call on Cloudways; bare `php` there is 8.2.
 6. **History (dev and staging only):** take the before snapshot of §9.1, run `compensation:recompute-all`,
    take the after snapshot, reconcile per §9.1 and check §9.2. Destructive; needs the user's explicit yes
    per environment. **Production: nothing** (§7).
-7. Restart scheduler and queue workers; `php artisan migrate:status --pending` must be empty.
-8. `php artisan view:cache` and `npm run build` on the server (blades changed; `git pull` never rebuilds
-   `public/build`).
+7. `php artisan app:deploy --skip-migrate --skip-seed` (composer, caches, `view:cache`, the front-end
+   build; blades changed and `git pull` never rebuilds `public/build`), then restart the scheduler and
+   the queue workers and `php artisan up`. `php artisan migrate:status --pending` must be empty.
+   `ProductionSeeder` is additive (it seeds plan tables only while they are empty), so `--skip-seed`
+   is a precaution, not a requirement.
+8. If building by hand instead: `npm run build` on Cloudways needs the nvm Node (v24) on the server,
+   and `/usr/bin/php8.4` for every artisan call.
 9. **First night after deploy:** read the engine-health digest and the `gsb_cutoff_deferrals` count.
    **First 1st-of-month:** `rank_monthly_passes` has exactly two rows for the month; the F-9 identities
    hold on the admin Rank report (Σ allotments + pass-2 leftover = envelope; pass-2 pool = envelope −
