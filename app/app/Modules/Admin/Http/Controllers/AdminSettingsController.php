@@ -1347,9 +1347,9 @@ final class AdminSettingsController extends Controller
             'comp.rank.pay_highest_rank_only' => [
                 'group' => 'compensation_plan',
                 'feature' => RankBonusFeature::class,
-                'label' => 'Rank pools: pay highest rank only',
-                'description' => 'ON (exclusive): a distributor who cleared several ranks in a month is paid only their highest — the plan-text reading ("reaching Rank 2 cancels the Rank-1 benefit"). OFF (cumulative): they are paid from every rank pool whose bar they cleared. Also changes each pool\'s denominator, so it re-prices every achiever in the affected pools.',
-                'impact' => 'Changes who is paid from which rank pool and how each pool divides. Takes effect from the next monthly Rank Bonus run; already-credited months are untouched. Awaiting the product owner\'s exclusive-vs-cumulative ruling — change only on that ruling.',
+                'label' => 'Rank Bonus: pay highest rank only',
+                'description' => 'ON (exclusive): a distributor who cleared several ranks in a month is paid only the RAP points of their highest — the plan-text reading ("reaching Rank 2 cancels the Rank-1 benefit"). OFF (cumulative): they are paid the RAP points of every rank whose bar they cleared. Also changes the pass point totals (the denominators of the one pool\'s two passes), so it re-prices every achiever in the affected passes.',
+                'impact' => 'Changes how many points each achiever holds and how each pass of the one rank pool divides. Takes effect from the next monthly Rank Bonus run; already-credited months are untouched. Awaiting the product owner\'s exclusive-vs-cumulative ruling — change only on that ruling.',
                 'type' => 'bool',
                 'default' => 'true',
             ],

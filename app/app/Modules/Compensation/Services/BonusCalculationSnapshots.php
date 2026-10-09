@@ -277,15 +277,18 @@ final class BonusCalculationSnapshots
     /**
      * MAX() is safe because every Rank-1 row of the month carries the same
      * snapshot; qualifier_count is the engine's own payable count (held rows
-     * and AO-GO grantee rows already excluded). Null when the month has no
-     * Rank-1 rows.
+     * and AO-GO grantee rows already excluded).
      *
      * `passes` is the month's frozen rank_monthly_passes rows keyed by pass
      * (client 2026-10-05 two-pass pool); empty for a month priced under the
-     * per-rank pool rule in force before it.
+     * per-rank pool rule in force before it. A two-pass month takes its
+     * turnover and envelope from the pass rows (frozen), and is returned even
+     * with no Rank-1 rows — pass 2 then divides the whole envelope. A legacy
+     * month reads turnover off its Rank-1 rows and pairs it with the CURRENT
+     * envelope_bp (envelope_paise null), and is null without Rank-1 rows.
      *
      * @return ?array{
-     *     turnover_paise: int, envelope_bp: int, pool_paise: int,
+     *     turnover_paise: int, envelope_bp: int, envelope_paise: ?int, pool_paise: int,
      *     qualifiers: int, rap_points: ?int, aogo_points: int, total_points: ?int,
      *     point_value_paise: ?int, computed_at: ?Carbon,
      *     passes: array<int, array{pool_paise: int, total_points: int, raw_point_value_paise: int, point_value_cap_paise: int, point_value_paise: int, payout_paise: int, leftover_paise: int}>
@@ -293,6 +296,11 @@ final class BonusCalculationSnapshots
      */
     public function rankBonusMonth(Carbon $month): ?array
     {
+        $passRows = RankMonthlyPass::query()
+            ->where('month_start', $month->toDateString())
+            ->orderBy('pass')
+            ->get();
+
         $agg = DB::table('rank_bonus_results')
             ->where('month_start', $month->toDateString())
             ->where('rank_number', 1)
@@ -306,7 +314,12 @@ final class BonusCalculationSnapshots
             ->selectRaw('COUNT(*) as row_count')
             ->first();
 
-        if ($agg === null || (int) $agg->row_count === 0) {
+        $hasRank1Rows = $agg !== null && (int) $agg->row_count > 0;
+
+        /** @var RankMonthlyPass|null $firstPass */
+        $firstPass = $passRows->first();
+
+        if (! $hasRank1Rows && $firstPass === null) {
             return null;
         }
 
@@ -315,20 +328,22 @@ final class BonusCalculationSnapshots
             ->where('status', '!=', RankAogoGrant::STATUS_VOIDED)
             ->sum('points');
 
+        $computedAt = $hasRank1Rows && $agg->computed_at !== null
+            ? Carbon::parse($agg->computed_at)
+            : $passRows->max('created_at');
+
         return [
-            'turnover_paise' => (int) $agg->turnover_paise,
-            'envelope_bp' => $this->plan->rankEnvelopeBp(),
-            'pool_paise' => (int) $agg->pool_paise,
-            'qualifiers' => (int) $agg->qualifier_count,
-            'rap_points' => $agg->rap_points !== null ? (int) $agg->rap_points : null,
+            'turnover_paise' => $firstPass !== null ? (int) $firstPass->company_turnover_paise : (int) $agg->turnover_paise,
+            'envelope_bp' => $firstPass !== null ? (int) $firstPass->envelope_bp : $this->plan->rankEnvelopeBp(),
+            'envelope_paise' => $firstPass !== null ? (int) $firstPass->envelope_paise : null,
+            'pool_paise' => $hasRank1Rows ? (int) $agg->pool_paise : 0,
+            'qualifiers' => $hasRank1Rows ? (int) $agg->qualifier_count : 0,
+            'rap_points' => $hasRank1Rows && $agg->rap_points !== null ? (int) $agg->rap_points : null,
             'aogo_points' => $aogoPoints,
-            'total_points' => $agg->total_points !== null ? (int) $agg->total_points : null,
-            'point_value_paise' => $agg->point_value_paise !== null ? (int) $agg->point_value_paise : null,
-            'computed_at' => $agg->computed_at !== null ? Carbon::parse($agg->computed_at) : null,
-            'passes' => RankMonthlyPass::query()
-                ->where('month_start', $month->toDateString())
-                ->orderBy('pass')
-                ->get()
+            'total_points' => $hasRank1Rows && $agg->total_points !== null ? (int) $agg->total_points : null,
+            'point_value_paise' => $hasRank1Rows && $agg->point_value_paise !== null ? (int) $agg->point_value_paise : null,
+            'computed_at' => $computedAt !== null ? Carbon::parse($computedAt) : null,
+            'passes' => $passRows
                 ->keyBy(fn (RankMonthlyPass $pass): int => (int) $pass->pass)
                 ->map(fn (RankMonthlyPass $pass): array => [
                     'pool_paise' => (int) $pass->pool_paise,

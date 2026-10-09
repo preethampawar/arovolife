@@ -41,11 +41,19 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * never counted twice. Income, deduction and credited sums always come from the
  * result rows, whichever source priced the pool.
  *
- * For a legacy month, ranks that had no qualifiers wrote no rows at all; the
- * report renders them asterisked with no pool, since the per-rank pool
- * percentage that once priced them is retired (client 2026-10-05). The legacy
- * per-rank leftover is derived (pool − Σ gross), because those months never
- * stored a flooring remainder. A two-pass month's leftover is the pass-2 row's.
+ * A month priced under the client's 2026-10-05 two-pass rule also has two
+ * frozen rank_monthly_passes rows (one 20% pool; pass 1 = AO-GO + ranks 1..N,
+ * pass 2 = ranks N+1..9 from the remainder, each at min(cap, ⌊pool ÷ points⌋)).
+ * They feed the block's pass summary and the Pass column, and the pass-2 row's
+ * leftover is the month's leftover — the engine stores it, nothing is derived.
+ *
+ * A month with no pass rows was priced under the per-rank pool rule in force
+ * before the two-pass rule; it is flagged `legacy`, has no pass summary and
+ * shows no pass per rank. Its ranks that had no qualifiers wrote no rows at
+ * all; the report renders them asterisked with no pool, since the per-rank
+ * pool percentage that once priced them is retired. Its per-rank leftover is
+ * derived (pool − Σ gross), because those months never stored a flooring
+ * remainder.
  */
 final class AdminRankBonusInputOutputController extends Controller
 {
@@ -74,14 +82,14 @@ final class AdminRankBonusInputOutputController extends Controller
         return view('admin.compensation.rb-input-output.index', [
             'months' => $months,
             'blocks' => $this->blocks($monthStarts),
-            // The Rank-1 points model behind each month's formula strip — read
-            // through the same snapshot service as the calculation reports.
+            // The month's points model (two-pass, or the legacy Rank-1 one)
+            // behind each formula strip — read through the same snapshot
+            // service as the calculation reports.
             'rank1Snapshots' => array_combine($monthStarts, array_map(
                 fn (string $monthStart): ?array => $this->snapshots->rankBonusMonth(Carbon::parse($monthStart)),
                 $monthStarts,
             )),
             'rankNames' => $this->plan->rankNames(),
-            'envelopeBp' => $this->plan->rankEnvelopeBp(),
             'month' => $month,
             'from' => $from,
             'to' => $to,
@@ -106,6 +114,7 @@ final class AdminRankBonusInputOutputController extends Controller
             ['key' => 'turnover',     'label' => 'Month Turnover'],
             ['key' => 'rank',         'label' => 'Rank'],
             ['key' => 'rank_name',    'label' => 'Rank Name'],
+            ['key' => 'pass',         'label' => 'Pass'],
             ['key' => 'pool',         'label' => 'Pool (Rs)'],
             ['key' => 'qualifiers',   'label' => 'Qualifiers'],
             ['key' => 'held',         'label' => 'Held'],
@@ -135,6 +144,7 @@ final class AdminRankBonusInputOutputController extends Controller
                     'turnover' => $turnover,
                     'rank' => $rank['rank'],
                     'rank_name' => $rank['name'].($rank['frozen'] ? '' : ' (estimated)'),
+                    'pass' => $rank['pass'] ?? '',
                     'pool' => $rank['pool_paise'] / 100,
                     'qualifiers' => $rank['qualifiers'],
                     'held' => $rank['held'],
@@ -154,7 +164,8 @@ final class AdminRankBonusInputOutputController extends Controller
                     'month' => $monthLabel,
                     'turnover' => $turnover,
                     'rank' => 1,
-                    'rank_name' => 'AO-GO (Rank 1 pool)',
+                    'rank_name' => $block['legacy'] ? 'AO-GO (Rank 1 pool)' : 'AO-GO (pass 1)',
+                    'pass' => $block['legacy'] ? '' : 1,
                     'pool' => '',
                     'qualifiers' => $block['aogo']['grants'],
                     'held' => 0,
@@ -171,11 +182,33 @@ final class AdminRankBonusInputOutputController extends Controller
                 ];
             }
 
+            foreach ($block['passes'] as $pass) {
+                $out[] = [
+                    'month' => $monthLabel,
+                    'turnover' => $turnover,
+                    'rank' => '',
+                    'rank_name' => 'PASS '.$pass['pass'],
+                    'pass' => $pass['pass'],
+                    'pool' => $pass['pool_paise'] / 100,
+                    'qualifiers' => '',
+                    'held' => '',
+                    'blocked' => '',
+                    'total_points' => $pass['total_points'],
+                    'point_value' => $pass['point_value_paise'] / 100,
+                    'income' => $pass['payout_paise'] / 100,
+                    'deduction' => '',
+                    'credited' => '',
+                    'leftover' => $pass['leftover_paise'] / 100,
+                    'computed_at' => $computedAt,
+                ];
+            }
+
             $out[] = [
                 'month' => $monthLabel,
                 'turnover' => $turnover,
                 'rank' => '',
                 'rank_name' => 'MONTH TOTAL',
+                'pass' => '',
                 'pool' => '',
                 'qualifiers' => '',
                 'held' => '',
@@ -219,9 +252,10 @@ final class AdminRankBonusInputOutputController extends Controller
     }
 
     /**
-     * Months with any Rank Bonus activity, newest first. The union catches the
-     * corner case of a month whose only Rank-1 pool spend was AO-GO grants
-     * (no qualifier rows at any rank).
+     * Months with any Rank Bonus activity, newest first. The unions catch a
+     * month whose only spend was AO-GO grants (no qualifier rows at any rank)
+     * and a two-pass month frozen with nobody to pay — its pass rows carry the
+     * whole envelope as leftover, which is exactly what this report must show.
      *
      * @return Builder
      */
@@ -236,19 +270,26 @@ final class AdminRankBonusInputOutputController extends Controller
 
         return $constrain(DB::table('rank_bonus_results')->select('month_start'))
             ->union($constrain(DB::table('rank_aogo_grants')->select('month_start')))
+            ->union($constrain(DB::table('rank_monthly_passes')->select('month_start')))
             ->orderByDesc('month_start');
     }
 
     /**
-     * Assemble one report block per month: the nine rank rows (frozen where
-     * result rows exist, estimated from current settings where none do), the
-     * AO-GO line, and the month totals.
+     * Assemble one report block per month: the frozen pass summary (two-pass
+     * months only), the nine rank rows (frozen where result rows exist,
+     * asterisked where a legacy month wrote none), the AO-GO line, and the
+     * month totals.
      *
      * @param  list<string>  $monthStarts  'Y-m-01' keys
      * @return array<string, array{
      *     computed_at: ?Carbon,
      *     turnover_paise: ?int,
-     *     ranks: list<array{rank: int, name: string, pool_paise: int, frozen: bool, qualifiers: int, held: int, blocked: int, total_points: ?int, point_value_paise: ?int, share_paise: ?int, income_paise: int, deduction_paise: int, credited_paise: int, leftover_paise: ?int}>,
+     *     legacy: bool,
+     *     passes_incomplete: bool,
+     *     envelope_bp: int,
+     *     envelope_paise: ?int,
+     *     passes: list<array{pass: int, pool_paise: int, total_points: int, raw_point_value_paise: int, point_value_cap_paise: int, point_value_paise: int, payout_paise: int, leftover_paise: int}>,
+     *     ranks: list<array{rank: int, name: string, pass: ?int, pool_paise: int, frozen: bool, qualifiers: int, held: int, blocked: int, total_points: ?int, point_value_paise: ?int, share_paise: ?int, income_paise: int, deduction_paise: int, credited_paise: int, leftover_paise: ?int}>,
      *     aogo: ?array{grants: int, points: int, point_value_paise: ?int, income_paise: int, deduction_paise: int, credited_paise: int},
      *     total_income_paise: int,
      *     total_deduction_paise: int,
@@ -311,13 +352,13 @@ final class AdminRankBonusInputOutputController extends Controller
 
         // Two-pass months (client 2026-10-05): the rank rows carry each rank's
         // allotment with leftover 0; the month's leftover is on the pass-2 row.
-        $passLeftover = RankMonthlyPass::query()
+        $monthPasses = RankMonthlyPass::query()
             ->whereIn('month_start', $monthStarts)
-            ->where('pass', 2)
+            ->orderBy('pass')
             ->get()
-            ->mapWithKeys(fn (RankMonthlyPass $pass): array => [
-                Carbon::parse($pass->month_start)->toDateString() => (int) $pass->leftover_paise,
-            ]);
+            ->groupBy(fn (RankMonthlyPass $pass): string => Carbon::parse($pass->month_start)->toDateString());
+
+        $firstPassMaxRank = $this->plan->rankFirstPassMaxRank();
 
         $blocks = [];
 
@@ -325,6 +366,19 @@ final class AdminRankBonusInputOutputController extends Controller
             $byRank = ($rankAggregates[$monthStart] ?? collect())->keyBy('rank_number');
             $pools = $frozenPools[$monthStart] ?? collect();
             $aogoRow = $aogoAggregates[$monthStart] ?? null;
+            $passRows = $monthPasses[$monthStart] ?? collect();
+            $legacy = $passRows->isEmpty();
+
+            $passes = array_values($passRows->map(fn (RankMonthlyPass $pass): array => [
+                'pass' => (int) $pass->pass,
+                'pool_paise' => (int) $pass->pool_paise,
+                'total_points' => (int) $pass->total_points,
+                'raw_point_value_paise' => (int) $pass->raw_point_value_paise,
+                'point_value_cap_paise' => (int) $pass->point_value_cap_paise,
+                'point_value_paise' => (int) $pass->point_value_paise,
+                'payout_paise' => (int) $pass->payout_paise,
+                'leftover_paise' => (int) $pass->leftover_paise,
+            ])->all());
 
             $turnover = match (true) {
                 $pools->isNotEmpty() => (int) $pools->first()->company_turnover_paise,
@@ -355,7 +409,20 @@ final class AdminRankBonusInputOutputController extends Controller
             $totalIncome = $aogo['income_paise'] ?? 0;
             $totalDeduction = $aogo['deduction_paise'] ?? 0;
             $totalCredited = $aogo['credited_paise'] ?? 0;
-            $totalLeftover = (int) ($passLeftover[$monthStart] ?? 0);
+            // The engine writes both pass rows in one transaction; a month
+            // with only one is an incomplete freeze and is flagged, never
+            // read as "leftover ₹0" (principle 5).
+            $passesIncomplete = ! $legacy && count($passes) !== 2;
+            $totalLeftover = (int) ($passRows->firstWhere('pass', 2)->leftover_paise ?? 0);
+
+            // A two-pass month froze its envelope on the pass rows; a legacy
+            // month pairs its turnover with the CURRENT envelope setting.
+            $envelopeBp = $legacy ? $this->plan->rankEnvelopeBp() : (int) $passRows->first()->envelope_bp;
+            $envelopePaise = match (true) {
+                ! $legacy => (int) $passRows->first()->envelope_paise,
+                $turnover !== null => max(0, intdiv($turnover * $envelopeBp, 10_000)),
+                default => null,
+            };
 
             foreach (range(1, 9) as $rank) {
                 $agg = $byRank->get($rank);
@@ -378,6 +445,9 @@ final class AdminRankBonusInputOutputController extends Controller
                     $ranks[] = [
                         'rank' => $rank,
                         'name' => $this->plan->rankName($rank),
+                        // A legacy pool row carries the migrated default pass 1,
+                        // which would mislead — legacy months show no pass.
+                        'pass' => $legacy ? null : ($pool->pass ?? ($rank <= $firstPassMaxRank ? 1 : 2)),
                         'pool_paise' => $poolPaise,
                         'frozen' => true,
                         'qualifiers' => (int) ($agg->qualifier_count ?? 0),
@@ -413,6 +483,7 @@ final class AdminRankBonusInputOutputController extends Controller
                 $ranks[] = [
                     'rank' => $rank,
                     'name' => $this->plan->rankName($rank),
+                    'pass' => $legacy ? null : ($rank <= $firstPassMaxRank ? 1 : 2),
                     'pool_paise' => 0,
                     'frozen' => false,
                     'qualifiers' => 0,
@@ -431,6 +502,11 @@ final class AdminRankBonusInputOutputController extends Controller
             $blocks[$monthStart] = [
                 'computed_at' => $computedAt,
                 'turnover_paise' => $turnover,
+                'legacy' => $legacy,
+                'passes_incomplete' => $passesIncomplete,
+                'envelope_bp' => $envelopeBp,
+                'envelope_paise' => $envelopePaise,
+                'passes' => $passes,
                 'ranks' => $ranks,
                 'aogo' => $aogo,
                 'total_income_paise' => $totalIncome,
