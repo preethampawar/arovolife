@@ -201,6 +201,14 @@ PY
   if python3 -c 'import json,sys;s=json.load(open(sys.argv[1]));sys.exit(0 if sys.argv[2] in s["done"] else 1)' "$STATE" "$TASK"; then
     echo "Task $TASK done"; return 0
   fi
+  # No report means the session died before closing the task: count the attempt so the 3-attempt cap still holds.
+  [ -z "$REPORT" ] && python3 - "$STATE" "$TASK" <<'PY'
+import json, sys
+p, task = sys.argv[1:3]
+s = json.load(open(p))
+s.setdefault("attempts", {})[task] = int(s["attempts"].get(task, 0)) + 1
+json.dump(s, open(p, "w"), indent=2); open(p, "a").write("\n")
+PY
   echo "Task $TASK not completed ($OUTCOME); stopping"; return 1
 }
 

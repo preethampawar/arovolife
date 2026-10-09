@@ -60,9 +60,12 @@ Never run anything against `arovolife-app`, `arovolife-db`, `localhost:8084` or 
 
 ## Workflow
 
+**Never end your turn while a subagent is still running.** This session is headless: the moment you stop and wait for a notification, the process exits and kills every running subagent with it (Task 8+9's first attempt died this way at 07:33 on 2026-10-09). Dispatch subagents in the foreground and wait for each to return its result. If an Agent call comes back saying it runs in the background, keep the turn alive by waiting on it with the available wait/output tool until it finishes; never write "waiting for its completion notification" and stop.
+
 ### 0. Resume check
 If the working tree already has uncommitted changes:
 - If the previous report says they belong to **this** task (a previous failed attempt), continue from them.
+- If there is **no report for this task yet** and the changed files are the ones this task's Files lists name, they are an earlier attempt of this task whose session ended mid-implementation. Keep them: diff them against the task text, then have the implementer finish the missing steps rather than start over.
 - If they belong to a different task or nobody can tell, do not delete them: `git stash push -u -m "rsp-runner orphan __DATE__ task __TASK__"`, note the stash in the report, and proceed with a clean tree.
 
 ### 1. Implement (Opus implements, you decide)
