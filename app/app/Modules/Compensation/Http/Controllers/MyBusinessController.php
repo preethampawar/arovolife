@@ -78,8 +78,6 @@ final class MyBusinessController extends Controller
                     ->whereIn('status', [
                         GsbCutoffResult::STATUS_CREDITED,
                         GsbCutoffResult::STATUS_FROZEN,
-                        GsbCutoffResult::STATUS_REPURCHASE_HELD,
-                        GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
                         GsbCutoffResult::STATUS_REVERSED,
                     ])
                     ->orderByDesc('cutoff_date')

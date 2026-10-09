@@ -3394,7 +3394,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 21
+			count: 17
 			path: tests/Modules/Compensation/AdminGbbCalculationTest.php
 
 		-
@@ -3418,7 +3418,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 10
+			count: 13
 			path: tests/Modules/Compensation/AdminGsbCalculationTest.php
 
 		-

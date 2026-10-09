@@ -37,20 +37,6 @@ final class GbbMonthlyResult extends Model
     public const STATUS_REVERSED = 'reversed';
 
     /**
-     * Repurchase grace window: the bonus was calculated at the frozen point
-     * value but not credited. Releasable once the distributor completes their
-     * repurchase.
-     */
-    public const STATUS_REPURCHASE_HELD = 'repurchase_held';
-
-    /**
-     * Post-grace repurchase suspension: an audit-only row recording the AGP the
-     * distributor earned and forfeited. Gross is 0, the AGP is excluded from
-     * the month's denominator, and the row is NEVER released.
-     */
-    public const STATUS_REPURCHASE_SUSPENDED = 'repurchase_suspended';
-
-    /**
      * The month was earned but the month closed with an unspent repurchase
      * wallet, which is a mandatory GBB qualification gate. Gross is 0, the AGP
      * is excluded from the month's denominator, and the row is NEVER released —
@@ -72,12 +58,11 @@ final class GbbMonthlyResult extends Model
     /**
      * Statuses whose gross was priced against the month's frozen pool. Used by
      * GrowthBoosterBonusService to decide whether a prematurely frozen pool row
-     * may still be safely replaced. Suspended rows carry gross 0 and their AGP
+     * may still be safely replaced. Blocked rows carry gross 0 and their AGP
      * is excluded from the denominator, so they never consumed the pool.
      */
     public const POOL_FUNDED_STATUSES = [
         self::STATUS_CREDITED,
-        self::STATUS_REPURCHASE_HELD,
         self::STATUS_REVERSED,
     ];
 
@@ -85,7 +70,7 @@ final class GbbMonthlyResult extends Model
      * The complement of {@see POOL_FUNDED_STATUSES} over this model's status
      * set: the terminal statuses whose AGP was EXCLUDED from the month's frozen
      * denominator (see GrowthBoosterBonusService::runForMonth(), which sums the
-     * denominator over payable + held only). A row in one of these states can
+     * denominator over payable rows only). A row in one of these states can
      * never be credited against that pool afterwards — the point value was
      * priced without its AGP, so paying it would overspend the pool and drive
      * gbb_monthly_pools.leftover_paise negative.
@@ -95,7 +80,6 @@ final class GbbMonthlyResult extends Model
      * its way to `credited`, and that row's AGP IS in the denominator.
      */
     public const POOL_EXCLUDED_STATUSES = [
-        self::STATUS_REPURCHASE_SUSPENDED,
         self::STATUS_REPURCHASE_WALLET_BLOCKED,
         self::STATUS_REPURCHASE_FAILED_BLOCKED,
     ];

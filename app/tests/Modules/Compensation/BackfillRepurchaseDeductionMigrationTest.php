@@ -57,7 +57,7 @@ it('copies the ledger deduction onto credited rows, zeroes admin/TDS, and leaves
         'updated_at' => now(),
     ]);
 
-    // A GBB row held for repurchase: never credited either.
+    // A GBB row still pending: never credited either.
     $held = GbbMonthlyResult::create([
         'distributor_id' => $dist->id,
         'year_month' => '2026-08-01',
@@ -68,7 +68,7 @@ it('copies the ledger deduction onto credited rows, zeroes admin/TDS, and leaves
         'point_value_paise' => 100_000,
         'gbb_gross_paise' => 300_000,
         'gbb_net_paise' => 300_000,
-        'status' => GbbMonthlyResult::STATUS_REPURCHASE_HELD,
+        'status' => GbbMonthlyResult::STATUS_PENDING,
     ]);
 
     backfillRepurchaseDeductionMigration()->up();

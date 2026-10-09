@@ -141,7 +141,7 @@ final class AdminGsbCalculationController extends Controller
             'q' => ['nullable', 'string', 'max:64'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:credited,calculated,repurchase_held,repurchase_suspended,reversed'],
+            'status' => ['nullable', 'in:credited,calculated,reversed'],
             'slab' => ['nullable', 'integer', 'min:1', 'max:7'],
         ]);
 

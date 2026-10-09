@@ -135,20 +135,6 @@ it('shows the frozen point value and renders a dash for legacy rows', function (
         ->assertSee('—');        // legacy row has no snapshot
 });
 
-it('badges the repurchase held and suspended statuses', function () {
-    $held = gbbReportDistributor('GBBHLD', 'Hema');
-    $susp = gbbReportDistributor('GBBSUS', 'Suresh');
-    makeGbbRow($held, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
-    makeGbbRow($susp, 12, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED, '2026-07-01');
-
-    $this->actingAs(gbbReportAdmin())
-        ->get(route('admin.compensation.gbb-calculation.index'))
-        ->assertOk()
-        ->assertSee('repurchase held')
-        ->assertSee('repurchase suspended')
-        ->assertSee('bg-orange-100 text-orange-700', false);
-});
-
 it('filters by the repurchase wallet blocked status', function () {
     $blocked = gbbReportDistributor('GBBBLK', 'Bhavana');
     $credited = gbbReportDistributor('GBBOK1', 'Kiran');
@@ -160,30 +146,6 @@ it('filters by the repurchase wallet blocked status', function () {
         ->assertOk()
         ->assertSee('GBBBLK')
         ->assertDontSee('GBBOK1');
-});
-
-it('rejects the retired repurchase hold statuses as filters', function () {
-    // Nothing writes them any more; a legacy row still renders in the
-    // unfiltered list, but they are no longer offered as a filter.
-    $admin = gbbReportAdmin();
-
-    $this->actingAs($admin)
-        ->get(route('admin.compensation.gbb-calculation.index', ['status' => 'repurchase_held']))
-        ->assertSessionHasErrors('status');
-
-    $this->actingAs($admin)
-        ->get(route('admin.compensation.gbb-calculation.index', ['status' => 'repurchase_suspended']))
-        ->assertSessionHasErrors('status');
-});
-
-it('still renders a legacy repurchase_held row in the unfiltered list', function () {
-    $held = gbbReportDistributor('GBBHLD', 'Hema');
-    makeGbbRow($held, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
-
-    $this->actingAs(gbbReportAdmin())
-        ->get(route('admin.compensation.gbb-calculation.index'))
-        ->assertOk()
-        ->assertSee('GBBHLD');
 });
 
 it('rejects an unknown status filter', function () {
@@ -283,22 +245,6 @@ function gbbRenderIncomePage(int $distributorId): string
     ])->render();
 }
 
-it('never presents a legacy repurchase_held month as payable to the distributor', function () {
-    // Nothing releases these rows any more. The page must not label them
-    // "held" (which promises a later credit) and must not show the AGP ×
-    // point-value income line for money that will never be credited.
-    $distributorId = gbbReportDistributor('GBBHLD', 'Hema');
-    makeGbbRow($distributorId, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
-
-    $html = gbbRenderIncomePage($distributorId);
-
-    expect($html)
-        ->toContain('Not paid — legacy record')
-        ->toContain('Recorded under a superseded rule; this amount is not payable');
-    expect(str_contains($html, 'Repurchase held'))->toBeFalse();
-    expect(str_contains($html, '12 AGP × ₹'.Number::format(250, 2)))->toBeFalse();
-});
-
 it('presents a repurchase wallet forfeit without an income line', function () {
     $distributorId = gbbReportDistributor('GBBBLK', 'Bhavana');
     makeGbbRow($distributorId, 12, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED, '2026-07-01');
@@ -333,8 +279,8 @@ it('lists credited GBB batches without tripping the reserved YEAR_MONTH keyword'
 
     makeGbbRow($alice, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-06-01');
     makeGbbRow($bob, 5, 25_000, 125_000, GbbMonthlyResult::STATUS_CREDITED, '2026-06-01');
-    // A held row must not be counted as a credited batch.
-    makeGbbRow($bob, 5, 25_000, 125_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
+    // A blocked row must not be counted as a credited batch.
+    makeGbbRow($bob, 5, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED, '2026-07-01');
 
     $this->actingAs(gbbReportAdmin())
         ->get(route('admin.compensation.gbb.index'))
@@ -459,8 +405,8 @@ it('shows the repurchase deduction per row and counts only credited rows in the 
     $bob = gbbReportDistributor('GBRPD2', 'Bob');
     $credited = makeGbbRow($alice, 4, 100_000, 400_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
     $credited->update(['repurchase_deduction_paise' => 40_000, 'gbb_net_paise' => 360_000]);
-    // Held rows carry net = gross but never reached a wallet.
-    makeGbbRow($bob, 3, 100_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
+    // A pending row carries net = gross but has not reached a wallet.
+    makeGbbRow($bob, 3, 100_000, 300_000, GbbMonthlyResult::STATUS_PENDING, '2026-07-01');
 
     $this->actingAs(gbbReportAdmin())
         ->get(route('admin.compensation.gbb.show', ['month' => '2026-07']))

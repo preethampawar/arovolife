@@ -9,8 +9,6 @@
         'credited' => 'bg-green-100 text-green-700',
         'pending'  => 'bg-amber-100 text-amber-700',
         'reversed' => 'bg-red-100 text-red-700',
-        'repurchase_held' => 'bg-orange-100 text-orange-700',
-        'repurchase_suspended' => 'bg-red-100 text-red-700',
         'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
         'repurchase_failed_blocked' => 'bg-red-100 text-red-700',
     ];
@@ -22,7 +20,6 @@
     AGP Points = slab occurrences earned that month. Point Value = the month's frozen pool ÷ total payable AGP, floored to the rupee and capped at the point value cap.
     "repurchase_wallet_blocked" = the distributor still held repurchase-wallet money at the last instant of the month, so the month is forfeited: gross ₹0, the AGP excluded from the denominator, never released.
     "repurchase_failed_blocked" = the distributor was failed on the repurchase condition on the month's last day (client 2026-10-09), so the month is blocked on the same terms: gross ₹0, the AGP excluded from the denominator, never released, and a later fulfilment does not reopen it.
-    "repurchase_held" / "repurchase_suspended" are legacy rows only; no run writes them any more.
     Search by ADN or name, filter by month and status.
 </div>
 @enddeveloper
@@ -133,7 +130,7 @@
                         ₹{{ \App\Modules\Shared\Support\IndianNumber::format($agpValuePerPoint, 2) }}
                     </td>
                     <td class="px-3 py-2 text-right">
-                        <span class="font-semibold {{ in_array($row->status, ['reversed', 'repurchase_suspended', 'repurchase_wallet_blocked', 'repurchase_failed_blocked'], true) ? 'text-red-600' : ($row->status === 'repurchase_held' ? 'text-orange-700' : 'text-green-700') }}">
+                        <span class="font-semibold {{ in_array($row->status, ['reversed', 'repurchase_wallet_blocked', 'repurchase_failed_blocked'], true) ? 'text-red-600' : 'text-green-700' }}">
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_net_paise / 100, 2) }}
                         </span>
                         @if($row->repurchase_deduction_paise > 0)

@@ -944,7 +944,7 @@ it('keeps every other cut-off status out of the distributor gsb history', functi
         ['cutoff_date' => today()->subDays(1)->toDateString(), 'left_bv_paise' => 111_100, 'right_bv_paise' => 0, 'status' => 'no_match'],
         ['cutoff_date' => today()->subDays(2)->toDateString(), 'left_bv_paise' => 222_200, 'right_bv_paise' => 0, 'status' => 'below_600bv'],
         ['cutoff_date' => today()->subDays(3)->toDateString(), 'left_bv_paise' => 333_300, 'right_bv_paise' => 0, 'status' => 'frozen'],
-        ['cutoff_date' => today()->subDays(4)->toDateString(), 'left_bv_paise' => 444_400, 'right_bv_paise' => 0, 'status' => 'repurchase_held'],
+        ['cutoff_date' => today()->subDays(4)->toDateString(), 'left_bv_paise' => 444_400, 'right_bv_paise' => 0, 'status' => 'failed'],
     ]));
 
     $this->get(route('income.gsb-history'))

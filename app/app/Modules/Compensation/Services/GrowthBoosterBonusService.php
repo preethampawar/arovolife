@@ -69,10 +69,6 @@ use Illuminate\Support\Facades\Log;
  *      is asked in exactly one place,
  *      {@see RepurchaseWalletGateService::clearedAtMonthEnd()}.
  *
- * STATUS_REPURCHASE_HELD and STATUS_REPURCHASE_SUSPENDED are legacy: rows in
- * those states exist from before the 2026-09-07 spec and the recovery paths
- * below still have to recognise them, but none are written any more.
- *
  * THREE PHASES (the RankBonusService shape):
  *  1. Pass 1 — {@see resolveRoster()} decides the month's population and each
  *     member's AGP: the cut-off earners, the lifetime rank gate and the two
@@ -92,8 +88,8 @@ use Illuminate\Support\Facades\Log;
  * re-run for any earlier month changing the rank gate), and the engine then recomputed AGP
  * from live data on every run: a distributor with no row at freeze was created
  * fresh and paid at the frozen point value although their AGP was never in the
- * frozen denominator, and a held row was re-priced to the larger live AGP that
- * its later release would then pay. Pool ₹10,000 over 100 AGP pays
+ * frozen denominator, and an uncredited row was re-priced to the larger live
+ * AGP. Pool ₹10,000 over 100 AGP pays
  * ₹100 an AGP; one newcomer with 12 AGP takes ₹1,200 out of a pool that has
  * already been fully divided, and leftover_paise goes negative.
  *
@@ -122,7 +118,7 @@ final class GrowthBoosterBonusService
      * on the first run, and every later run credits only the roster members not
      * yet credited, at the frozen point value and their frozen AGP.
      *
-     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, held: int, suspended: int, skipped_no_agp: int, wallet_blocked: int, repurchase_failed: int, qualified_after_freeze: int}
+     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, skipped_no_agp: int, wallet_blocked: int, repurchase_failed: int, qualified_after_freeze: int}
      */
     public function runForMonth(Carbon $month): array
     {
@@ -336,12 +332,11 @@ final class GrowthBoosterBonusService
      * distributor ({@see GbbMonthlyResult::POOL_EXCLUDED_STATUSES}) and this
      * write would move it back onto the funded path. Their AGP was never in the
      * frozen denominator, so the frozen point value was priced without them: a
-     * distributor wallet-blocked (or legacy-suspended) under one pool must NOT
+     * distributor wallet-blocked (or repurchase-failed) under one pool must NOT
      * be paid against it — it would overspend the pool and drive
      * leftover_paise negative. This is what makes the month-end wallet verdict
      * final: it is decided once, at freeze time, and never re-judged.
-     * `pending` and the legacy `repurchase_held` are untouched by this guard —
-     * their AGP WAS in the denominator.
+     * `pending` is untouched by this guard — its AGP WAS in the denominator.
      */
     private function writeRosterRow(
         int $distributorId,
@@ -438,9 +433,9 @@ final class GrowthBoosterBonusService
      * would change economics money moved on, so the rows are kept and the
      * inconsistency surfaced loudly instead. The test is the STATUS, not the
      * gross: a credited row whose gross floored to ₹0 is still the record of a
-     * real participation in that pool (and a released held row can turn a ₹0
-     * row into a paid one), so it keeps the pool exactly like a paid row does.
-     * Un-credited, un-held rows moved no money, but they DO block the re-run (a
+     * real participation in that pool, so it keeps the pool exactly like a
+     * paid row does.
+     * Un-credited rows moved no money, but they DO block the re-run (a
      * `credited` row is the idempotency guard in {@see writeRosterRow()}), so
      * they are cleared along with the pool and recomputed from the fresh
      * snapshot.
@@ -537,7 +532,7 @@ final class GrowthBoosterBonusService
      * the gross frozen on them; the pool, the denominator, the point value and
      * every row's AGP are never touched again.
      *
-     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, held: int, suspended: int, skipped_no_agp: int, wallet_blocked: int, repurchase_failed: int, qualified_after_freeze: int}
+     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, skipped_no_agp: int, wallet_blocked: int, repurchase_failed: int, qualified_after_freeze: int}
      */
     private function creditFromFrozenPool(Carbon $monthStart, Carbon $monthEnd, string $yearMonth, GbbMonthlyPool $pool): array
     {
@@ -600,10 +595,6 @@ final class GrowthBoosterBonusService
             'total_agp' => (int) $pool->total_agp,
             'point_value_paise' => (int) $pool->point_value_paise,
             'credited' => $credited,
-            // Legacy statuses. Nothing writes them any more; the counts stay so
-            // a month that still holds pre-2026-09-07 rows reports them.
-            'held' => $rows->where('status', GbbMonthlyResult::STATUS_REPURCHASE_HELD)->count(),
-            'suspended' => $rows->where('status', GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED)->count(),
             'skipped_no_agp' => $agpMap->filter(fn (int $agp): bool => $agp === 0)->count(),
             'wallet_blocked' => $walletBlockedCount,
             'repurchase_failed' => $repurchaseFailedCount,

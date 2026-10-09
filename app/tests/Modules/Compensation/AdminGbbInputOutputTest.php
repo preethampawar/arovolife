@@ -101,8 +101,8 @@ it('renders a month block with the frozen pool figures and per-earner rows', fun
     gbbIoPool($monthStart, 100, 5_000);
 
     gbbIoRow('200000030', 'Credited Earner', 60, 5_000, $monthStart, GbbMonthlyResult::STATUS_CREDITED);
-    gbbIoRow('200000031', 'Held Earner', 40, 5_000, $monthStart, GbbMonthlyResult::STATUS_REPURCHASE_HELD);
-    gbbIoRow('200000032', 'Suspended Earner', 25, 5_000, $monthStart, GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED);
+    gbbIoRow('200000031', 'Wallet Blocked Earner', 40, 5_000, $monthStart, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+    gbbIoRow('200000032', 'Failed Blocked Earner', 25, 5_000, $monthStart, GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED);
 
     $res = $this->actingAs(gbbIoAdmin())
         ->get(route('admin.compensation.gbb-input-output.index'))
@@ -118,15 +118,13 @@ it('renders a month block with the frozen pool figures and per-earner rows', fun
     // Per-earner incomes and statuses.
     $res->assertSee('Credited Earner');
     $res->assertSee('3,000.00');   // 60 × ₹50
-    $res->assertSee('2,000.00');   // 40 × ₹50, held
-    $res->assertSee('Held');
-    $res->assertSee('Suspended');
-    $res->assertSee('AGP excluded');
+    $res->assertSee('Blocked — repurchase wallet not ₹0');
+    $res->assertSee('Blocked — repurchase condition failed');
 
-    // Legacy held rows were priced into the pool, so they are still called out
-    // — but as stranded rows to escalate, not as money awaiting a release.
-    $res->assertSee('legacy');
-    $res->assertSee('nothing credits them now');
+    // The retired held/suspended states leave no trace on the page.
+    $res->assertDontSee('Held (legacy)');
+    $res->assertDontSee('Suspended — AGP excluded');
+    $res->assertDontSee('nothing credits them now');
 
     // Footer: the frozen denominator and the month's income.
     $res->assertSee('Total AGP');

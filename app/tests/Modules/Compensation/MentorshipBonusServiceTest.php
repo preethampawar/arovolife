@@ -221,7 +221,7 @@ it('returns null for a non-credited cut-off', function () {
     makeSponsorship($sponsor, $sponsee);
     giveSponsorMinBv($sponsor);
 
-    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1, 100_000, 'repurchase_held'));
+    $mb = app(MentorshipBonusService::class)->processForSponsee($sponsee->id, makeCreditedCutoff($sponsee, 1, 100_000, 'repurchase_forfeited'));
 
     expect($mb)->toBeNull();
     expect(MentorshipBonusResult::count())->toBe(0);

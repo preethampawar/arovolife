@@ -149,8 +149,6 @@ final class GbbMonthlyRunCommand extends Command
                 ['Distributors credited', $result['credited']],
                 ['Blocked (repurchase condition failed at month end)', $result['repurchase_failed']],
                 ['Forfeited (repurchase wallet not cleared at month end)', $result['wallet_blocked']],
-                ['Held — legacy rows only', $result['held']],
-                ['Suspended — legacy rows only', $result['suspended']],
                 ['Skipped (no AGP)', $result['skipped_no_agp']],
                 ['Refused (AGP earned after the freeze)', $result['qualified_after_freeze']],
             ],
