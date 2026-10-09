@@ -361,6 +361,36 @@ it('still says the engine has not run when there is neither a pool nor a result'
         ->assertSee('The engine has not run for any month.');
 });
 
+it('shows the configured pool rate and cap in the developer explainer, never a hardcoded figure', function () {
+    foreach (['comp.gbb.pool_rate_bp' => '500', 'comp.gbb.point_value_cap_paise' => '30000'] as $key => $value) {
+        DB::table('settings')->updateOrInsert(['key' => $key], ['value' => $value, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    $developer = gbbReportAdmin();
+    $developer->assignRole('developer');
+
+    $this->actingAs($developer)
+        ->get(route('admin.compensation.gbb.index'))
+        ->assertOk()
+        ->assertSee("is 5% of the month's company-wide BV", false)
+        ->assertSee('The point value is capped at ₹300;')
+        ->assertDontSee('4%')
+        ->assertDontSee('₹240');
+});
+
+it('still renders the developer explainer over a cap the engine refuses, and says so', function () {
+    DB::table('settings')->updateOrInsert(['key' => 'comp.gbb.point_value_cap_paise'], ['value' => '24050', 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
+
+    $developer = gbbReportAdmin();
+    $developer->assignRole('developer');
+
+    $this->actingAs($developer)
+        ->get(route('admin.compensation.gbb.index'))
+        ->assertOk()
+        ->assertSee('The point value cap setting holds a value the engine refuses')
+        ->assertDontSee('capped at ₹');
+});
+
 it('hides the GBB calculation report while the feature is off', function (): void {
     Feature::for(null)->deactivate(GrowthBoosterBonusFeature::class);
 

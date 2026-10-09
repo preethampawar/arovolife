@@ -409,6 +409,23 @@ it('hides the GSB and Rank tabs and their editors while their flags are off', fu
         ->assertNotFound();
 });
 
+it('explains Growth Booster with the configured pool rate and cap, not a claimed default', function () {
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+    foreach (['comp.gbb.pool_rate_bp' => '500', 'comp.gbb.point_value_cap_paise' => '30000'] as $key => $value) {
+        DB::table('settings')->updateOrInsert(['key' => $key], ['value' => $value, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index'))
+        ->assertOk()
+        ->assertSee('Growth Booster pool rate (currently 5%)')
+        ->assertSee('Growth Booster point value cap (currently ₹300 —', false)
+        ->assertDontSee('default 4%')
+        ->assertDontSee('default ₹240')
+        ->assertDontSee('currently 4%')
+        ->assertDontSee('currently ₹240');
+});
+
 it('shows a "How it is calculated" explainer only for bonuses whose flag is on', function () {
     // beforeEach turns on GSB, Rank and Fortune only — their explainers render
     // (collapsed), the rest leave no trace, and with MSB off the daily-engine
