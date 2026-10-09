@@ -69,12 +69,20 @@ final class AdminRankBonusCalculationController extends Controller
         // The Arete Center column only exists while the ADC feature is on.
         $adcOn = Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class);
 
-        // One Rank-1 header + formula block per month on view: the filtered
-        // month, or every month present among the Rank-1 rows on this page.
+        // One header + formula block per month on view: the filtered month, or
+        // every month present among the rows of either table on this page —
+        // a month whose only achievers sit in pass 2 has no Rank-1 rows. The
+        // first page of an unfiltered view also shows two-pass months frozen
+        // with nobody to pay, which have no result rows to list them.
         $rank1Months = is_string($month)
             ? [Carbon::parse($month.'-01')]
             : collect($rank1Rows->items())
-                ->map(fn (\stdClass $row) => Carbon::parse($row->month_start)->startOfMonth())
+                ->merge($rankRows->items())
+                ->pluck('month_start')
+                ->merge($q === '' && $rank === null && $status === null && $rank1Rows->onFirstPage() && $rankRows->onFirstPage()
+                    ? $this->frozenMonthsWithoutResults()
+                    : [])
+                ->map(fn ($monthStart) => Carbon::parse($monthStart)->startOfMonth())
                 ->unique(fn (Carbon $m) => $m->toDateString())
                 ->sortDesc()
                 ->values()
@@ -207,6 +215,26 @@ final class AdminRankBonusCalculationController extends Controller
             ->orderByDesc('rbr.month_start')
             ->orderBy('rbr.rank_number')
             ->orderByDesc('rbr.id');
+    }
+
+    /**
+     * Two-pass months frozen with no achievers: their pass rows carry the
+     * whole envelope as leftover, but no result row lists them on this page.
+     *
+     * @return array<int, string> month_start values
+     */
+    private function frozenMonthsWithoutResults(): array
+    {
+        return DB::table('rank_monthly_passes as rmp')
+            ->whereNotExists(fn (Builder $sub) => $sub
+                ->selectRaw('1')
+                ->from('rank_bonus_results as rbr')
+                ->whereColumn('rbr.month_start', 'rmp.month_start'))
+            ->distinct()
+            ->pluck('rmp.month_start')
+            ->map(fn ($monthStart) => (string) $monthStart)
+            ->values()
+            ->all();
     }
 
     /**

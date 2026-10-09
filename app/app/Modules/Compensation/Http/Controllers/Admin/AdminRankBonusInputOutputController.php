@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -254,8 +255,10 @@ final class AdminRankBonusInputOutputController extends Controller
     /**
      * Months with any Rank Bonus activity, newest first. The unions catch a
      * month whose only spend was AO-GO grants (no qualifier rows at any rank)
-     * and a two-pass month frozen with nobody to pay — its pass rows carry the
-     * whole envelope as leftover, which is exactly what this report must show.
+     * and a month frozen with nobody to pay — a two-pass month's pass rows
+     * carry the whole envelope as leftover, and a legacy month's per-rank pool
+     * rows carry each pool as leftover, which is exactly what this report must
+     * show.
      *
      * @return Builder
      */
@@ -271,6 +274,7 @@ final class AdminRankBonusInputOutputController extends Controller
         return $constrain(DB::table('rank_bonus_results')->select('month_start'))
             ->union($constrain(DB::table('rank_aogo_grants')->select('month_start')))
             ->union($constrain(DB::table('rank_monthly_passes')->select('month_start')))
+            ->union($constrain(DB::table('rank_monthly_pools')->select('month_start')))
             ->orderByDesc('month_start');
     }
 
@@ -358,7 +362,19 @@ final class AdminRankBonusInputOutputController extends Controller
             ->get()
             ->groupBy(fn (RankMonthlyPass $pass): string => Carbon::parse($pass->month_start)->toDateString());
 
-        $firstPassMaxRank = $this->plan->rankFirstPassMaxRank();
+        // Save refuses an out-of-range ceiling, but the database does not, and
+        // the accessor throws on one. The report of a frozen month must still
+        // render: each rank's pass then comes off the month's frozen pool rows.
+        try {
+            $firstPassMaxRank = $this->plan->rankFirstPassMaxRank();
+        } catch (\RuntimeException $e) {
+            $firstPassMaxRank = null;
+
+            Log::warning('rank.report.first_pass_max_rank_invalid', [
+                'error' => $e->getMessage(),
+                'fallback' => 'frozen pool pass',
+            ]);
+        }
 
         $blocks = [];
 
@@ -368,6 +384,11 @@ final class AdminRankBonusInputOutputController extends Controller
             $aogoRow = $aogoAggregates[$monthStart] ?? null;
             $passRows = $monthPasses[$monthStart] ?? collect();
             $legacy = $passRows->isEmpty();
+            // The pass boundary for a rank without a frozen pool row: the
+            // setting, or — when it is unreadable — the highest rank this
+            // month's freeze priced in pass 1 (null: unknown, shown as —).
+            $frozenBoundary = $pools->where('pass', 1)->max('rank_number');
+            $passBoundary = $firstPassMaxRank ?? ($frozenBoundary !== null ? (int) $frozenBoundary : null);
 
             $passes = array_values($passRows->map(fn (RankMonthlyPass $pass): array => [
                 'pass' => (int) $pass->pass,
@@ -447,7 +468,7 @@ final class AdminRankBonusInputOutputController extends Controller
                         'name' => $this->plan->rankName($rank),
                         // A legacy pool row carries the migrated default pass 1,
                         // which would mislead — legacy months show no pass.
-                        'pass' => $legacy ? null : ($pool->pass ?? ($rank <= $firstPassMaxRank ? 1 : 2)),
+                        'pass' => $legacy ? null : ($pool->pass ?? $this->passFor($rank, $passBoundary)),
                         'pool_paise' => $poolPaise,
                         'frozen' => true,
                         'qualifiers' => (int) ($agg->qualifier_count ?? 0),
@@ -483,7 +504,7 @@ final class AdminRankBonusInputOutputController extends Controller
                 $ranks[] = [
                     'rank' => $rank,
                     'name' => $this->plan->rankName($rank),
-                    'pass' => $legacy ? null : ($rank <= $firstPassMaxRank ? 1 : 2),
+                    'pass' => $legacy ? null : $this->passFor($rank, $passBoundary),
                     'pool_paise' => 0,
                     'frozen' => false,
                     'qualifiers' => 0,
@@ -517,5 +538,15 @@ final class AdminRankBonusInputOutputController extends Controller
         }
 
         return $blocks;
+    }
+
+    /** The pass a rank falls in under a pass-1 ceiling; null when the ceiling is unknown. */
+    private function passFor(int $rank, ?int $firstPassMaxRank): ?int
+    {
+        if ($firstPassMaxRank === null) {
+            return null;
+        }
+
+        return $rank <= $firstPassMaxRank ? 1 : 2;
     }
 }

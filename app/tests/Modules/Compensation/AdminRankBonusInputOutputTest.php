@@ -7,6 +7,7 @@ use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\RankBonusService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
@@ -701,6 +702,27 @@ it('flags a two-pass month whose pass-2 row is missing instead of showing leftov
         ->assertSee('2–8. Not shown — a pass row is missing.');
 });
 
+/**
+ * An out-of-range pass-1 ceiling is refused by Save but reachable through the
+ * database. The engine refuses to price with it; the report of a month already
+ * frozen must still render, reading each rank's pass off its frozen pool row.
+ */
+it('renders a frozen two-pass month when the pass-1 ceiling setting is out of range', function () {
+    rbIoRunTwoPassMonth(1);
+
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.first_pass_max_rank'],
+        ['value' => '0', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('data-pass-cell>1<', false)
+        ->assertSee('data-pass-cell>2<', false);
+});
+
 it('labels a month priced before the two-pass rule and gives it no pass summary', function () {
     rbIoSeedWorkedMonth('2026-07-01');
     // A pool row frozen under the old rule carries the migrated column default
@@ -738,4 +760,49 @@ it('labels a month priced before the two-pass rule and gives it no pass summary'
         ->assertOk()
         ->streamedContent());
     expect(XlsxReader::anyCellContains($rows, 'PASS 1'))->toBeFalse();
+});
+
+/**
+ * Task 14 L7: a month frozen under the old per-rank rule with nobody to pay
+ * wrote only its pool rows (no results, no pass rows) — like September 2026 on
+ * dev. It is still listed, labelled legacy, with no achievers and the frozen
+ * pool rows' own leftover (₹14,000 + ₹6,800), never a computed "₹0".
+ */
+it('lists a legacy month frozen with no achievers from its pool rows alone', function () {
+    foreach ([1 => 1_400_000, 2 => 680_000] as $rank => $poolPaise) {
+        RankMonthlyPool::create([
+            'month_start' => '2026-09-01',
+            'rank_number' => $rank,
+            'company_turnover_paise' => 100_000_000,
+            'envelope_bp' => 2_000,
+            'pool_paise' => $poolPaise,
+            'rap_points' => $rank === 1 ? 10 : null,
+            'payable_count' => 0,
+            'aogo_points' => 0,
+            'total_points' => $rank === 1 ? 0 : null,
+            'point_value_paise' => $rank === 1 ? 0 : null,
+            'gross_per_qualifier_paise' => 0,
+            'payout_paise' => 0,
+            'leftover_paise' => $poolPaise,
+        ]);
+    }
+
+    expect(DB::table('rank_bonus_results')->count())->toBe(0)
+        ->and(DB::table('rank_monthly_passes')->count())->toBe(0);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('September 2026')
+        ->assertSee('This month was priced under the per-rank pool rule in force before the two-pass rule (client 2026-10-05); it has no pass summary.')
+        ->assertSee('leftover ₹20,800.00', false)
+        ->assertDontSee('leftover ₹0.00', false)
+        ->assertDontSee('Two-pass formula')
+        ->assertDontSee('No Rank Bonus months yet.');
+
+    $rows = XlsxReader::rows($this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.export'))
+        ->assertOk()
+        ->streamedContent());
+    expect(XlsxReader::anyCellContains($rows, '2026-09'))->toBeTrue();
 });
