@@ -723,7 +723,7 @@ and write both new columns. Test: with the setting at `0`, `runForMonth()` throw
 - Modify: `resources/help/compensation.md`
 - Test: `app/tests/Modules/Compensation/GrowthBoosterBonusServiceTest.php`
 
-- [ ] **Step 1: Failing tests**
+- [x] **Step 1: Failing tests**
 
 ```php
 it('pays GBB in the month a distributor first reaches a rank, but never afterwards', function (): void {
@@ -742,9 +742,9 @@ it('pays GBB in the month a distributor first reaches a rank, but never afterwar
 ```
 (Check `GbbMonthlyResult`'s month column name — `year_month` per `DerivedTables` — and the credited status constant.)
 
-- [ ] **Step 2: Run** → FAIL (September row exists under the prior-month rule).
+- [x] **Step 2: Run** → FAIL (September row exists under the prior-month rule).
 
-- [ ] **Step 3: Scope + rename**
+- [x] **Step 3: Scope + rename**
 
 `RankQualification`:
 ```php
@@ -782,7 +782,7 @@ it('pays GBB in the month a distributor first reaches a rank, but never afterwar
 ```
 Update `eligibleEarners()` and the class docblock lines 34–40.
 
-- [ ] **Step 4: Run** `--filter=GrowthBooster` → PASS; fix any existing test that asserted the prior-month rule (ranked two months ago → previously paid, now excluded). Help: "Growth Booster is for distributors who have never held a rank. The month a distributor first reaches Rank 1 both bonuses are paid; from the next month Growth Booster stops for good." **Commit** `feat(gbb): lifetime rank exclusion` with the compliance trailer.
+- [x] **Step 4: Run** `--filter=GrowthBooster` → PASS; fix any existing test that asserted the prior-month rule (ranked two months ago → previously paid, now excluded). Help: "Growth Booster is for distributors who have never held a rank. The month a distributor first reaches Rank 1 both bonuses are paid; from the next month Growth Booster stops for good." **Commit** `feat(gbb): lifetime rank exclusion` with the compliance trailer.
 
 ---
 
