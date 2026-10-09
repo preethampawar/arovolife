@@ -9,6 +9,7 @@ use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Laravel\Pennant\Feature;
 
 /**
@@ -128,6 +129,62 @@ final class RankQualificationsGate
             && ! RankQualification::query()
                 ->where('month_start', $start->toDateString())
                 ->exists();
+    }
+
+    /**
+     * Every month Growth Booster's lifetime exclusion reads that still lacks a
+     * check, oldest first: each month from the first `group_bv_daily` or
+     * `rank_qualifications` row up to and including $lastMonth (M-1) that has
+     * no succeeded check, except the two that provably cannot hide a ranker —
+     *
+     *   • a month with no Genos BV and no qualification row
+     *     ({@see monthHadNoGenosBv()}), M-1 included;
+     *   • a flag-off skipped check ({@see skippedForFeatureFlagOff()}), for
+     *     months strictly before M-1 only — M-1 keeps {@see checkedFor()}'s
+     *     strict reading.
+     *
+     * One walk for the two places that need it: the GBB command refuses on the
+     * first month listed, and the Engine Runs dependency resolver fills every
+     * month listed before it runs the GBB.
+     *
+     * @return list<Carbon>
+     */
+    public static function monthsMissingCheck(Carbon $lastMonth): array
+    {
+        $last = $lastMonth->copy()->startOfMonth();
+        $first = $last->copy();
+
+        foreach ([GroupBvDaily::query()->min('date'), RankQualification::query()->min('month_start')] as $earliest) {
+            if ($earliest !== null) {
+                $candidate = Carbon::parse((string) $earliest)->startOfMonth();
+                $first = $candidate->lt($first) ? $candidate : $first;
+            }
+        }
+
+        $missing = [];
+
+        for ($month = $first; $month->lte($last); $month = $month->copy()->addMonthNoOverflow()) {
+            if (self::checkedFor($month)) {
+                continue;
+            }
+
+            // A waived month runs nothing, so it leaves this trace instead.
+            $waivedFor = match (true) {
+                $month->lt($last) && self::skippedForFeatureFlagOff($month) => 'rank_engine_off',
+                self::monthHadNoGenosBv($month) => 'no_genos_bv',
+                default => null,
+            };
+
+            if ($waivedFor !== null) {
+                Log::info('rank.check.prerequisite_waived', ['month' => $month->format('Y-m'), 'reason' => $waivedFor]);
+
+                continue;
+            }
+
+            $missing[] = $month->copy();
+        }
+
+        return $missing;
     }
 
     /** Operator-facing refusal naming the month at fault and the way out. */

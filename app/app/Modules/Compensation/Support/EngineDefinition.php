@@ -21,7 +21,7 @@ final readonly class EngineDefinition
      * @param  class-string  $commandClass  Console command class.
      * @param  string  $commandSignature  Artisan name, e.g. 'gbb:monthly-run'.
      * @param  string  $periodOption  '--month' or '--date'.
-     * @param  list<EngineDependency>  $dependencies  shift: 'prev-month'; expand: 'month'|'week'.
+     * @param  list<EngineDependency>  $dependencies  shift: 'prev-month'; expand: 'month'|'week'|'prior-months'.
      * @param  class-string|null  $featureFlagClass  Pennant feature, or null when always on.
      * @param  string  $defaultPeriod  'today' | 'current-month' | 'prev-month'.
      * @param  bool  $manuallyTriggerable  False for the payout-batch engines: the

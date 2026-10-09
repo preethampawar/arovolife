@@ -13,6 +13,7 @@ use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
@@ -163,6 +164,61 @@ it('pulls the previous month rank check in for the growth booster', function ():
     expect(chainIds('gbb.monthly', '2026-05'))->toBe([
         'rank.check|2026-04',
         'gbb.monthly|2026-05',
+    ]);
+});
+
+it('fills every missing rank check before the growth booster, oldest first', function (): void {
+    // GBB excludes anyone who has EVER ranked, so the command refuses while
+    // any earlier month with Genos BV is unchecked — the chain must fill them
+    // all, not only M−1, or the trigger ends in a refusal.
+    Carbon::setTestNow(Carbon::parse('2026-10-15 10:00:00'));
+    disableTestForeignKeys();
+    foreach (['2026-07-10', '2026-08-10'] as $date) {
+        DB::table('group_bv_daily')->insert([
+            'distributor_id' => 1,
+            'date' => $date,
+            'left_bv_paise' => 100_000,
+            'right_bv_paise' => 0,
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+    }
+    markMonthOfCutoffsDone('2026-07', '2026-07-31');
+    markMonthOfCutoffsDone('2026-08', '2026-08-31');
+    markMonthOfCutoffsDone('2026-09', '2026-09-30');
+
+    expect(chainIds('gbb.monthly', '2026-09'))->toBe([
+        'rank.check|2026-07',
+        'rank.check|2026-08',
+        'gbb.monthly|2026-09',
+    ]);
+});
+
+it('leaves an already-checked earlier month out of the growth booster chain', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-10-15 10:00:00'));
+    disableTestForeignKeys();
+    foreach (['2026-07-10', '2026-08-10'] as $date) {
+        DB::table('group_bv_daily')->insert([
+            'distributor_id' => 1,
+            'date' => $date,
+            'left_bv_paise' => 100_000,
+            'right_bv_paise' => 0,
+            'updated_at' => now()->toDateTimeString(),
+        ]);
+    }
+    EngineRun::create([
+        'engine_key' => 'rank.check',
+        'period_start' => '2026-07-01',
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => now(),
+        'finished_at' => now(),
+    ]);
+    markMonthOfCutoffsDone('2026-08', '2026-08-31');
+    markMonthOfCutoffsDone('2026-09', '2026-09-30');
+
+    expect(chainIds('gbb.monthly', '2026-09'))->toBe([
+        'rank.check|2026-08',
+        'gbb.monthly|2026-09',
     ]);
 });
 

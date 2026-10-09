@@ -225,7 +225,7 @@ it('declares only known dependency keys, shifts and expansions', function (): vo
             }
 
             if (isset($dependency['expand'])) {
-                expect(in_array($dependency['expand'], ['month', 'week'], true))->toBeTrue(
+                expect(in_array($dependency['expand'], ['month', 'week', 'prior-months'], true))->toBeTrue(
                     "Engine [{$key}] declares an unknown expansion."
                 );
             }
