@@ -11,8 +11,7 @@
     rank envelope</strong>), the qualifiers it paid and the income they received.
     <span class="font-medium">Rank 1 divides its pool by points (RAP + AO-GO)</span>; ranks 2–9 split their
     pool equally among qualifiers. The ₹ pools, qualifier counts and point values are frozen snapshots from
-    the run; the envelope % and per-rank pool % shown are <strong>current plan settings</strong>, as are the
-    asterisked pools of ranks that had no qualifiers. Search by month or month range.
+    the run; the envelope % shown is a <strong>current plan setting</strong>. Search by month or month range.
 </div>
 @enddeveloper
 
@@ -57,7 +56,7 @@
             <span class="text-gray-500">Month turnover
                 <strong class="text-gray-700">@if($block['turnover_paise'] !== null)@bv($block['turnover_paise'])@else — @endif</strong></span>
             <span class="text-gray-500">Rank envelope ({{ \App\Modules\Shared\Support\IndianNumber::percentFromBp($envelopeBp) }})
-                <x-help-tip text="The envelope % and each rank's pool % are current plan settings, not frozen snapshots — the ₹ pool amounts of ranks that paid ARE frozen on the run's result rows." />
+                <x-help-tip text="The envelope % is a current plan setting, not a frozen snapshot — the ₹ pool amounts of ranks that paid ARE frozen on the run's result rows." />
                 @if($block['turnover_paise'] !== null)
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($block['turnover_paise'] * $envelopeBp / 10000) / 100, 2) }}</strong>
                 @endif
@@ -73,7 +72,6 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-3 py-2 text-left text-gray-500 font-medium">Rank</th>
-                        <th class="px-3 py-2 text-right text-gray-500 font-medium">Pool % <x-help-tip text="This rank's share of the rank envelope, as currently configured in Plan Settings." /></th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Pool</th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Qualifiers</th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Held <x-help-tip text="Re-qualifiers who failed the requalification conditions — recorded but never credited, and excluded from the pool split." /></th>
@@ -91,7 +89,6 @@
                             <span class="inline-flex items-center justify-center w-6 h-6 rounded-full {{ $rank['frozen'] ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500' }} font-bold text-[11px]">{{ $rank['rank'] }}</span>
                             <span class="ml-1 {{ $rank['frozen'] ? 'text-gray-700' : '' }} font-medium">{{ $rank['name'] }}</span>
                         </td>
-                        <td class="px-3 py-2 text-right">{{ \App\Modules\Shared\Support\IndianNumber::percent($rank['pool_pct']) }}</td>
                         <td class="px-3 py-2 text-right {{ $rank['frozen'] ? 'text-gray-700' : '' }}">
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($rank['pool_paise'] / 100, 2) }}{{ $rank['frozen'] ? '' : ' *' }}
                         </td>
@@ -124,7 +121,6 @@
                             <span class="ml-1 text-gray-600">shares the Rank 1 pool</span>
                         </td>
                         <td class="px-3 py-2 text-right text-gray-400">—</td>
-                        <td class="px-3 py-2 text-right text-gray-400">—</td>
                         <td class="px-3 py-2 text-right text-gray-700">{{ \App\Modules\Shared\Support\IndianNumber::format($block['aogo']['grants']) }}</td>
                         <td class="px-3 py-2 text-right text-gray-400">—</td>
                         <td class="px-3 py-2 text-right text-gray-400">—</td>
@@ -140,7 +136,7 @@
                 </tbody>
                 <tfoot class="bg-gray-50 border-t-2 border-gray-200 text-gray-800">
                     <tr class="font-semibold">
-                        <td class="px-3 py-2 text-right text-xs" colspan="8">Total income / deduction / credited</td>
+                        <td class="px-3 py-2 text-right text-xs" colspan="7">Total income / deduction / credited</td>
                         <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($block['total_income_paise'] / 100, 2) }}</td>
                         <td class="px-3 py-2 text-right {{ $block['total_deduction_paise'] > 0 ? 'text-red-600' : 'text-gray-500' }}">{{ $block['total_deduction_paise'] > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($block['total_deduction_paise'] / 100, 2) : '—' }}</td>
                         <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($block['total_credited_paise'] / 100, 2) }}</td>
@@ -154,8 +150,8 @@
 
         @if(collect($block['ranks'])->contains(fn (array $rank): bool => ! $rank['frozen']))
         <div class="px-4 py-2 border-t border-gray-100 text-[11px] text-gray-400">
-            * estimated from the month's turnover and the current plan settings — this rank had no qualifiers,
-            so nothing was frozen and its pool went unspent.
+            * this rank had no qualifiers in a month priced before the two-pass rule, so nothing was frozen
+            for it.
         </div>
         @endif
     </x-ui.card>

@@ -9,6 +9,7 @@ use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Compensation\Models\RankAogoGrant;
+use App\Modules\Compensation\Models\RankMonthlyPass;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -279,10 +280,15 @@ final class BonusCalculationSnapshots
      * and AO-GO grantee rows already excluded). Null when the month has no
      * Rank-1 rows.
      *
+     * `passes` is the month's frozen rank_monthly_passes rows keyed by pass
+     * (client 2026-10-05 two-pass pool); empty for a month priced under the
+     * per-rank pool rule in force before it.
+     *
      * @return ?array{
-     *     turnover_paise: int, envelope_bp: int, pool_pct: float, pool_paise: int,
+     *     turnover_paise: int, envelope_bp: int, pool_paise: int,
      *     qualifiers: int, rap_points: ?int, aogo_points: int, total_points: ?int,
-     *     point_value_paise: ?int, computed_at: ?Carbon
+     *     point_value_paise: ?int, computed_at: ?Carbon,
+     *     passes: array<int, array{pool_paise: int, total_points: int, raw_point_value_paise: int, point_value_cap_paise: int, point_value_paise: int, payout_paise: int, leftover_paise: int}>
      * }
      */
     public function rankBonusMonth(Carbon $month): ?array
@@ -312,7 +318,6 @@ final class BonusCalculationSnapshots
         return [
             'turnover_paise' => (int) $agg->turnover_paise,
             'envelope_bp' => $this->plan->rankEnvelopeBp(),
-            'pool_pct' => $this->plan->rankPoolPct(1),
             'pool_paise' => (int) $agg->pool_paise,
             'qualifiers' => (int) $agg->qualifier_count,
             'rap_points' => $agg->rap_points !== null ? (int) $agg->rap_points : null,
@@ -320,6 +325,21 @@ final class BonusCalculationSnapshots
             'total_points' => $agg->total_points !== null ? (int) $agg->total_points : null,
             'point_value_paise' => $agg->point_value_paise !== null ? (int) $agg->point_value_paise : null,
             'computed_at' => $agg->computed_at !== null ? Carbon::parse($agg->computed_at) : null,
+            'passes' => RankMonthlyPass::query()
+                ->where('month_start', $month->toDateString())
+                ->orderBy('pass')
+                ->get()
+                ->keyBy(fn (RankMonthlyPass $pass): int => (int) $pass->pass)
+                ->map(fn (RankMonthlyPass $pass): array => [
+                    'pool_paise' => (int) $pass->pool_paise,
+                    'total_points' => (int) $pass->total_points,
+                    'raw_point_value_paise' => (int) $pass->raw_point_value_paise,
+                    'point_value_cap_paise' => (int) $pass->point_value_cap_paise,
+                    'point_value_paise' => (int) $pass->point_value_paise,
+                    'payout_paise' => (int) $pass->payout_paise,
+                    'leftover_paise' => (int) $pass->leftover_paise,
+                ])
+                ->all(),
         ];
     }
 }

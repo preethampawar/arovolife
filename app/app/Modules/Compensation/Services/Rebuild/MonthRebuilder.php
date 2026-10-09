@@ -17,6 +17,7 @@ use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Compensation\Models\RankMonthlyPass;
 use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -101,6 +102,7 @@ final class MonthRebuilder
             'rank_aogo_grants' => $this->aogoGrants($month)->count(),
             'rank_bonus_results' => $this->rankResults($month)->count(),
             'rank_monthly_pools' => $this->rankPools($month)->count(),
+            'rank_monthly_passes' => $this->rankPasses($month)->count(),
             'rank_qualifications' => $this->rankQualifications($month)->count(),
             'lifetime_award_milestones' => $this->pendingMilestones($month)->count(),
             'gbb_monthly_results' => $this->gbbResults($month)->count(),
@@ -183,6 +185,8 @@ final class MonthRebuilder
                 'rank_aogo_grants' => $this->aogoGrants($month)->delete(),
                 'rank_bonus_results' => $this->rankResults($month)->delete(),
                 'rank_monthly_pools' => $this->rankPools($month)->delete(),
+                // The pass rows are part of the frozen month (F-10).
+                'rank_monthly_passes' => $this->rankPasses($month)->delete(),
                 'rank_qualifications' => $this->rankQualifications($month)->delete(),
                 'lifetime_award_milestones' => $this->pendingMilestones($month)->delete(),
                 'gbb_monthly_results' => $this->gbbResults($month)->delete(),
@@ -523,6 +527,12 @@ final class MonthRebuilder
     private function rankPools(Carbon $month): Builder
     {
         return RankMonthlyPool::query()->whereDate('month_start', $month->toDateString());
+    }
+
+    /** @return Builder<RankMonthlyPass> */
+    private function rankPasses(Carbon $month): Builder
+    {
+        return RankMonthlyPass::query()->whereDate('month_start', $month->toDateString());
     }
 
     /**

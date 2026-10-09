@@ -47,7 +47,7 @@
                 <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">Month</th>
                 <th class="px-3 py-2 text-left text-gray-600">Rank</th>
-                <th class="px-3 py-2 text-right text-gray-600">Points <x-help-tip text="RAP (Rank Achievement Points) for an achiever, or AO-GO offer points for a grantee. Ranks 2–9 are an equal split and show —." /></th>
+                <th class="px-3 py-2 text-right text-gray-600">Points <x-help-tip text="RAP (Rank Achievement Points) for an achiever, or AO-GO offer points for a grantee. Months priced under the earlier per-rank pool rule split Ranks 2–9 equally and show —." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Point value</th>
                 <th class="px-3 py-2 text-right text-gray-600">Pool</th>
                 <x-bonus-credit-head th-class="px-3 py-2 text-right text-gray-600" />

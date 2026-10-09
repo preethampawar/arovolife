@@ -17,6 +17,7 @@ use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Compensation\Models\RankMonthlyPass;
 use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -128,10 +129,17 @@ function seedCreditingMonth(): array
         'grant_number' => 1, 'points' => 5, 'previous_rank_number' => 1,
     ]);
     RankMonthlyPool::create([
-        'month_start' => $month, 'rank_number' => 1, 'company_turnover_paise' => 0, 'envelope_bp' => 0,
-        'pool_pct' => 0, 'pool_paise' => 0, 'payable_count' => 0, 'aogo_points' => 0,
+        'month_start' => $month, 'rank_number' => 1, 'pass' => 1, 'company_turnover_paise' => 0, 'envelope_bp' => 0,
+        'pool_paise' => 0, 'payable_count' => 0, 'aogo_points' => 0,
         'gross_per_qualifier_paise' => 0, 'payout_paise' => 0, 'leftover_paise' => 0,
     ]);
+    foreach ([1, 2] as $pass) {
+        RankMonthlyPass::create([
+            'month_start' => $month, 'pass' => $pass, 'company_turnover_paise' => 0, 'envelope_bp' => 0,
+            'envelope_paise' => 0, 'pool_paise' => 0, 'total_points' => 0, 'raw_point_value_paise' => 0,
+            'point_value_cap_paise' => 20_000, 'point_value_paise' => 0, 'payout_paise' => 0, 'leftover_paise' => 0,
+        ]);
+    }
     RankQualification::create([
         'distributor_id' => $distributor->id, 'rank_number' => 1, 'month_start' => $month,
         'is_carry_forward' => false,
@@ -233,7 +241,7 @@ it('wipes every one of the month\'s tables and leaves what the engines did not w
     expect($plan->refusals)->toBe([]);
     expect($plan->rowsToRemove)->toHaveKeys([
         'wallet_ledger_entries', 'rank_aogo_grants', 'rank_bonus_results', 'rank_monthly_pools',
-        'rank_qualifications', 'lifetime_award_milestones', 'gbb_monthly_results', 'gbb_monthly_pools',
+        'rank_monthly_passes', 'rank_qualifications', 'lifetime_award_milestones', 'gbb_monthly_results', 'gbb_monthly_pools',
         'fortune_bonus_results', 'fortune_monthly_pool_levels', 'fortune_monthly_pools',
         'fortune_bonus_participants', 'adc_bonus_results', 'redeem_point_entries', 'purchase_offer_grants',
     ]);
@@ -247,6 +255,7 @@ it('wipes every one of the month\'s tables and leaves what the engines did not w
     expect(RankAogoGrant::count())->toBe(0);
     expect(RankBonusResult::count())->toBe(0);
     expect(RankMonthlyPool::count())->toBe(0);
+    expect(RankMonthlyPass::count())->toBe(0);
     expect(LifetimeAwardMilestone::where('status', LifetimeAwardMilestone::STATUS_PENDING)->count())->toBe(0);
     expect(GbbMonthlyResult::count())->toBe(0);
     expect(GbbMonthlyPool::count())->toBe(0);

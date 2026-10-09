@@ -10,9 +10,9 @@
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        The Rank Bonus is paid monthly from each rank's pool (a share of the company's business volume for that month).
-        Rank 1 (Silver) is points-based: each achiever earned 10 RAP and each AO-GO grantee 5 points that month; the pool was divided by the month's total points and your income is your points × the point value.
-        Ranks 2–9 pools are split equally among that rank's achievers.
+        The Rank Bonus is paid monthly from one pool (a share of the company's business volume for that month), divided by points.
+        Each rank's achievers earn that rank's Rank Achievement Points (RAP) and each AO-GO grantee the offer's points; the lower ranks and AO-GO are priced first, the higher ranks from what remains, and a point's value is capped.
+        Your income is your points × the point value of your rank's pass.
         Re-qualifying a rank you already achieved requires that month's repurchase BV and a cleared repurchase wallet.
         When credited, 10% of the bonus (up to ₹10,000 per calendar month) moves to your repurchase wallet. The admin charge (3%, capped) and 5% TDS are taken at payout. Credited on the 1st of the following month.
     </div>
@@ -103,14 +103,14 @@
 
         <p class="text-sm text-gray-600 mb-4">
             If you have achieved a rank in an earlier month and hold no rank in a later month, that month earns you
-            <strong>{{ $aogoStatus->pointsPerGrant }} points</strong> in the Rank-1 pool — up to {{ $aogoStatus->usesMax }} times in your lifetime,
+            <strong>{{ $aogoStatus->pointsPerGrant }} points</strong> in the Rank Bonus pool — up to {{ $aogoStatus->usesMax }} times in your lifetime,
             never in two months running, and only after achieving a rank again between uses.
         </p>
 
         @if($aogoStatus->granted())
         <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
             <strong>Applied this month.</strong>
-            {{ $aogoStatus->grantedPoints }} points recorded in the Rank-1 pool for this month
+            {{ $aogoStatus->grantedPoints }} points recorded in the Rank Bonus pool for this month
             ({{ str_replace('_', ' ', $aogoStatus->grantedStatus ?? '') }}).
         </div>
         @else
@@ -160,7 +160,7 @@
         <div class="bg-amber-100 rounded-2xl border border-amber-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1 flex items-center justify-center gap-1">
                 AO-GO offer used
-                <x-help-tip text="Achieve Once – Get Once: if you lose your rank, you can earn 5 points in the Rank-1 pool up to {{ $aogoMax }} times in your lifetime — never in consecutive months, and only after re-achieving a rank between uses." />
+                <x-help-tip text="Achieve Once – Get Once: if you lose your rank, you can earn the offer's points in the Rank Bonus pool up to {{ $aogoMax }} times in your lifetime — never in consecutive months, and only after re-achieving a rank between uses." />
             </p>
             <p class="text-2xl font-bold text-gray-900">{{ $aogoUsed }} of {{ $aogoMax }}</p>
         </div>
@@ -198,7 +198,7 @@
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">
                                 Points × Value
-                                <x-help-tip text="Rank 1 only: RAP (Rank Achievement Points, 10 per achiever) or AO-GO offer points (5), multiplied by the month's point value (Rank-1 pool ÷ total points). Ranks 2–9 are an equal split, shown as —." />
+                                <x-help-tip text="Your RAP (Rank Achievement Points for the rank) or AO-GO offer points, multiplied by the point value of your rank's pass that month. Months priced under the earlier rule split Ranks 2–9 equally and show —." />
                             </span>
                         </th>
                         <x-bonus-credit-head th-class="text-right px-4 py-3 font-semibold text-gray-600" />

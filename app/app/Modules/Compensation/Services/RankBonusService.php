@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Compensation\Console\Commands\RankBonusRunCommand;
+use App\Modules\Compensation\Exceptions\RepurchaseVerdictsPending;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Compensation\Models\RankMonthlyPass;
 use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Services\DTOs\RankMonthRoster;
@@ -19,41 +22,45 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Monthly Rank Bonus engine (KP 2026-08-05 spec).
- *
- * Pool per rank = company BV × envelope × pool_pct[rank].
+ * Monthly Rank Bonus engine (client 2026-10-05 Rank Income Point System).
  *
  * "Turnover" here means COMPANY BV — the signed bv_ledger_entries sum for the
  * month (GsbDailyPoolService::companyBvPaiseBetween), not order sales value.
  * The Rank Bonus envelope (comp.rank.envelope_bp, default 2000 bp = 20%) is
- * carved out of that BV first; each rank's `rank_tiers.pool_pct` is then a
- * share OF THE ENVELOPE, not of turnover directly — the nine seeded
- * percentages sum to exactly 20.
+ * carved out of that BV with integer arithmetic and floored at 0, so a
+ * refund-heavy month can never send a negative amount to a wallet.
  *
- * Worked example (product owner 2026-08-05): 10,00,000 BV in the month →
- * 20% envelope = 2,00,000 → Rank 1's 7% share = ₹14,000.
+ * The envelope is ONE pool, divided in two pricing passes. Every rank carries
+ * Rank Achievement Points (rank_tiers.rap_points: 72 / 189 / 468 / 1,125 /
+ * 2,583 / 5,688 / 11,934 / 23,877 / 39,501) and every AO-GO grant carries
+ * comp.rank.aogo_points (36), counted on the Rank-1 row.
+ *  - Pass 1: the AGO offer and Ranks 1..N (comp.rank.first_pass_max_rank,
+ *    default 3) divide the WHOLE envelope.
+ *  - Pass 2: Ranks N+1..9 divide what pass 1 left.
+ * Each pass: point value = floor-to-whole-rupee(pool ÷ points), then capped at
+ * comp.rank.point_value_cap_paise (₹200). Each participant is paid own points ×
+ * the point value of their pass. What pass 2 leaves stays with the company.
  *
- * Company BV is a SIGNED sum, so a refund-heavy month can be negative; every
- * pool is floored at 0 so a negative amount can never reach the wallet.
+ * Worked example D2 (client 2026-10-05): 16 Cr BV → 3.2 Cr envelope. Pass 1:
+ * 5,796 points (9 × 72 + 8 × 189 + 7 × 468 + 10 AGO × 36) → raw ₹5,521 → capped
+ * at ₹200 → ₹11,59,200 paid. Pass 2: ₹3,08,40,800 ÷ 1,65,474 points → ₹186 →
+ * ₹3,07,78,164 paid, ₹62,636 left with the company.
  *
- * Distribution:
- *  - Ranks with rap_points set (seeded: Rank 1 = 10) divide their pool by
- *    points, like the MSB daily pool: point value = floor-to-whole-rupee(
- *    pool ÷ (payable achievers × RAP + Σ AO-GO points)); each participant is
- *    paid own points × point value. AO-GO grantees always share the RANK-1
- *    pool, whatever rank they previously held.
- *  - Ranks with null rap_points (2–9) split their pool equally among payable
- *    achievers: floor(pool / count).
+ * Fail-safe: a cap under ₹1, a rank with payable achievers but no RAP, or an
+ * achiever whose repurchase cycle due inside the month has no verdict yet
+ * stops the freeze before any write; the freeze reconciles roster gross,
+ * pool payout and pass payout against the envelope before it commits.
  *
  * THREE PHASES (the GsbCutoffService shape):
- *  1. Pass 1 — {@see resolveRoster()} decides the month's population: the
+ *  1. Roster — {@see resolveRoster()} decides the month's population: the
  *     qualifiers per rank, the §8 requalification gate (which carries its own
  *     repurchase-wallet condition), and the AO-GO grants.
- *  2. Freeze — {@see freezeMonth()} writes, in ONE transaction, the nine
- *     rank_monthly_pools rows AND a rank_bonus_results row for every roster
- *     member carrying its decided status. A crash can therefore never leave a
- *     qualifier outside a roster that is about to close.
- *  3. Pass 2 — {@see creditFromFrozenPools()} credits roster members from the
+ *  2. Freeze — {@see freezeMonth()} writes, in ONE transaction, the two
+ *     rank_monthly_passes rows, the nine rank_monthly_pools rows AND a
+ *     rank_bonus_results row for every roster member carrying its decided
+ *     status. A crash can therefore never leave a qualifier outside a roster
+ *     that is about to close.
+ *  3. Credit — {@see creditFromFrozenPools()} credits roster members from the
  *     FROZEN gross, never a recomputed one.
  *
  * WHY THE FREEZE EXISTS — this engine used to recompute the pool AND the
@@ -107,6 +114,7 @@ final class RankBonusService
         private readonly AogoOfferService $aogo,
         private readonly RankRequalificationGateService $gate,
         private readonly GsbDailyPoolService $gsbPool,
+        private readonly IncomeEligibilityService $eligibility,
     ) {}
 
     /**
@@ -120,8 +128,12 @@ final class RankBonusService
      *     turnover_paise: int,
      *     credited: int,
      *     qualified_after_freeze: int,
-     *     by_rank: array<int, array{qualifiers: int, held: int, aogo_grants: int, pool_paise: int, total_points: int|null, point_value_paise: int|null, gross_total: int, qualified_after_freeze: int}>
+     *     by_rank: array<int, array{qualifiers: int, held: int, aogo_grants: int, pool_paise: int, total_points: int|null, point_value_paise: int|null, gross_total: int, qualified_after_freeze: int}>,
+     *     passes: array<int, array{pool_paise: int, total_points: int, raw_point_value_paise: int, point_value_cap_paise: int, point_value_paise: int, payout_paise: int, leftover_paise: int}>
      * }
+     *
+     * @throws RepurchaseVerdictsPending when a payable achiever's cycle due on or before the month end has no verdict yet
+     * @throws \RuntimeException when the plan configuration would pay ₹0 or divide by a missing number
      */
     public function runForMonth(Carbon $month): array
     {
@@ -130,6 +142,14 @@ final class RankBonusService
         $monthEnd = $month->copy()->endOfMonth();
 
         $pools = $this->frozenPools($monthStart);
+
+        if ($pools->isEmpty() || $this->frozenBeforeMonthClosed($pools, $monthEnd)) {
+            // A bad setting or a pending repurchase verdict stops the run here,
+            // before a premature freeze is replaced, not after — a refusal must
+            // never delete what it then cannot rebuild (the GBB twin).
+            [$payable] = $this->resolvePayableAndHeld($monthStartCarbon, $monthStart);
+            $this->assertFreezable($monthStart, $monthEnd, $payable);
+        }
 
         if ($pools->isNotEmpty() && $this->replacePrematureFreeze($pools, $monthStart, $monthEnd)) {
             $pools = collect();
@@ -202,6 +222,25 @@ final class RankBonusService
      */
     private function resolveRoster(Carbon $monthStartCarbon, string $monthStart): RankMonthRoster
     {
+        [$payable, $held] = $this->resolvePayableAndHeld($monthStartCarbon, $monthStart);
+
+        return new RankMonthRoster(
+            payableIds: $payable,
+            heldIds: $held,
+            aogoGrants: $this->aogo->grantForMonth($monthStartCarbon),
+        );
+    }
+
+    /**
+     * The month's achievers per rank, split into payable and §8-held. Pure
+     * reads — unlike {@see resolveRoster()} it mints no AO-GO grant, so the
+     * pre-freeze checks in {@see runForMonth()} can use it before anything is
+     * written or replaced.
+     *
+     * @return array{0: array<int, list<int>>, 1: array<int, list<int>>} [payable, held], each rank → distributor ids
+     */
+    private function resolvePayableAndHeld(Carbon $monthStartCarbon, string $monthStart): array
+    {
         $qualifiers = $this->qualifierIdsByRank($monthStart);
 
         $payable = [];
@@ -216,11 +255,50 @@ final class RankBonusService
             $held[$rank] = $heldIds;
         }
 
-        return new RankMonthRoster(
-            payableIds: $payable,
-            heldIds: $held,
-            aogoGrants: $this->aogo->grantForMonth($monthStartCarbon),
-        );
+        return [$payable, $held];
+    }
+
+    /**
+     * Refuse to freeze before any write when the month cannot be priced
+     * honestly. Returns the point value cap in force.
+     *
+     * Fail-safe principle 1: a cap under ₹1 would price every point at ₹0 and
+     * look like a quiet month, and a rank with payable achievers but no RAP
+     * would pay them nothing — both stop the freeze; neither is clamped.
+     *
+     * Fail-safe principle 2: an unresolved repurchase cycle reads as eligible
+     * in IncomeEligibilityService::verdictAsOf(), and the frozen roster is
+     * never re-judged, so the freeze waits for `repurchase:evaluate` to judge
+     * every payable achiever's cycle due on or before the month end. The
+     * monthly command ({@see RankBonusRunCommand}) records the refusal as a
+     * failed run naming the remedy.
+     *
+     * @param  array<int, list<int>>  $payable  rank → payable distributor ids
+     *
+     * @throws RepurchaseVerdictsPending
+     * @throws \RuntimeException
+     */
+    private function assertFreezable(string $monthStart, Carbon $monthEnd, array $payable): int
+    {
+        $capPaise = $this->plan->rankPointValueCapPaise();
+        if ($capPaise < 100) {
+            throw new \RuntimeException("comp.rank.point_value_cap_paise must be at least 100 paise (₹1); refusing to freeze the Rank Bonus for {$monthStart} with a cap of {$capPaise}");
+        }
+
+        foreach (self::RANKS as $rank) {
+            if (($payable[$rank] ?? []) !== [] && $this->plan->rankRapPoints($rank) <= 0) {
+                throw new \RuntimeException("rank_tiers.rap_points is not set for rank {$rank} but it has payable achievers; refusing to freeze the Rank Bonus for {$monthStart}");
+            }
+        }
+
+        $allPayable = array_values(array_unique(array_merge(...array_values($payable))));
+        $pending = $this->eligibility->unresolvedDueOnOrBefore($monthEnd, $allPayable);
+
+        if ($pending !== []) {
+            throw RepurchaseVerdictsPending::forMonthEnd('Rank Bonus', $monthEnd, $pending);
+        }
+
+        return $capPaise;
     }
 
     /**
@@ -320,9 +398,10 @@ final class RankBonusService
     // ----------------------------------------------------------------- freeze
 
     /**
-     * Freeze the month: pass 1, then the nine pool rows and every roster row,
-     * in one transaction. Nothing is credited here — pass 2 does that from what
-     * this wrote.
+     * Freeze the month: the roster, then the two pass rows, the nine pool rows
+     * and every roster row, in one transaction, reconciled before it commits.
+     * Nothing is credited here — {@see creditFromFrozenPools()} does that from
+     * what this wrote.
      *
      * @return Collection<int, RankMonthlyPool> keyed by rank number
      */
@@ -331,58 +410,96 @@ final class RankBonusService
         return DB::transaction(function () use ($monthStartCarbon, $monthStart, $monthEnd): Collection {
             $roster = $this->resolveRoster($monthStartCarbon, $monthStart);
 
+            // Fail-safe principles 1 and 2, asked again against the roster this
+            // transaction froze (runForMonth() asked before anything moved).
+            $capPaise = $this->assertFreezable(
+                $monthStart,
+                $monthEnd,
+                array_combine(self::RANKS, array_map(fn (int $rank): array => $roster->payableFor($rank), self::RANKS)),
+            );
+
             $turnoverPaise = $this->gsbPool->companyBvPaiseBetween($monthStartCarbon, $monthEnd);
             $envelopeBp = $this->plan->rankEnvelopeBp();
+            // F-9: integer arithmetic only. 16 Cr BV × 2,000 bp = 3.2 × 10¹⁴,
+            // far inside 64-bit.
+            $envelopePaise = max(0, intdiv($turnoverPaise * $envelopeBp, 10_000));
+            $firstPassMax = $this->plan->rankFirstPassMaxRank();
+
+            // Points per rank: payable achievers × RAP, plus the AGO offer's
+            // points on the Rank-1 row (client 2026-10-05: AGO is a pass-1
+            // participant with its own points).
+            $aogoPoints = (int) $roster->aogoGrants->sum('points');
+            $rankPoints = [];
+            foreach (self::RANKS as $rank) {
+                $rankPoints[$rank] = count($roster->payableFor($rank)) * $this->plan->rankRapPoints($rank)
+                    + ($rank === 1 ? $aogoPoints : 0);
+            }
+
+            // Pass 1 divides the whole envelope; pass 2 divides what pass 1
+            // left. Each pass: floor to the whole rupee, then cap.
+            /** @var array<int, RankMonthlyPass> $passes */
+            $passes = [];
+            $remaining = $envelopePaise;
+            foreach ([1, 2] as $pass) {
+                $points = 0;
+                foreach (self::RANKS as $rank) {
+                    if ($this->passFor($rank, $firstPassMax) === $pass) {
+                        $points += $rankPoints[$rank];
+                    }
+                }
+
+                $raw = Money::floorRupee($remaining, $points);
+                $value = min($raw, $capPaise);
+                $payout = $value * $points;
+
+                $passes[$pass] = RankMonthlyPass::create([
+                    'month_start' => $monthStart,
+                    'pass' => $pass,
+                    'company_turnover_paise' => $turnoverPaise,
+                    'envelope_bp' => $envelopeBp,
+                    'envelope_paise' => $envelopePaise,
+                    'pool_paise' => $remaining,
+                    'total_points' => $points,
+                    'raw_point_value_paise' => $raw,
+                    'point_value_cap_paise' => $capPaise,
+                    'point_value_paise' => $value,
+                    'payout_paise' => $payout,
+                    'leftover_paise' => $remaining - $payout,
+                ]);
+
+                $remaining -= $payout;
+            }
 
             /** @var Collection<int, RankMonthlyPool> $pools */
             $pools = collect();
 
             foreach (self::RANKS as $rank) {
-                $poolPct = $this->plan->rankPoolPct($rank);
-                $poolPaise = max(0, (int) round($turnoverPaise * $envelopeBp / 10_000 * $poolPct / 100));
+                $pass = $this->passFor($rank, $firstPassMax);
+                $pointValuePaise = (int) $passes[$pass]->point_value_paise;
                 $rapPoints = $this->plan->rankRapPoints($rank);
-
                 $payableIds = $roster->payableFor($rank);
                 $heldIds = $roster->heldFor($rank);
-
                 /** @var Collection<int, RankAogoGrant> $grants */
                 $grants = $rank === 1 ? $roster->aogoGrants : collect();
-                $aogoPoints = (int) $grants->sum('points');
-
-                $paidCount = count($payableIds);
-
-                $totalPoints = null;
-                $pointValuePaise = null;
-
-                if ($rapPoints !== null) {
-                    $totalPoints = count($payableIds) * $rapPoints + $aogoPoints;
-                    // Point value floored to the whole rupee; the remainder
-                    // stays unspent (KP confirmed 2026-08-05, same as MSB).
-                    $pointValuePaise = Money::floorRupee($poolPaise, $totalPoints);
-                    $grossPerQualifier = $rapPoints * $pointValuePaise;
-                    $payoutPaise = ($paidCount * $rapPoints + $aogoPoints) * $pointValuePaise;
-                } else {
-                    $grossPerQualifier = $payableIds !== []
-                        ? intdiv($poolPaise, count($payableIds))
-                        : 0;
-                    $payoutPaise = $grossPerQualifier * $paidCount;
-                }
+                $totalPoints = $rankPoints[$rank];
+                $grossPerQualifier = $rapPoints * $pointValuePaise;
+                $payoutPaise = $totalPoints * $pointValuePaise;
 
                 $pool = RankMonthlyPool::create([
                     'month_start' => $monthStart,
                     'rank_number' => $rank,
+                    'pass' => $pass,
                     'company_turnover_paise' => $turnoverPaise,
                     'envelope_bp' => $envelopeBp,
-                    'pool_pct' => $poolPct,
-                    'pool_paise' => $poolPaise,
+                    'pool_paise' => $payoutPaise,          // this rank's allotment
                     'rap_points' => $rapPoints,
                     'payable_count' => count($payableIds),
-                    'aogo_points' => $aogoPoints,
+                    'aogo_points' => $rank === 1 ? $aogoPoints : 0,
                     'total_points' => $totalPoints,
                     'point_value_paise' => $pointValuePaise,
                     'gross_per_qualifier_paise' => $grossPerQualifier,
                     'payout_paise' => $payoutPaise,
-                    'leftover_paise' => $poolPaise - $payoutPaise,
+                    'leftover_paise' => 0,                 // the pass row carries the leftover
                 ]);
 
                 $pools[$rank] = $pool;
@@ -411,7 +528,7 @@ final class RankBonusService
                         (int) $grant->distributor_id,
                         $pool,
                         RankBonusResult::STATUS_PENDING,
-                        $grant->points * (int) $pointValuePaise,
+                        $grant->points * $pointValuePaise,
                         aogoPoints: $grant->points,
                         totalPoints: $totalPoints,
                         pointValuePaise: $pointValuePaise,
@@ -419,10 +536,51 @@ final class RankBonusService
                 }
             }
 
-            $this->recordFreeze($monthStart, $pools);
+            $this->reconcileFreeze($monthStart, $envelopePaise, $passes, $pools);
+
+            $this->recordFreeze($monthStart, $pools, collect($passes));
 
             return $pools;
         });
+    }
+
+    /** The pricing pass a rank belongs to: 1 for Ranks 1..N, 2 for the rest. */
+    private function passFor(int $rank, int $firstPassMax): int
+    {
+        return $rank <= $firstPassMax ? 1 : 2;
+    }
+
+    /**
+     * Fail-safe principle 3: reconcile before commit. Σ pending roster gross,
+     * Σ pool payout and Σ pass payout must agree, never exceed the envelope,
+     * and pass 2 must have divided exactly what pass 1 left. Any mismatch is a
+     * bug, and a bug rolls the whole freeze back rather than paying out.
+     *
+     * @param  array<int, RankMonthlyPass>  $passes
+     * @param  Collection<int, RankMonthlyPool>  $pools
+     */
+    private function reconcileFreeze(string $monthStart, int $envelopePaise, array $passes, Collection $pools): void
+    {
+        $rosterGross = (int) RankBonusResult::query()
+            ->where('month_start', $monthStart)
+            ->where('status', RankBonusResult::STATUS_PENDING)
+            ->sum('gross_paise');
+        $passPayout = (int) $passes[1]->payout_paise + (int) $passes[2]->payout_paise;
+        $poolPayout = (int) $pools->sum('payout_paise');
+
+        if ($rosterGross !== $passPayout
+            || $poolPayout !== $passPayout
+            || $passPayout > $envelopePaise
+            || (int) $passes[2]->pool_paise !== $envelopePaise - (int) $passes[1]->payout_paise) {
+            throw new \RuntimeException(sprintf(
+                'Rank Bonus %s freeze does not reconcile: roster gross %d, pool payout %d, pass payout %d, envelope %d. Rolled back.',
+                $monthStart,
+                $rosterGross,
+                $poolPayout,
+                $passPayout,
+                $envelopePaise,
+            ));
+        }
     }
 
     /**
@@ -444,7 +602,8 @@ final class RankBonusService
      *
      * Reconstructing the frozen pool from the credited rows is rejected: the
      * rows carry pool_paise / qualifier_count / point_value_paise but NOT
-     * envelope_bp or pool_pct (both admin-editable and possibly since changed),
+     * envelope_bp or the per-rank pool percentage then in force (both
+     * admin-editable and possibly since changed),
      * the ranks the old run never touched have no row to reconstruct from at
      * all, and — decisively — reconstructing the pool would not stop
      * freezeMonth() handing today's roster a fresh `pending` row against it.
@@ -540,14 +699,17 @@ final class RankBonusService
      * retention-guaranteed audit_log row, not just a log line (R-35).
      *
      * @param  Collection<int, RankMonthlyPool>  $pools
+     * @param  Collection<int, RankMonthlyPass>  $passes
      */
-    private function recordFreeze(string $monthStart, Collection $pools): void
+    private function recordFreeze(string $monthStart, Collection $pools, Collection $passes): void
     {
         $details = [
             'month_start' => $monthStart,
             'company_turnover_paise' => (int) $pools[1]->company_turnover_paise,
             'envelope_bp' => (int) $pools[1]->envelope_bp,
+            'passes' => $passes->map(fn (RankMonthlyPass $pass): array => $this->passSummary($pass))->all(),
             'by_rank' => $pools->map(fn (RankMonthlyPool $pool): array => [
+                'pass' => (int) $pool->pass,
                 'pool_paise' => (int) $pool->pool_paise,
                 'payable_count' => (int) $pool->payable_count,
                 'aogo_points' => (int) $pool->aogo_points,
@@ -596,9 +758,8 @@ final class RankBonusService
     private function replacePrematureFreeze(Collection $pools, string $monthStart, Carbon $monthEnd): bool
     {
         $frozenAt = $pools->min(fn (RankMonthlyPool $pool): ?Carbon => $pool->created_at);
-        $monthClosedAt = $monthEnd->copy()->addDay()->startOfDay();
 
-        if (! $frozenAt instanceof Carbon || $frozenAt->gte($monthClosedAt)) {
+        if (! $frozenAt instanceof Carbon || ! $this->frozenBeforeMonthClosed($pools, $monthEnd)) {
             return false; // Frozen after the month closed — the normal, final row.
         }
 
@@ -608,6 +769,7 @@ final class RankBonusService
             'company_turnover_paise' => (int) $pools[1]->company_turnover_paise,
             'pool_paise' => $pools->map(fn (RankMonthlyPool $pool): int => (int) $pool->pool_paise)->all(),
             'payable_count' => $pools->map(fn (RankMonthlyPool $pool): int => (int) $pool->payable_count)->all(),
+            'passes' => $this->frozenPassSummaries($monthStart),
         ];
 
         $results = RankBonusResult::query()->where('month_start', $monthStart);
@@ -663,9 +825,61 @@ final class RankBonusService
             ],
         ]);
 
+        // The pass rows are part of the frozen month (F-10): they go with the
+        // pools, never one without the other.
+        RankMonthlyPass::where('month_start', $monthStart)->delete();
         RankMonthlyPool::where('month_start', $monthStart)->delete();
 
         return true;
+    }
+
+    /**
+     * True when the month's pools were frozen before the month had closed —
+     * the candidates {@see replacePrematureFreeze()} may replace.
+     *
+     * @param  Collection<int, RankMonthlyPool>  $pools
+     */
+    private function frozenBeforeMonthClosed(Collection $pools, Carbon $monthEnd): bool
+    {
+        $frozenAt = $pools->min(fn (RankMonthlyPool $pool): ?Carbon => $pool->created_at);
+
+        return $frozenAt instanceof Carbon
+            && $frozenAt->lt($monthEnd->copy()->addDay()->startOfDay());
+    }
+
+    /**
+     * The month's frozen passes, keyed by pass number. Empty for a month
+     * priced under the per-rank pool rule in force before the client's
+     * 2026-10-05 two-pass rule.
+     *
+     * @return array<int, array{pool_paise: int, total_points: int, raw_point_value_paise: int, point_value_cap_paise: int, point_value_paise: int, payout_paise: int, leftover_paise: int}>
+     */
+    private function frozenPassSummaries(string $monthStart): array
+    {
+        return RankMonthlyPass::where('month_start', $monthStart)
+            ->orderBy('pass')
+            ->get()
+            ->keyBy(fn (RankMonthlyPass $pass): int => (int) $pass->pass)
+            ->map(fn (RankMonthlyPass $pass): array => $this->passSummary($pass))
+            ->all();
+    }
+
+    /**
+     * A frozen pass as the run summary and the freeze audit row report it.
+     *
+     * @return array{pool_paise: int, total_points: int, raw_point_value_paise: int, point_value_cap_paise: int, point_value_paise: int, payout_paise: int, leftover_paise: int}
+     */
+    private function passSummary(RankMonthlyPass $pass): array
+    {
+        return [
+            'pool_paise' => (int) $pass->pool_paise,
+            'total_points' => (int) $pass->total_points,
+            'raw_point_value_paise' => (int) $pass->raw_point_value_paise,
+            'point_value_cap_paise' => (int) $pass->point_value_cap_paise,
+            'point_value_paise' => (int) $pass->point_value_paise,
+            'payout_paise' => (int) $pass->payout_paise,
+            'leftover_paise' => (int) $pass->leftover_paise,
+        ];
     }
 
     // ---------------------------------------------------------------- pass 2
@@ -680,7 +894,8 @@ final class RankBonusService
      *     turnover_paise: int,
      *     credited: int,
      *     qualified_after_freeze: int,
-     *     by_rank: array<int, array{qualifiers: int, held: int, aogo_grants: int, pool_paise: int, total_points: int|null, point_value_paise: int|null, gross_total: int, qualified_after_freeze: int}>
+     *     by_rank: array<int, array{qualifiers: int, held: int, aogo_grants: int, pool_paise: int, total_points: int|null, point_value_paise: int|null, gross_total: int, qualified_after_freeze: int}>,
+     *     passes: array<int, array{pool_paise: int, total_points: int, raw_point_value_paise: int, point_value_cap_paise: int, point_value_paise: int, payout_paise: int, leftover_paise: int}>
      * }
      */
     private function creditFromFrozenPools(Carbon $monthStartCarbon, string $monthStart, Collection $pools): array
@@ -769,6 +984,7 @@ final class RankBonusService
             'credited' => $credited,
             'qualified_after_freeze' => array_sum(array_map(count(...), $late)),
             'by_rank' => $byRank,
+            'passes' => $this->frozenPassSummaries($monthStart),
         ];
     }
 

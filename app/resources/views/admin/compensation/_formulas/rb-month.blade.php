@@ -4,7 +4,6 @@
 @php
     $inr = \App\Modules\Shared\Support\IndianNumber::rupees(...);
     $envelopePct = \App\Modules\Shared\Support\IndianNumber::percentFromBp($rank1['envelope_bp']);
-    $poolPct = \App\Modules\Shared\Support\IndianNumber::percent($rank1['pool_pct']);
     $envelopePaise = (int) round($rank1['turnover_paise'] * $rank1['envelope_bp'] / 10_000);
     $rank1Name = $rankNames[1] ?? 'Rank 1';
     $rawPointValue = ($rank1['total_points'] ?? 0) > 0 ? $rank1['pool_paise'] / $rank1['total_points'] : null;
@@ -22,9 +21,9 @@
             <strong class="text-gray-700">@bv($rank1['turnover_paise'])</strong>
             <x-help-tip text="This month's accumulated company BV as the engine froze it on the run — the base of every rank pool." /></span>
         <span class="text-gray-500">Rank envelope ({{ $envelopePct }})
-            <x-help-tip text="The share of month turnover that funds all nine rank pools. The envelope % and Rank 1's pool % are current plan settings, not frozen snapshots — the ₹ pool, points and point value below ARE frozen on the run's result rows." />
+            <x-help-tip text="The share of month turnover that funds the Rank Bonus. The envelope % is a current plan setting, not a frozen snapshot — the ₹ pool, points and point value below ARE frozen on the run's result rows." />
             <strong class="text-gray-700">{{ $inr($envelopePaise) }}</strong></span>
-        <span class="text-gray-500">{{ $rank1Name }} pool ({{ $poolPct }} of envelope)
+        <span class="text-gray-500">{{ $rank1Name }} pool
             <strong class="text-gray-700">{{ $inr($rank1['pool_paise']) }}</strong></span>
         <span class="text-gray-500">Qualifiers <strong class="text-gray-700">{{ $rank1['qualifiers'] }}</strong></span>
         <span class="text-gray-500">Points <strong class="text-gray-700">{{ $rank1['total_points'] ?? '—' }}</strong></span>
@@ -41,27 +40,25 @@
             <p class="font-semibold text-gray-800 mb-2">How the {{ $rank1Name }} point value is calculated</p>
             <ol class="space-y-1.5 font-mono text-gray-700">
                 <li><span class="text-gray-500">1.</span> Rank envelope = Month turnover × Rank envelope %</li>
-                <li><span class="text-gray-500">2.</span> {{ $rank1Name }} pool = Rank envelope × {{ $rank1Name }} pool %</li>
-                <li><span class="text-gray-500">3.</span> Total points = (Qualifiers × RAP points) + AO-GO points</li>
-                <li><span class="text-gray-500">4.</span> Point value = ⌊ {{ $rank1Name }} pool ÷ Total points ⌋ <span class="font-sans text-gray-500">(floored to the whole rupee; remainder stays unspent)</span></li>
-                <li><span class="text-gray-500">5.</span> Gross per qualifier = RAP points × Point value</li>
+                <li><span class="text-gray-500">2.</span> Total points = (Qualifiers × RAP points) + AO-GO points</li>
+                <li><span class="text-gray-500">3.</span> Point value = ⌊ {{ $rank1Name }} pool ÷ Total points ⌋ <span class="font-sans text-gray-500">(floored to the whole rupee; remainder stays unspent)</span></li>
+                <li><span class="text-gray-500">4.</span> Gross per qualifier = RAP points × Point value</li>
             </ol>
         </div>
         <div>
             <p class="font-semibold text-gray-800 mb-2">With this month's values</p>
             <ol class="space-y-1.5 font-mono text-gray-700">
                 <li><span class="text-gray-500">1.</span> @bv($rank1['turnover_paise']) × {{ $envelopePct }} = <strong>{{ $inr($envelopePaise) }}</strong></li>
-                <li><span class="text-gray-500">2.</span> {{ $inr($envelopePaise) }} × {{ $poolPct }} = <strong>{{ $inr($rank1['pool_paise']) }}</strong></li>
                 @if($rank1['total_points'] !== null && $rank1['rap_points'] !== null)
-                <li><span class="text-gray-500">3.</span> ({{ $rank1['qualifiers'] }} × {{ $rank1['rap_points'] }}) + {{ $rank1['aogo_points'] }} = <strong>{{ $rank1['total_points'] }}</strong></li>
+                <li><span class="text-gray-500">2.</span> ({{ $rank1['qualifiers'] }} × {{ $rank1['rap_points'] }}) + {{ $rank1['aogo_points'] }} = <strong>{{ $rank1['total_points'] }}</strong></li>
                 @if($rawPointValue !== null && $rank1['point_value_paise'] !== null)
-                <li><span class="text-gray-500">4.</span> ⌊ {{ $inr($rank1['pool_paise']) }} ÷ {{ $rank1['total_points'] }} ⌋ = ⌊ {{ $inr((int) floor($rawPointValue)) }} ⌋ = <strong>{{ $inr($rank1['point_value_paise'], 0) }}</strong></li>
-                <li><span class="text-gray-500">5.</span> {{ $rank1['rap_points'] }} × {{ $inr($rank1['point_value_paise'], 0) }} = <strong>{{ $inr($rank1['rap_points'] * $rank1['point_value_paise'], 0) }}</strong> per qualifier</li>
+                <li><span class="text-gray-500">3.</span> ⌊ {{ $inr($rank1['pool_paise']) }} ÷ {{ $rank1['total_points'] }} ⌋ = ⌊ {{ $inr((int) floor($rawPointValue)) }} ⌋ = <strong>{{ $inr($rank1['point_value_paise'], 0) }}</strong></li>
+                <li><span class="text-gray-500">4.</span> {{ $rank1['rap_points'] }} × {{ $inr($rank1['point_value_paise'], 0) }} = <strong>{{ $inr($rank1['rap_points'] * $rank1['point_value_paise'], 0) }}</strong> per qualifier</li>
                 @else
-                <li class="font-sans text-gray-500">4–5. No points this month — the pool went unspent.</li>
+                <li class="font-sans text-gray-500">3–4. No points this month — the pool went unspent.</li>
                 @endif
                 @else
-                <li class="font-sans text-gray-500">3–5. No point snapshot on this month's rows.</li>
+                <li class="font-sans text-gray-500">2–4. No point snapshot on this month's rows.</li>
                 @endif
             </ol>
         </div>

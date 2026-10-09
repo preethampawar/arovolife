@@ -138,8 +138,8 @@
     @endif
 </x-ui.card>
 
-{{-- ── Ranks 2–9 — equal split ─────────────────────────────────────────── --}}
-<h2 class="text-sm font-semibold text-gray-800 mb-2">Ranks 2–9 — equal split per rank pool</h2>
+{{-- ── Ranks 2–9 ──────────────────────────────────────────────────────── --}}
+<h2 class="text-sm font-semibold text-gray-800 mb-2">Ranks 2–9</h2>
 <x-ui.card flush>
     @if($rankRows->isEmpty())
     <x-ui.empty-state title="No Rank 2–9 records found." />

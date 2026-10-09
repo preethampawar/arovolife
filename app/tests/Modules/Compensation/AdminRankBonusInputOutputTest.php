@@ -7,12 +7,15 @@ use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\RankBonusService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RankTiersSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 use Tests\Support\XlsxReader;
 
@@ -138,11 +141,11 @@ it('renders a month block with per-rank frozen economics, the AO-GO line and der
     $res->assertSee('6,800.00');
     $res->assertSee('Held');
 
-    // A rank with no rows shows the estimated, asterisked unspent pool
-    // (Rank 3 = 2.7% of the envelope).
-    $res->assertSee('5,400.00');
+    // A rank with no rows in a legacy month is asterisked; the per-rank pool %
+    // that once estimated its unspent pool is retired (client 2026-10-05).
     $res->assertSee('unspent *');
-    $res->assertSee('estimated from the month');
+    $res->assertSee('priced before the two-pass rule');
+    $res->assertDontSee('Pool %');
 
     // Grand total: 2 × 5,600 + 2,800 + 6,800 = ₹20,800; every frozen rank
     // reconciled to zero leftover.
@@ -229,7 +232,8 @@ it('shows the Rank 1 month header and the point-value formula with this month\'s
     $res->assertSee(Bv::format(100_000_000));
     $res->assertSee('Rank envelope (20%)');
     $res->assertSee('₹2,00,000.00');
-    $res->assertSee('pool (7% of envelope)');
+    $res->assertSee('Silver Partner pool');
+    $res->assertDontSee('of envelope');
     $res->assertSee('₹14,000.00');
     $res->assertSee('₹560');
 
@@ -259,7 +263,7 @@ it('shows the Rank 1 month header and formula on the monthly calculation report'
     $res->assertSee('July 2026');
     $res->assertSee('Rank envelope (20%)');
     $res->assertSee('₹2,00,000.00');
-    $res->assertSee('pool (7% of envelope)');
+    $res->assertSee('Silver Partner pool');
     $res->assertSee('How the');
     $res->assertSee('(2 × 10) + 5 = <strong>25</strong>', false);
     $res->assertSee('<strong>₹5,600</strong> per qualifier', false);
@@ -443,7 +447,6 @@ it('names distributors who qualified after the rank pool was frozen', function (
         'rank_number' => 1,
         'company_turnover_paise' => 100_000_000,
         'envelope_bp' => 2_000,
-        'pool_pct' => 7.0,
         'pool_paise' => 1_400_000,
         'rap_points' => 10,
         'payable_count' => 1,
@@ -475,4 +478,38 @@ it('names distributors who qualified after the rank pool was frozen', function (
 
     $res->assertSee('Qualified after the pool was frozen');
     $res->assertSee($late->adn);
+});
+
+/**
+ * Bridging until the Task 10 redesign: a month frozen under the client's
+ * 2026-10-05 two-pass rule must still render on every Rank Bonus report, with
+ * the month's leftover taken from the pass-2 row.
+ */
+it('renders a two-pass frozen month on the rank bonus reports', function () {
+    $achiever = Distributor::factory()->create();
+    // 10,00,000 BV → envelope ₹2,00,000; one Rank-1 achiever paid 72 × ₹200.
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => 999001, 'order_id' => 980001, 'bv_paise' => 100_000_000, 'type' => 'accrual',
+        'effective_at' => '2026-07-10 10:00:00', 'created_at' => '2026-07-10 10:00:00', 'updated_at' => '2026-07-10 10:00:00',
+    ]);
+    RankQualification::create([
+        'distributor_id' => $achiever->id, 'rank_number' => 1, 'month_start' => '2026-07-01',
+        'occurrence_in_month' => 1, 'is_carry_forward' => false, 'status' => RankQualification::STATUS_QUALIFIED,
+    ]);
+    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-07-01'));
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('14,400.00')
+        ->assertSee('leftover ₹1,85,600.00', false);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rank-bonus.show', '2026-07'))
+        ->assertOk()
+        ->assertSee('Silver Partner pool');
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-calculation.index', ['month' => '2026-07']))
+        ->assertOk();
 });

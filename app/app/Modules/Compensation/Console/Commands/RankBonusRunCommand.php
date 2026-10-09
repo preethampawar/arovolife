@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Console\Commands;
 
+use App\Modules\Compensation\Exceptions\RepurchaseVerdictsPending;
 use App\Modules\Compensation\Exceptions\RepurchaseWalletVerdictNotAvailable;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\RankBonusService;
@@ -93,6 +94,16 @@ final class RankBonusRunCommand extends Command
             $this->error($e->getMessage());
 
             app(EngineRunContext::class)->noteSkipped($e->getMessage());
+
+            return self::FAILURE;
+        } catch (RepurchaseVerdictsPending $e) {
+            // An achiever's cycle due on or before the month end has no verdict
+            // yet (fail-safe principle 2). Recorded as FAILED with the message:
+            // running repurchase:evaluate and re-running fixes it, so it is not
+            // a `skipped` refusal.
+            $this->error($e->getMessage());
+
+            app(EngineRunContext::class)->noteFailed($e->getMessage());
 
             return self::FAILURE;
         }

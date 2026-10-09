@@ -18,12 +18,18 @@ use Illuminate\Support\Carbon;
  * lookup that works fine against a MySQL DATE column. Keeping it a raw
  * 'Y-m-d' string makes both drivers — and both query styles — agree.
  *
+ * Since the client's 2026-10-05 Rank Income Point System the month is priced
+ * in two passes ({@see RankMonthlyPass}): pool_paise is this rank's allotment
+ * (total_points × the pass's point value) and leftover_paise is 0 — the pass
+ * row carries the leftover. Months frozen earlier keep the per-rank pool rule
+ * they were priced under and read pass 1.
+ *
  * @property int $id
  * @property string $month_start
  * @property int $rank_number
+ * @property int $pass
  * @property int $company_turnover_paise
  * @property int $envelope_bp
- * @property float $pool_pct
  * @property int $pool_paise
  * @property int|null $rap_points
  * @property int $payable_count
@@ -52,8 +58,8 @@ final class RankMonthlyPool extends Model
     }
 
     protected $fillable = [
-        'month_start', 'rank_number', 'company_turnover_paise', 'envelope_bp',
-        'pool_pct', 'pool_paise', 'rap_points', 'payable_count', 'aogo_points',
+        'month_start', 'rank_number', 'pass', 'company_turnover_paise', 'envelope_bp',
+        'pool_paise', 'rap_points', 'payable_count', 'aogo_points',
         'total_points', 'point_value_paise', 'gross_per_qualifier_paise',
         'payout_paise', 'leftover_paise',
     ];
@@ -64,7 +70,7 @@ final class RankMonthlyPool extends Model
             'rank_number' => 'integer',
             'company_turnover_paise' => 'integer',
             'envelope_bp' => 'integer',
-            'pool_pct' => 'float',
+            'pass' => 'integer',
             'pool_paise' => 'integer',
             'rap_points' => 'integer',
             'payable_count' => 'integer',
