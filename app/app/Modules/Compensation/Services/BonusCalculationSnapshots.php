@@ -219,8 +219,8 @@ final class BonusCalculationSnapshots
      *
      * @param  array<int, string>  $monthStarts  Y-m-d
      * @return array<string, array{
-     *     milestones: int, delivered: int, computed_at: ?Carbon,
-     *     ranks: list<array{rank: int, name: string, milestones: int, delivered: int, cash: int, budget_paise: int, gross_paise: int, tds_paise: int, net_paise: int}>
+     *     milestones: int, delivered: int, amount_paise: int, computed_at: ?Carbon,
+     *     ranks: list<array{rank: int, name: string, tranche: int, milestones: int, delivered: int, budget_paise: int, amount_paise: int}>
      * }>
      */
     public function awRwMonths(array $monthStarts): array
@@ -229,18 +229,19 @@ final class BonusCalculationSnapshots
             return [];
         }
 
+        // One line per rank and tranche (client 2026-10-09); amount_paise is
+        // the Σ of the tranche amounts frozen on the milestones. Awards are
+        // merchandise only, so there is no cash, gross, TDS or net here.
         $rows = DB::table('lifetime_award_milestones')
             ->whereIn('triggered_month', $monthStarts)
-            ->selectRaw('triggered_month, rank_number')
+            ->selectRaw('triggered_month, rank_number, tranche')
             ->selectRaw('COUNT(*) as milestones')
             ->selectRaw("SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered")
-            ->selectRaw("SUM(CASE WHEN disbursement_type = 'cash' THEN 1 ELSE 0 END) as cash")
-            ->selectRaw('COALESCE(SUM(gross_paise), 0) as gross_paise')
-            ->selectRaw('COALESCE(SUM(tds_paise), 0) as tds_paise')
-            ->selectRaw('COALESCE(SUM(net_paise), 0) as net_paise')
+            ->selectRaw('COALESCE(SUM(amount_paise), 0) as amount_paise')
             ->selectRaw('MAX(created_at) as computed_at')
-            ->groupBy('triggered_month', 'rank_number')
+            ->groupBy('triggered_month', 'rank_number', 'tranche')
             ->orderBy('rank_number')
+            ->orderBy('tranche')
             ->get();
 
         $out = [];
@@ -249,22 +250,21 @@ final class BonusCalculationSnapshots
             $rank = (int) $row->rank_number;
             $computedAt = $row->computed_at !== null ? Carbon::parse((string) $row->computed_at) : null;
 
-            $agg = $out[$key] ?? ['milestones' => 0, 'delivered' => 0, 'computed_at' => null, 'ranks' => []];
+            $agg = $out[$key] ?? ['milestones' => 0, 'delivered' => 0, 'amount_paise' => 0, 'computed_at' => null, 'ranks' => []];
             $agg['milestones'] += (int) $row->milestones;
             $agg['delivered'] += (int) $row->delivered;
+            $agg['amount_paise'] += (int) $row->amount_paise;
             if ($computedAt !== null && ($agg['computed_at'] === null || $computedAt->greaterThan($agg['computed_at']))) {
                 $agg['computed_at'] = $computedAt;
             }
             $agg['ranks'][] = [
                 'rank' => $rank,
                 'name' => $this->plan->rankName($rank),
+                'tranche' => (int) $row->tranche,
                 'milestones' => (int) $row->milestones,
                 'delivered' => (int) $row->delivered,
-                'cash' => (int) $row->cash,
                 'budget_paise' => $this->plan->lifetimeAwardBudgetPaise($rank),
-                'gross_paise' => (int) $row->gross_paise,
-                'tds_paise' => (int) $row->tds_paise,
-                'net_paise' => (int) $row->net_paise,
+                'amount_paise' => (int) $row->amount_paise,
             ];
             $out[$key] = $agg;
         }

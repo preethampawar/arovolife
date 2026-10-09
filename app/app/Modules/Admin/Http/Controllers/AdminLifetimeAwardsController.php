@@ -8,7 +8,6 @@ use App\Modules\Compensation\Events\LifetimeAwardReleased;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\LifetimeAwardReward;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
-use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
@@ -74,6 +73,7 @@ final class AdminLifetimeAwardsController extends Controller
         $milestones = $filters->apply($query)
             ->orderByDesc('triggered_month')
             ->orderBy('rank_number')
+            ->orderBy('tranche')
             ->paginate(50)
             ->withQueryString();
 
@@ -148,54 +148,28 @@ final class AdminLifetimeAwardsController extends Controller
 
         abort_if($milestone->status === LifetimeAwardMilestone::STATUS_DELIVERED, 409);
 
-        abort_unless($milestone->isReleasable(), 422, 'Award is not yet releasable — re-qualification threshold not met.');
+        abort_unless($milestone->isReleasable(), 422, 'Award tranche is not yet releasable — the rank has not been qualified enough times.');
 
+        // Merchandise only, never cash (client 2026-10-09): no disbursement
+        // choice, no admin charge, no TDS, no wallet credit. The tranche's
+        // worth is recorded as delivered.
         $data = $request->validate([
-            'disbursement_type' => ['required', 'in:goods,cash'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $plan = app(CompensationPlanSettingsService::class);
-        $grossPaise = $plan->lifetimeAwardBudgetPaise($milestone->rank_number);
-
-        $adminChargePaise = 0;
-        $tdsPaise = 0;
-        $netPaise = $grossPaise;
-
-        if ($data['disbursement_type'] === LifetimeAwardMilestone::DISBURSEMENT_CASH && $grossPaise > 0) {
-            // Group C admin charge: 3% or monthly cap (₹25,000), whichever is lower.
-            $rateBp = $plan->adminChargeRateBp();
-            $capPaise = $plan->adminChargeMonthlyCapPaise();
-            $adminChargePaise = (int) min((int) round($grossPaise * $rateBp / 10000), $capPaise);
-            $afterAdmin = $grossPaise - $adminChargePaise;
-            $tdsPaise = (int) round($afterAdmin * 500 / 10000); // 5% TDS
-            $netPaise = $afterAdmin - $tdsPaise;
-
-            app(WalletService::class)->credit(
-                distributorId: $milestone->distributor_id,
-                amountPaise: $netPaise,
-                // `awards_credit`, not `lifetime_award_cash`: the latter is not in
-                // the wallet_ledger_entries type enum and never was, so on MySQL
-                // this insert fails outright and the award is never paid. Found
-                // by the hard-rule-2 credit registry, 2026-08-17.
-                type: 'awards_credit',
-                referenceId: $milestone->id,
-                referenceType: 'lifetime_award_milestone',
-                memo: 'Lifetime Award Cash — Rank '.$milestone->rank_number,
-            );
-        }
+        $grossPaise = $milestone->amount_paise;
 
         $before = AuditDigests::of($milestone);
 
         $milestone->update([
             'status' => LifetimeAwardMilestone::STATUS_DELIVERED,
-            'disbursement_type' => $data['disbursement_type'],
+            'disbursement_type' => LifetimeAwardMilestone::DISBURSEMENT_GOODS,
             'gross_paise' => $grossPaise ?: null,
-            'admin_charge_paise' => $adminChargePaise,
-            'tds_paise' => $tdsPaise,
-            'net_paise' => $netPaise ?: null,
+            'admin_charge_paise' => 0,
+            'tds_paise' => 0,
+            'net_paise' => $grossPaise ?: null,
             'delivered_at' => now(),
-            'notes' => $data['notes'],
+            'notes' => $data['notes'] ?? null,
         ]);
 
         AuditLog::create([
@@ -208,11 +182,9 @@ final class AdminLifetimeAwardsController extends Controller
             'details' => [
                 'distributor_id' => $milestone->distributor_id,
                 'rank_number' => $milestone->rank_number,
-                'disbursement_type' => $data['disbursement_type'],
-                'gross_paise' => $grossPaise,
-                'admin_charge_paise' => $adminChargePaise,
-                'tds_paise' => $tdsPaise,
-                'net_paise' => $netPaise,
+                'tranche' => $milestone->tranche,
+                'disbursement_type' => LifetimeAwardMilestone::DISBURSEMENT_GOODS,
+                'amount_paise' => $grossPaise,
             ],
             'ip' => $request->ip(),
         ]);

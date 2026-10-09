@@ -8,7 +8,7 @@
 
 <div class="mb-6 flex items-start justify-between gap-4">
     <div class="flex-1 rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-800">
-        Lifetime awards are issued on a distributor's first achievement of a given rank, subject to re-qualification gates: Ranks 1–2 release immediately, Ranks 3–5 require 2 qualifications, Ranks 6–9 require 3. Choose <strong>Goods</strong> (no deductions) or <strong>Cash</strong> (Group C admin 3%/₹25k + 5% TDS) when marking delivered.
+        Lifetime awards are paid in tranches of merchandise (the client, 2026-10-09): tranche A is released on a distributor's 1st qualification for a rank, B on the 2nd, C on the 3rd. Ranks 1–2 have one tranche, Ranks 3–5 two, Ranks 6–9 three. Awards are <strong>merchandise only, never cash</strong> — no admin charge, no TDS, no wallet credit.
     </div>
     <a href="{{ route('admin.lifetime-awards.catalog') }}" class="shrink-0 px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">Reward catalog {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
 </div>
@@ -26,9 +26,12 @@
                     <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
                     <th class="px-4 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-4 py-2 text-left text-gray-600">Rank</th>
+                    <th class="px-4 py-2 text-center text-gray-600">
+                        Tranche <x-help-tip text="A is released on the rank's 1st qualification, B on the 2nd, C on the 3rd." />
+                    </th>
                     <th class="px-4 py-2 text-left text-gray-600">Triggered</th>
                     <th class="px-4 py-2 text-center text-gray-600">
-                        Qualifications <x-help-tip text="Count / threshold. Award is only deliverable once the threshold is reached." />
+                        Qualifications <x-help-tip text="Qualifications of the rank / qualifications the tranche needs. A tranche is deliverable once the rank has been qualified at least that many times." />
                     </th>
                     <th class="px-4 py-2 text-left text-gray-600">Award</th>
                     <th class="px-4 py-2 text-center text-gray-600">Status</th>
@@ -41,7 +44,7 @@
                 @foreach($milestones as $milestone)
                 @php
                 $sc = ['pending' => 'bg-amber-100 text-amber-700', 'delivered' => 'bg-green-100 text-green-700', 'cancelled' => 'bg-red-100 text-red-700'];
-                $threshold = \App\Modules\Compensation\Models\LifetimeAwardMilestone::releaseThreshold($milestone->rank_number);
+                $threshold = $milestone->tranche;
                 $releasable = $milestone->isReleasable();
                 @endphp
                 <tr class="hover:bg-gray-50">
@@ -52,7 +55,8 @@
                             {{ $rankNames[$milestone->rank_number] ?? 'Rank '.$milestone->rank_number }}
                         </span>
                     </td>
-                    <td class="px-4 py-2 text-gray-600">{{ \Illuminate\Support\Carbon::parse($milestone->triggered_month)->format('M Y') }}</td>
+                    <td class="px-4 py-2 text-center font-semibold text-gray-800">{{ $milestone->trancheLetter() }}</td>
+                    <td class="px-4 py-2 text-gray-600">{{ $milestone->triggered_month->format('M Y') }}</td>
                     <td class="px-4 py-2 text-center">
                         <span class="inline-flex items-center gap-1 text-xs font-semibold {{ $releasable ? 'text-green-700' : 'text-amber-700' }}">
                             {{ $milestone->qualification_count }} / {{ $threshold }}
@@ -60,10 +64,19 @@
                             <span class="text-green-600" title="Releasable">{{ svg('lucide-circle-check', 'w-4 h-4 inline-block', ['aria-hidden' => 'true']) }}</span>
                             @endif
                         </span>
+                        @if($milestone->released_rule_changed_at)
+                        <div class="mt-1">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium"
+                                  title="This tranche became releasable under the per-tranche release rule (the client, 2026-10-09); under the old rule it needed more qualifications.">
+                                {{ svg('lucide-info', 'w-3 h-3 inline-block', ['aria-hidden' => 'true']) }}
+                                Release rule changed on {{ $milestone->released_rule_changed_at->format('d M Y') }}
+                            </span>
+                        </div>
+                        @endif
                     </td>
                     <td class="px-4 py-2 text-gray-700">
                         @php $rc = $catalog[$milestone->rank_number] ?? ['budget_paise' => 0, 'rewards' => []]; @endphp
-                        <div class="font-semibold text-gray-800">{{ $rupees($rc['budget_paise']) }} budget</div>
+                        <div class="font-semibold text-gray-800">{{ $rupees($milestone->amount_paise) }} <span class="font-normal text-gray-600">tranche {{ $milestone->trancheLetter() }} of {{ $rupees($rc['budget_paise']) }}</span></div>
                         @if(!empty($rc['rewards']))
                         <ul class="mt-1 space-y-0.5 text-[11px] text-gray-600 list-disc list-inside">
                             @foreach($rc['rewards'] as $reward)
@@ -84,12 +97,9 @@
                     </td>
                     <td class="px-4 py-2 text-gray-600 text-xs">
                         @if($milestone->disbursement_type)
-                            <span class="inline-flex px-2 py-0.5 rounded {{ $milestone->disbursement_type === 'cash' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600' }} text-[10px] font-medium">
+                            <span class="inline-flex px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-medium">
                                 {{ ucfirst($milestone->disbursement_type) }}
                             </span>
-                            @if($milestone->disbursement_type === 'cash' && $milestone->net_paise)
-                            <div class="mt-0.5 text-[10px] text-gray-600">Net {{ $rupees($milestone->net_paise) }}</div>
-                            @endif
                         @else
                             —
                         @endif
@@ -99,16 +109,9 @@
                             @if($releasable)
                             <form method="POST" action="{{ route('admin.lifetime-awards.deliver', $milestone->id) }}"
                                   data-confirm-title="Mark award as delivered"
-                                  data-confirm="Mark this lifetime award as delivered? Choose the disbursement method before submitting."
-                                  data-confirm-impact="Impact: milestone is recorded as fulfilled. Cash awards credit net amount to the distributor's wallet after Group C admin charge + TDS.">
+                                  data-confirm="Mark tranche {{ $milestone->trancheLetter() }} of this lifetime award as delivered?"
+                                  data-confirm-impact="Impact: the tranche is recorded as handed over in merchandise. Nothing is credited to the distributor's wallet — awards are never paid in cash.">
                                 @csrf
-                                <div class="flex items-center gap-1.5 mb-1">
-                                    <select name="disbursement_type" required
-                                            class="rounded border border-gray-300 px-1.5 py-0.5 text-[10px]">
-                                        <option value="goods">Goods</option>
-                                        <option value="cash">Cash</option>
-                                    </select>
-                                </div>
                                 <button type="submit"
                                         class="px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 text-[10px] font-medium">
                                     Mark Delivered

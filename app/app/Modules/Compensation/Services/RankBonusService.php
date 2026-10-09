@@ -108,6 +108,9 @@ final class RankBonusService
     /** The ranks the engine pays, in order. */
     private const RANKS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
+    /** Roster rows whose achiever's Lifetime Award tranches are kept in step on every run. */
+    private const AWARD_SYNC_STATUSES = [RankBonusResult::STATUS_PENDING, RankBonusResult::STATUS_CREDITED];
+
     public function __construct(
         private readonly WalletService $wallet,
         private readonly CompensationPlanSettingsService $plan,
@@ -290,6 +293,8 @@ final class RankBonusService
                 throw new \RuntimeException("rank_tiers.rap_points is not set for rank {$rank} but it has payable achievers; refusing to freeze the Rank Bonus for {$monthStart}");
             }
         }
+
+        $this->assertAwardTranchesSeeded(array_keys(array_filter($payable)));
 
         $allPayable = array_values(array_unique(array_merge(...array_values($payable))));
         $pending = $this->eligibility->unresolvedDueOnOrBefore($monthEnd, $allPayable);
@@ -900,6 +905,19 @@ final class RankBonusService
      */
     private function creditFromFrozenPools(Carbon $monthStartCarbon, string $monthStart, Collection $pools): array
     {
+        // Every achiever row below syncs its Lifetime Award tranches; a rank
+        // without tranche rows stops the run here, before any write.
+        $this->assertAwardTranchesSeeded(
+            RankBonusResult::query()
+                ->where('month_start', $monthStart)
+                ->whereNull('aogo_points')
+                ->whereIn('status', self::AWARD_SYNC_STATUSES)
+                ->distinct()
+                ->pluck('rank_number')
+                ->map(fn ($rank): int => (int) $rank)
+                ->all(),
+        );
+
         $late = $this->qualifiedAfterFreeze($monthStartCarbon);
 
         foreach ($late as $rank => $distributorIds) {
@@ -959,11 +977,11 @@ final class RankBonusService
                 ];
 
                 foreach ($rows as $row) {
-                    if ($row->status !== RankBonusResult::STATUS_PENDING) {
+                    if (! in_array($row->status, self::AWARD_SYNC_STATUSES, true)) {
                         continue;
                     }
 
-                    if ($row->gross_paise > 0) {
+                    if ($row->status === RankBonusResult::STATUS_PENDING && $row->gross_paise > 0) {
                         $this->creditRosterRow($row, $monthStartCarbon, $monthStart, $grants);
 
                         $byRank[$rank]['gross_total'] += (int) $row->gross_paise;
@@ -971,7 +989,8 @@ final class RankBonusService
                     }
 
                     // AO-GO grantees hold no rank this month — the lifetime
-                    // award belongs to the achievers only.
+                    // award belongs to the achievers only. Credited rows sync
+                    // too, so a re-run prunes a tranche a rebuild unearned.
                     if ($row->aogo_points === null) {
                         $this->syncLifetimeAward((int) $row->distributor_id, $rank, $monthStart);
                     }
@@ -1048,8 +1067,29 @@ final class RankBonusService
     }
 
     /**
-     * Keep the distributor's LifetimeAwardMilestone in step with the months
-     * they actually made the rank's payable roster for.
+     * Fail-safe principle 1: a rank whose achievers would sync a Lifetime Award
+     * but which has no lifetime_award_tranches rows stops the engine — a
+     * missing tranche must never silently award nothing.
+     *
+     * @param  array<int>  $ranks
+     *
+     * @throws \RuntimeException
+     */
+    private function assertAwardTranchesSeeded(array $ranks): void
+    {
+        foreach ($ranks as $rank) {
+            if ($this->plan->lifetimeAwardTranches($rank) === []) {
+                throw new \RuntimeException("lifetime_award_tranches has no rows for rank {$rank}");
+            }
+        }
+    }
+
+    /**
+     * Keep the distributor's Lifetime Award tranches in step with the months
+     * they actually made the rank's payable roster for (client 2026-10-09):
+     * one milestone per earned tranche — A on the 1st qualification, B on the
+     * 2nd, C on the 3rd — each carrying its tranche amount. A tranche's
+     * triggered month is the run in which the count first reached it.
      *
      * The count is RECOMPUTED from the roster rows, never incremented: the old
      * increment fired on every run for any distributor whose row never reached
@@ -1058,11 +1098,21 @@ final class RankBonusService
      * month counted three qualifications. Recomputing also survives
      * {@see replacePrematureFreeze()} discarding and rewriting a month's rows.
      *
-     * Already delivered/cancelled milestones are left untouched.
+     * A pending tranche the count no longer reaches (a rebuild removed the
+     * qualification that earned it) is deleted with an audit row (fail-safe
+     * principle 7). Delivered and cancelled milestones are never touched.
+     *
+     * @throws \RuntimeException when the rank has no tranche rows
      */
     private function syncLifetimeAward(int $distributorId, int $rank, string $monthStart): void
     {
-        $qualificationCount = RankBonusResult::query()
+        $tranches = $this->plan->lifetimeAwardTranches($rank);
+
+        if ($tranches === []) {
+            throw new \RuntimeException("lifetime_award_tranches has no rows for rank {$rank}");
+        }
+
+        $qualificationCount = max(1, RankBonusResult::query()
             ->where('distributor_id', $distributorId)
             ->where('rank_number', $rank)
             ->whereIn('status', [
@@ -1071,28 +1121,55 @@ final class RankBonusService
                 RankBonusResult::STATUS_REVERSED,
             ])
             ->distinct()
-            ->count('month_start');
+            ->count('month_start'));
 
-        $existing = LifetimeAwardMilestone::where('distributor_id', $distributorId)
-            ->where('rank_number', $rank)
-            ->first();
+        foreach ($tranches as $t) {
+            if ($qualificationCount < $t['tranche']) {
+                break;
+            }
 
-        if ($existing === null) {
-            LifetimeAwardMilestone::create([
-                'distributor_id' => $distributorId,
-                'rank_number' => $rank,
-                'triggered_month' => $monthStart,
-                'qualification_count' => max(1, $qualificationCount),
-                'award_description' => $this->plan->rankName($rank).' — non-cash reward per plan',
-                'status' => LifetimeAwardMilestone::STATUS_PENDING,
-            ]);
+            $milestone = LifetimeAwardMilestone::firstOrCreate(
+                ['distributor_id' => $distributorId, 'rank_number' => $rank, 'tranche' => $t['tranche']],
+                [
+                    'triggered_month' => $monthStart,
+                    'qualification_count' => $qualificationCount,
+                    'amount_paise' => $t['amount_paise'],
+                    'award_description' => sprintf('%s — tranche %s, merchandise per plan', $this->plan->rankName($rank), chr(64 + $t['tranche'])),
+                    'status' => LifetimeAwardMilestone::STATUS_PENDING,
+                ],
+            );
 
-            return;
+            // Only a pending tranche tracks the count (D4).
+            if ($milestone->status === LifetimeAwardMilestone::STATUS_PENDING) {
+                $milestone->update(['qualification_count' => $qualificationCount]);
+            }
         }
 
-        // Only a pending milestone tracks toward the release threshold (D4).
-        if ($existing->status === LifetimeAwardMilestone::STATUS_PENDING) {
-            $existing->update(['qualification_count' => max(1, $qualificationCount)]);
+        $orphans = LifetimeAwardMilestone::query()
+            ->where('distributor_id', $distributorId)
+            ->where('rank_number', $rank)
+            ->where('status', LifetimeAwardMilestone::STATUS_PENDING)
+            ->where('tranche', '>', $qualificationCount)
+            ->get(['id', 'tranche', 'amount_paise', 'triggered_month']);
+
+        if ($orphans->isNotEmpty()) {
+            AuditLog::create([
+                'action' => 'awards.tranche.unearned_pending_removed',
+                'subject_type' => 'distributor',
+                'subject_id' => $distributorId,
+                'details' => [
+                    'rank' => $rank,
+                    'qualification_count' => $qualificationCount,
+                    'removed' => $orphans->map(fn (LifetimeAwardMilestone $m): array => [
+                        'id' => $m->id,
+                        'tranche' => $m->tranche,
+                        'amount_paise' => $m->amount_paise,
+                        'triggered_month' => $m->triggered_month->toDateString(),
+                    ])->all(),
+                ],
+            ]);
+
+            LifetimeAwardMilestone::whereIn('id', $orphans->pluck('id'))->delete();
         }
     }
 

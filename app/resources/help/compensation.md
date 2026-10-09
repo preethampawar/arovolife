@@ -262,9 +262,29 @@ Fortune sits behind its own feature flag and is **OFF**; nothing is enrolled or 
 
 This engine replaced a fixed rupee amount per matrix level (₹3.39 … ₹51.00), which paid the same figure regardless of the month's volume — the old per-level amounts no longer exist anywhere in the plan configuration.
 
+## Lifetime Awards & Rewards — tranches, merchandise only (the client, 2026-10-09)
+
+A rank's Lifetime Award is paid in up to three **tranches of merchandise — never cash**. Tranche **A** is released on the distributor's 1st qualification for the rank, **B** on the 2nd, **C** on the 3rd: a tranche is releasable once the rank has been qualified at least as many times as its number. Ranks 1–2 have one tranche (released immediately), Ranks 3–5 two, Ranks 6–9 three. A rank's budget is the sum of its tranches.
+
+| Rank | Total | Tranche A | Tranche B | Tranche C |
+|---|---|---|---|---|
+| 1 Silver | ₹15,400 | ₹15,400 | | |
+| 2 Pearl | ₹36,000 | ₹36,000 | | |
+| 3 Emerald | ₹1,08,000 | ₹48,600 | ₹59,400 | |
+| 4 Gold | ₹3,24,000 | ₹1,45,800 | ₹1,78,200 | |
+| 5 Diamond | ₹9,72,000 | ₹4,37,400 | ₹5,34,600 | |
+| 6 Blue Diamond | ₹28,26,000 | ₹8,47,800 | ₹9,32,400 | ₹10,45,800 |
+| 7 Royal Diamond | ₹81,74,700 | ₹24,52,500 | ₹26,97,300 | ₹30,24,900 |
+| 8 Crown Diamond | ₹2,37,06,000 | ₹71,11,800 | ₹78,22,800 | ₹87,71,400 |
+| 9 Elite Diamond | ₹6,87,47,400 | ₹91,86,300 | ₹95,60,700 | ₹5,00,00,400 |
+
+The Rank Bonus run writes one milestone per earned tranche, in the month the rank's qualification count first reaches it, and records the tranche amount on the milestone. **Mark Delivered** records the tranche as handed over in merchandise: there is no cash option, no admin charge, no TDS and nothing is credited to the wallet. The merchandise list is pending from the client; until it arrives the **Reward catalog** holds one placeholder item per tranche, worth the tranche amount — edit an item there when the client supplies it. A rank with achievers but no tranche rows stops the Rank Bonus run with an error before anything is written (the Engine Runs page shows the failed run). If a month is rebuilt and a distributor's qualification count drops, a still-pending tranche they no longer earn is removed, with an audit row; a delivered or cancelled tranche is never touched.
+
+**"Release rule changed" badge.** Before 2026-10-09 an award was releasable only after 1 (Ranks 1–2), 2 (Ranks 3–5) or 3 (Ranks 6–9) qualifications. Every milestone that existed then became tranche A, which is releasable on the 1st qualification. A pending milestone that was not releasable under the old rule but is under the new one carries an amber **Release rule changed on (date)** badge on the Lifetime Awards page, so it is clear why it is suddenly due. Delivered milestones were not changed.
+
 ## Monthly payout (Groups B/C/D: GBB, Rank, Fortune, Awards, ADC)
 
-The **Awards & Rewards (AW & RW) Monthly Report** shows one **month header** per month on view — milestones triggered, delivered, the award worth at the ranks' current Lifetime Award budgets, cash rewards net, Computed — followed by how an award or reward is valued (milestone = first month a distributor qualifies for a rank; award worth = the rank's budget, goods from its catalogue; cash in lieu = worth − admin charge − TDS; nothing is funded from a BV pool) and a per-rank table for the month (milestones, budget each, cash rows, gross − TDS = net). Budgets are live rank-ladder settings, not frozen snapshots.
+The **Awards & Rewards (AW & RW) Monthly Report** shows one **month header** per month on view — milestones triggered, delivered, the award worth (Σ of the tranche amounts recorded on that month's milestones), Computed — followed by how an award is valued (tranche A/B/C = the rank's 1st/2nd/3rd qualification; award worth = the tranche amount, goods from the rank's catalogue; merchandise only, never cash; nothing is funded from a BV pool) and a per-rank, per-tranche table for the month (milestones, delivered, amount, the rank's current budget). Each row of the list shows its tranche and amount; there is no cash/goods filter.
 Runs monthly. A per-group admin charge (3%, each group capped ₹25,000/cycle) and TDS (5%) are applied. The repurchase deduction on GBB, Rank and Fortune was already taken at credit time (Awards and ADC carry none); the batch reports it and sweeps its ledger entries with the credits. Held lines and the list totals follow the same rules as the weekly batch.
 
 ### Arete Development Center (ADC) Bonus

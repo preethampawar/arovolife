@@ -13,10 +13,13 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $distributor_id
  * @property int $rank_number
- * @property string $triggered_month
+ * @property int $tranche
+ * @property int $amount_paise
+ * @property Carbon $triggered_month
  * @property int $qualification_count
  * @property string $award_description
  * @property string $status
+ * @property Carbon|null $released_rule_changed_at
  * @property string|null $disbursement_type
  * @property int|null $gross_paise
  * @property int $admin_charge_paise
@@ -40,10 +43,13 @@ final class LifetimeAwardMilestone extends Model
     protected $fillable = [
         'distributor_id',
         'rank_number',
+        'tranche',
+        'amount_paise',
         'triggered_month',
         'qualification_count',
         'award_description',
         'status',
+        'released_rule_changed_at',
         'disbursement_type',
         'gross_paise',
         'admin_charge_paise',
@@ -57,29 +63,29 @@ final class LifetimeAwardMilestone extends Model
     {
         return [
             'rank_number' => 'int',
+            'tranche' => 'int',
+            'amount_paise' => 'int',
+            'triggered_month' => 'date',
             'qualification_count' => 'int',
             'gross_paise' => 'int',
             'admin_charge_paise' => 'int',
             'tds_paise' => 'int',
             'net_paise' => 'int',
             'delivered_at' => 'datetime',
+            'released_rule_changed_at' => 'datetime',
         ];
     }
 
-    /** Minimum qualification_count required before this milestone may be delivered. */
-    public static function releaseThreshold(int $rank): int
-    {
-        return match (true) {
-            $rank <= 2 => 1,
-            $rank <= 5 => 2,
-            default => 3,
-        };
-    }
-
-    /** Whether the milestone has met its re-qualification requirement and may be delivered. */
+    /** A tranche is released once the rank has been qualified at least `tranche` times (client 2026-10-09). */
     public function isReleasable(): bool
     {
-        return $this->qualification_count >= self::releaseThreshold($this->rank_number);
+        return $this->qualification_count >= $this->tranche;
+    }
+
+    /** The tranche as the plan names it: 1 → A, 2 → B, 3 → C. */
+    public function trancheLetter(): string
+    {
+        return chr(64 + $this->tranche);
     }
 
     public function distributor(): BelongsTo

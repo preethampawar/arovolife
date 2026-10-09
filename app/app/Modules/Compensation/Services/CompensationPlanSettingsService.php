@@ -175,6 +175,9 @@ final class CompensationPlanSettingsService
     /** @var array<int, list<array{item: string, worth_paise: int}>>|null lifetime award items keyed by rank. */
     private ?array $lifetimeAwardCache = null;
 
+    /** @var array<int, list<array{tranche: int, amount_paise: int}>>|null lifetime award tranches keyed by rank. */
+    private ?array $lifetimeAwardTrancheCache = null;
+
     /** @var array<int, int>|null fortune matrix depth → points_per_member. */
     private ?array $fortunePointsCache = null;
 
@@ -453,6 +456,27 @@ final class CompensationPlanSettingsService
         }
 
         return $this->lifetimeAwardCache[$rank] ?? [];
+    }
+
+    /**
+     * The rank's Lifetime Award tranches from lifetime_award_tranches: A is
+     * released on the 1st qualification, B on the 2nd, C on the 3rd.
+     *
+     * @return list<array{tranche: int, amount_paise: int}> ordered by tranche (client 2026-10-09).
+     */
+    public function lifetimeAwardTranches(int $rank): array
+    {
+        if ($this->lifetimeAwardTrancheCache === null) {
+            $this->lifetimeAwardTrancheCache = [];
+            foreach (DB::table('lifetime_award_tranches')->orderBy('rank_number')->orderBy('tranche')->get() as $row) {
+                $this->lifetimeAwardTrancheCache[(int) $row->rank_number][] = [
+                    'tranche' => (int) $row->tranche,
+                    'amount_paise' => (int) $row->amount_paise,
+                ];
+            }
+        }
+
+        return $this->lifetimeAwardTrancheCache[$rank] ?? [];
     }
 
     public function minPayoutPaise(): int
