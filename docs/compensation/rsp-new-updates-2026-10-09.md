@@ -116,8 +116,9 @@ client reverses a decision — no deploy needed.
 | Award disbursement | merchandise only | cash path removed (Task 13): no `disbursement_type`, no `awards_credit` written, `comp.admin_charge.applies_to_awards` deleted | — | — | — |
 
 Retired statuses: `repurchase_held` / `repurchase_suspended` no longer exist on `gsb_cutoff_results` and
-`gbb_monthly_results` (migration 101200). `wallet_ledger_entries.type` still lists `awards_credit`
-(never written any more); narrowing that enum is a separate decision — see §10.
+`gbb_monthly_results` (migration 101200); `repurchase_held` no longer exists on `rank_bonus_results`
+(101400) and `awards_credit` no longer exists in `wallet_ledger_entries.type` (101300) — Task 14, §10.
+Still carrying `repurchase_held` (0 rows, nothing writes it): `fortune_bonus_results.status`.
 
 ## 5. What each task changed, and the test that pins the client figure
 
@@ -146,7 +147,7 @@ migration time. Production keeps its old milestone descriptions until the pre-la
 
 | Guard | Where | What it does |
 |---|---|---|
-| Cap settings below ₹1 or not a whole rupee | MSB and GBB point-value caps: `CompensationPlanSettingsService::msbPointValueCapPaise()` and `gbbPointValueCapPaise()` throw for < 100 or not a multiple of 100; the royalty daily cap `msbRoyaltyFailedDailyCapPaise()` throws for < 100 only (it is a day total, not a point value). Rank: the accessor `rankPointValueCapPaise()` returns the raw value and `RankBonusService::assertFreezable()` throws for < 100 only (a non-whole-rupee rank cap is not refused — §10). Registry `min` 100, `max` 100000000 on all four. | `RuntimeException` before any write; the run recorder marks the run failed and the 08:00 digest reports it. Never clamped. The Save form does not yet check whole rupees — a sub-rupee value is accepted on Save and refused at the next freeze (designed direction; §10). |
+| Cap settings below ₹1 or not a whole rupee | MSB and GBB point-value caps: `CompensationPlanSettingsService::msbPointValueCapPaise()` and `gbbPointValueCapPaise()` throw for < 100 or not a multiple of 100; the royalty daily cap `msbRoyaltyFailedDailyCapPaise()` throws for < 100 only (it is a day total, not a point value). Rank: `rankPointValueCapPaise()` throws for < 100 or not a multiple of 100 and `rankFirstPassMaxRank()` throws outside 1–9 (no clamp); `RankBonusService::assertFreezable()` reads both before any write (Task 14). Registry `min` 100, `max` 100000000, `multiple_of` 100 on all four caps; `comp.rank.first_pass_max_rank` `min` 1. | `RuntimeException` before any write; the run recorder marks the run failed and the 08:00 digest reports it. Never clamped or rounded. Settings Save refuses a non-whole-rupee cap with "Enter a whole-rupee amount (a multiple of 100 paise)." and keeps the old value (Task 14); a bad row reaching the engine by any other route is still refused at the freeze. |
 | Royalty rank outside 1–9 | `msbRoyaltyMinRank()` | `RuntimeException`, nothing written |
 | RAP ≤ 0 on a rank with achievers; missing tranche row for a rank with achievers | `RankBonusService::freezeMonth()` | `RuntimeException` before the first pool/pass/milestone row |
 | Unresolved repurchase cycle due on or before the month end | `IncomeEligibilityService::unresolvedDueOnOrBefore()` → `RepurchaseVerdictsPending` (GBB and Rank freezes) | refuses the freeze ("Run repurchase:evaluate first"); recorded as a failed run with the remedy |
@@ -206,10 +207,14 @@ artisan call on Cloudways; bare `php` there is 8.2.
      migration; every earlier one stays applied) → step 4 `repurchase:evaluate` → step 5 seeders if
      wanted → step 6 replay (`compensation:recompute-all` wipes the held/suspended and `awards_credit`
      rows and re-derives every month on the new rules; the engines never write the retired statuses)
-     → `migrate --force` again (101100/101200 now apply) → `migrate:status --pending` empty → step 7.
-     On production the counts are expected to be zero (the forfeit model shipped on 2026-09-07, before
-     production existed), so `migrate` runs through in one go; if a count is not zero, the pre-launch
-     wipe clears it — do not delete rows by hand.
+     → `migrate --force` again (101100/101200 and then **101300/101400** apply — 101300 refuses while
+     ANY `wallet_ledger_entries` row of type `awards_credit` exists, swept or not, and 101400 while any
+     `rank_bonus_results` row carries `repurchase_held`; the replay removes both) → `migrate:status
+     --pending` empty → step 7.
+     On production the counts are expected to be zero (the forfeit model shipped on 2026-09-07 and the
+     awards cash path never paid anyone, before production existed), so `migrate` runs through in one
+     go; if a count is not zero — including a paid-out `awards_credit` row, which 101300 refuses too —
+     the pre-launch wipe clears it; do not delete rows by hand.
    - The three award migrations (100800 / 100900 / 100950) are data migrations with audit rows; they
      keep an admin-edited catalogue and budgets and only replace the untouched defaults.
 4. `php artisan repurchase:evaluate` once, inside the same window (F-1): resolves every cycle the re-date
