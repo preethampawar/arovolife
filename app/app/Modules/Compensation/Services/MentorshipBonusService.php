@@ -52,6 +52,18 @@ final class MentorshipBonusService
      */
     private const WARM_CHUNK = 500;
 
+    /** The cut-off date (Y-m-d) {@see warmSponsorsFor()} last warmed, or null. */
+    private ?string $warmedDate = null;
+
+    /**
+     * Distributor id => true for every open `gsb_cutoff_deferrals` row on
+     * {@see $warmedDate} (F-4), or null until the first accrual of the warmed
+     * night reads it.
+     *
+     * @var array<int, bool>|null
+     */
+    private ?array $openDeferralIds = null;
+
     public function __construct(
         private readonly WalletService $wallet,
         private readonly BvLedgerService $bvLedger,
@@ -74,6 +86,10 @@ final class MentorshipBonusService
      * instead of one sponsor's accrual failing inside the per-accrual catch
      * while everyone else is priced without them.
      *
+     * Also marks the date as warmed for the F-4 stale-verdict lookup: the
+     * night's open deferrals are then read once, by the first accrual, instead
+     * of once per accrual (see {@see sponsorVerdictStale()}).
+     *
      * @param  array<int, int>  $sponseeIds
      *
      * @throws \RuntimeException when comp.msb.royalty_min_rank is outside 1–9 or comp.msb.royalty_failed_daily_cap_paise is below 100
@@ -88,6 +104,8 @@ final class MentorshipBonusService
 
         $this->plan->msbRoyaltyMinRank();
         $this->plan->msbRoyaltyFailedDailyCapPaise();
+
+        $this->warmedDate = $date->toDateString();
 
         if ($sponseeIds === []) {
             return;
@@ -121,6 +139,49 @@ final class MentorshipBonusService
     {
         $this->eligibility->forgetCycleCache();
         $this->cycles->forgetRanksAsOf();
+        $this->warmedDate = null;
+        $this->openDeferralIds = null;
+    }
+
+    /**
+     * F-4: was the sponsor's own evaluation deferred on $date? Then the
+     * repurchase verdict the accrual read is the one known at the time.
+     *
+     * On the warmed night the answer comes from one read of the date's open
+     * deferrals, taken lazily at the first accrual rather than in
+     * {@see warmSponsorsFor()}: the nightly writes tonight's deferrals AFTER
+     * warming (GsbDailyCutoffCommand), and the snapshot must include them.
+     * Every distributor's open row for the date is read, not just the warmed
+     * sponsors' — a set bounded by the deferral cap (≤ 1 % of the roster, ≥ 10)
+     * — so the answer is the live query's for any sponsor. A path that never
+     * warmed (single-distributor retry, backfill) or a different date keeps
+     * the per-accrual query.
+     *
+     * One case reads differently: a full re-run of a night that resolves a
+     * sponsor's own open deferral closes it in the middle of pass 2, so the
+     * live query's answer depended on roster order (a sponsee settled before
+     * the sponsor saw it open). The snapshot answers "open" for all of them —
+     * the order-independent reading, and the one that says so rather than
+     * hiding it.
+     */
+    private function sponsorVerdictStale(int $sponsorId, string $date): bool
+    {
+        if ($this->warmedDate !== $date) {
+            return GsbCutoffDeferral::query()
+                ->open()
+                ->where('distributor_id', $sponsorId)
+                ->where('cutoff_date', $date)
+                ->exists();
+        }
+
+        $this->openDeferralIds ??= GsbCutoffDeferral::query()
+            ->open()
+            ->where('cutoff_date', $date)
+            ->pluck('distributor_id')
+            ->mapWithKeys(fn ($id): array => [(int) $id => true])
+            ->all();
+
+        return isset($this->openDeferralIds[$sponsorId]);
     }
 
     /**
@@ -155,11 +216,7 @@ final class MentorshipBonusService
         // F-4: when the sponsor's own evaluation was deferred tonight, the
         // verdict above is the one known at the time — eligible or failed. No
         // machinery re-judges it; the row says so instead of hiding it.
-        $verdictStale = GsbCutoffDeferral::query()
-            ->open()
-            ->where('distributor_id', $owed['sponsor_id'])
-            ->whereDate('cutoff_date', $cutoffResult->cutoff_date->toDateString())
-            ->exists();
+        $verdictStale = $this->sponsorVerdictStale($owed['sponsor_id'], $cutoffResult->cutoff_date->toDateString());
 
         return new MsbAccrual(
             sponsorId: $owed['sponsor_id'],
@@ -345,9 +402,13 @@ final class MentorshipBonusService
                 // withheld for good. The cap comes before the repurchase
                 // deduction, which is taken from the capped gross below.
                 // lockForUpdate serialises two accruals of the same sponsor.
+                // cutoff_date is a DATE column: plain equality walks
+                // idx_mb_result_date_sponsor (cutoff_date, sponsor_id) and
+                // locks only that sponsor/day, where whereDate() wraps the
+                // column in a function and scans.
                 $alreadyPaid = (int) MentorshipBonusResult::query()
                     ->where('sponsor_id', $accrual->sponsorId)
-                    ->whereDate('cutoff_date', $accrual->cutoffDate)
+                    ->where('cutoff_date', $accrual->cutoffDate)
                     ->lockForUpdate()
                     ->sum('mb_gross_paise');
                 $room = max(0, $capPaise - $alreadyPaid);
@@ -534,7 +595,7 @@ final class MentorshipBonusService
     private function recordedRowFor(int $sponseeId, GsbCutoffResult $cutoffResult): ?MentorshipBonusResult
     {
         return MentorshipBonusResult::where('sponsee_id', $sponseeId)
-            ->whereDate('cutoff_date', $cutoffResult->cutoff_date->toDateString())
+            ->where('cutoff_date', $cutoffResult->cutoff_date->toDateString())
             ->whereIn('status', [MentorshipBonusResult::STATUS_CREDITED, MentorshipBonusResult::STATUS_REPURCHASE_GATED])
             ->first();
     }

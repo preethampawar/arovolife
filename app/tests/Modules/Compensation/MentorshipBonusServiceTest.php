@@ -866,3 +866,127 @@ it('marks the row when the sponsor\'s own evaluation was deferred that night (F-
     expect($stale->sponsor_verdict_stale)->toBeTrue()
         ->and($stale->sponsor_repurchase_failed)->toBeTrue();
 });
+
+// ── Warmed stale-verdict lookup (Task 14 L5) ────────────────────────────────
+// The F-4 open-deferral lookup is read once per warmed night instead of once
+// per accrual; a path that never warmed keeps the per-accrual query. Both give
+// the same answer.
+
+/**
+ * Three eligible sponsors with two slab-1 sponsees each on 10 Aug; the first
+ * sponsor's own evaluation is deferred that night when $deferFirst.
+ *
+ * @return array{0: list<Distributor>, 1: list<GsbCutoffResult>} [sponsors, cut-offs]
+ */
+function msbWarmNight(bool $deferFirst = true): array
+{
+    $sponsors = [];
+    $cutoffs = [];
+
+    foreach (range(1, 3) as $i) {
+        $sponsor = Distributor::factory()->create();
+        giveSponsorMinBv($sponsor);
+        $sponsors[] = $sponsor;
+
+        foreach (range(1, 2) as $ignored) {
+            $cutoffs[] = msbCreditedCutoff(msbSponseeFor($sponsor), 1, '2026-08-10');
+        }
+    }
+
+    if ($deferFirst) {
+        msbDeferSponsor($sponsors[0]);
+    }
+
+    return [$sponsors, $cutoffs];
+}
+
+function msbDeferSponsor(Distributor $sponsor): void
+{
+    GsbCutoffDeferral::create([
+        'distributor_id' => $sponsor->id,
+        'cutoff_date' => '2026-08-10',
+        'cause' => GsbCutoffDeferral::CAUSE_EVALUATION_FAILED,
+        'reserved_gsb_paise' => 0,
+        'reserved_msb_points' => 0,
+    ]);
+}
+
+/**
+ * Accrue every cut-off and return sponsee id → sponsorVerdictStale, plus how
+ * many queries touched gsb_cutoff_deferrals while doing so.
+ *
+ * @param  list<GsbCutoffResult>  $cutoffs
+ * @return array{0: array<int, bool>, 1: int}
+ */
+function msbAccrueStaleFlags(MentorshipBonusService $svc, array $cutoffs, ?callable $before = null): array
+{
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    if ($before !== null) {
+        $before();
+    }
+
+    $flags = [];
+    foreach ($cutoffs as $cutoff) {
+        $flags[(int) $cutoff->distributor_id] = $svc->accrueForSponsee((int) $cutoff->distributor_id, $cutoff)->sponsorVerdictStale;
+    }
+
+    $lookups = collect(DB::getQueryLog())->pluck('query')
+        ->filter(fn (string $q): bool => str_contains($q, 'gsb_cutoff_deferrals'))
+        ->count();
+    DB::disableQueryLog();
+
+    return [$flags, $lookups];
+}
+
+it('reads the open deferrals once per warmed night, not once per accrual, with the un-warmed answer (F-4)', function () {
+    [$sponsors, $cutoffs] = msbWarmNight();
+    $sponseeIds = array_map(fn (GsbCutoffResult $c): int => (int) $c->distributor_id, $cutoffs);
+    $svc = app(MentorshipBonusService::class);
+
+    [$warmed, $warmedLookups] = msbAccrueStaleFlags(
+        $svc,
+        $cutoffs,
+        fn () => $svc->warmSponsorsFor($sponseeIds, Carbon::parse('2026-08-10')),
+    );
+
+    // One lookup for the whole night, whatever the number of sponsees.
+    expect($warmedLookups)->toBe(1);
+
+    $svc->forgetSponsors();
+    [$fallback, $fallbackLookups] = msbAccrueStaleFlags($svc, $cutoffs);
+
+    // The never-warmed path asks per accrual and reaches the same verdicts.
+    expect($fallbackLookups)->toBe(count($cutoffs))
+        ->and($warmed)->toBe($fallback)
+        ->and(array_values($warmed))->toBe([true, true, false, false, false, false]);
+});
+
+it('sees a deferral written after the warm, as the nightly writes tonight\'s deferrals after warming (F-4)', function () {
+    [$sponsors, $cutoffs] = msbWarmNight(deferFirst: false);
+    $sponseeIds = array_map(fn (GsbCutoffResult $c): int => (int) $c->distributor_id, $cutoffs);
+    $svc = app(MentorshipBonusService::class);
+
+    $svc->warmSponsorsFor($sponseeIds, Carbon::parse('2026-08-10'));
+    msbDeferSponsor($sponsors[1]);
+
+    [$flags] = msbAccrueStaleFlags($svc, $cutoffs);
+
+    expect(array_values($flags))->toBe([false, false, true, true, false, false]);
+
+    $svc->forgetSponsors();
+});
+
+it('keeps the per-accrual lookup for a date the warm did not cover', function () {
+    [, $cutoffs] = msbWarmNight();
+    $svc = app(MentorshipBonusService::class);
+
+    $svc->warmSponsorsFor([(int) $cutoffs[0]->distributor_id], Carbon::parse('2026-08-09'));
+    [$flags, $lookups] = msbAccrueStaleFlags($svc, $cutoffs);
+
+    expect($lookups)->toBe(count($cutoffs))
+        ->and(array_values($flags))->toBe([true, true, false, false, false, false]);
+
+    $svc->forgetSponsors();
+});
