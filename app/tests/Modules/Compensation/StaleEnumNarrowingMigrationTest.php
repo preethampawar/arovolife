@@ -155,3 +155,67 @@ it('drops repurchase_held from the rank status enum when no row carries it and r
             ->toThrow(QueryException::class);
     }
 });
+
+function narrowFortuneRepurchaseHeldStatusMigration(): mixed
+{
+    return require base_path(
+        'app/Modules/Compensation/Database/Migrations/2026_10_09_101500_narrow_fortune_repurchase_held_status.php'
+    );
+}
+
+/** @return array<string, mixed> */
+function staleEnumFortuneRow(string $status): array
+{
+    return [
+        'distributor_id' => 990_103, 'month_start' => '2026-08-01', 'position' => 1, 'matrix_level' => 0, 'status' => $status,
+        'created_at' => now(), 'updated_at' => now(),
+    ];
+}
+
+const NARROWED_FORTUNE_STATUS_ENUM = "enum('pending','credited','skipped','repurchase_wallet_blocked')";
+
+it('refuses to drop the fortune repurchase_held status while a row still carries it, and changes nothing', function (): void {
+    narrowFortuneRepurchaseHeldStatusMigration()->down();
+    $before = staleEnumColumnType('fortune_bonus_results', 'status');
+    $auditBefore = AuditLog::where('action', 'plan.migration.narrow_fortune_repurchase_held_status')->count();
+
+    $id = DB::table('fortune_bonus_results')->insertGetId(staleEnumFortuneRow('repurchase_held'));
+
+    try {
+        expect(fn () => narrowFortuneRepurchaseHeldStatusMigration()->up())
+            ->toThrow(RuntimeException::class, 'Refusing to narrow the fortune bonus status enum: 1 fortune_bonus_results rows still carry repurchase_held. Replay or wipe history first.');
+
+        expect(staleEnumColumnType('fortune_bonus_results', 'status'))->toBe($before)
+            ->and(DB::table('fortune_bonus_results')->where('id', $id)->value('status'))->toBe('repurchase_held')
+            ->and(AuditLog::where('action', 'plan.migration.narrow_fortune_repurchase_held_status')->count())->toBe($auditBefore);
+    } finally {
+        DB::table('fortune_bonus_results')->where('id', $id)->delete();
+        narrowFortuneRepurchaseHeldStatusMigration()->up();
+    }
+})->skip(fn (): bool => DB::getDriverName() !== 'mysql', 'SQLite keeps the CHECK list without repurchase_held; a legacy row cannot exist there.');
+
+it('drops repurchase_held from the fortune status enum when no row carries it and records the run', function (): void {
+    narrowFortuneRepurchaseHeldStatusMigration()->down();
+
+    narrowFortuneRepurchaseHeldStatusMigration()->up();
+
+    $audit = (array) AuditLog::query()
+        ->where('action', 'plan.migration.narrow_fortune_repurchase_held_status')
+        ->orderByDesc('id')
+        ->firstOrFail()
+        ->details;
+
+    expect($audit)->toMatchArray([
+        'migration' => '2026_10_09_101500_narrow_fortune_repurchase_held_status',
+        'driver' => DB::getDriverName(),
+        'fortune_bonus_results' => ['column' => 'status', 'removed' => ['repurchase_held'], 'rows_carrying' => 0],
+    ])->and($audit['reason'])->toContain('forfeit spec');
+
+    if (DB::getDriverName() === 'mysql') {
+        expect(staleEnumColumnType('fortune_bonus_results', 'status'))->toBe(NARROWED_FORTUNE_STATUS_ENUM)
+            ->and(DB::selectOne("SHOW COLUMNS FROM fortune_bonus_results LIKE 'status'")->Default)->toBe('pending');
+
+        expect(fn () => DB::table('fortune_bonus_results')->insert(staleEnumFortuneRow('repurchase_held')))
+            ->toThrow(QueryException::class);
+    }
+});

@@ -117,8 +117,8 @@ client reverses a decision — no deploy needed.
 
 Retired statuses: `repurchase_held` / `repurchase_suspended` no longer exist on `gsb_cutoff_results` and
 `gbb_monthly_results` (migration 101200); `repurchase_held` no longer exists on `rank_bonus_results`
-(101400) and `awards_credit` no longer exists in `wallet_ledger_entries.type` (101300) — Task 14, §10.
-Still carrying `repurchase_held` (0 rows, nothing writes it): `fortune_bonus_results.status`.
+(101400) or `fortune_bonus_results` (101500) and `awards_credit` no longer exists in
+`wallet_ledger_entries.type` (101300) — Task 14 and its follow-up, §10.
 
 ## 5. What each task changed, and the test that pins the client figure
 
@@ -161,7 +161,9 @@ Audit actions added by this plan: `plan.migration.redate_open_repurchase_cycles_
 `plan.migration.lifetime_award_tranches`, `plan.migration.add_tranche_to_lifetime_award_milestones`,
 `plan.migration.lifetime_award_catalogue`, `plan.migration.drop_lifetime_award_cash_columns`,
 `plan.migration.remove_admin_charge_applies_to_awards_setting`,
-`plan.migration.narrow_legacy_repurchase_held_statuses`, `msb.credit.repurchase_gated`,
+`plan.migration.narrow_legacy_repurchase_held_statuses`, `plan.migration.narrow_awards_credit_wallet_type`,
+`plan.migration.narrow_rank_repurchase_held_status`, `plan.migration.narrow_fortune_repurchase_held_status`,
+`msb.credit.repurchase_gated`,
 `msb.royalty.cap_withheld`, `gbb.result.excluded_from_frozen_denominator`,
 `awards.tranche.unearned_pending_removed`.
 
@@ -207,9 +209,10 @@ artisan call on Cloudways; bare `php` there is 8.2.
      migration; every earlier one stays applied) → step 4 `repurchase:evaluate` → step 5 seeders if
      wanted → step 6 replay (`compensation:recompute-all` wipes the held/suspended and `awards_credit`
      rows and re-derives every month on the new rules; the engines never write the retired statuses)
-     → `migrate --force` again (101100/101200 and then **101300/101400** apply — 101300 refuses while
+     → `migrate --force` again (101100/101200 and then **101300/101400/101500** apply — 101300 refuses while
      ANY `wallet_ledger_entries` row of type `awards_credit` exists, swept or not, and 101400 while any
-     `rank_bonus_results` row carries `repurchase_held`; the replay removes both) → `migrate:status
+     `rank_bonus_results` row carries `repurchase_held`, 101500 likewise for `fortune_bonus_results`; the replay
+     removes all three) → `migrate:status
      --pending` empty → step 7.
      On production the counts are expected to be zero (the forfeit model shipped on 2026-09-07 and the
      awards cash path never paid anyone, before production existed), so `migrate` runs through in one
@@ -307,8 +310,11 @@ Every item below except the main-side ones was done on this branch by Task 14 (r
   Commits `chore(wallet): drop the unused awards_credit ledger type`, `chore(rank): drop the unused
   repurchase_held result status`. Note for staging/production: the rank value came from a migration
   (`2026_09_06_100001`) later deleted from the repo as unrun, so a database that never ran it sees 101400
-  as a restatement of its current enum — safe either way. Still open, out of scope:
-  `fortune_bonus_results.status` also carries `repurchase_held` (0 rows, nothing writes it).
+  as a restatement of its current enum — safe either way.
+- **Done (follow-up, user 2026-10-09)** — `repurchase_held` dropped from `fortune_bonus_results.status`
+  (`2026_10_09_101500`, `plan.migration.narrow_fortune_repurchase_held_status`), the Fortune twin of
+  101400: same count-and-refuse guard, MySQL-only narrowing (SQLite's CHECK never had the value),
+  `down()` widens back. Commit `chore(fortune): drop the unused repurchase_held result status`.
 - **Done (L2 + L8)** — Save refuses a cap that is not a multiple of 100 paise ("Enter a whole-rupee amount
   (a multiple of 100 paise).") on `comp.msb.point_value_cap_paise`, `comp.msb.royalty_failed_daily_cap_paise`,
   `comp.gbb.point_value_cap_paise`, `comp.rank.point_value_cap_paise` (registry key `multiple_of`);

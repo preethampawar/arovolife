@@ -204,7 +204,7 @@ All paths are under `app/app/Modules/`.
 | `mentorship_bonus_results.status` | `credited, failed, repurchase_gated` |
 | `rank_bonus_results.status` | `pending, credited, reversed, requalification_held, repurchase_wallet_blocked` (no `repurchase_held`, Task 14) |
 | `wallet_ledger_entries.type` | 16 values, **no `awards_credit`** (Task 14) |
-| `fortune_bonus_results.status` | `pending, credited, skipped, repurchase_wallet_blocked, repurchase_held`; still carries `repurchase_held` with 0 rows (§9) |
+| `fortune_bonus_results.status` | `pending, credited, skipped, repurchase_wallet_blocked` (no `repurchase_held` since follow-up migration 101500, 2026-10-09) |
 
 **Plan tables**
 - `rank_tiers.rap_points` = 72 / 189 / 468 / 1125 / 2583 / 5688 / 11934 / 23877 / 39501.
@@ -332,7 +332,7 @@ Console log for the session: `.playwright-mcp/console-2026-10-09T08-32-14-596Z.l
    - the award merchandise list (a placeholder catalogue is seeded);
    - the Lifetime Awards funding source (R-114, open);
    - the "Mentorship Royalty" naming in distributor-facing copy, which is deliberately not in this plan.
-6. **Not narrowed:** `fortune_bonus_results.status` still carries `repurchase_held` (0 rows on this stack; nothing writes it).
+6. **Resolved after sign-off (2026-10-09):** `fortune_bonus_results.status` narrowed by `2026_10_09_101500` (0 rows carried `repurchase_held`; same guard as 101400; tests in `StaleEnumNarrowingMigrationTest`).
 7. **No real two-pass month exists on any environment** (`rank_monthly_passes` = 0 rows here). Two-pass pricing is pinned only by tests (A2/C1/D2, the 50-draw property test, and the HTTP tests). The first real 1st-of-month freeze must be checked per spec §8 step 9. The §9 staging reconciliation is still to be done at deploy.
 8. **Task 14 deviations recorded in spec doc §10:**
    - 6.2 is pin-only (the "double row" did not reproduce);
