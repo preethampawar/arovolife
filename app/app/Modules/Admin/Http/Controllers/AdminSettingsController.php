@@ -62,6 +62,9 @@ final class AdminSettingsController extends Controller
      * while that flag is off the key is invisible on the settings page and a
      * 404 on the update endpoint — a disabled feature leaves no trace.
      *
+     * The optional 'multiple_of' field (int keys only) refuses a value that is
+     * not an exact multiple — 100 on a paise cap means whole rupees only.
+     *
      * @return array<string, array{
      *   group: string,
      *   owner?: string,
@@ -74,6 +77,7 @@ final class AdminSettingsController extends Controller
      *   options?: array<int, array{value: string, label: string, note?: string}>,
      *   min?: int,
      *   max?: int,
+     *   multiple_of?: int,
      *   format?: string,
      *   read_only?: bool,
      *   read_only_reason?: string,
@@ -1277,6 +1281,7 @@ final class AdminSettingsController extends Controller
                 'type' => 'int',
                 'min' => 100,
                 'max' => 100_000_000,
+                'multiple_of' => 100,
                 'default' => '12000',
             ],
             'comp.msb.royalty_min_rank' => [
@@ -1294,12 +1299,13 @@ final class AdminSettingsController extends Controller
                 'group' => 'compensation_plan',
                 'feature' => MentorshipBonusFeature::class,
                 'label' => 'Mentorship Royalty daily cap while failed (paise)',
-                'description' => 'Most a rank-6+ sponsor can earn from Mentorship on one cut-off day while their repurchase condition is failed. 360000 = ₹3,600 (₹1,08,000 a month). Not applied while the condition is met. Must be at least 100 (₹1): a lower value stops the cut-off instead of paying ₹0. 100000000 (₹10 lakh) effectively switches the cap off.',
+                'description' => 'Most a rank-6+ sponsor can earn from Mentorship on one cut-off day while their repurchase condition is failed. 360000 = ₹3,600 (₹1,08,000 a month). Not applied while the condition is met. Must be a whole rupee (a multiple of 100) and at least 100 (₹1): Save refuses any other value, and a lower value stops the cut-off instead of paying ₹0. 100000000 (₹10 lakh) effectively switches the cap off.',
                 'impact' => 'Takes effect from the next daily cut-off; days already settled are unchanged (each row keeps the cap it was priced with).',
                 'display_unit' => 'rupees',
                 'type' => 'int',
                 'min' => 100,
                 'max' => 100_000_000,
+                'multiple_of' => 100,
                 'default' => '360000',
             ],
             'comp.gbb.pool_rate_bp' => [
@@ -1322,6 +1328,7 @@ final class AdminSettingsController extends Controller
                 'type' => 'int',
                 'min' => 100,
                 'max' => 100_000_000,
+                'multiple_of' => 100,
                 'default' => '24000',
             ],
             'comp.rank.envelope_bp' => [
@@ -1359,22 +1366,23 @@ final class AdminSettingsController extends Controller
                 'group' => 'compensation_plan',
                 'feature' => RankBonusFeature::class,
                 'label' => 'Rank point value cap (paise)',
-                'description' => 'Highest rupee value one Rank Achievement Point can be worth in a month, in either pass. 20000 = ₹200. A pass whose pool ÷ points is above it is capped and the difference passes on (pass 1) or stays with the company (pass 2). At least 100 (₹1): a lower value stops the monthly freeze instead of paying ₹0. 100000000 (₹10 lakh) effectively switches the cap off.',
+                'description' => 'Highest rupee value one Rank Achievement Point can be worth in a month, in either pass. 20000 = ₹200. A pass whose pool ÷ points is above it is capped and the difference passes on (pass 1) or stays with the company (pass 2). Must be a whole rupee (a multiple of 100) and at least 100 (₹1): any other value stops the monthly freeze instead of paying ₹0 or a sub-rupee value. 100000000 (₹10 lakh) effectively switches the cap off.',
                 'impact' => 'Takes effect from the next monthly freeze; frozen months are unchanged.',
                 'display_unit' => 'rupees',
                 'type' => 'int',
                 'min' => 100,
                 'max' => 100_000_000,
+                'multiple_of' => 100,
                 'default' => '20000',
             ],
             'comp.rank.first_pass_max_rank' => [
                 'group' => 'compensation_plan',
                 'feature' => RankBonusFeature::class,
                 'label' => 'Ranks priced in pass 1 (1..N)',
-                'description' => 'The AGO offer and Ranks 1 to N are priced first from the whole Rank Bonus envelope; Ranks N+1 to 9 share what pass 1 left. Default 3. 9 puts every rank in one pass (one pool, same cap). The AGO offer always travels with Rank 1.',
+                'description' => 'The AGO offer and Ranks 1 to N are priced first from the whole Rank Bonus envelope; Ranks N+1 to 9 share what pass 1 left. Default 3. 9 puts every rank in one pass (one pool, same cap). The AGO offer always travels with Rank 1. Must be between 1 and 9: any other value stops the monthly freeze instead of guessing.',
                 'impact' => 'Takes effect from the next monthly freeze; frozen months are unchanged.',
                 'type' => 'int',
-                'min' => 0,
+                'min' => 1,
                 'max' => 9,
                 'default' => '3',
             ],
@@ -1918,7 +1926,7 @@ final class AdminSettingsController extends Controller
      * are reported via the by-ref $error so the caller can redirect back
      * with errors instead of throwing through abort().
      *
-     * @param  array{type: string, options?: array<int, array{value: string, label: string}>, min?: int, max?: int, format?: string, label: string}  $meta
+     * @param  array{type: string, options?: array<int, array{value: string, label: string}>, min?: int, max?: int, multiple_of?: int, format?: string, label: string}  $meta
      */
     private function normalizeIncomingValue(Request $request, array $meta, ?string &$error = null): string
     {
@@ -1947,6 +1955,17 @@ final class AdminSettingsController extends Controller
                 $max = $meta['max'] ?? PHP_INT_MAX;
                 if ($n < $min || $n > $max) {
                     $error = "{$meta['label']} must be between {$min} and {$max}.";
+
+                    return '';
+                }
+                // A paise cap the engines price in whole rupees: refuse the
+                // value here rather than let the freeze refuse it later.
+                // Fail closed — never round to the nearest multiple.
+                $multipleOf = $meta['multiple_of'] ?? null;
+                if ($multipleOf !== null && $n % $multipleOf !== 0) {
+                    $error = $multipleOf === 100
+                        ? 'Enter a whole-rupee amount (a multiple of 100 paise).'
+                        : "{$meta['label']} must be a multiple of {$multipleOf}.";
 
                     return '';
                 }

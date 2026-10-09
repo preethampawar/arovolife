@@ -266,8 +266,12 @@ final class RankBonusService
      * honestly. Returns the point value cap in force.
      *
      * Fail-safe principle 1: a cap under ₹1 would price every point at ₹0 and
-     * look like a quiet month, and a rank with payable achievers but no RAP
-     * would pay them nothing — both stop the freeze; neither is clamped.
+     * look like a quiet month, a sub-rupee cap would pay a value every display
+     * rounds away, a pass-1 ceiling outside 1–9 would silently re-split the
+     * passes, and a rank with payable achievers but no RAP would pay them
+     * nothing — all stop the freeze; none is clamped or rounded. The two
+     * settings are validated by their accessors, read here so the refusal
+     * lands before a premature freeze is replaced, not inside the freeze.
      *
      * Fail-safe principle 2: an unresolved repurchase cycle reads as eligible
      * in IncomeEligibilityService::verdictAsOf(), and the frozen roster is
@@ -284,9 +288,7 @@ final class RankBonusService
     private function assertFreezable(string $monthStart, Carbon $monthEnd, array $payable): int
     {
         $capPaise = $this->plan->rankPointValueCapPaise();
-        if ($capPaise < 100) {
-            throw new \RuntimeException("comp.rank.point_value_cap_paise must be at least 100 paise (₹1); refusing to freeze the Rank Bonus for {$monthStart} with a cap of {$capPaise}");
-        }
+        $this->plan->rankFirstPassMaxRank();
 
         foreach (self::RANKS as $rank) {
             if (($payable[$rank] ?? []) !== [] && $this->plan->rankRapPoints($rank) <= 0) {

@@ -106,6 +106,47 @@ it('exposes RAP points for every rank per the 05-10-2026 Rank Income Point Syste
         ->and(method_exists($plan, 'rankPoolPct'))->toBeFalse();
 });
 
+it('refuses a Rank point value cap below ₹1 or not a whole rupee instead of clamping it (F-6)', function (string $value, string $message) {
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.point_value_cap_paise'],
+        ['value' => $value, 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+
+    expect(fn () => app(CompensationPlanSettingsService::class)->rankPointValueCapPaise())
+        ->toThrow(RuntimeException::class, $message);
+})->with([
+    'below ₹1' => ['50', 'comp.rank.point_value_cap_paise must be at least 100 paise (₹1); refusing to price the Rank Bonus with a cap of 50'],
+    'not a whole rupee' => ['20050', 'comp.rank.point_value_cap_paise must be a whole rupee (a multiple of 100 paise); refusing to price the Rank Bonus with a cap of 20050'],
+]);
+
+it('accepts a whole-rupee Rank point value cap', function (string $value, int $expected) {
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.point_value_cap_paise'],
+        ['value' => $value, 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+
+    expect(app(CompensationPlanSettingsService::class)->rankPointValueCapPaise())->toBe($expected);
+})->with(['₹200' => ['20000', 20_000], '₹1' => ['100', 100], 'neutralise' => ['100000000', 100_000_000]]);
+
+it('refuses a pass-1 rank ceiling outside 1–9 instead of clamping it (F-6)', function (string $value) {
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.first_pass_max_rank'],
+        ['value' => $value, 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+
+    expect(fn () => app(CompensationPlanSettingsService::class)->rankFirstPassMaxRank())
+        ->toThrow(RuntimeException::class, 'comp.rank.first_pass_max_rank must be between 1 and 9; refusing to price the Rank Bonus with '.$value);
+})->with(['zero' => '0', 'ten' => '10']);
+
+it('returns a pass-1 rank ceiling inside 1–9 as stored', function (string $value, int $expected) {
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.first_pass_max_rank'],
+        ['value' => $value, 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+
+    expect(app(CompensationPlanSettingsService::class)->rankFirstPassMaxRank())->toBe($expected);
+})->with(['one' => ['1', 1], 'three' => ['3', 3], 'nine' => ['9', 9]]);
+
 // ── Deduction helpers (basis-point math) ────────────────────────────────────
 
 it('computes TDS as a basis-point share of the supplied base', function () {

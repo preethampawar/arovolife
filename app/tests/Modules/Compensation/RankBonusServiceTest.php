@@ -1260,6 +1260,50 @@ it('refuses a point value cap below ₹1 before any write (fail-safe principle 1
         ->and(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(0);
 });
 
+it('refuses a point value cap that is not a whole rupee before any write (fail-safe principle 1)', function (): void {
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.point_value_cap_paise'],
+        ['value' => '20050', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+    $m = '2026-09-01';
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-09-10'));
+    seedRankCohort(1, 1, $m);
+    seedAogoGrants(1, $m);
+    $grantsBefore = RankAogoGrant::count();
+    $ledgerBefore = WalletLedgerEntry::count();
+
+    expect(fn () => app(RankBonusService::class)->runForMonth(Carbon::parse($m)))
+        ->toThrow(RuntimeException::class, 'comp.rank.point_value_cap_paise must be a whole rupee (a multiple of 100 paise)');
+
+    expect(RankMonthlyPass::count())->toBe(0)
+        ->and(RankMonthlyPool::count())->toBe(0)
+        ->and(RankBonusResult::count())->toBe(0)
+        ->and(RankAogoGrant::count())->toBe($grantsBefore)
+        ->and(WalletLedgerEntry::count())->toBe($ledgerBefore);
+});
+
+it('refuses a pass-1 rank ceiling below 1 before any write (fail-safe principle 1)', function (): void {
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.first_pass_max_rank'],
+        ['value' => '0', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+    $m = '2026-09-01';
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-09-10'));
+    seedRankCohort(1, 1, $m);
+    seedAogoGrants(1, $m);
+    $grantsBefore = RankAogoGrant::count();
+    $ledgerBefore = WalletLedgerEntry::count();
+
+    expect(fn () => app(RankBonusService::class)->runForMonth(Carbon::parse($m)))
+        ->toThrow(RuntimeException::class, 'comp.rank.first_pass_max_rank must be between 1 and 9');
+
+    expect(RankMonthlyPass::count())->toBe(0)
+        ->and(RankMonthlyPool::count())->toBe(0)
+        ->and(RankBonusResult::count())->toBe(0)
+        ->and(RankAogoGrant::count())->toBe($grantsBefore)
+        ->and(WalletLedgerEntry::count())->toBe($ledgerBefore);
+});
+
 it('refuses a rank with payable achievers but no RAP points before any write (fail-safe principle 1)', function (): void {
     DB::table('rank_tiers')->where('rank_number', 4)->update(['rap_points' => 0]);
     $m = '2026-09-01';

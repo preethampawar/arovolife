@@ -672,22 +672,48 @@ final class CompensationPlanSettingsService
 
     /**
      * Highest value one Rank Achievement Point can be worth (client 2026-10-05:
-     * ₹200 = 20,000 paise). Returned raw: the monthly freeze refuses a value
-     * under 100 paise (fail-safe principle 1 / F-6) rather than this accessor
-     * clamping it — a clamp pays a number nobody chose.
+     * ₹200 = 20,000 paise).
+     * Fail-safe principle 1 / F-6: a cap under ₹1 would price every point at ₹0
+     * and look like a quiet month, so it stops the freeze instead of being
+     * clamped — a clamp pays a number nobody chose.
+     *
+     * Point values are whole rupees (Money::floorRupee), so the cap must be a
+     * whole rupee too — otherwise a capped pass would pay a sub-rupee value
+     * that every display rounds away.
+     *
+     * @throws \RuntimeException when the stored value is below 100 paise or not a whole rupee
      */
     public function rankPointValueCapPaise(): int
     {
-        return $this->scalarInt('comp.rank.point_value_cap_paise');
+        $cap = $this->scalarInt('comp.rank.point_value_cap_paise');
+        if ($cap < 100) {
+            throw new \RuntimeException('comp.rank.point_value_cap_paise must be at least 100 paise (₹1); refusing to price the Rank Bonus with a cap of '.$cap);
+        }
+        if ($cap % 100 !== 0) {
+            throw new \RuntimeException('comp.rank.point_value_cap_paise must be a whole rupee (a multiple of 100 paise); refusing to price the Rank Bonus with a cap of '.$cap);
+        }
+
+        return $cap;
     }
 
     /**
      * Ranks 1..N (plus the AGO offer) are priced in pass 1 from the whole
      * envelope; ranks N+1..9 share the remainder in pass 2. 9 = one pass.
+     *
+     * Fail-safe principle 1 / F-6: a value outside 1–9 stops the freeze rather
+     * than being clamped — 0 would silently move the AGO offer and Rank 1 into
+     * pass 2, 10 would silently mean 9.
+     *
+     * @throws \RuntimeException when the stored value is outside 1–9
      */
     public function rankFirstPassMaxRank(): int
     {
-        return min(9, max(0, $this->scalarInt('comp.rank.first_pass_max_rank')));
+        $rank = $this->scalarInt('comp.rank.first_pass_max_rank');
+        if ($rank < 1 || $rank > 9) {
+            throw new \RuntimeException('comp.rank.first_pass_max_rank must be between 1 and 9; refusing to price the Rank Bonus with '.$rank);
+        }
+
+        return $rank;
     }
 
     /**
