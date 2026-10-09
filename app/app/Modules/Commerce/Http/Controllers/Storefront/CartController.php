@@ -143,6 +143,8 @@ final class CartController extends Controller
 
     public function update(Request $request, CartItem $item): RedirectResponse
     {
+        $this->ensureOwnLine($request, $item);
+
         $validated = $request->validate([
             'qty' => ['required', 'integer', 'min:0', 'max:10'],
         ]);
@@ -159,11 +161,22 @@ final class CartController extends Controller
         return redirect()->route('shop.cart');
     }
 
-    public function remove(CartItem $item): RedirectResponse
+    public function remove(Request $request, CartItem $item): RedirectResponse
     {
+        $this->ensureOwnLine($request, $item);
+
         $this->cartService->remove($item);
 
         return redirect()->route('shop.cart');
+    }
+
+    /**
+     * A cart line may be changed only from the cart it belongs to: any other
+     * visitor's line is a 404, so line ids can't be probed or tampered with.
+     */
+    private function ensureOwnLine(Request $request, CartItem $item): void
+    {
+        abort_unless((int) $item->cart_id === $this->cartService->findCart($request)?->id, 404);
     }
 
     public function clearAll(Request $request): RedirectResponse

@@ -126,7 +126,7 @@ it('highlights the just-added line on the cart page (and not other lines)', func
 it('increases the line quantity (the + button sends qty+1)', function (): void {
     $item = cqtItem(2);
 
-    $this->patch(route('shop.cart.update', $item), ['qty' => 3])
+    $this->withCookie(AttributionService::ANON_COOKIE, $item->cart->anonymous_key)->patch(route('shop.cart.update', $item), ['qty' => 3])
         ->assertRedirect(route('shop.cart'));
 
     expect($item->fresh()->qty)->toBe(3);
@@ -135,7 +135,7 @@ it('increases the line quantity (the + button sends qty+1)', function (): void {
 it('decreases the line quantity (the − button sends qty-1)', function (): void {
     $item = cqtItem(3);
 
-    $this->patch(route('shop.cart.update', $item), ['qty' => 2]);
+    $this->withCookie(AttributionService::ANON_COOKIE, $item->cart->anonymous_key)->patch(route('shop.cart.update', $item), ['qty' => 2]);
 
     expect($item->fresh()->qty)->toBe(2);
 });
@@ -144,7 +144,7 @@ it('removes the line when the quantity reaches 0', function (): void {
     $item = cqtItem(1);
     $id = $item->id;
 
-    $this->patch(route('shop.cart.update', $item), ['qty' => 0]);
+    $this->withCookie(AttributionService::ANON_COOKIE, $item->cart->anonymous_key)->patch(route('shop.cart.update', $item), ['qty' => 0]);
 
     expect(CartItem::find($id))->toBeNull();
 });
@@ -152,7 +152,7 @@ it('removes the line when the quantity reaches 0', function (): void {
 it('rejects a quantity above the max of 10', function (): void {
     $item = cqtItem(10);
 
-    $this->patch(route('shop.cart.update', $item), ['qty' => 11])
+    $this->withCookie(AttributionService::ANON_COOKIE, $item->cart->anonymous_key)->patch(route('shop.cart.update', $item), ['qty' => 11])
         ->assertSessionHasErrors('qty');
 
     expect($item->fresh()->qty)->toBe(10);
