@@ -797,7 +797,7 @@ Update `eligibleEarners()` and the class docblock lines 34–40.
 - Modify: `resources/help/compensation.md`
 - Test: `GrowthBoosterBonusServiceTest.php`, `AdminGbbInputOutputTest.php`
 
-- [ ] **Step 1: Failing test**
+- [x] **Step 1: Failing test**
 
 ```php
 it('blocks a distributor who is failed on the last day of the month (A-G1) and keeps them out of the denominator', function (): void {
@@ -818,11 +818,11 @@ it('blocks a distributor who is failed on the last day of the month (A-G1) and k
 });
 ```
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Status + migration.** Add `public const string STATUS_REPURCHASE_FAILED_BLOCKED = 'repurchase_failed_blocked';` to `GbbMonthlyResult` and to `POOL_EXCLUDED_STATUSES`. Migration widens the `status` column: on MySQL `ALTER TABLE gbb_monthly_results MODIFY status ENUM(<existing values>, 'repurchase_failed_blocked')` (copy the existing list from the create/alter migrations); on SQLite the column is a string with a CHECK — follow the pattern of the most recent migration that widened a GBB/rank status (grep `Database/Migrations` for `repurchase_wallet_blocked`).
+- [x] **Step 3: Status + migration.** Add `public const string STATUS_REPURCHASE_FAILED_BLOCKED = 'repurchase_failed_blocked';` to `GbbMonthlyResult` and to `POOL_EXCLUDED_STATUSES`. Migration widens the `status` column: on MySQL `ALTER TABLE gbb_monthly_results MODIFY status ENUM(<existing values>, 'repurchase_failed_blocked')` (copy the existing list from the create/alter migrations); on SQLite the column is a string with a CHECK — follow the pattern of the most recent migration that widened a GBB/rank status (grep `Database/Migrations` for `repurchase_wallet_blocked`).
 
-- [ ] **Step 4: Roster.** `GbbMonthRoster` gains `public Collection $repurchaseFailed` (distributor → agp) and `totalAgp()` stays `payable->sum()`. In `resolveRoster()` after `$earners`:
+- [x] **Step 4: Roster.** `GbbMonthRoster` gains `public Collection $repurchaseFailed` (distributor → agp) and `totalAgp()` stays `payable->sum()`. In `resolveRoster()` after `$earners`:
 
 ```php
         // Client 2026-10-09 (A-G1): the repurchase CONDITION must hold, not only
@@ -838,7 +838,7 @@ it('blocks a distributor who is failed on the last day of the month (A-G1) and k
 ```
 then the wallet gate as before; pass `repurchaseFailed: $repurchaseFailed` to the roster, and in `freezeMonth()` write them with `writeRosterRow(..., 0, GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED)`. Add `'repurchase_failed' => count` to the `runForMonth()` return array and the docblock shape (both places, lines 108 and 435).
 
-- [ ] **Step 4a: Prerequisite guard (fail-safe principle 2).** An unresolved cycle reads as *eligible*, so a GBB freeze that runs before the 00:05 `repurchase:evaluate` has resolved the month's last-day verdicts would pay distributors who are about to be failed. Add to `IncomeEligibilityService`:
+- [x] **Step 4a: Prerequisite guard (fail-safe principle 2).** An unresolved cycle reads as *eligible*, so a GBB freeze that runs before the 00:05 `repurchase:evaluate` has resolved the month's last-day verdicts would pay distributors who are about to be failed. Add to `IncomeEligibilityService`:
 
 ```php
     /**
@@ -878,9 +878,9 @@ In `GrowthBoosterBonusService::resolveRoster()` before the verdict loop:
 ```
 Test: an earner with an **active** cycle due on the month's last day and no `resolved_at` → `runForMonth()` throws, no pool row, no roster row. Task 9 adds the same guard to the Rank freeze over its payable ids.
 
-- [ ] **Step 5: Report** — in `AdminGbbInputOutputController` wherever `wallet_blocked` is counted, count the new status the same way and show it as "Blocked (repurchase failed)". Help: "Growth Booster also requires the repurchase condition to be met at the month end."
+- [x] **Step 5: Report** — in `AdminGbbInputOutputController` wherever `wallet_blocked` is counted, count the new status the same way and show it as "Blocked (repurchase failed)". Help: "Growth Booster also requires the repurchase condition to be met at the month end."
 
-- [ ] **Step 6: Run** `--filter=Gbb`, `--filter=GrowthBooster`, `MonthlyEnginesFrozenMonthTest`, `MonthRebuildTest` → PASS. **Commit** `feat(gbb): month-end repurchase verdict gate` with the compliance trailer.
+- [x] **Step 6: Run** `--filter=Gbb`, `--filter=GrowthBooster`, `MonthlyEnginesFrozenMonthTest`, `MonthRebuildTest` → PASS. **Commit** `feat(gbb): month-end repurchase verdict gate` with the compliance trailer.
 
 ---
 
