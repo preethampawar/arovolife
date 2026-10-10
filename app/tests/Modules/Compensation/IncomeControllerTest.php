@@ -1343,6 +1343,55 @@ it('tells a royalty sponsor what the daily Mentorship Royalty cap withheld on a 
         ->assertDontSee('sponsor_repurchase_failed');
 });
 
+function seedIncomeRank(int $distributorId, int $rank, string $monthStart): void
+{
+    disableTestForeignKeys();
+    try {
+        DB::table('rank_qualifications')->insert([
+            'distributor_id' => $distributorId,
+            'rank_number' => $rank,
+            'month_start' => $monthStart,
+            'occurrence_in_month' => 1,
+            'is_carry_forward' => false,
+            'status' => 'qualified',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+}
+
+it('calls the income Mentorship Royalty from the royalty rank (client 2026-10-09, Q2)', function (): void {
+    ['user' => $user, 'distributorId' => $sponsorId] = incomeDistributor();
+    $this->actingAs($user);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    // Rank 6 decided in an earlier month: a royalty sponsor today.
+    seedIncomeRank($sponsorId, 6, Carbon::today('Asia/Kolkata')->subMonthNoOverflow()->startOfMonth()->toDateString());
+
+    $this->get(route('income.mentorship', ['f' => 1]))
+        ->assertOk()
+        ->assertSee('<title>My Income — Mentorship Royalty', false)
+        ->assertSee('No Mentorship Royalty yet.');
+});
+
+it('keeps the Mentorship Bonus name below the royalty rank and for a rank this month has not decided yet', function (): void {
+    ['user' => $user, 'distributorId' => $sponsorId] = incomeDistributor();
+    $this->actingAs($user);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    $today = Carbon::today('Asia/Kolkata');
+    seedIncomeRank($sponsorId, 5, $today->copy()->subMonthNoOverflow()->startOfMonth()->toDateString());
+    // A Rank 6 row for the current month is decided only on the 1st of next month.
+    seedIncomeRank($sponsorId, 6, $today->copy()->startOfMonth()->toDateString());
+
+    $this->get(route('income.mentorship', ['f' => 1]))
+        ->assertOk()
+        ->assertSee('No Mentorship Bonus yet.')
+        ->assertDontSee('Mentorship Royalty');
+});
+
 it('dates the wallet ledger by when the money was earned, and names its bonus month and payout batch (F63)', function (): void {
     ['user' => $user, 'distributorId' => $id] = incomeDistributor();
 

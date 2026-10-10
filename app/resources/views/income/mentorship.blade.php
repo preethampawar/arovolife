@@ -1,9 +1,9 @@
 @extends('layouts.app')
-@section('title', 'My Income — Mentorship Bonus')
+@section('title', 'My Income — '.$incomeLabel)
 
 @section('content')
 <div>
-    <h1 class="text-2xl font-bold text-gray-900 mb-2">Mentorship Bonus</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ $incomeLabel }}</h1>
 
     @include('income._tabs')
 
@@ -19,7 +19,7 @@
         <div class="bg-sky-100 rounded-2xl border border-sky-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">
                 MB Credited This Month
-                <x-help-tip text="Mentorship Bonus that landed in your main wallet this month — gross minus the repurchase deduction taken when each bonus was credited." />
+                <x-help-tip text="Mentorship income that landed in your main wallet this month — gross minus the repurchase deduction taken when each bonus was credited." />
             </p>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($mbThisMonthPaise ?? 0) / 100, 2) }}</p>
         </div>
@@ -50,7 +50,7 @@
 
     @if($rows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <p class="text-gray-600 font-medium">No Mentorship Bonus yet.</p>
+            <p class="text-gray-600 font-medium">No {{ $incomeLabel }} yet.</p>
             <p class="text-sm text-gray-600 mt-1">Your bonus will appear here once one of the distributors you directly sponsored earns their first Genos Sales Bonus.</p>
         </div>
     @else

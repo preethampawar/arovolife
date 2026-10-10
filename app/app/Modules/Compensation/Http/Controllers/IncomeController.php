@@ -305,7 +305,28 @@ final class IncomeController extends Controller
             $activeSponsees = 0;
         }
 
-        return view('income.mentorship', compact('distributor', 'rows', 'mbThisMonthPaise', 'mbLifetimePaise', 'activeSponsees'));
+        $incomeLabel = $this->mentorshipIncomeLabel($distributor->id);
+
+        return view('income.mentorship', compact('distributor', 'rows', 'mbThisMonthPaise', 'mbLifetimePaise', 'activeSponsees', 'incomeLabel'));
+    }
+
+    /**
+     * The client 2026-10-09 (Q2): from the royalty rank the income is called
+     * "Mentorship Royalty". Copy only. The rank is the one the cut-off reads
+     * today ({@see RepurchaseCycleService::rankAsOf()}), so the page and the
+     * engine never disagree about who is a royalty sponsor.
+     */
+    private function mentorshipIncomeLabel(int $distributorId): string
+    {
+        try {
+            $royalty = app(RepurchaseCycleService::class)->rankAsOf($distributorId, Carbon::today('Asia/Kolkata'))
+                >= app(CompensationPlanSettingsService::class)->msbRoyaltyMinRank();
+        } catch (\RuntimeException) {
+            // A royalty rank outside 1–9 stops the cut-off; the page keeps the plain name.
+            $royalty = false;
+        }
+
+        return $royalty ? 'Mentorship Royalty' : 'Mentorship Bonus';
     }
 
     public function growthBooster(Request $request): View
