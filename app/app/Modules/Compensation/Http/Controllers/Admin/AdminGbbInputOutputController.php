@@ -45,7 +45,6 @@ final class AdminGbbInputOutputController extends Controller
     private const EARNER_STATUSES = [
         GbbMonthlyResult::STATUS_CREDITED,
         GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED,
-        GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED,
     ];
 
     public function __construct(private readonly GrowthBoosterBonusService $gbb) {}

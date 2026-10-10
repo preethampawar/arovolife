@@ -34,7 +34,7 @@ final class AdminGbbCalculationController extends Controller
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
-            'status' => ['nullable', 'in:pending,credited,reversed,repurchase_wallet_blocked,repurchase_failed_blocked'],
+            'status' => ['nullable', 'in:pending,credited,reversed,repurchase_wallet_blocked'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));
@@ -68,7 +68,7 @@ final class AdminGbbCalculationController extends Controller
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
-            'status' => ['nullable', 'in:pending,credited,reversed,repurchase_wallet_blocked,repurchase_failed_blocked'],
+            'status' => ['nullable', 'in:pending,credited,reversed,repurchase_wallet_blocked'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));

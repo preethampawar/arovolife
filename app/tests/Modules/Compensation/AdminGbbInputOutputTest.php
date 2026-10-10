@@ -102,7 +102,6 @@ it('renders a month block with the frozen pool figures and per-earner rows', fun
 
     gbbIoRow('200000030', 'Credited Earner', 60, 5_000, $monthStart, GbbMonthlyResult::STATUS_CREDITED);
     gbbIoRow('200000031', 'Wallet Blocked Earner', 40, 5_000, $monthStart, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED);
-    gbbIoRow('200000032', 'Failed Blocked Earner', 25, 5_000, $monthStart, GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED);
 
     $res = $this->actingAs(gbbIoAdmin())
         ->get(route('admin.compensation.gbb-input-output.index'))
@@ -119,7 +118,6 @@ it('renders a month block with the frozen pool figures and per-earner rows', fun
     $res->assertSee('Credited Earner');
     $res->assertSee('3,000.00');   // 60 × ₹50
     $res->assertSee('Blocked — repurchase wallet not ₹0');
-    $res->assertSee('Blocked — repurchase condition failed');
 
     // The retired held/suspended states leave no trace on the page.
     $res->assertDontSee('Held (legacy)');
@@ -350,35 +348,4 @@ it('lists a repurchase-wallet-blocked earner so the blocked AGP is visible on th
         ->assertSee('Blocked Earner')
         ->assertSee('AD-IO-BLK2')
         ->assertSee('Blocked — repurchase wallet not ₹0', false);
-});
-
-it('lists a repurchase-failed earner at ₹0 with its own badge and a count banner (A-G1)', function () {
-    $monthStart = '2026-07-01';
-    gbbIoPool($monthStart, 60, 5_000);
-    gbbIoRow('AD-IO-RF1', 'Paid Earner', 60, 5_000, $monthStart, GbbMonthlyResult::STATUS_CREDITED);
-    gbbIoRow('AD-IO-RF2', 'Failed Earner', 17, 5_000, $monthStart, GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED);
-
-    $res = $this->actingAs(gbbIoAdmin())
-        ->get(route('admin.compensation.gbb-input-output.index'))
-        ->assertOk()
-        ->assertSee('Failed Earner')
-        ->assertSee('AD-IO-RF2')
-        ->assertSee('>17<', false)
-        ->assertSee('Blocked — repurchase condition failed', false)
-        ->assertSee('distributor blocked (repurchase failed)', false);
-
-    // The failed row carries no income: the only paid figure is the credited earner's ₹3,000.
-    expect(GbbMonthlyResult::where('status', GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED)->value('gbb_gross_paise'))->toBe(0);
-    $res->assertSee('₹0.00', false);
-
-    $rows = XlsxReader::rows($this->actingAs(gbbIoAdmin())
-        ->get(route('admin.compensation.gbb-input-output.export'))
-        ->assertOk()
-        ->streamedContent());
-
-    $failedRow = collect($rows)->first(fn (array $row): bool => ($row[7] ?? null) === 'AD-IO-RF2');
-    expect($failedRow)->not->toBeNull()
-        ->and($failedRow[9])->toBe('17')
-        ->and($failedRow[10])->toBe('0')
-        ->and($failedRow[13])->toBe(GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED);
 });

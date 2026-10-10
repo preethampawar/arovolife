@@ -21,23 +21,20 @@
         'pending' => 'Pending',
         'reversed' => 'Reversed',
         'repurchase_wallet_blocked' => 'Repurchase wallet not cleared at month end — not paid',
-        'repurchase_failed_blocked' => 'Repurchase condition not met at month end — not paid',
     ];
     $statusBadges = [
         'credited' => 'bg-green-100 text-green-700',
         'pending' => 'bg-amber-100 text-amber-700',
         'reversed' => 'bg-red-100 text-red-700',
         'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
-        'repurchase_failed_blocked' => 'bg-red-100 text-red-700',
     ];
     $statusTips = [
         'repurchase_wallet_blocked' => 'Your repurchase wallet still held a balance at the last moment of this month, so the month\'s Growth Booster Bonus was not paid. Clearing the repurchase wallet before your cycle\'s last day is one of the published monthly conditions; a month recorded this way is final and is not released later.',
-        'repurchase_failed_blocked' => 'Your repurchase condition (the required BV within the cycle and a ₹0 repurchase wallet at its end) was not met on the last day of this month, so the month\'s Growth Booster Bonus was not paid. A month recorded this way is final and is not released later.',
     ];
     // Statuses that will never be credited. They must not carry the
     // "AGP × point value" income line — it would state an amount as though it
     // were owed.
-    $unpayableStatuses = ['repurchase_wallet_blocked', 'repurchase_failed_blocked'];
+    $unpayableStatuses = ['repurchase_wallet_blocked'];
 @endphp
 <div>
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Growth Booster Bonus</h1>

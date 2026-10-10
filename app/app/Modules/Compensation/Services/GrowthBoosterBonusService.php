@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
-use App\Modules\Compensation\Console\Commands\GbbMonthlyRunCommand;
-use App\Modules\Compensation\Exceptions\RepurchaseVerdictsPending;
 use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Models\GsbCutoffResult;
@@ -47,32 +45,23 @@ use Illuminate\Support\Facades\Log;
  * the next month on, never again (the client 2026-10-09; replaces the
  * previous-month rule, under which a lapsed ranker became eligible again).
  *
- * REPURCHASE — two month-end gates, both decided once at freeze time and both
- * written as a pool-EXCLUDED roster row (gross 0, AGP out of the denominator so
- * it never dilutes anyone else's point value, never released, never re-judged
- * by a re-run). Asked in this order, so a distributor failing both is recorded
- * under the first:
- *   1. The repurchase CONDITION (client 2026-10-09, assumption A-G1, replacing
- *      the 2026-09-07 §2.3 rule that the cycle never withholds GBB): a
- *      distributor forfeited on the month's last day —
- *      {@see IncomeEligibilityService::verdictAsOf()} at the month end — is
- *      written {@see GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED}. A
- *      cycle due ON the last day is judged from the 1st, so it cannot block
- *      that month (F-1). An unresolved cycle reads as eligible, so the freeze
- *      refuses while any earner's cycle due on or before the month end still
- *      has no verdict ({@see assertRepurchaseVerdictsResolved()}). No setting,
- *      no flag beyond the repurchase engine's own (off → nobody is failed).
- *   2. The repurchase WALLET (client 2026-09-05, re-confirmed 2026-09-07): a
- *      distributor still holding repurchase-wallet money at the last instant
- *      of the month is written
- *      {@see GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED}. The question
- *      is asked in exactly one place,
- *      {@see RepurchaseWalletGateService::clearedAtMonthEnd()}.
+ * REPURCHASE — one month-end gate, decided once at freeze time: the
+ * repurchase WALLET (client 2026-09-05, re-confirmed 2026-09-07). A distributor
+ * still holding repurchase-wallet money at the last instant of the month is
+ * written {@see GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED} — a
+ * pool-EXCLUDED roster row (gross 0, AGP out of the denominator so it never
+ * dilutes anyone else's point value, never released, never re-judged by a
+ * re-run). The question is asked in exactly one place,
+ * {@see RepurchaseWalletGateService::clearedAtMonthEnd()}. The repurchase CYCLE
+ * verdict never withholds GBB: the client answered 2026-10-09 (Q5 G1) that a
+ * distributor with a ₹0 wallet at month end is paid even when their repurchase
+ * window lapsed and was not renewed, so the month-end verdict gate briefly
+ * added on this branch (assumption A-G1) was removed.
  *
  * THREE PHASES (the RankBonusService shape):
  *  1. Pass 1 — {@see resolveRoster()} decides the month's population and each
- *     member's AGP: the cut-off earners, the lifetime rank gate and the two
- *     month-end repurchase gates (verdict, then wallet).
+ *     member's AGP: the cut-off earners, the lifetime rank gate and the
+ *     month-end repurchase wallet gate.
  *  2. Freeze — {@see freezeMonth()} writes, in ONE transaction, the
  *     gbb_monthly_pools row AND a gbb_monthly_results row for every roster
  *     member carrying its decided status and its frozen AGP. `total_agp` is the
@@ -108,7 +97,6 @@ final class GrowthBoosterBonusService
         private readonly CompensationPlanSettingsService $plan,
         private readonly RepurchaseWalletGateService $walletGate,
         private readonly GsbDailyPoolService $gsbPool,
-        private readonly IncomeEligibilityService $eligibility,
     ) {}
 
     /**
@@ -118,7 +106,7 @@ final class GrowthBoosterBonusService
      * on the first run, and every later run credits only the roster members not
      * yet credited, at the frozen point value and their frozen AGP.
      *
-     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, skipped_no_agp: int, wallet_blocked: int, repurchase_failed: int, qualified_after_freeze: int}
+     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, skipped_no_agp: int, wallet_blocked: int, qualified_after_freeze: int}
      */
     public function runForMonth(Carbon $month): array
     {
@@ -134,14 +122,6 @@ final class GrowthBoosterBonusService
             // the run here, before any row is written or a premature pool
             // replaced, instead of freezing a ₹0 value.
             $capPaise = $this->plan->gbbPointValueCapPaise();
-
-            // A pending repurchase verdict stops the run here too, for the same
-            // reason: before a premature pool is replaced, not after.
-            $this->assertRepurchaseVerdictsResolved(
-                $monthEnd,
-                $this->eligibleEarners($this->buildAgpMap($monthStart, $monthEnd), $monthStart)
-                    ->keys()->map(fn ($id): int => (int) $id)->all(),
-            );
 
             if ($pool !== null && $this->replacePrematureFreeze($pool, $monthEnd)) {
                 $pool = null;
@@ -194,27 +174,9 @@ final class GrowthBoosterBonusService
 
         $earners = $this->eligibleEarners($agpMap, $monthStart);
 
-        // Gate 1 — client 2026-10-09 (A-G1): the repurchase CONDITION must hold,
-        // not only the wallet. A distributor forfeited on the month's last day
-        // is blocked and excluded from the denominator, like the wallet gate.
-        // Asked first, so a distributor failing both is recorded as
-        // repurchase-failed. As-of the month end, never "current".
-        $ids = $earners->keys()->map(fn ($id): int => (int) $id)->all();
-
-        $this->assertRepurchaseVerdictsResolved($monthEnd, $ids);
-
-        $this->eligibility->warmCycleCache($ids);
-        $failedIds = collect($ids)
-            ->filter(fn (int $id): bool => ! $this->eligibility->verdictAsOf($id, $monthEnd)->isEligible())
-            ->flip();
-        $this->eligibility->forgetCycleCache();
-
-        /** @var Collection<int, int> $repurchaseFailed */
-        $repurchaseFailed = $earners->filter(fn (int $agp, $id): bool => $failedIds->has((int) $id));
-        $earners = $earners->reject(fn (int $agp, $id): bool => $failedIds->has((int) $id));
-
-        // Gate 2 — the repurchase wallet at the last instant of the month, over
-        // the earners the verdict gate let through.
+        // The repurchase wallet at the last instant of the month — the only
+        // repurchase gate (client 2026-10-09, Q5 G1: the cycle verdict never
+        // withholds GBB).
         $cleared = $this->walletGate->clearedAtMonthEnd(
             $earners->keys()->map(fn ($id): int => (int) $id)->all(),
             $monthEnd,
@@ -229,29 +191,7 @@ final class GrowthBoosterBonusService
             payable: $payable,
             walletBlocked: $walletBlocked,
             skippedNoAgp: $skippedNoAgp,
-            repurchaseFailed: $repurchaseFailed,
         );
-    }
-
-    /**
-     * Fail-safe: refuse to freeze while any earner's repurchase cycle due on or
-     * before the month end still has no verdict. An unresolved cycle reads as
-     * eligible, so freezing before the 00:05 `repurchase:evaluate` has judged
-     * the last day would pay a distributor who is about to be failed — and the
-     * frozen roster is never re-judged. The monthly command
-     * ({@see GbbMonthlyRunCommand})
-     * catches the exception and records the run as failed with this message,
-     * so the Engine Runs page and the health digest name the remedy.
-     *
-     * @param  int[]  $ids
-     */
-    private function assertRepurchaseVerdictsResolved(Carbon $monthEnd, array $ids): void
-    {
-        $pending = $this->eligibility->unresolvedDueOnOrBefore($monthEnd, $ids);
-
-        if ($pending !== []) {
-            throw RepurchaseVerdictsPending::forMonthEnd('Growth Booster', $monthEnd, $pending);
-        }
     }
 
     // ----------------------------------------------------------------- freeze
@@ -305,10 +245,6 @@ final class GrowthBoosterBonusService
 
             foreach ($roster->payable as $distributorId => $agp) {
                 $this->writeRosterRow((int) $distributorId, $yearMonth, $agp, $pool, $valuePaise * $agp, GbbMonthlyResult::STATUS_PENDING);
-            }
-
-            foreach ($roster->repurchaseFailed as $distributorId => $agp) {
-                $this->writeRosterRow((int) $distributorId, $yearMonth, $agp, $pool, 0, GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED);
             }
 
             foreach ($roster->walletBlocked as $distributorId => $agp) {
@@ -532,7 +468,7 @@ final class GrowthBoosterBonusService
      * the gross frozen on them; the pool, the denominator, the point value and
      * every row's AGP are never touched again.
      *
-     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, skipped_no_agp: int, wallet_blocked: int, repurchase_failed: int, qualified_after_freeze: int}
+     * @return array{pool_paise: int, total_agp: int, point_value_paise: int, credited: int, skipped_no_agp: int, wallet_blocked: int, qualified_after_freeze: int}
      */
     private function creditFromFrozenPool(Carbon $monthStart, Carbon $monthEnd, string $yearMonth, GbbMonthlyPool $pool): array
     {
@@ -585,7 +521,6 @@ final class GrowthBoosterBonusService
         });
 
         $walletBlockedCount = $rows->where('status', GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED)->count();
-        $repurchaseFailedCount = $rows->where('status', GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED)->count();
 
         // Reported straight off the frozen snapshot, never off the live
         // recomputation — pool ÷ total_agp must always reconcile to the point
@@ -597,7 +532,6 @@ final class GrowthBoosterBonusService
             'credited' => $credited,
             'skipped_no_agp' => $agpMap->filter(fn (int $agp): bool => $agp === 0)->count(),
             'wallet_blocked' => $walletBlockedCount,
-            'repurchase_failed' => $repurchaseFailedCount,
             'qualified_after_freeze' => count($late),
         ];
     }
@@ -698,20 +632,10 @@ final class GrowthBoosterBonusService
 
         $cleared = $this->walletGate->clearedAtMonthEnd($candidateIds, $monthEnd);
 
-        // A repurchase-failed row has come good only when the month-end verdict
-        // now reads eligible too (a back-dated fulfilment), asked the way the
-        // freeze asked it. Recorded, never paid.
-        $this->eligibility->warmCycleCache($candidateIds);
-
         foreach ($excluded as $row) {
             $distributorId = (int) $row->distributor_id;
 
             if (! ($cleared[$distributorId] ?? true)) {
-                continue;
-            }
-
-            if ($row->status === GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED
-                && ! $this->eligibility->verdictAsOf($distributorId, $monthEnd)->isEligible()) {
                 continue;
             }
 
@@ -724,8 +648,6 @@ final class GrowthBoosterBonusService
                 $pool,
             );
         }
-
-        $this->eligibility->forgetCycleCache();
     }
 
     /**

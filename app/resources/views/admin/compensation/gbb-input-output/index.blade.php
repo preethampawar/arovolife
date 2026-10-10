@@ -10,9 +10,8 @@
     <strong>GBB pool</strong> (the configured pool rate of that month's BV), every distributor who earned AGP,
     the <strong>point value</strong> the month froze and each distributor's income.
     <span class="font-medium">AGP point value = (GBB pool) ÷ (total AGP)</span>, floored to whole rupees — so
-    the month's payout equals the pool apart from that remainder. Rows blocked by an unspent repurchase wallet,
-    and rows blocked because the repurchase condition was failed on the month's last day, earned AGP that was
-    excluded and is never paid.
+    the month's payout equals the pool apart from that remainder. Rows blocked by an unspent repurchase wallet
+    earned AGP that was excluded and is never paid.
     Search by month or month range.
 </div>
 @enddeveloper
@@ -52,7 +51,6 @@
         $rows = collect($earners[$pool->month_start] ?? []);
         $creditedIncome = (int) $rows->where('status', \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_CREDITED)->sum('income_paise');
         $walletBlockedCount = $rows->where('status', \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED)->count();
-        $repurchaseFailedCount = $rows->where('status', \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED)->count();
         $totalDeduction = (int) $rows->sum('deduction_paise');
         $totalCredited = (int) $rows->sum('credited_paise');
     @endphp
@@ -109,22 +107,12 @@
         </div>
         @endif
 
-        @if($repurchaseFailedCount > 0)
-        <div class="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800">
-            {{ \App\Modules\Shared\Support\IndianNumber::format($repurchaseFailedCount) }}
-            {{ $repurchaseFailedCount === 1 ? 'distributor' : 'distributors' }} blocked (repurchase failed) this
-            month: the repurchase condition was failed on its last day. Their AGP was excluded from the denominator,
-            so the month's point value was priced without them and nothing here will ever pay them — a later
-            fulfilment does not reopen the month.
-        </div>
-        @endif
-
         <div class="overflow-x-auto">
             <table class="w-full text-xs">
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-3 py-2 text-left text-gray-500 font-medium">S.no</th>
-                        <th class="px-3 py-2 text-left text-gray-500 font-medium">Distributor <x-help-tip text="Each distributor who earned AGP this month, with the AGP they earned. Blocked = the repurchase wallet was not cleared at the last instant of the month, or the repurchase condition was failed on the month's last day: that AGP was excluded from the denominator and is never paid." /></th>
+                        <th class="px-3 py-2 text-left text-gray-500 font-medium">Distributor <x-help-tip text="Each distributor who earned AGP this month, with the AGP they earned. Blocked = the repurchase wallet was not cleared at the last instant of the month: that AGP was excluded from the denominator and is never paid." /></th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">AGP</th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Point value <x-help-tip text="The GBB pool divided by the month's total AGP, floored to whole rupees. One value applies to every earner in the month." /></th>
                         <x-bonus-credit-head gross-label="Income" th-class="px-3 py-2 text-right text-gray-500 font-medium" />
@@ -152,8 +140,6 @@
                             <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">Credited</span>
                             @elseif($row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED)
                             <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">Blocked — repurchase wallet not ₹0</span>
-                            @elseif($row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED)
-                            <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">Blocked — repurchase condition failed</span>
                             @else
                             <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">{{ ucfirst(str_replace('_', ' ', $row->status)) }}</span>
                             @endif

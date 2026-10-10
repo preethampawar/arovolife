@@ -219,3 +219,67 @@ it('drops repurchase_held from the fortune status enum when no row carries it an
             ->toThrow(QueryException::class);
     }
 });
+
+function narrowGbbRepurchaseFailedBlockedStatusMigration(): mixed
+{
+    return require base_path(
+        'app/Modules/Compensation/Database/Migrations/2026_10_10_100000_narrow_gbb_repurchase_failed_blocked_status.php'
+    );
+}
+
+/** @return array<string, mixed> */
+function staleEnumGbbRow(string $status): array
+{
+    return [
+        'distributor_id' => 990_104, 'year_month' => '2026-08-01', 'agp_earned' => 12, 'status' => $status,
+        'created_at' => now(), 'updated_at' => now(),
+    ];
+}
+
+const NARROWED_GBB_STATUS_ENUM = "enum('pending','credited','reversed','repurchase_wallet_blocked')";
+
+it('refuses to drop the gbb repurchase_failed_blocked status while a row still carries it, and changes nothing', function (): void {
+    narrowGbbRepurchaseFailedBlockedStatusMigration()->down();
+    $before = staleEnumColumnType('gbb_monthly_results', 'status');
+    $auditBefore = AuditLog::where('action', 'plan.migration.narrow_gbb_repurchase_failed_blocked_status')->count();
+
+    $id = DB::table('gbb_monthly_results')->insertGetId(staleEnumGbbRow('repurchase_failed_blocked'));
+
+    try {
+        expect(fn () => narrowGbbRepurchaseFailedBlockedStatusMigration()->up())
+            ->toThrow(RuntimeException::class, 'Refusing to narrow the growth booster status enum: 1 gbb_monthly_results rows still carry repurchase_failed_blocked. Replay or wipe history first.');
+
+        expect(staleEnumColumnType('gbb_monthly_results', 'status'))->toBe($before)
+            ->and(DB::table('gbb_monthly_results')->where('id', $id)->value('status'))->toBe('repurchase_failed_blocked')
+            ->and(AuditLog::where('action', 'plan.migration.narrow_gbb_repurchase_failed_blocked_status')->count())->toBe($auditBefore);
+    } finally {
+        DB::table('gbb_monthly_results')->where('id', $id)->delete();
+        narrowGbbRepurchaseFailedBlockedStatusMigration()->up();
+    }
+});
+
+it('drops repurchase_failed_blocked from the gbb status enum when no row carries it and records the run', function (): void {
+    narrowGbbRepurchaseFailedBlockedStatusMigration()->down();
+
+    narrowGbbRepurchaseFailedBlockedStatusMigration()->up();
+
+    $audit = (array) AuditLog::query()
+        ->where('action', 'plan.migration.narrow_gbb_repurchase_failed_blocked_status')
+        ->orderByDesc('id')
+        ->firstOrFail()
+        ->details;
+
+    expect($audit)->toMatchArray([
+        'migration' => '2026_10_10_100000_narrow_gbb_repurchase_failed_blocked_status',
+        'driver' => DB::getDriverName(),
+        'gbb_monthly_results' => ['column' => 'status', 'removed' => ['repurchase_failed_blocked'], 'rows_carrying' => 0],
+    ])->and($audit['reason'])->toContain('Q5 G1');
+
+    if (DB::getDriverName() === 'mysql') {
+        expect(staleEnumColumnType('gbb_monthly_results', 'status'))->toBe(NARROWED_GBB_STATUS_ENUM)
+            ->and(DB::selectOne("SHOW COLUMNS FROM gbb_monthly_results LIKE 'status'")->Default)->toBe('pending');
+
+        expect(fn () => DB::table('gbb_monthly_results')->insert(staleEnumGbbRow('repurchase_failed_blocked')))
+            ->toThrow(QueryException::class);
+    }
+});

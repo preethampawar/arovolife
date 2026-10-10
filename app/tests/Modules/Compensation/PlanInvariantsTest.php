@@ -520,7 +520,6 @@ it('Task 7: freezes gbb_monthly_pools.total_agp as the payable AGP only, and pay
 
     $payable = [invGbbEarner(), invGbbEarner(), invGbbEarner()];
     $walletBlocked = invGbbEarner();
-    $repurchaseFailed = invGbbEarner();
 
     // Unspent repurchase wallet at month end → wallet-blocked.
     DB::table('wallet_ledger_entries')->insert([
@@ -532,8 +531,6 @@ it('Task 7: freezes gbb_monthly_pools.total_agp as the payable AGP only, and pay
         'memo' => 'test',
         'created_at' => '2026-07-20 09:00:00',
     ]);
-    // Failed from 21 Jul, still failed on 31 Jul → repurchase-failed-blocked (A-G1).
-    invSeedFailedCycle($repurchaseFailed, '2026-07-20');
 
     app(GrowthBoosterBonusService::class)->runForMonth(Carbon::parse('2026-07-01'));
 
@@ -542,10 +539,9 @@ it('Task 7: freezes gbb_monthly_pools.total_agp as the payable AGP only, and pay
     $credited = $rows->where('status', GbbMonthlyResult::STATUS_CREDITED);
 
     // The roster is the mix the test set out to build.
-    expect($rows)->toHaveCount(5)
+    expect($rows)->toHaveCount(4)
         ->and($credited->keys()->sort()->values()->all())->toBe(collect($payable)->sort()->values()->all())
-        ->and($rows->get($walletBlocked)?->status)->toBe(GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED)
-        ->and($rows->get($repurchaseFailed)?->status)->toBe(GbbMonthlyResult::STATUS_REPURCHASE_FAILED_BLOCKED);
+        ->and($rows->get($walletBlocked)?->status)->toBe(GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED);
 
     // The denominator is the payable AGP — blocked AGP never dilutes it.
     expect((int) $pool->total_agp)->toBe((int) $credited->sum('agp_earned'))
