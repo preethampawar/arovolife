@@ -118,3 +118,22 @@ it('RD-04: GET /register/demographics renders the step 6 form', function (): voi
     $response->assertSee('Mother Tongue');
     $response->assertSee('This information personalises your experience', false);
 });
+
+it('keeps the wedding anniversary date for a married applicant and drops it otherwise', function (): void {
+    rdSeedWizardAt6();
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('register.demographics'), array_merge(rdValidPayload(), ['marital_status' => 'married', 'wedding_anniversary_date' => '2015-02-14']))
+        ->assertRedirect(route('register.nominee'));
+    expect(app(WizardStateService::class)->getStepData(6)['wedding_anniversary_date'])->toBe('2015-02-14');
+
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('register.demographics'), array_merge(rdValidPayload(), ['marital_status' => 'single', 'wedding_anniversary_date' => '2015-02-14']));
+    expect(app(WizardStateService::class)->getStepData(6)['wedding_anniversary_date'])->toBeNull();
+});
+
+it('rejects a wedding anniversary date in the future', function (): void {
+    rdSeedWizardAt6();
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('register.demographics'), array_merge(rdValidPayload(), ['marital_status' => 'married', 'wedding_anniversary_date' => now()->addYear()->toDateString()]))
+        ->assertSessionHasErrors('wedding_anniversary_date');
+});

@@ -59,6 +59,19 @@
             @error('marital_status')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
         </div>
 
+        {{-- Wedding Anniversary Date — shown only when Married (client, 2026-10-10) --}}
+        <div id="wedding-anniversary-field" @if(old('marital_status', $data['marital_status'] ?? '') !== 'married') hidden @endif>
+            <label for="wedding_anniversary_date" class="block text-sm font-medium text-gray-700 mb-1.5">
+                Wedding Anniversary Date <span class="text-xs text-gray-600 font-normal">(optional)</span>
+            </label>
+            <input id="wedding_anniversary_date" name="wedding_anniversary_date" type="date"
+                value="{{ old('wedding_anniversary_date', $data['wedding_anniversary_date'] ?? '') }}"
+                max="{{ now('Asia/Kolkata')->toDateString() }}"
+                class="w-full rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+            <p class="mt-1 text-xs text-gray-600">Used only to send you anniversary wishes.</p>
+            @error('wedding_anniversary_date')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+        </div>
+
         <hr class="border-gray-100">
 
         {{-- Highest Education --}}
@@ -159,4 +172,14 @@
         </div>
     </form>
 </div>
+<script>
+// Wedding anniversary date is asked only when Married is selected.
+document.querySelector('[name="marital_status"]').addEventListener('change', function () {
+    const field = document.getElementById('wedding-anniversary-field');
+    field.hidden = this.value !== 'married';
+    if (field.hidden) {
+        document.getElementById('wedding_anniversary_date').value = '';
+    }
+});
+</script>
 @endsection
