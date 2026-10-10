@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Services;
 use App\Modules\Compensation\Models\FortuneMonthlyPool;
 use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GsbDailyPool;
+use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankMonthlyPass;
@@ -37,6 +38,7 @@ final class BonusCalculationSnapshots
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
         private readonly AreteDevelopmentCenterBonusService $adc,
+        private readonly GsbDailyPoolService $gsbPool,
     ) {}
 
     /**
@@ -208,6 +210,69 @@ final class BonusCalculationSnapshots
         }
 
         krsort($out);
+
+        return $out;
+    }
+
+    /**
+     * The Lifetime Awards fund, month by month (client 2026-10-09, Q1): the
+     * awards are funded from comp.awards.fund_rate_bp (20 %) of each month's
+     * company BV — read through GsbDailyPoolService::companyBvPaiseBetween(),
+     * the BV every other pool uses. Each month adds its share; the award worth
+     * earned that month (the tranche amounts frozen on its non-cancelled
+     * milestones) is set against it; the balance carries forward.
+     *
+     * A report, never a gate (user decision 2026-10-09): an earned award is
+     * released whatever the balance, and a negative balance is shown, not
+     * hidden. The fund is priced at the CURRENT rate for every month. A
+     * refund-heavy month whose BV is negative adds nothing (the GBB rule).
+     *
+     * From the first month that has BV or a milestone, through $through's
+     * month; empty when there is neither.
+     *
+     * @return list<array{month_start: string, bv_paise: int, fund_paise: int, awarded_paise: int, balance_paise: int}>
+     */
+    public function awardsFund(Carbon $through): array
+    {
+        $firsts = array_filter([
+            DB::table('bv_ledger_entries')->min('effective_at'),
+            DB::table('lifetime_award_milestones')->min('triggered_month'),
+        ], fn ($value): bool => $value !== null);
+
+        if ($firsts === []) {
+            return [];
+        }
+
+        $month = collect($firsts)
+            ->map(fn ($value): Carbon => Carbon::parse((string) $value)->startOfMonth())
+            ->min();
+        $last = $through->copy()->startOfMonth();
+
+        $awarded = DB::table('lifetime_award_milestones')
+            ->where('status', '!=', LifetimeAwardMilestone::STATUS_CANCELLED)
+            ->groupBy('triggered_month')
+            ->selectRaw('triggered_month, COALESCE(SUM(amount_paise), 0) as amount_paise')
+            ->get()
+            ->mapWithKeys(fn ($row): array => [Carbon::parse((string) $row->triggered_month)->toDateString() => (int) $row->amount_paise]);
+
+        $rateBp = $this->plan->awardsFundRateBp();
+        $balance = 0;
+        $out = [];
+
+        for (; $month->lessThanOrEqualTo($last); $month = $month->copy()->addMonthNoOverflow()) {
+            $bvPaise = $this->gsbPool->companyBvPaiseBetween($month, $month->copy()->endOfMonth());
+            $fundPaise = max(0, intdiv($bvPaise * $rateBp, 10_000));
+            $awardedPaise = (int) ($awarded[$month->toDateString()] ?? 0);
+            $balance += $fundPaise - $awardedPaise;
+
+            $out[] = [
+                'month_start' => $month->toDateString(),
+                'bv_paise' => $bvPaise,
+                'fund_paise' => $fundPaise,
+                'awarded_paise' => $awardedPaise,
+                'balance_paise' => $balance,
+            ];
+        }
 
         return $out;
     }

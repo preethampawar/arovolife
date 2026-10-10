@@ -25,7 +25,7 @@
                 <li><span class="text-gray-500">1.</span> Tranche A = the rank's 1st qualification, B = the 2nd, C = the 3rd <span class="font-sans text-gray-500">(Ranks 1–2 one tranche, 3–5 two, 6–9 three)</span></li>
                 <li><span class="text-gray-500">2.</span> Award worth = the tranche amount; the rank's tranches add up to its budget <span class="font-sans text-gray-500">(goods from the rank's reward catalogue)</span></li>
                 <li><span class="text-gray-500">3.</span> Merchandise only — never paid in cash <span class="font-sans text-gray-500">(no admin charge, no TDS, no wallet credit)</span></li>
-                <li><span class="text-gray-500">4.</span> Nothing is funded from a BV pool — each tranche is a fixed amount.</li>
+                <li><span class="text-gray-500">4.</span> Funded from the awards fund <span class="font-sans text-gray-500">(a share of each month's BV, client 2026-10-09 — see Awards fund above; the tranche amounts stay fixed and an award is never delayed by the fund)</span></li>
             </ol>
         </div>
         <div>

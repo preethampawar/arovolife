@@ -110,6 +110,10 @@ final class CompensationPlanSettingsService
         // Rank Bonus envelope (client 2026-08-05): share of company BV set
         // aside for the Rank Bonus. 2000 bp = 20%. One pool, two passes.
         'comp.rank.envelope_bp' => 2_000,
+        // Lifetime Awards & Rewards fund (client 2026-10-09, Q1): share of
+        // company BV the awards are funded from. 2000 bp = 20%. Tracked and
+        // reported only — an earned award is never delayed by it.
+        'comp.awards.fund_rate_bp' => 2_000,
         // AO-GO offer (client 2026-08-05; 36 points per the client's 2026-10-05
         // Rank Income Point System): points a degraded ex-rank-holder earns in
         // pass 1 on the Rank-1 row, and the lifetime cap on how many times the
@@ -668,6 +672,19 @@ final class CompensationPlanSettingsService
     public function rankEnvelopeBp(): int
     {
         return $this->scalarInt('comp.rank.envelope_bp');
+    }
+
+    /**
+     * Share of company BV (the signed bv_ledger_entries sum for the month) that
+     * funds the Lifetime Awards & Rewards (client 2026-10-09, Q1: one of the
+     * seven shares — GSB 45, MB 3, GBB 4, Rank 20, Fortune 5, Awards 20,
+     * ADC 3 = 100 %). Basis points: 2000 = 20%. Reporting only: the awards
+     * fund is tracked against the fixed tranche amounts and never delays an
+     * earned award (user decision 2026-10-09).
+     */
+    public function awardsFundRateBp(): int
+    {
+        return $this->scalarInt('comp.awards.fund_rate_bp');
     }
 
     /**

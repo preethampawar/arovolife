@@ -15,6 +15,7 @@ use App\Modules\Shared\Features\FaqLibraryFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\MessagingFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
@@ -1330,6 +1331,17 @@ final class AdminSettingsController extends Controller
                 'max' => 100_000_000,
                 'multiple_of' => 100,
                 'default' => '24000',
+            ],
+            'comp.awards.fund_rate_bp' => [
+                'group' => 'compensation_plan',
+                'feature' => LifetimeAwardsFeature::class,
+                'label' => 'Lifetime Awards fund rate (basis points)',
+                'description' => 'Share of monthly company BV that funds the Lifetime Awards & Rewards. 2000 = 20%. Reported on the Awards calculation page as the fund added each month against the award worth earned; it never delays an earned award.',
+                'impact' => 'Changes the awards fund shown for every month, including past months (the fund is a report, not a frozen pool). No award, wallet or payout changes.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '2000',
             ],
             'comp.rank.envelope_bp' => [
                 'group' => 'compensation_plan',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Services\BonusCalculationSnapshots;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Support\ReportExport;
@@ -24,6 +25,7 @@ final class AdminAwRwCalculationController extends Controller
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
         private readonly BonusCalculationSnapshots $snapshots,
+        private readonly CompensationPlanSettingsService $plan,
     ) {}
 
     public function index(Request $request): View
@@ -53,6 +55,10 @@ final class AdminAwRwCalculationController extends Controller
 
         return view('admin.compensation.aw-rw-calculation.index', [
             'monthBlocks' => $monthBlocks,
+            // Client 2026-10-09 (Q1): the awards are funded from a share of
+            // each month's BV. Reported only; never gates an award.
+            'awardsFund' => $this->snapshots->awardsFund(Carbon::now('Asia/Kolkata')),
+            'awardsFundRateBp' => $this->plan->awardsFundRateBp(),
             'rows' => $rows,
             'q' => $q ?: null,
             'month' => $month,
