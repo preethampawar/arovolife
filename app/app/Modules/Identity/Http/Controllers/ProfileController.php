@@ -11,6 +11,7 @@ use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
+use App\Modules\Identity\Models\DistributorProfile;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Crypto\PiiCrypter;
 use App\Modules\Shared\Notifications\OtpCodeNotification;
@@ -103,7 +104,39 @@ final class ProfileController extends Controller
             'bankBeneficiary' => $bankBeneficiary,
             'areteCenter' => $areteCenter,
             'availableCenters' => $availableCenters,
+            'demographics' => $distributor ? DistributorProfile::where('distributor_id', $distributor->id)->first() : null,
         ]);
+    }
+
+    /**
+     * Change or remove the optional wedding anniversary date — the way back
+     * from what registration step 6 collected (Privacy Policy §4 8a, §5).
+     */
+    public function updateAnniversary(Request $request): RedirectResponse
+    {
+        $user = Auth::user();
+        $distributor = $user?->distributor;
+        abort_unless($distributor !== null, 403);
+
+        $profile = DistributorProfile::where('distributor_id', $distributor->id)->first();
+        abort_unless($profile !== null, 404);
+
+        $remove = $request->boolean('remove');
+        $validated = $request->validate([
+            'wedding_anniversary_date' => [$remove ? 'nullable' : 'required', 'date_format:Y-m-d', 'before_or_equal:today'],
+        ], [
+            'wedding_anniversary_date.required' => 'Please enter your wedding anniversary date, or choose Remove.',
+            'wedding_anniversary_date.date_format' => 'Please enter a valid wedding anniversary date.',
+            'wedding_anniversary_date.before_or_equal' => 'Wedding anniversary date cannot be in the future.',
+        ]);
+
+        $profile->update(['wedding_anniversary_date' => $remove ? null : $validated['wedding_anniversary_date']]);
+
+        // The date itself never enters the audit log — only what happened.
+        $this->audit($user, $remove ? 'profile.wedding_anniversary.removed' : 'profile.wedding_anniversary.updated', [], $request);
+
+        return redirect()->route('profile.show')
+            ->with('status', $remove ? 'Your wedding anniversary date has been removed.' : 'Your wedding anniversary date has been saved.');
     }
 
     public function update(Request $request, OtpService $otp): RedirectResponse

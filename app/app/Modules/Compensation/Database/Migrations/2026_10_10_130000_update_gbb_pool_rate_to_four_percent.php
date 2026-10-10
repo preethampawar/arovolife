@@ -34,6 +34,12 @@ return new class extends Migration
 
         DB::transaction(function (): void {
             $before = DB::table('settings')->where('key', self::POOL_RATE_KEY)->value('value');
+
+            // A fresh database has no row yet: the code default (400) applies
+            // and there is nothing to move or record.
+            if ($before === null) {
+                return;
+            }
             $moved = DB::table('settings')
                 ->where('key', self::POOL_RATE_KEY)
                 ->where('value', '500')

@@ -33,6 +33,18 @@ final class DistributorProfile extends Model
     }
 
     /**
+     * Delete the optional wedding anniversary date — on termination of the
+     * ADN (Privacy Policy §5). A no-op when none was given.
+     */
+    public static function eraseWeddingAnniversary(int $distributorId): void
+    {
+        self::query()
+            ->where('distributor_id', $distributorId)
+            ->whereNotNull('wedding_anniversary_date')
+            ->update(['wedding_anniversary_date' => null]);
+    }
+
+    /**
      * @return BelongsTo<Distributor, $this>
      */
     public function distributor(): BelongsTo

@@ -1352,7 +1352,7 @@ final class AdminSettingsController extends Controller
                 'group' => 'compensation_plan',
                 'feature' => LifetimeAwardsFeature::class,
                 'label' => 'Awards & Rewards share (basis points)',
-                'description' => 'Share of company BV set aside for Awards & Rewards, shown on Compensation → BV Distribution. 2000 = 20%.',
+                'description' => 'Share of company BV shown for Awards & Rewards on Compensation → BV Distribution. Display only — no engine reads it and nothing is reserved or paid from it. 2000 = 20%.',
                 'type' => 'int',
                 'min' => 0,
                 'max' => 10000,
