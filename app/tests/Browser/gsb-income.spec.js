@@ -218,8 +218,8 @@ test.describe('Distributor: GSB History', () => {
         await expect(page).toHaveTitle(/My Income/i);
 
         // Headers live in <th> elements
-        await expect(page.locator('th').filter({ hasText: 'Left BV matched' })).toBeVisible();
-        await expect(page.locator('th').filter({ hasText: 'Right BV matched' })).toBeVisible();
+        await expect(page.locator('th').filter({ hasText: 'Left Genos BV Matched' })).toBeVisible();
+        await expect(page.locator('th').filter({ hasText: 'Right Genos BV Matched' })).toBeVisible();
         // "Gross GSB" text also appears in an adjacent help-tip tooltip, so use first()
         await expect(page.locator('th').filter({ hasText: 'Gross GSB' }).first()).toBeVisible();
         // The 3% admin charge and 5% TDS became payout-time deductions on

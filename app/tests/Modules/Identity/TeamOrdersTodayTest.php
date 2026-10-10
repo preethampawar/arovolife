@@ -1,16 +1,21 @@
 <?php
+
 declare(strict_types=1);
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Services\TeamStatsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->root = uiDistributor();
-    $this->l1 = uiDistributor(); uiPlaceUnder($this->root['id'], 'L', $this->l1['id']);
-    $this->l2 = uiDistributor(); uiPlaceUnder($this->l1['id'], 'R', $this->l2['id']); // deeper, still Left Genos
-    $this->r1 = uiDistributor(); uiPlaceUnder($this->root['id'], 'R', $this->r1['id']);
+    $this->l1 = uiDistributor();
+    uiPlaceUnder($this->root['id'], 'L', $this->l1['id']);
+    $this->l2 = uiDistributor();
+    uiPlaceUnder($this->l1['id'], 'R', $this->l2['id']); // deeper, still Left Genos
+    $this->r1 = uiDistributor();
+    uiPlaceUnder($this->root['id'], 'R', $this->r1['id']);
     $this->now = Carbon::parse('2026-09-28 15:00', 'Asia/Kolkata');
 });
 
@@ -28,7 +33,7 @@ it('excludes yesterday (IST boundary), cancelled, refunded and non-self orders',
     uiPaidSelfOrder($this->l1['id'], 60000, $this->now->copy()->setTime(9, 0), 'cancelled');
     uiPaidSelfOrder($this->l1['id'], 60000, $this->now->copy()->setTime(9, 0), 'refunded');
     $customer = uiPaidSelfOrder($this->l1['id'], 60000, $this->now->copy()->setTime(9, 0));
-    \DB::table('orders')->where('id', $customer)->update(['self_consumption' => false]);
+    DB::table('orders')->where('id', $customer)->update(['self_consumption' => false]);
 
     expect(app(TeamStatsService::class)->ordersTodayBySide(Distributor::find($this->root['id']), $this->now))
         ->toBe(['left' => 0, 'right' => 0]);
@@ -44,5 +49,7 @@ it('My Business shows members and orders today, Right card mirrored and right-al
     uiPaidSelfOrder($this->r1['id'], 60000, now());
     $html = $this->actingAs($this->root['user'])->get(route('my-business'))->assertOk()->getContent();
     expect($html)->toContain('data-team-card="left"')->toContain('data-team-card="right"')
-        ->toMatch('/data-team-card="right"[^>]*text-right/');
+        ->toMatch('/data-team-card="right"[^>]*text-right/')
+        ->toContain('Left Genos Distributors → orders today')
+        ->toContain('orders today ← Right Genos Distributors');
 });

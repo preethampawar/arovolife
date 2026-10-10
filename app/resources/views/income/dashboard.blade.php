@@ -257,7 +257,7 @@
                 <div class="bg-indigo-500 h-2 rounded-full" style="width: {{ $powerPct }}%"></div>
             </div>
             @if ($cf && $cf->power_side)
-                <p class="text-xs text-gray-600 mt-2">On {{ $cf->power_side === 'L' ? 'Left' : 'Right' }} side</p>
+                <p class="text-xs text-gray-600 mt-2">On {{ $cf->power_side === 'L' ? 'Left' : 'Right' }} Genos side</p>
             @endif
         </div>
         <div class="relative overflow-hidden rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-5 shadow-sm">
@@ -272,7 +272,7 @@
                 <div class="bg-green-500 h-2 rounded-full" style="width: {{ $slab1Pct }}%"></div>
             </div>
             @if ($genosBvEligible && $slabProgress)
-                <p class="text-xs text-gray-600 mt-2">Currently accumulating from your {{ $weakerSideLabel }} (weaker) side</p>
+                <p class="text-xs text-gray-600 mt-2">Currently accumulating from your {{ $weakerSideLabel }} Genos (weaker) side</p>
             @endif
             <p class="text-xs text-gray-600 mt-2">No time limit</p>
         </div>

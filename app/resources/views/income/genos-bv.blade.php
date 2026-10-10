@@ -244,7 +244,7 @@
                             };
                         @endphp
                         <td class="px-4 py-3 text-center text-gray-600">
-                            {{ $weakerLabel ?? '—' }}
+                            {{ $weakerLabel ? $weakerLabel.' Genos' : '—' }}
                             <span class="block text-xs text-gray-500 font-mono">{{ \App\Modules\Shared\Support\IndianNumber::format($row->weaker_bv_paise / 100, 0) }} BV</span>
                         </td>
                         <td class="px-4 py-3 text-center">
@@ -256,7 +256,7 @@
                         </td>
                         <td class="px-4 py-3 text-right font-mono text-gray-700">
                             {{ \App\Modules\Shared\Support\IndianNumber::format($row->power_cf_after_paise / 100, 0) }}
-                            <span class="block text-xs text-gray-500 font-sans">{{ $powerLabel ? $powerLabel.' group' : '—' }}</span>
+                            <span class="block text-xs text-gray-500 font-sans">{{ $powerLabel ? $powerLabel.' Genos' : '—' }}</span>
                         </td>
                         <td class="px-4 py-3 text-right font-mono text-gray-700">{{ \App\Modules\Shared\Support\IndianNumber::format($row->slab1_weaker_cf_after_paise / 100, 0) }}</td>
                         <td class="px-4 py-3 text-center">
