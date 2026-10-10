@@ -106,9 +106,6 @@ final class CompensationPlanSettingsService
         // with the company as leftover. Replaced the per-distributor AGP cap.
         'comp.gbb.point_value_cap_paise' => 24_000,
         'comp.adc.rate_bp' => 300,
-        // Awards & Rewards share of company BV (client, 2026-10-10 BV
-        // distribution chart). 2000 bp = 20%.
-        'comp.awards.rate_bp' => 2_000,
         'comp.adc.cap_paise' => 10_000_000,
         // Rank Bonus envelope (client 2026-08-05): share of company BV set
         // aside for the Rank Bonus. 2000 bp = 20%. One pool, two passes.
@@ -397,11 +394,6 @@ final class CompensationPlanSettingsService
     public function adcRateBp(): int
     {
         return $this->scalarInt('comp.adc.rate_bp');
-    }
-
-    public function awardsRateBp(): int
-    {
-        return $this->scalarInt('comp.awards.rate_bp');
     }
 
     public function adcCapPaise(): int
