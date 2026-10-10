@@ -43,6 +43,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcCalculationControlle
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAreteCenterApplicationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAreteCenterController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAwRwCalculationController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminBvDistributionController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
@@ -658,6 +659,7 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
 
     Route::prefix('compensation')->name('compensation.')->group(function (): void {
         Route::get('/', CompensationOverviewController::class)->name('overview');
+        Route::get('/bv-distribution', AdminBvDistributionController::class)->name('bv-distribution');
 
         // Viewing the plan is monitoring (whole admin family); EDITING it
         // changes what the platform pays, so the write paths are

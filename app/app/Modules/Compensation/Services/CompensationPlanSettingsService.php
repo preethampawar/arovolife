@@ -91,6 +91,9 @@ final class CompensationPlanSettingsService
         'comp.gbb.pool_rate_bp' => 500,
         'comp.gbb.agp_cap' => 120,
         'comp.adc.rate_bp' => 300,
+        // Awards & Rewards share of company BV (client, 2026-10-10 BV
+        // distribution chart). 2000 bp = 20%.
+        'comp.awards.rate_bp' => 2_000,
         'comp.adc.cap_paise' => 10_000_000,
         // Rank Bonus envelope (KP 2026-08-05): share of company BV set aside for
         // ALL nine rank pools together. 2000 bp = 20%.
@@ -275,6 +278,11 @@ final class CompensationPlanSettingsService
     public function adcRateBp(): int
     {
         return $this->scalarInt('comp.adc.rate_bp');
+    }
+
+    public function awardsRateBp(): int
+    {
+        return $this->scalarInt('comp.awards.rate_bp');
     }
 
     public function adcCapPaise(): int
