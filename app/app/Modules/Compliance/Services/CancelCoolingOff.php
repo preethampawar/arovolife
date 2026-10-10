@@ -11,6 +11,7 @@ use App\Modules\Compliance\Services\Exceptions\CoolingOffAlreadyCancelledError;
 use App\Modules\Compliance\Services\Exceptions\CoolingOffWindowExpiredError;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\DistributorProfile;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
 
@@ -129,6 +130,10 @@ final class CancelCoolingOff
         // for a cancelled account. The tree node itself is preserved (ghost
         // slot) — only the status flag flips.
         $distributor->update(['status' => 'inactive']);
+
+        // Cancellation closes the ADN without a DistributorTerminated event,
+        // so the anniversary-date erasure (Privacy Policy §5) runs here.
+        DistributorProfile::eraseWeddingAnniversary($distributorId);
 
         AuditLog::create([
             'actor_id' => $actorUserId,

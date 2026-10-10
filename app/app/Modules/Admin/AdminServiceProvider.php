@@ -19,6 +19,7 @@ use App\Modules\Admin\Listeners\SendDistributorReactivatedMail;
 use App\Modules\Admin\Listeners\SendDistributorTerminatedMail;
 use App\Modules\Admin\Listeners\SendKycApprovedMail;
 use App\Modules\Admin\Listeners\SendKycRejectedMail;
+use App\Modules\Identity\Listeners\EraseWeddingAnniversaryOnTermination;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
@@ -36,6 +37,7 @@ final class AdminServiceProvider extends ServiceProvider
         Event::listen(KycApproved::class, SendKycApprovedMail::class);
         Event::listen(KycRejected::class, SendKycRejectedMail::class);
         Event::listen(DistributorTerminated::class, SendDistributorTerminatedMail::class);
+        Event::listen(DistributorTerminated::class, EraseWeddingAnniversaryOnTermination::class);
 
         // Account-state changes the distributor needs to be told about:
         // freeze / unfreeze on the user account, and deactivate / reactivate

@@ -37,6 +37,7 @@
      */
     $compNavGroups = [
         ['label' => 'Overview', 'route' => 'admin.compensation.overview', 'match' => 'admin.compensation.overview'],
+        ['label' => 'BV Distribution', 'route' => 'admin.compensation.bv-distribution', 'match' => 'admin.compensation.bv-distribution'],
 
         ['label' => 'Daily engine', 'items' => array_values(array_filter(array_merge(
             $gsbOn ? [

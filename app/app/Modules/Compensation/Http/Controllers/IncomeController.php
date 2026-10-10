@@ -25,9 +25,9 @@ use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\RankStatusService;
 use App\Modules\Compensation\Services\RepurchaseCycleService;
 use App\Modules\Compensation\Services\WalletService;
+use App\Modules\Compensation\Support\AdcBonusVisibility;
 use App\Modules\Compensation\Support\IncomeFilterDefaults;
 use App\Modules\Compensation\Support\RepurchaseWalletStatus;
-use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
@@ -241,8 +241,8 @@ final class IncomeController extends Controller
 
         $columns = [
             ['key' => 'date', 'label' => 'Date'],
-            ['key' => 'left_bv', 'label' => 'Left BV matched'],
-            ['key' => 'right_bv', 'label' => 'Right BV matched'],
+            ['key' => 'left_bv', 'label' => 'Left Genos BV Matched'],
+            ['key' => 'right_bv', 'label' => 'Right Genos BV Matched'],
             ['key' => 'slab', 'label' => 'Slab'],
             ['key' => 'gross', 'label' => 'Gross GSB (₹)'],
             ['key' => 'deduction', 'label' => 'Repurchase Deduction (₹)'],
@@ -444,7 +444,7 @@ final class IncomeController extends Controller
 
     public function adcBonus(Request $request): View
     {
-        abort_unless(Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class), 404);
+        abort_unless(AdcBonusVisibility::forCurrentUser(), 404);
 
         $distributor = $request->user()?->distributor;
         abort_unless($distributor !== null, 403);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Support\AdcBonusVisibility;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -62,7 +63,7 @@ final class IncomeOverviewService
                 'tip' => 'Monthly bonus from your rank\'s pool, credited on the 1st of the following month.'],
             ['type' => 'fortune_credit', 'label' => 'Fortune Bonus', 'route' => 'income.fortune-bonus', 'active' => Feature::for(null)->active(FortuneBonusFeature::class),
                 'tip' => 'Monthly matrix bonus based on your Genos Sales Bonus activity.'],
-            ['type' => 'adc_credit', 'label' => 'ADC Bonus', 'route' => 'income.adc-bonus', 'active' => Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class),
+            ['type' => 'adc_credit', 'label' => 'ADC Bonus', 'route' => 'income.adc-bonus', 'active' => AdcBonusVisibility::forCurrentUser(),
                 'tip' => 'Arete Development Center bonus on BV served by your approved center.'],
         ];
 

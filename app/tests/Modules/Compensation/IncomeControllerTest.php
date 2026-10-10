@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
@@ -237,7 +239,7 @@ it('shows carry-forward folded into the dashboard group BV cards as the opening 
         // The side-less slab-1 bucket is surfaced under the weaker side…
         ->assertSee('+ 600 BV in slab-1 weaker carry over (see card below)')
         // …and its own card names the side it is currently accumulating from.
-        ->assertSee('Currently accumulating from your Right (weaker) side')
+        ->assertSee('Currently accumulating from your Right Genos (weaker) side')
         // Guard against uncompiled Blade leaking to the page: a directive whose
         // @ is glued to a preceding word character is rendered as literal text.
         ->assertDontSee('@if', false)
@@ -842,7 +844,7 @@ it('shows the repurchase deduction and the credited amount on the gsb history pa
 
     $rows = XlsxReader::rows($this->get(route('income.gsb-history.export', ['f' => 1]))->assertOk()->streamedContent());
 
-    expect($rows[0])->toBe(['Date', 'Left BV matched', 'Right BV matched', 'Slab', 'Gross GSB (₹)', 'Repurchase Deduction (₹)', 'Credited to Wallet (₹)', 'Status']);
+    expect($rows[0])->toBe(['Date', 'Left Genos BV Matched', 'Right Genos BV Matched', 'Slab', 'Gross GSB (₹)', 'Repurchase Deduction (₹)', 'Credited to Wallet (₹)', 'Status']);
     expect($rows[1])->toBe([today()->toDateString(), '20000', '16000', '1', '2000', '200', '1800', 'credited']);
     expect(XlsxReader::noCellContains($rows, 'TDS'))->toBeTrue();
 });
@@ -1189,7 +1191,7 @@ it('shows the stored weaker side and a Left/Right power label on the genos bv pa
     // which is neither leg figure. A view that recomputed from the legs would
     // print Left here.
     expect($response->getContent())->toMatch(
-        '/Right\s*<span class="block text-xs text-gray-500 font-mono">1,500 BV<\/span>/',
+        '/Right Genos\s*<span class="block text-xs text-gray-500 font-mono">1,500 BV<\/span>/',
     );
     // "Power CF after" carries its Left/Right label (house rule).
     $response->assertSee('Left Genos');
@@ -1512,4 +1514,21 @@ it('shows the rank progress note with the snapshot date only while the snapshot 
         ->assertDontSee('Progress as of the end of')
         ->assertSee('This is not a rank')
         ->assertSee('can go down if orders are cancelled or refunded');
+});
+
+it('hides the ADC Bonus tab, card and page from a distributor without a centre', function (): void {
+    Feature::for(null)->activate(AreteDevelopmentCenterBonusFeature::class);
+    ['user' => $user] = incomeDistributor();
+
+    $this->actingAs($user)->get(route('income.dashboard'))->assertOk()->assertDontSee('ADC Bonus');
+    $this->actingAs($user)->get(route('income.adc-bonus'))->assertNotFound();
+});
+
+it('shows the ADC Bonus tab, card and page to the owner of a centre', function (): void {
+    Feature::for(null)->activate(AreteDevelopmentCenterBonusFeature::class);
+    ['user' => $user, 'distributorId' => $id] = incomeDistributor();
+    AreteCenter::create(['name' => 'Owned Centre', 'centre_type' => 'distributor', 'assigned_distributor_id' => $id, 'status' => 'inactive']);
+
+    $this->actingAs($user)->get(route('income.dashboard'))->assertOk()->assertSee('ADC Bonus');
+    $this->actingAs($user)->get(route('income.adc-bonus'))->assertOk();
 });

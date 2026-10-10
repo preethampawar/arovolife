@@ -110,6 +110,41 @@
         </div>
     </form>
 
+    {{-- ── Wedding anniversary (optional) — Privacy Policy §4 8a ──────────── --}}
+    @if($demographics && ($demographics->marital_status === 'married' || $demographics->wedding_anniversary_date))
+    <div class="mt-6 bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 class="font-semibold text-gray-800 mb-1">Wedding anniversary <span class="text-xs text-gray-600 font-normal">(optional)</span></h2>
+        <p class="text-sm text-gray-600 mb-4">Used only to send you anniversary wishes. You can change or remove it at any time.</p>
+        <form method="POST" action="{{ route('profile.anniversary.update') }}" class="flex flex-wrap items-end gap-3"
+              data-confirm="Save your wedding anniversary date?"
+              data-confirm-title="Wedding anniversary"
+              data-confirm-impact="Saves the date we use only to send you anniversary wishes.">
+            @csrf
+            <div>
+                <label for="profile_wedding_anniversary_date" class="block text-sm font-medium text-gray-700 mb-1.5">
+                    Wedding anniversary date <x-help-tip text="Optional. Used only to send you anniversary wishes; never shared and never used for eligibility, rank or income." />
+                </label>
+                <input id="profile_wedding_anniversary_date" name="wedding_anniversary_date" type="date"
+                       value="{{ old('wedding_anniversary_date', $demographics->wedding_anniversary_date?->toDateString()) }}"
+                       max="{{ now('Asia/Kolkata')->toDateString() }}"
+                       class="rounded-lg bg-white border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent">
+                @error('wedding_anniversary_date')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+            </div>
+            <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm transition-colors">Save</button>
+        </form>
+        @if($demographics->wedding_anniversary_date)
+        <form method="POST" action="{{ route('profile.anniversary.update') }}" class="mt-3"
+              data-confirm="Remove your wedding anniversary date?"
+              data-confirm-title="Remove anniversary date"
+              data-confirm-impact="Deletes the date. You will no longer receive anniversary wishes.">
+            @csrf
+            <input type="hidden" name="remove" value="1">
+            <button type="submit" class="text-sm text-red-700 hover:text-red-800 font-medium">Remove the date</button>
+        </form>
+        @endif
+    </div>
+    @endif
+
     {{-- ── Your data ────────────────────────────────────────────────────────── --}}
     @if($distributor)
     <div class="mt-6 bg-white rounded-2xl border border-gray-200 p-6">

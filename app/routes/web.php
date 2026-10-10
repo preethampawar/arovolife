@@ -43,6 +43,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminAdcCalculationControlle
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAreteCenterApplicationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAreteCenterController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminAwRwCalculationController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminBvDistributionController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminCarryForwardController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDailyCutoffController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminDistributorCompController;
@@ -658,6 +659,7 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
 
     Route::prefix('compensation')->name('compensation.')->group(function (): void {
         Route::get('/', CompensationOverviewController::class)->name('overview');
+        Route::get('/bv-distribution', AdminBvDistributionController::class)->name('bv-distribution');
 
         // Viewing the plan is monitoring (whole admin family); EDITING it
         // changes what the platform pays, so the write paths are
@@ -1374,6 +1376,7 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     // Throttled: update() issues+emails an OTP, confirm() verifies it — cap
     // both so a code can't be email-spammed or its attempt counter reset.
     Route::patch('/profile', [ProfileController::class, 'update'])->middleware('throttle:6,10')->name('profile.update');
+    Route::post('/profile/anniversary', [ProfileController::class, 'updateAnniversary'])->middleware('throttle:10,10')->name('profile.anniversary.update');
     // OTP confirmation for a mobile/email change.
     Route::post('/profile/contact-otp', [ProfileController::class, 'confirmOtp'])->middleware('throttle:10,10')->name('profile.otp.confirm');
     Route::post('/profile/contact-otp/resend', [ProfileController::class, 'resendOtp'])->middleware('throttle:6,10')->name('profile.otp.resend');

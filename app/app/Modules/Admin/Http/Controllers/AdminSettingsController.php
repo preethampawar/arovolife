@@ -1419,6 +1419,16 @@ final class AdminSettingsController extends Controller
                 'max' => 10000,
                 'default' => '300',
             ],
+            'comp.awards.rate_bp' => [
+                'group' => 'compensation_plan',
+                'feature' => LifetimeAwardsFeature::class,
+                'label' => 'Awards & Rewards share (basis points)',
+                'description' => 'Share of company BV shown for Awards & Rewards on Compensation → BV Distribution. Display only — no engine reads it and nothing is reserved or paid from it. 2000 = 20%.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '2000',
+            ],
             'comp.adc.cap_paise' => [
                 'group' => 'compensation_plan',
                 'feature' => AreteDevelopmentCenterBonusFeature::class,

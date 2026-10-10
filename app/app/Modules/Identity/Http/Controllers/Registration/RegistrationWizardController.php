@@ -608,6 +608,7 @@ final class RegistrationWizardController extends Controller
         $request->validate([
             'gender' => ['required', 'in:male,female,transgender_other,prefer_not_to_say'],
             'marital_status' => ['required', 'in:single,married,divorced,widowed,prefer_not_to_say'],
+            'wedding_anniversary_date' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
             'highest_education' => ['required', 'in:below_10th,10th_pass,12th_pass,diploma,graduate,post_graduate,doctorate,prefer_not_to_say'],
             'occupation' => ['nullable', 'string', 'max:191'],
             'mother_tongue' => ['required', 'string', 'max:100'],
@@ -618,6 +619,8 @@ final class RegistrationWizardController extends Controller
             'gender.in' => 'Please select a valid gender option.',
             'marital_status.required' => 'Please select your marital status.',
             'marital_status.in' => 'Please select a valid marital status option.',
+            'wedding_anniversary_date.date_format' => 'Please enter a valid wedding anniversary date.',
+            'wedding_anniversary_date.before_or_equal' => 'Wedding anniversary date cannot be in the future.',
             'highest_education.required' => 'Please select your highest level of education.',
             'highest_education.in' => 'Please select a valid education level.',
             'mother_tongue.required' => 'Please enter your mother tongue.',
@@ -630,6 +633,11 @@ final class RegistrationWizardController extends Controller
         $this->wizard->saveStepData(6, [
             'gender' => $request->input('gender'),
             'marital_status' => $request->input('marital_status'),
+            // Kept only for a married distributor — switching away from
+            // Married drops any date entered earlier.
+            'wedding_anniversary_date' => $request->input('marital_status') === 'married'
+                ? $request->input('wedding_anniversary_date')
+                : null,
             'highest_education' => $request->input('highest_education'),
             'occupation' => $request->input('occupation'),
             'mother_tongue' => $request->input('mother_tongue'),
@@ -1146,6 +1154,7 @@ final class RegistrationWizardController extends Controller
             'distributor_id' => $result->distributorId,
             'gender' => $demographicsData['gender'],
             'marital_status' => $demographicsData['marital_status'],
+            'wedding_anniversary_date' => $demographicsData['wedding_anniversary_date'] ?? null,
             'highest_education' => $demographicsData['highest_education'],
             'occupation' => $demographicsData['occupation'] ?? null,
             'mother_tongue' => $demographicsData['mother_tongue'],

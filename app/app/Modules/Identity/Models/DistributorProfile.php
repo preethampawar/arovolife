@@ -14,6 +14,7 @@ final class DistributorProfile extends Model
         'distributor_id',
         'gender',
         'marital_status',
+        'wedding_anniversary_date',
         'highest_education',
         'occupation',
         'mother_tongue',
@@ -26,8 +27,21 @@ final class DistributorProfile extends Model
         return [
             'gender' => 'string',
             'marital_status' => 'string',
+            'wedding_anniversary_date' => 'date',
             'highest_education' => 'string',
         ];
+    }
+
+    /**
+     * Delete the optional wedding anniversary date — on termination of the
+     * ADN (Privacy Policy §5). A no-op when none was given.
+     */
+    public static function eraseWeddingAnniversary(int $distributorId): void
+    {
+        self::query()
+            ->where('distributor_id', $distributorId)
+            ->whereNotNull('wedding_anniversary_date')
+            ->update(['wedding_anniversary_date' => null]);
     }
 
     /**

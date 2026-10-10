@@ -43,8 +43,8 @@
                     <tr>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Date</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Left BV matched</th>
-                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Right BV matched</th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Left Genos BV Matched</th>
+                        <th class="text-right px-4 py-3 font-semibold text-gray-600">Right Genos BV Matched</th>
                         <th class="text-center px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-center gap-1">Slab <x-help-tip text="Slab 1: 15K/15K BV = ₹2,000. Slab 2: 36K = ₹4,000. Slabs 3–7 (1L / 3L / 9L / 27L / 81L) share the day's GSB pool and pay up to ₹8,000 / ₹15,000 / ₹28,000 / ₹46,000 / ₹70,000, subject to your title — the exact amount depends on that day's company-wide sales and can be ₹0 on a low-sales day; matched BV is consumed either way." /></span>
                         </th>

@@ -121,7 +121,7 @@
                                 \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\GrowthBoosterBonusFeature::class) ? 'Growth Booster' : null,
                                 \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\RankBonusFeature::class) ? 'Rank' : null,
                                 \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FortuneBonusFeature::class) ? 'Fortune' : null,
-                                \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature::class) ? 'ADC' : null,
+                                \App\Modules\Compensation\Support\AdcBonusVisibility::forCurrentUser() ? 'ADC' : null,
                             ]));
                             $tipBonusParen = match (count($tipBonusNames)) {
                                 0 => '',

@@ -278,6 +278,12 @@
             <p class="text-xs text-gray-700 mb-0.5">Marital Status</p>
             <p class="text-gray-800">{{ $maritalLabels[$profileRow->marital_status] ?? $profileRow->marital_status }}</p>
         </div>
+        @if($profileRow->wedding_anniversary_date)
+        <div>
+            <p class="text-xs text-gray-700 mb-0.5">Wedding Anniversary</p>
+            <p class="text-gray-800">{{ \Illuminate\Support\Carbon::parse($profileRow->wedding_anniversary_date)->format('d M Y') }}</p>
+        </div>
+        @endif
         <div>
             <p class="text-xs text-gray-700 mb-0.5">Highest Education</p>
             <p class="text-gray-800">{{ $educationLabels[$profileRow->highest_education] ?? $profileRow->highest_education }}</p>

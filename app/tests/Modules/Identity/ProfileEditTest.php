@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Identity\Models\DistributorProfile;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Crypto\PiiCrypter;
 use App\Modules\Shared\Notifications\OtpCodeNotification;
@@ -279,4 +281,44 @@ it('PROF-08: email must be unique — checked before any OTP is sent', function 
 
     Notification::assertNothingSent();
     expect($user->refresh()->email)->not->toBe('taken@example.com');
+});
+
+function profDemographics(int $distributorId, ?string $anniversary): void
+{
+    DistributorProfile::create([
+        'distributor_id' => $distributorId, 'gender' => 'male', 'marital_status' => 'married',
+        'wedding_anniversary_date' => $anniversary, 'highest_education' => 'graduate', 'mother_tongue' => 'Telugu',
+    ]);
+}
+
+it('lets a married distributor change and remove the wedding anniversary date, audited without the date', function (): void {
+    $user = profUser();
+    $id = profDistributor($user);
+    profDemographics($id, '2015-02-14');
+
+    $this->actingAs($user)->get(route('profile.show'))->assertOk()->assertSee('Wedding anniversary')->assertSee('2015-02-14');
+
+    $this->actingAs($user)->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('profile.anniversary.update'), ['wedding_anniversary_date' => '2016-03-01'])
+        ->assertRedirect(route('profile.show'));
+    expect(DB::table('distributor_profiles')->where('distributor_id', $id)->value('wedding_anniversary_date'))->toBe('2016-03-01');
+
+    $this->actingAs($user)->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('profile.anniversary.update'), ['remove' => '1'])
+        ->assertRedirect(route('profile.show'));
+    expect(DB::table('distributor_profiles')->where('distributor_id', $id)->value('wedding_anniversary_date'))->toBeNull();
+
+    $audits = AuditLog::whereIn('action', ['profile.wedding_anniversary.updated', 'profile.wedding_anniversary.removed'])->get();
+    expect($audits)->toHaveCount(2);
+    expect(json_encode($audits->pluck('details')))->not->toContain('2016-03-01');
+});
+
+it('erases the wedding anniversary date when the distributor is terminated', function (): void {
+    $user = profUser();
+    $id = profDistributor($user);
+    profDemographics($id, '2015-02-14');
+
+    DistributorTerminated::dispatch($id, null, 'test', now());
+
+    expect(DB::table('distributor_profiles')->where('distributor_id', $id)->value('wedding_anniversary_date'))->toBeNull();
 });
