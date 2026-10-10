@@ -37,7 +37,7 @@ grace rules, admin charge).
 ### 1.3 Growth Booster Bonus (GBB) — 4%
 - Pool rate **4%** (was 5%). Monthly. Points per GSB slab: slab 1 → 12, slab 2 → 5, slab 3 → 2 (already seeded `gsb_slabs.agp_per_occurrence`). Point value = pool ÷ total points, floored, **capped at ₹240 per point** (new).
 - Only for distributors who have **never** held a rank. The month they first reach Rank 1, both GBB and Rank Bonus are paid; from the next month on, never GBB again (new; was "not ranked in the previous month").
-- To qualify, the distributor must satisfy the repurchase condition (600 BV within the cycle and wallet zero at the cycle end) (new gate, see A-G1).
+- Repurchase: only the existing month-end wallet-zero gate applies. A lapsed repurchase window never withholds GBB — the client answered 2026-10-09 (Q5 G1, §12) that a distributor with a ₹0 wallet at month end is paid even when their window lapsed and was not renewed. The verdict gate first built from the doc's "must satisfy the repurchase condition" (A-G1) was removed.
 
 ### 1.4 Rank Bonus — 20% of the month's turnover
 Rank Achievement Points (RAP): AGO offer 36; R1 72; R2 189; R3 468; R4 1,125; R5 2,583; R6 5,688; R7 11,934; R8 23,877; R9 39,501. Point value cap **₹200**.
@@ -69,7 +69,7 @@ Tranche A releases on the 1st qualification, B on the 2nd, C on the 3rd. Ranks 1
 6. *(2026-10-09, Task 13)* Stale settings, columns and statuses are **dropped in this release**, not one release later: every environment holds test data that is wiped before launch.
 
 ## 3. Assumptions (stated in the commit bodies; confirm with the client)
-- **A-G1** The GBB "must satisfy the repurchase condition" gate is read as: the distributor is not forfeited on the last day of the month (`verdictAsOf(monthEnd)` eligible) in addition to the existing month-end wallet-zero gate. Blocked distributors are recorded as a pool-excluded roster row.
+- **A-G1** *(withdrawn 2026-10-09 — the client answered NO to Q5 G1; the gate was removed, §12)* The GBB "must satisfy the repurchase condition" gate was read as: the distributor is not forfeited on the last day of the month (`verdictAsOf(monthEnd)` eligible) in addition to the existing month-end wallet-zero gate. Blocked distributors are recorded as a pool-excluded roster row.
 - **A-M1** The rank used for the Mentorship gate/royalty is the sponsor's highest qualified rank **as decided by the cut-off date**: the maximum `rank_qualifications.rank_number` with `status = qualified` and `month_start` strictly before the cut-off's month (a month's rank is decided on the 1st of the next month, so it is not yet known on any day inside that month). `RepurchaseCycleService::currentRank()` is the lifetime maximum with no date and is NOT used here — see F-2 in the fail-safe review.
 - **A-M2** The ₹3,600 royalty cap is per sponsor per cut-off day, aggregated across all their sponsees' accruals that day; the excess is withheld permanently (recorded, never released).
 - **A-R1** The AGO offer stays a Rank-1-row participant (36 points, pass 1); `comp.rank.aogo_lifetime_max` and the grant mechanics are unchanged.
@@ -81,6 +81,8 @@ Open questions for the client (raise together, before launch):
 3. The merchandise item list per tranche (placeholder catalogue seeded).
 4. `comp.rank.first_pass_max_rank` must stay ≥ 1: at 0 the AGO offer would be priced in pass 2 together with Rank 1 (A-R1 holds for every value ≥ 1). Nobody should set 0 without a decision.
 5. The two engine gates with no setting (GBB lifetime exclusion, GBB verdict gate) are code; if the client wants them reversible that is a separate decision (no flag added silently — feature-flag zero-trace rule).
+
+The client answered these on 2026-10-09 — see §12.
 
 ## 4. Where each number lives
 
@@ -104,8 +106,9 @@ client reverses a decision — no deploy needed.
 | GBB point-value cap | ₹240 | `comp.gbb.point_value_cap_paise` | 24 000 | `gbb_monthly_pools.point_value_cap_paise`, `raw_point_value_paise` | `100000000` |
 | GBB per-distributor AGP cap | retired | `comp.gbb.agp_cap` **deleted** (migration 100300) | — | — | — (there is no cap to restore) |
 | GBB lifetime rank exclusion | never GBB after the first ranked month | code: `GrowthBoosterBonusService` reads `rank_qualifications` for every month strictly before M; `gbb:monthly-run` walks every earlier month's `rank.check` run | — | roster absence (no row) | none — code (decision needed before any flag) |
-| GBB repurchase verdict gate | not forfeited on the month's last day (A-G1) | code: `IncomeEligibilityService::verdictAsOf(monthEnd)`; `unresolvedDueOnOrBefore()` refuses the freeze while a cycle is unresolved | — | `gbb_monthly_results.status = repurchase_failed_blocked` (out of `total_agp`) | none — code; engine flag OFF = fail-open (no gate) |
+| ~~GBB repurchase verdict gate~~ | removed 2026-10-09 (client Q5 G1, §12); the cycle verdict never withholds GBB, only the month-end wallet gate does | — | — | `repurchase_failed_blocked` retired by migration 2026_10_10_100000 | — |
 | Rank envelope | 20 % of the month's turnover | `comp.rank.envelope_bp` | 2 000 | `rank_monthly_passes.envelope_bp`, `envelope_paise`, `company_turnover_paise` | — |
+| Lifetime Awards fund (client Q1, §12) | 20 % of the month's BV | `comp.awards.fund_rate_bp` | 2 000 | not frozen — a report (`BonusCalculationSnapshots::awardsFund()`), priced at the current rate | — (never gates an award) |
 | RAP per rank | 72 / 189 / 468 / 1,125 / 2,583 / 5,688 / 11,934 / 23,877 / 39,501 | `rank_tiers.rap_points` (Plan settings → Rank tiers) | seeded | `rank_monthly_pools.rap_points`; `rank_bonus_results.rap_points` | — |
 | AGO offer points | 36 | `comp.rank.aogo_points` | 36 | `rank_bonus_results.aogo_points`; `rank_monthly_pools.aogo_points` | — |
 | Rank point-value cap | ₹200 | `comp.rank.point_value_cap_paise` | 20 000 | `rank_monthly_passes.point_value_cap_paise`, `raw_point_value_paise` | `100000000` |
@@ -117,7 +120,8 @@ client reverses a decision — no deploy needed.
 
 Retired statuses: `repurchase_held` / `repurchase_suspended` no longer exist on `gsb_cutoff_results` and
 `gbb_monthly_results` (migration 101200); `repurchase_held` no longer exists on `rank_bonus_results`
-(101400) or `fortune_bonus_results` (101500) and `awards_credit` no longer exists in
+(101400) or `fortune_bonus_results` (101500), `repurchase_failed_blocked` no longer exists on
+`gbb_monthly_results` (2026_10_10_100000, §12) and `awards_credit` no longer exists in
 `wallet_ledger_entries.type` (101300) — Task 14 and its follow-up, §10.
 
 ## 5. What each task changed, and the test that pins the client figure
@@ -130,7 +134,7 @@ Retired statuses: `repurchase_held` / `repurchase_suspended` no longer exist on 
 | 4 | `0b556a88` | failed rank-6+ sponsor capped at ₹3,600/day across all accruals; cap frozen per row; excess withheld with audit `msb.royalty.cap_withheld`; F-4 `sponsor_verdict_stale` | `MentorshipBonusServiceTest` (252,000 + 108,000 = 360,000; both orders; mid-day change) |
 | 5 | `dc2d7d29` | GBB 4 %, ₹240 cap, `agp_cap` retired (migration 100300, moved only from the old default) | `GrowthBoosterBonusServiceTest` (625 AGP: 320 → 240), `UpdateGbbSettingsMigrationTest` |
 | 6 | `c38df53f` | lifetime rank exclusion (any earlier month); `gbb:monthly-run` walks every earlier month's rank check; rebuild preview warning (F-8) | `GrowthBoosterBonusServiceTest` (M−2 excluded; first-rank month paid; voided rank ignored), `MonthRebuildTest`, `EngineRunRecorderTest` |
-| 7 | `90d9a5d6` | month-end verdict gate (A-G1): `repurchase_failed_blocked` rows out of `total_agp`; freeze refuses while a cycle due ≤ month end is unresolved (principle 2) | `GrowthBoosterBonusServiceTest` (12 payable + 12 blocked → value on 12; F-1 last-day boundary; refusal writes nothing) |
+| 7 | `90d9a5d6` | *(gate removed after the client's Q5 G1 answer, §12)* month-end verdict gate (A-G1): `repurchase_failed_blocked` rows out of `total_agp`; freeze refuses while a cycle due ≤ month end is unresolved (principle 2) | `GrowthBoosterBonusServiceTest` (12 payable + 12 blocked → value on 12; F-1 last-day boundary; refusal writes nothing) |
 | 8 | `6efb67d1` | `rank_tiers.rap_points`, `pool_pct` dropped, AGO 36, `comp.rank.point_value_cap_paise`, `comp.rank.first_pass_max_rank` (migrations 100500 / 100600) | `CompensationPlanSettingsServiceTest` |
 | 9 | `e4aadca6` | one 20 % envelope (`intdiv`, F-9) priced in two passes; `rank_monthly_passes`; pools become per-rank allotments; freeze reconciliation in the transaction; `unresolvedDueOnOrBefore` guard | `RankBonusServiceTest` (A2 ₹188; C1 ₹200 capped; D2 pass 2 ₹186; empty pass 1; refund-heavy month → 0), `rankAssertPassIdentities()` |
 | 10 | `33588495` | Input & Output report, formula block and snapshots show the passes; legacy months labelled (F-7); missing pass row flagged, never "leftover ₹0" | `AdminRankBonusInputOutputTest`, `AdminRbCalculationTest` |
@@ -163,6 +167,7 @@ Audit actions added by this plan: `plan.migration.redate_open_repurchase_cycles_
 `plan.migration.remove_admin_charge_applies_to_awards_setting`,
 `plan.migration.narrow_legacy_repurchase_held_statuses`, `plan.migration.narrow_awards_credit_wallet_type`,
 `plan.migration.narrow_rank_repurchase_held_status`, `plan.migration.narrow_fortune_repurchase_held_status`,
+`plan.migration.narrow_gbb_repurchase_failed_blocked_status`,
 `msb.credit.repurchase_gated`,
 `msb.royalty.cap_withheld`, `gbb.result.excluded_from_frozen_denominator`,
 `awards.tranche.unearned_pending_removed`.
@@ -209,10 +214,11 @@ artisan call on Cloudways; bare `php` there is 8.2.
      migration; every earlier one stays applied) → step 4 `repurchase:evaluate` → step 5 seeders if
      wanted → step 6 replay (`compensation:recompute-all` wipes the held/suspended and `awards_credit`
      rows and re-derives every month on the new rules; the engines never write the retired statuses)
-     → `migrate --force` again (101100/101200 and then **101300/101400/101500** apply — 101300 refuses while
+     → `migrate --force` again (101100/101200 and then **101300/101400/101500 and 2026_10_10_100000** apply — 101300 refuses while
      ANY `wallet_ledger_entries` row of type `awards_credit` exists, swept or not, and 101400 while any
-     `rank_bonus_results` row carries `repurchase_held`, 101500 likewise for `fortune_bonus_results`; the replay
-     removes all three) → `migrate:status
+     `rank_bonus_results` row carries `repurchase_held`, 101500 likewise for `fortune_bonus_results`, and
+     2026_10_10_100000 while any `gbb_monthly_results` row carries `repurchase_failed_blocked`; the replay
+     removes all four) → `migrate:status
      --pending` empty → step 7.
      On production the counts are expected to be zero (the forfeit model shipped on 2026-09-07 and the
      awards cash path never paid anyone, before production existed), so `migrate` runs through in one
@@ -272,7 +278,7 @@ GROUP BY type, bonus_month ORDER BY bonus_month, type;
 
 Attach both files to the deploy log. The difference per month must be explained entirely by the rule
 changes: Rank (two-pass pricing at the ₹200 cap and the RAP table), GBB (4 %, ₹240 cap, lifetime
-exclusion, verdict gate), MSB (₹120 cap, failed-sponsor gate, royalty cap). GSB, Fortune and ADC
+exclusion; the verdict gate was removed before deploy, §12), MSB (₹120 cap, failed-sponsor gate, royalty cap). GSB, Fortune and ADC
 totals must be unchanged apart from the repurchase re-date (F-1). The post-replay
 `RepurchaseShortfallGuard` reconciliation (detect-after; `app/Modules/Compensation/Services/Rebuild/`)
 must report zero residual.
@@ -373,3 +379,20 @@ Every item below except the main-side ones was done on this branch by Task 14 (r
 - The merchandise item list for awards (client to supply; placeholder catalogue seeded).
 - Any change to the weekly payout cadence, admin charge, TDS, repurchase deduction, Fortune Bonus or ADC.
 - Staging/production deploy — needs per-deploy approval.
+
+## 12. Client answers to the R.S.P. questions (2026-10-09) and what changed
+
+Answered by the client in "R.S.P - Questions: 09-10-2026". Changes are on this branch only.
+
+| Q | Client answer | Outcome on the branch |
+|---|---|---|
+| Q1 Award funding | Lifetime Awards & Rewards are funded from **20 %** of sales, one of seven shares: GSB 45 %, MB 3 %, GBB 4 %, Rank 20 %, Fortune 5 %, Awards 20 %, ADC 3 % = 100 % | Tracked as an awards fund (user decision: track, never block). R-114 updated. |
+| Q2 Royalty name | Call it "Mentorship Royalty" | Distributor-facing label for rank 6+ (copy only). |
+| Q3 Award items | Client will send the list soon | Still open; placeholder catalogue stays. |
+| Q4 GBB switches | No on/off switches; GBB rules unchanged; point value cap ₹240 | No change — matches the branch. |
+| Q5 G1 GBB repurchase | **NO** — Meena (₹0 wallet, window lapsed on the 28th, not renewed by the 31st) gets GBB | Month-end verdict gate removed; only the wallet gate remains. Status `repurchase_failed_blocked` retired by `2026_10_10_100000_narrow_gbb_repurchase_failed_blocked_status` (refuses while a row carries it; replay or wipe first). |
+| Q5 M1 Mentorship rank timing | **NO** (no alternative given) | Unchanged (A-M1 stays) until the client says which reading is right — a follow-up question is with the user. |
+| Q5 M2 ₹3,600 cap | YES | No change. |
+| Q5 A1 Award tranches | NO — "Gold has only two award parts" | No change: Gold (Rank 4) already has two tranches (§1.5); the example in the question was wrong. Release rule (n-th tranche on the n-th qualification) unchanged. |
+| Q5 R1 AGO 36 points in pass 1 | YES | No change. |
+
