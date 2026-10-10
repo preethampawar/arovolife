@@ -392,7 +392,7 @@ Answered by the client in "R.S.P - Questions: 09-10-2026". Changes are on this b
 | Q3 Award items | Client will send the list soon | Still open; placeholder catalogue stays. |
 | Q4 GBB switches | No on/off switches; GBB rules unchanged; point value cap ₹240 | No change — matches the branch. |
 | Q5 G1 GBB repurchase | **NO** — Meena (₹0 wallet, window lapsed on the 28th, not renewed by the 31st) gets GBB | Month-end verdict gate removed; only the wallet gate remains. Status `repurchase_failed_blocked` retired by `2026_10_10_100000_narrow_gbb_repurchase_failed_blocked_status` (refuses while a row carries it; replay or wipe first). |
-| Q5 M1 Mentorship rank timing | **NO**; 2026-10-10: the highest rank reached in a month counts for that whole month | Unchanged (A-M1 stays): the month's days are priced and paid before the 1st-of-next-month rank check, so a whole-month reading needs a true-up — decision with the user. |
+| Q5 M1 Mentorship rank timing | **NO**; 2026-10-10: the highest rank reached in a month counts for that whole month | **Decided by the user 2026-10-10: keep A-M1.** The month is recorded at its highest rank (Rank 6), but for Mentorship it counts from the 1st of the next month; days already priced and paid are never re-calculated (a whole-month reading would need a true-up outside the pool or a re-price of paid days). |
 | Q5 M2 ₹3,600 cap | YES | No change. |
 | Q5 A1 Award tranches | NO — "Gold has only two award parts" | No change: Gold (Rank 4) already has two tranches (§1.5); the example in the question was wrong. Release rule (n-th tranche on the n-th qualification) unchanged. |
 | Q5 R1 AGO 36 points in pass 1 | YES | No change. |
