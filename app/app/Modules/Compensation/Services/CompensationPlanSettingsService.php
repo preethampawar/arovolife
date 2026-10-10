@@ -88,7 +88,9 @@ final class CompensationPlanSettingsService
         // Mentorship Bonus. Divided by the day's total MSB score points to give
         // one point value for every earner. 300 bp = 3%.
         'comp.msb.pool_rate_bp' => 300,
-        'comp.gbb.pool_rate_bp' => 500,
+        // Growth Booster pool (client 2026-10-10): 400 bp = 4% of the
+        // month's company BV.
+        'comp.gbb.pool_rate_bp' => 400,
         'comp.gbb.agp_cap' => 120,
         'comp.adc.rate_bp' => 300,
         // Awards & Rewards share of company BV (client, 2026-10-10 BV

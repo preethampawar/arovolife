@@ -123,11 +123,11 @@ it('freezes a zero-value pool when nobody earned AGP', function () {
     $pool = GbbMonthlyPool::first();
 
     expect($pool)->not->toBeNull();
-    expect($pool->pool_paise)->toBe(50_000);       // 5% of 10,00,000 paise
+    expect($pool->pool_paise)->toBe(40_000);       // 4% of 10,00,000 paise
     expect($pool->total_agp)->toBe(0);
     expect($pool->point_value_paise)->toBe(0);
     expect($pool->payout_paise)->toBe(0);
-    expect($pool->leftover_paise)->toBe(50_000);   // the whole pool goes unspent
+    expect($pool->leftover_paise)->toBe(40_000);   // the whole pool goes unspent
     expect($result['point_value_paise'])->toBe(0);
 });
 
@@ -148,7 +148,7 @@ it('returns zero pool when company BV is zero', function () {
 it('calculates correct AGP for slab 1 (12 AGP), 2 (5 AGP), 3 (2 AGP)', function () {
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
-    gbbSeedCompanyBv(10_000_000);          // ₹1,00,000 BV → ₹5,000 pool
+    gbbSeedCompanyBv(10_000_000);          // ₹1,00,000 BV → ₹4,000 pool
     gbbSeedCutoff($dist->id, '2026-06-05', 1);  // 12 AGP
     gbbSeedCutoff($dist->id, '2026-06-06', 2);  // 5 AGP
     gbbSeedCutoff($dist->id, '2026-06-07', 3);  // 2 AGP
@@ -185,25 +185,25 @@ it('distributes pool proportionally between two distributors', function () {
     $d2 = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
-    // Pool: 5% of 2,00,000 paise BV = 10,000 paise.
+    // Pool: 4% of 2,00,000 paise BV = 8,000 paise.
     gbbSeedCompanyBv(200_000);
     gbbSeedCutoff($d1->id, '2026-06-05', 1);  // 12 AGP
     gbbSeedCutoff($d2->id, '2026-06-06', 2);  //  5 AGP
 
     $result = app(GrowthBoosterBonusService::class)->runForMonth($month);
 
-    // Total AGP = 17. 10,000 ÷ 17 = 588.2 paise → floored to ₹5 (500 paise).
+    // Total AGP = 17. 8,000 ÷ 17 = 470.6 paise → floored to ₹4 (400 paise).
     $row1 = GbbMonthlyResult::where('distributor_id', $d1->id)->first();
     $row2 = GbbMonthlyResult::where('distributor_id', $d2->id)->first();
 
-    expect($row1->gbb_gross_paise)->toBe(500 * 12);  // 6000
-    expect($row2->gbb_gross_paise)->toBe(500 * 5);   // 2500
+    expect($row1->gbb_gross_paise)->toBe(400 * 12);  // 4800
+    expect($row2->gbb_gross_paise)->toBe(400 * 5);   // 2000
     expect($result['total_agp'])->toBe(17);
-    expect($result['point_value_paise'])->toBe(500);
+    expect($result['point_value_paise'])->toBe(400);
     expect($result['credited'])->toBe(2);
 });
 
-it('sets the pool to 5% of monthly company BV, floors the point value to whole rupees and keeps the residual as leftover', function () {
+it('sets the pool to 4% of monthly company BV, floors the point value to whole rupees and keeps the residual as leftover', function () {
     $dist = Distributor::factory()->create();
     gbbSeedCompanyBv(150_000, '2026-06-03');
     gbbSeedCompanyBv(50_000, '2026-06-20');
@@ -217,17 +217,17 @@ it('sets the pool to 5% of monthly company BV, floors the point value to whole r
     $pool = GbbMonthlyPool::first();
 
     expect($pool->company_bv_paise)->toBe(200_000);
-    expect($pool->pool_rate_bp)->toBe(500);
-    expect($pool->pool_paise)->toBe(10_000);            // 5% of 2,00,000
+    expect($pool->pool_rate_bp)->toBe(400);
+    expect($pool->pool_paise)->toBe(8_000);             // 4% of 2,00,000
     expect($pool->total_agp)->toBe(12);
-    expect($pool->point_value_paise)->toBe(800);        // 833.3 floored to ₹8
-    expect($pool->payout_paise)->toBe(9_600);
-    expect($pool->leftover_paise)->toBe(400);           // flooring residual
-    expect($result['point_value_paise'])->toBe(800);
+    expect($pool->point_value_paise)->toBe(600);        // 666.7 floored to ₹6
+    expect($pool->payout_paise)->toBe(7_200);
+    expect($pool->leftover_paise)->toBe(800);           // flooring residual
+    expect($result['point_value_paise'])->toBe(600);
 
     $row = GbbMonthlyResult::where('distributor_id', $dist->id)->first();
-    expect($row->point_value_paise)->toBe(800);
-    expect($row->gbb_gross_paise)->toBe(9_600);
+    expect($row->point_value_paise)->toBe(600);
+    expect($row->gbb_gross_paise)->toBe(7_200);
 });
 
 it('freezes the month economics — later BV and cut-offs never reprice it', function () {
@@ -252,10 +252,10 @@ it('freezes the month economics — later BV and cut-offs never reprice it', fun
 
     expect(GbbMonthlyPool::count())->toBe(1);
     expect($pool->company_bv_paise)->toBe(200_000);
-    expect($pool->pool_paise)->toBe(10_000);
+    expect($pool->pool_paise)->toBe(8_000);
     expect($pool->total_agp)->toBe(12);
-    expect($pool->point_value_paise)->toBe(800);
-    expect($result['point_value_paise'])->toBe(800);
+    expect($pool->point_value_paise)->toBe(600);
+    expect($result['point_value_paise'])->toBe(600);
 
     // The already-paid distributor is untouched; the newcomer has no roster row
     // and is refused — paying them would spend a pool already fully divided.
@@ -267,7 +267,7 @@ it('freezes the month economics — later BV and cut-offs never reprice it', fun
 it('refuses a distributor whose AGP lands after the freeze and never overspends the frozen pool', function () {
     $d1 = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
-    gbbSeedCompanyBv(200_000, '2026-06-03');   // pool = 10,000 paise
+    gbbSeedCompanyBv(200_000, '2026-06-03');   // pool = 8,000 paise
     gbbSeedCutoff($d1->id, '2026-06-05', 1);   // 12 AGP → point value ₹8
 
     $svc = app(GrowthBoosterBonusService::class);
@@ -307,7 +307,7 @@ it('refuses a distributor whose AGP lands after the freeze and never overspends 
     expect($details['year_month'])->toBe('2026-06-01')
         ->and($details['agp'])->toBe(12)
         ->and($details['frozen_total_agp'])->toBe(12)
-        ->and($details['refused_gross_paise'])->toBe(9_600);
+        ->and($details['refused_gross_paise'])->toBe(7_200);
 });
 
 it('freezes the repurchase deduction on the row; admin charge and TDS are left to the payout', function () {
@@ -462,9 +462,9 @@ it('re-freezes a pool that was frozen before the month closed, and discards the 
 
     expect(GbbMonthlyPool::count())->toBe(1);
     expect($pool->total_agp)->toBe(12);
-    expect($pool->point_value_paise)->toBe(800);
+    expect($pool->point_value_paise)->toBe(600);
     expect($result['credited'])->toBe(1);
-    expect(GbbMonthlyResult::where('distributor_id', $dist->id)->first()->gbb_gross_paise)->toBe(9_600);
+    expect(GbbMonthlyResult::where('distributor_id', $dist->id)->first()->gbb_gross_paise)->toBe(7_200);
 
     // R-35: the replacement is an audit fact, not just a log line.
     expect(DB::table('audit_log')->where('action', 'gbb.pool.refrozen')->count())->toBe(1);
@@ -715,7 +715,7 @@ it('pays GBB on AGP from compliant days even when the cycle is failed at month e
     // failed day simply produced no GSB match, so no AGP came from it; the AGP
     // that did survive is paid in full.
     $dist = Distributor::factory()->create();
-    gbbSeedCompanyBv(200_000);                // pool = 10,000 paise
+    gbbSeedCompanyBv(200_000);                // pool = 8,000 paise
     gbbSeedCutoff($dist->id, '2026-06-05', 1);  // 12 AGP earned on a compliant day
     gbbSeedCycle($dist->id, RepurchaseCycle::STATUS_SUSPENDED);  // still failed at month end
 
@@ -728,14 +728,14 @@ it('pays GBB on AGP from compliant days even when the cycle is failed at month e
     $row = GbbMonthlyResult::where('distributor_id', $dist->id)->first();
     expect($row->status)->toBe(GbbMonthlyResult::STATUS_CREDITED);
     expect((int) WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'gbb_credit')->sum('amount_paise'))
-        ->toBe(9_600);
+        ->toBe(7_200);
 });
 
 it('keeps wallet-blocked AGP outside the denominator so it never dilutes the payable', function () {
     $payable = Distributor::factory()->create();
     $blocked = Distributor::factory()->create();
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
-    gbbSeedCompanyBv(200_000);                     // pool = 10,000 paise
+    gbbSeedCompanyBv(200_000);                     // pool = 8,000 paise
     gbbSeedCutoff($payable->id, '2026-06-05', 1);  // 12 AGP, payable
     gbbSeedCutoff($blocked->id, '2026-06-06', 2);  //  5 AGP, wallet not cleared
     gbbSeedRepurchaseWalletCredit($blocked->id, 50_000, '2026-06-20 09:00:00');
@@ -744,10 +744,10 @@ it('keeps wallet-blocked AGP outside the denominator so it never dilutes the pay
 
     // 12, not 17 — blocked AGP can never be paid, so it must not price the pool.
     expect($result['total_agp'])->toBe(12);
-    expect($result['point_value_paise'])->toBe(800);
+    expect($result['point_value_paise'])->toBe(600);
     expect($result['wallet_blocked'])->toBe(1);
 
-    expect(GbbMonthlyResult::where('distributor_id', $payable->id)->first()->gbb_gross_paise)->toBe(9_600);
+    expect(GbbMonthlyResult::where('distributor_id', $payable->id)->first()->gbb_gross_paise)->toBe(7_200);
     expect(GbbMonthlyResult::where('distributor_id', $blocked->id)->first()->gbb_gross_paise)->toBe(0);
 });
 

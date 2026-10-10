@@ -134,7 +134,7 @@ AGP accrue per **GSB slab match** during the month — **12 AGP** for a slab-1 m
 ### Monthly pool & point value
 
 The **GBB Monthly Calculation** report shows one **month header** per month on view (the filtered month, or every month among the rows on the page) — month total BV, GBB pool and rate, total AGP, point value, Computed — followed by the AGP point-value formula symbolically and then with that month's frozen values (pool = month BV × pool %; point value = ⌊pool ÷ total AGP⌋; income = AGP × value).
-1. **Pool** = the *GBB monthly pool rate* (Settings → Compensation plan, default **5%**) of the month's company-wide **BV** — the same signed BV-ledger sum the GSB and MSB pools use, **not** order sales value (KP 2026-08-05).
+1. **Pool** = the *GBB monthly pool rate* (Settings → Compensation plan, default **4%**, client 2026-10-10) of the month's company-wide **BV** — the same signed BV-ledger sum the GSB and MSB pools use, **not** order sales value (KP 2026-08-05).
 2. **Point value** = `floor-to-whole-rupee(pool ÷ the total AGP of all eligible distributors that month)`. Everyone is paid at the same value; income = **their AGP × that value**. The flooring remainder stays unspent with the company.
 3. The month's economics are frozen in a `gbb_monthly_pools` row **before any credit** and never recomputed, so re-runs and single-distributor retries price against the same snapshot (`gbb.pool.frozen` audit entry) — the same auditable, tamper-evident design as the GSB and MSB daily pools.
 

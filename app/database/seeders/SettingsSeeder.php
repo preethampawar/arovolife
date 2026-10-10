@@ -85,7 +85,7 @@ final class SettingsSeeder extends Seeder
             'comp.gsb.min_bv_paise' => '60000',             // 600 BV personal minimum before income accrues
             'comp.gsb.topup_golive_date' => '1970-01-01',   // permissive default; production pins it in GsbSlabsSeeder
             'comp.msb.pool_rate_bp' => '300',               // 3% daily MSB pool (÷ the day's total MSB points)
-            'comp.gbb.pool_rate_bp' => '500',               // 5% of the month's company BV
+            'comp.gbb.pool_rate_bp' => '400',               // 4% of the month's company BV
             'comp.gbb.agp_cap' => '120',
             'comp.rank.envelope_bp' => '2000',              // 20% of company BV funds all nine rank pools
             'comp.rank.pay_highest_rank_only' => 'true',    // exclusive rank pools (plan text); false = cumulative

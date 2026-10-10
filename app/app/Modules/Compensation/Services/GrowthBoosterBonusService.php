@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Growth Booster Bonus engine. Runs once per calendar month.
  *
- * POOL BASE — comp.gbb.pool_rate_bp (default 5%) of the month's company-wide
+ * POOL BASE — comp.gbb.pool_rate_bp (default 4%) of the month's company-wide
  * BV, read through GsbDailyPoolService::companyBvPaiseBetween() so GBB, GSB and
  * MSB can never disagree on what a period's BV was. (This replaced the old
  * "5% of order sales value" base: every bonus pool is a BV pool.)

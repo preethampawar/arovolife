@@ -1280,11 +1280,11 @@ final class AdminSettingsController extends Controller
                 'group' => 'compensation_plan',
                 'feature' => GrowthBoosterBonusFeature::class,
                 'label' => 'Growth Booster pool rate (basis points)',
-                'description' => 'Share of monthly company turnover funding the Growth Booster Bonus pool. 500 = 5%.',
+                'description' => 'Share of monthly company turnover funding the Growth Booster Bonus pool. 400 = 4%.',
                 'type' => 'int',
                 'min' => 0,
                 'max' => 10000,
-                'default' => '500',
+                'default' => '400',
             ],
             'comp.gbb.agp_cap' => [
                 'group' => 'compensation_plan',

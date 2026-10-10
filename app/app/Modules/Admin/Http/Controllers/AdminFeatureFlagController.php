@@ -104,7 +104,7 @@ final class AdminFeatureFlagController extends Controller
                 'class' => GrowthBoosterBonusFeature::class,
                 'label' => 'Growth Booster Bonus (Phase 4)',
                 'requires' => ['compensation.genos_sales_bonus', 'compensation.rank_bonus'],
-                'description' => 'Enables the monthly GBB pool (5% of turnover) distributed via AGP points. Shows the Growth Booster tab in income views and admin GBB dashboard. Also gates the gbb:monthly-run artisan command.',
+                'description' => 'Enables the monthly GBB pool (4% of company BV) distributed via AGP points. Shows the Growth Booster tab in income views and admin GBB dashboard. Also gates the gbb:monthly-run artisan command.',
                 'owner' => 'developer',
             ],
 
