@@ -23,6 +23,15 @@ return new class extends Migration
 
     public function up(): void
     {
+        // `migrate --pretend` (run by app:deploy as a dry run) only prints SQL,
+        // and the audit row's binary hash cannot be printed — show the update
+        // and stop.
+        if (DB::pretending()) {
+            DB::table('settings')->where('key', self::POOL_RATE_KEY)->where('value', '500')->update(['value' => '400']);
+
+            return;
+        }
+
         DB::transaction(function (): void {
             $before = DB::table('settings')->where('key', self::POOL_RATE_KEY)->value('value');
             $moved = DB::table('settings')
