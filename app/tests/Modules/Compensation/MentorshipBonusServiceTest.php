@@ -534,6 +534,24 @@ it('still accrues for a failed sponsor at rank 6 or above (Mentorship Royalty)',
     expect(WalletLedgerEntry::where('distributor_id', $sponsor->id)->where('type', 'mb_credit')->count())->toBe(1);
 });
 
+it('keeps the royalty for life once Rank 6 is reached, even after lower-rank months', function () {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    [$sponsor, $sponsee] = msbSponsorPair();
+    msbSeedFailedCycle($sponsor, '2026-08-06');
+    // Rank 6 in May, then only Rank 3 in June and July (client 2026-10-10:
+    // royalty for life, whatever the later months' rank).
+    msbSeedRankQualification($sponsor->id, 6, '2026-05-01');
+    msbSeedRankQualification($sponsor->id, 3, '2026-06-01');
+    msbSeedRankQualification($sponsor->id, 3, '2026-07-01');
+
+    expect(app(RepurchaseCycleService::class)->rankAsOf($sponsor->id, Carbon::parse('2026-08-10')))->toBe(6);
+
+    $accrual = app(MentorshipBonusService::class)->accrueForSponsee($sponsee->id, msbCreditedCutoff($sponsee, 1, '2026-08-10'));
+
+    expect($accrual->repurchaseGated)->toBeFalse()
+        ->and($accrual->points)->toBe(21);
+});
+
 it('accrues normally for an eligible sponsor', function () {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
     [, $sponsee] = msbSponsorPair();

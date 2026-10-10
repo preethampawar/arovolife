@@ -388,10 +388,11 @@ Answered by the client in "R.S.P - Questions: 09-10-2026". Changes are on this b
 |---|---|---|
 | Q1 Award funding | Lifetime Awards & Rewards are funded from **20 %** of sales, one of seven shares: GSB 45 %, MB 3 %, GBB 4 %, Rank 20 %, Fortune 5 %, Awards 20 %, ADC 3 % = 100 % | Tracked as an awards fund (user decision: track, never block). R-114 updated. |
 | Q2 Royalty name | Call it "Mentorship Royalty" | Distributor-facing label for rank 6+ (copy only). |
+| Royalty for life (2026-10-10) | Once Rank 6 is reached the royalty is paid for life, even if later months fall below Rank 6; paid two ways — full while the repurchase condition is met, capped at ₹3,600/day while failed | Already built (`rankAsOf()` is the highest rank of any earlier month); pinned by a `MentorshipBonusServiceTest` case. |
 | Q3 Award items | Client will send the list soon | Still open; placeholder catalogue stays. |
 | Q4 GBB switches | No on/off switches; GBB rules unchanged; point value cap ₹240 | No change — matches the branch. |
 | Q5 G1 GBB repurchase | **NO** — Meena (₹0 wallet, window lapsed on the 28th, not renewed by the 31st) gets GBB | Month-end verdict gate removed; only the wallet gate remains. Status `repurchase_failed_blocked` retired by `2026_10_10_100000_narrow_gbb_repurchase_failed_blocked_status` (refuses while a row carries it; replay or wipe first). |
-| Q5 M1 Mentorship rank timing | **NO** (no alternative given) | Unchanged (A-M1 stays) until the client says which reading is right — a follow-up question is with the user. |
+| Q5 M1 Mentorship rank timing | **NO**; 2026-10-10: the highest rank reached in a month counts for that whole month | Unchanged (A-M1 stays): the month's days are priced and paid before the 1st-of-next-month rank check, so a whole-month reading needs a true-up — decision with the user. |
 | Q5 M2 ₹3,600 cap | YES | No change. |
 | Q5 A1 Award tranches | NO — "Gold has only two award parts" | No change: Gold (Rank 4) already has two tranches (§1.5); the example in the question was wrong. Release rule (n-th tranche on the n-th qualification) unchanged. |
 | Q5 R1 AGO 36 points in pass 1 | YES | No change. |
