@@ -21,7 +21,22 @@ use Laravel\Pennant\Feature;
  */
 final class FamilyCardController extends Controller
 {
+    /** In-app page (left sidebar → My Family Card): the card plus a download link. */
+    public function index(): View|RedirectResponse
+    {
+        return $this->render('membership.my-family-card');
+    }
+
+    /** Standalone printable page — Download PDF / Print. */
     public function show(): View|RedirectResponse
+    {
+        return $this->render('membership.family-card');
+    }
+
+    /**
+     * @param  view-string  $view
+     */
+    private function render(string $view): View|RedirectResponse
     {
         abort_unless(Feature::for(null)->active(FamilyCardFeature::class), 404);
 
@@ -38,7 +53,7 @@ final class FamilyCardController extends Controller
             return redirect()->route('dashboard');
         }
 
-        return view('membership.family-card', [
+        return view($view, [
             'name' => $user->full_name,
             'adn' => $distributor->adn,
         ]);

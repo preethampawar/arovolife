@@ -63,12 +63,34 @@ function seedFamilyMember(Distributor $distributor, array $overrides = []): Dist
     ], $overrides));
 }
 
+it('is on by default — the card shows without anyone switching the flag on', function (): void {
+    $distributor = familyCardDistributor();
+
+    $this->actingAs($distributor->user)->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('arovolife Family Card')
+        ->assertSee(route('my.family-card'));
+});
+
+it('opens My Family Card from the sidebar: the card, front and back, with a download link', function (): void {
+    $distributor = familyCardDistributor();
+
+    $this->actingAs($distributor->user)->get(route('my.family-card'))
+        ->assertOk()
+        ->assertSee($distributor->adn)
+        ->assertSee('1 + 5 family members')
+        ->assertSee('It is not an insurance policy')
+        ->assertSee(route('family-card.show'))
+        ->assertSee('Download PDF / Print');
+});
+
 it('leaves no trace of the Family Card while the flag is off', function (): void {
     Feature::for(null)->deactivate(FamilyCardFeature::class);
     $distributor = familyCardDistributor();
 
     $this->actingAs($distributor->user)->get(route('dashboard'))->assertOk()->assertDontSee('Family Card');
     $this->actingAs($distributor->user)->get(route('family-card.show'))->assertNotFound();
+    $this->actingAs($distributor->user)->get(route('my.family-card'))->assertNotFound();
     $this->actingAs($distributor->user)->get(route('profile.show'))->assertOk()->assertDontSee('Family members');
     addFamilyMember($distributor)->assertNotFound();
     expect(DistributorFamilyMember::count())->toBe(0);

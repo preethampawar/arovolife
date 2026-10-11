@@ -1237,6 +1237,7 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     // Printable membership card (front + back, save-as-PDF / print).
     Route::get('/dashboard/membership-card', [MembershipCardController::class, 'show'])->name('membership-card.show');
     // Printable arovolife Family Card (display only; FamilyCardFeature).
+    Route::get('/my/family-card', [FamilyCardController::class, 'index'])->name('my.family-card');
     Route::get('/dashboard/family-card', [FamilyCardController::class, 'show'])->name('family-card.show');
     // Printable Profile Stats panel (save-as-PDF / print).
     Route::get('/dashboard/profile-stats', [ProfileStatsController::class, 'show'])->name('profile-stats.show');

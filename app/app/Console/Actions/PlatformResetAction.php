@@ -62,6 +62,9 @@ final class PlatformResetAction
         'cooling_off_events',
         'kyc_documents',
         'line_change_requests',
+        // Family Card members — keyed on distributor_id; a truncate with FK
+        // checks off would otherwise leave them attached to a re-used id.
+        'distributor_family_members',
         // Tree + main
         'sponsorship',
         'genealogy_closure',
