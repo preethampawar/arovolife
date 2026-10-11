@@ -58,6 +58,9 @@
             @endif
             @include('dashboard._cooling-off')
             @include('dashboard._documents', ['docsLayout' => 'stacked'])
+            @if($user->status !== 'terminated' && \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FamilyCardFeature::class))
+                @include('dashboard._family-card')
+            @endif
         </div>
     </div>
 

@@ -7,6 +7,7 @@ namespace App\Modules\Identity;
 use App\Modules\Consent\Services\ConsentDocuments;
 use App\Modules\Genealogy\Events\DistributorRegistered;
 use App\Modules\Genealogy\Services\PlacementEngine;
+use App\Modules\Identity\Console\Commands\ExpireMinorFamilyConsentsCommand;
 use App\Modules\Identity\Events\KycResubmitted;
 use App\Modules\Identity\Listeners\SendKycResubmittedMails;
 use App\Modules\Identity\Listeners\SendRegistrationSubmittedMails;
@@ -41,6 +42,14 @@ final class IdentityServiceProvider extends ServiceProvider
         Gate::policy(Distributor::class, DistributorPolicy::class);
 
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
+
+        if ($this->app->runningInConsole()) {
+            // Module commands sit outside app/Console/Commands, where nothing
+            // auto-discovers them.
+            $this->commands([
+                ExpireMinorFamilyConsentsCommand::class,
+            ]);
+        }
 
         // Registration / resubmission email wiring. Listeners send a welcome
         // (or confirmation) email to the distributor AND a new-queue-item

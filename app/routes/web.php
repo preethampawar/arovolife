@@ -106,6 +106,8 @@ use App\Modules\Identity\Http\Controllers\DashboardController;
 use App\Modules\Identity\Http\Controllers\DirectSellerApplicationController;
 use App\Modules\Identity\Http\Controllers\DistributorDetailsController;
 use App\Modules\Identity\Http\Controllers\DistributorRequestController;
+use App\Modules\Identity\Http\Controllers\FamilyCardController;
+use App\Modules\Identity\Http\Controllers\FamilyMemberController;
 use App\Modules\Identity\Http\Controllers\IdPhotoController;
 use App\Modules\Identity\Http\Controllers\KycDocumentSelfServiceController;
 use App\Modules\Identity\Http\Controllers\KycResubmitController;
@@ -337,6 +339,7 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::post('/distributors/{id}/freeze', [AdminDistributorController::class, 'freeze'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.freeze');
     Route::post('/distributors/{id}/unfreeze', [AdminDistributorController::class, 'unfreeze'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.unfreeze');
     Route::post('/distributors/{id}/terminate', [AdminDistributorController::class, 'terminate'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.terminate');
+    Route::delete('/distributors/{id}/family-members/{member}', [AdminDistributorController::class, 'eraseFamilyMember'])->whereNumber(['id', 'member'])->middleware('can:compliance.discipline')->name('distributors.family-members.erase');
     Route::post('/distributors/{id}/activate', [AdminDistributorController::class, 'activate'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.activate');
     Route::post('/distributors/{id}/deactivate', [AdminDistributorController::class, 'deactivate'])->whereNumber('id')->middleware('can:compliance.discipline')->name('distributors.deactivate');
 
@@ -1233,6 +1236,8 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // Printable membership card (front + back, save-as-PDF / print).
     Route::get('/dashboard/membership-card', [MembershipCardController::class, 'show'])->name('membership-card.show');
+    // Printable arovolife Family Card (display only; FamilyCardFeature).
+    Route::get('/dashboard/family-card', [FamilyCardController::class, 'show'])->name('family-card.show');
     // Printable Profile Stats panel (save-as-PDF / print).
     Route::get('/dashboard/profile-stats', [ProfileStatsController::class, 'show'])->name('profile-stats.show');
     Route::get('/dashboard/direct-seller-application', [DirectSellerApplicationController::class, 'show'])->name('direct-seller-application.show');
@@ -1377,6 +1382,9 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     // both so a code can't be email-spammed or its attempt counter reset.
     Route::patch('/profile', [ProfileController::class, 'update'])->middleware('throttle:6,10')->name('profile.update');
     Route::post('/profile/anniversary', [ProfileController::class, 'updateAnniversary'])->middleware('throttle:10,10')->name('profile.anniversary.update');
+    // Family members for the arovolife Family Card (FamilyCardFeature).
+    Route::post('/profile/family-members', [FamilyMemberController::class, 'store'])->middleware('throttle:10,10')->name('profile.family-members.store');
+    Route::delete('/profile/family-members/{member}', [FamilyMemberController::class, 'destroy'])->whereNumber('member')->middleware('throttle:10,10')->name('profile.family-members.destroy');
     // OTP confirmation for a mobile/email change.
     Route::post('/profile/contact-otp', [ProfileController::class, 'confirmOtp'])->middleware('throttle:10,10')->name('profile.otp.confirm');
     Route::post('/profile/contact-otp/resend', [ProfileController::class, 'resendOtp'])->middleware('throttle:6,10')->name('profile.otp.resend');

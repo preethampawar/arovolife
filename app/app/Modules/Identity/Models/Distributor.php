@@ -257,6 +257,14 @@ final class Distributor extends Model
     }
 
     /**
+     * @return HasMany<DistributorFamilyMember, $this>
+     */
+    public function familyMembers(): HasMany
+    {
+        return $this->hasMany(DistributorFamilyMember::class);
+    }
+
+    /**
      * @return HasOne<DistributorProfile, $this>
      */
     public function profile(): HasOne

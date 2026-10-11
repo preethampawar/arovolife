@@ -145,6 +145,157 @@
     </div>
     @endif
 
+    {{-- ── Family members — arovolife Family Card (Privacy Policy §4 8b) ────
+         Shown while the flag is on, and ALSO while it is off for anyone who
+         already has members registered, so removal is never out of reach
+         (§10.3). The add form only renders while the flag is on. --}}
+    @if($distributor && ($familyCardOn || $familyMembers->isNotEmpty()))
+    @php
+        $familyMax = \App\Modules\Identity\Models\DistributorFamilyMember::MAX_PER_DISTRIBUTOR;
+        $thisYear = (int) now('Asia/Kolkata')->year;
+        $kycApproved = $user->status === 'active';
+    @endphp
+    <div id="family-members" class="mt-6 bg-white rounded-2xl border border-gray-200 p-6 scroll-mt-20">
+        <div class="flex items-baseline justify-between gap-3 mb-1">
+            <h2 class="font-semibold text-gray-800">Family members <span class="text-xs text-gray-600 font-normal">(optional)</span></h2>
+            @if($familyCardOn)
+                <span class="text-xs text-gray-600">{{ $familyMembers->count() }} of {{ $familyMax }} added</span>
+            @endif
+        </div>
+        @if($familyCardOn)
+            <p class="text-sm text-gray-600 mb-4 leading-relaxed">
+                Register up to {{ $familyMax }} family members for your arovolife Family Card. The card shows only
+                “1 + 5 family members”, never their names. The card is not an insurance policy and gives no health
+                cover or treatment. Names are never shared with other Distributors and never used for eligibility,
+                rank or income.
+            </p>
+        @else
+            <p class="text-sm text-gray-600 mb-4 leading-relaxed">The family members you added earlier. You can remove them at any time.</p>
+        @endif
+
+        @if($familyMembers->isNotEmpty())
+            <ul class="divide-y divide-gray-100 border border-gray-200 rounded-xl mb-5">
+                @foreach($familyMembers as $member)
+                    <li class="flex items-center justify-between gap-3 px-4 py-3">
+                        <div class="min-w-0">
+                            <p class="text-sm font-medium text-gray-900 break-words">{{ $member->full_name ?? '—' }}</p>
+                            <p class="text-xs text-gray-600">
+                                {{ $member->relationLabel() }}
+                                @if($member->is_minor)
+                                    · <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">Under 18</span>
+                                    <span class="text-gray-600">· removed after {{ $member->turns_18_year }}</span>
+                                @endif
+                            </p>
+                        </div>
+                        <form method="POST" action="{{ route('profile.family-members.destroy', $member->id) }}"
+                              data-confirm="Remove this family member?"
+                              data-confirm-title="Remove family member"
+                              data-confirm-impact="Deletes their name and relation from arovolife. You can add them again later.">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="text-sm text-red-700 hover:text-red-800 font-medium">Remove</button>
+                        </form>
+                    </li>
+                @endforeach
+            </ul>
+        @endif
+
+        @if($familyCardOn && $familyMembers->count() < $familyMax)
+            <form method="POST" action="{{ route('profile.family-members.store') }}" class="space-y-4" id="family-member-form"
+                  data-confirm="Add this family member?"
+                  data-confirm-title="Add family member"
+                  data-confirm-impact="Saves their name and relation for your Family Card, with the consent you have given below.">
+                @csrf
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="family_full_name" class="{{ $editLabel }}">
+                            Full name <x-help-tip text="The family member's name as on their ID. Stored encrypted; never shown on the card or to other Distributors." />
+                        </label>
+                        {{-- No old() refill: a third party's name is not flashed into the session. --}}
+                        <input id="family_full_name" name="full_name" type="text" maxlength="120" required
+                               class="{{ $editInput }}">
+                        @error('full_name')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+                    </div>
+                    <div>
+                        <label for="family_relation" class="{{ $editLabel }}">
+                            Relation to you <x-help-tip text="How this person is related to you." />
+                        </label>
+                        <select id="family_relation" name="relation" required class="{{ $editInput }} bg-white">
+                            <option value="">Choose…</option>
+                            @foreach(\App\Modules\Identity\Models\DistributorFamilyMember::RELATIONS as $key => $label)
+                                <option value="{{ $key }}" @selected(old('relation') === $key)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('relation')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+                    </div>
+                </div>
+
+                <fieldset>
+                    <legend class="{{ $editLabel }}">
+                        Is this family member under 18? <x-help-tip text="A child's details need your consent as their parent or guardian, and are removed automatically after the year they turn 18." />
+                    </legend>
+                    <div class="flex items-center gap-6 text-sm text-gray-800">
+                        <label class="inline-flex items-center gap-2">
+                            <input type="radio" name="is_minor" value="0" required @checked(old('is_minor', '0') === '0') data-family-minor> No
+                        </label>
+                        <label class="inline-flex items-center gap-2">
+                            <input type="radio" name="is_minor" value="1" @checked(old('is_minor') === '1') @disabled(! $kycApproved) data-family-minor> Yes
+                        </label>
+                    </div>
+                    @unless($kycApproved)
+                        <p class="mt-1 text-xs text-gray-600">You can add a family member under 18 once your KYC has been approved.</p>
+                    @endunless
+                    @error('is_minor')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+                </fieldset>
+
+                <div data-family-guardian class="{{ old('is_minor') === '1' ? '' : 'hidden' }} space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                    <div class="max-w-xs">
+                        <label for="family_turns_18_year" class="{{ $editLabel }}">
+                            Year the child turns 18 <x-help-tip text="We use only the year, not the date of birth. The child's details are removed automatically after this year." />
+                        </label>
+                        <input id="family_turns_18_year" name="turns_18_year" type="number" min="{{ $thisYear }}" max="{{ $thisYear + 18 }}"
+                               value="{{ old('turns_18_year') }}" class="{{ $editInput }} bg-white">
+                        @error('turns_18_year')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+                    </div>
+                    <label class="flex items-start gap-3 text-sm text-amber-900">
+                        <input type="checkbox" name="guardian_consent" value="1" class="mt-1" @checked(old('guardian_consent'))>
+                        <span><span class="font-semibold">Parent / guardian consent.</span> {{ \App\Modules\Identity\Models\DistributorFamilyMember::GUARDIAN_CONSENT_TEXT }}</span>
+                    </label>
+                    @error('guardian_consent')<p class="text-xs text-red-700">{{ $message }}</p>@enderror
+                </div>
+
+                <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <label class="flex items-start gap-3 text-sm text-gray-800">
+                        <input type="checkbox" name="consent" value="1" class="mt-1" required @checked(old('consent'))>
+                        <span>
+                            <span class="font-semibold">Consent.</span> {{ \App\Modules\Identity\Models\DistributorFamilyMember::CONSENT_TEXT }}
+                            <a href="{{ url('/p/privacy') }}" target="_blank" rel="noopener" class="text-brand-700 hover:text-brand-800 font-medium">Read the Privacy Policy</a>
+                        </span>
+                    </label>
+                    @error('consent')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+                </div>
+
+                <button type="submit" class="px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold shadow-sm transition-colors">Add family member</button>
+            </form>
+            <script>
+                (function () {
+                    const form = document.getElementById('family-member-form');
+                    if (!form) return;
+                    const box = form.querySelector('[data-family-guardian]');
+                    const sync = () => {
+                        const minor = form.querySelector('[data-family-minor]:checked')?.value === '1';
+                        box.classList.toggle('hidden', !minor);
+                    };
+                    form.querySelectorAll('[data-family-minor]').forEach((r) => r.addEventListener('change', sync));
+                    sync();
+                })();
+            </script>
+        @elseif($familyCardOn)
+            <p class="text-sm text-gray-600">You have added the most family members the card allows. Remove one to add another.</p>
+        @endif
+    </div>
+    @endif
+
     {{-- ── Your data ────────────────────────────────────────────────────────── --}}
     @if($distributor)
     <div class="mt-6 bg-white rounded-2xl border border-gray-200 p-6">

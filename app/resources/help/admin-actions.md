@@ -28,6 +28,7 @@ be **Blocked** from signing in while their record still exists.
 | **Terminate** | **Permanently** closes the account. The distributor can **never** sign in again. | **No — irreversible.** | A final closure (fraud, repeat offence, policy). Requires a reason. |
 | **Deactivate Distributor** | Marks the **record** Inactive (separate from login). | Yes — Activate restores it. | Pausing a distributor position without closing the account. |
 | **Activate Distributor** | Marks the record Active. | Yes | Re-enabling a paused record. |
+| **Erase family member** *(Family Card members panel, admin-compliance only)* | Permanently deletes one family member the distributor registered for the arovolife Family Card. Audited as `admin.family_member.erased`, without the name. | **No — irreversible.** | The family member (or the DPO on their behalf) asks for their details to be erased. The distributor can also remove members themselves on My Profile. |
 
 > **Block ≠ Terminate.** Block is a reversible hold (sign-in disabled).
 > Terminate is permanent and cannot be undone. When unsure, **Block first** and

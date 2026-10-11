@@ -12,8 +12,11 @@ use App\Modules\Admin\Events\DistributorUnfrozen;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Services\AuditLogPresenter;
 use App\Modules\Compliance\Support\AuditDigests;
+use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\DistributorFamilyMember;
 use App\Modules\Identity\Models\DistributorNominee;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Services\FamilyMemberService;
 use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
 use App\Modules\Shared\Support\ReportExport;
@@ -229,10 +232,16 @@ final class AdminDistributorController extends Controller
         // call on a stdClass is a fatal error, not a null.
         $profileRow = DB::table('distributor_profiles')->where('distributor_id', $id)->first();
 
+        // Family Card members — names are decrypted only for the role that
+        // acts on a family member's erasure request (admin-compliance).
+        $familyMembers = $request->user()?->can('compliance.discipline')
+            ? DistributorFamilyMember::where('distributor_id', $id)->orderBy('id')->get()
+            : collect();
+
         return view('admin.distributors.show', compact(
             'distributor', 'sponsor', 'placementParent', 'consents',
             'auditLogs', 'downlineCount', 'leftChild', 'rightChild',
-            'nomineeRow', 'profileRow', 'kycState'
+            'nomineeRow', 'profileRow', 'kycState', 'familyMembers'
         ));
     }
 
@@ -539,6 +548,22 @@ final class AdminDistributorController extends Controller
         }
 
         return back()->with('status', sprintf('Distributor %s set to %s.', $row->adn, $status));
+    }
+
+    /**
+     * Erase one Family Card member on a family member's (or the DPO's)
+     * erasure request — DPDP Act 2023 §12. admin-compliance only; audited
+     * without the name. Not flag-gated: erasure must work with the card off.
+     */
+    public function eraseFamilyMember(Request $request, int $id, int $member, FamilyMemberService $service): RedirectResponse
+    {
+        $actor = $request->user();
+        abort_unless($actor instanceof User && $actor->can('compliance.discipline'), 403);
+
+        $distributor = Distributor::findOrFail($id);
+        $service->remove($distributor, $member, $actor, $request->ip(), 'admin.family_member.erased');
+
+        return back()->with('status', 'Family member erased.');
     }
 
     /**

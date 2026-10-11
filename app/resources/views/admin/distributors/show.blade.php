@@ -414,6 +414,40 @@ function unmaskNomineeAadhaar(btn) {
 </script>
 @endif
 
+{{-- Family Card members — admin-compliance only (the controller returns an
+     empty list to every other role). Read-only apart from Erase, which acts
+     on a family member's erasure request (DPDP §12). --}}
+@if($familyMembers->isNotEmpty())
+<x-ui.card flush class="mb-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="font-semibold text-gray-800">Family Card members</h3>
+        <p class="text-xs text-gray-600 mt-0.5">Registered by the distributor with consent. Erase only on a family member's or the DPO's request.</p>
+    </div>
+    <ul class="divide-y divide-gray-100">
+        @foreach($familyMembers as $member)
+        <li class="px-6 py-3 flex items-center justify-between gap-4 text-sm">
+            <div class="min-w-0">
+                <p class="text-gray-800 font-medium break-words">{{ $member->full_name ?? '—' }}</p>
+                <p class="text-xs text-gray-600">
+                    {{ $member->relationLabel() }}
+                    @if($member->is_minor) · Under 18 (turns 18 in {{ $member->turns_18_year }}) @endif
+                    · consent {{ $member->consent_given_at->format('d M Y, h:i A') }} (v{{ $member->consent_version }})
+                </p>
+            </div>
+            <form method="POST" action="{{ route('admin.distributors.family-members.erase', [$distributor->id, $member->id]) }}"
+                  data-confirm="Erase this family member?"
+                  data-confirm-title="Erase family member"
+                  data-confirm-impact="Permanently deletes their name and relation. The audit log records the erasure without the name.">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="text-xs text-red-700 hover:text-red-800 font-medium">Erase</button>
+            </form>
+        </li>
+        @endforeach
+    </ul>
+</x-ui.card>
+@endif
+
 {{-- Admin Actions --}}
 @if($distributor->status !== 'terminated')
 <x-ui.card padding="p-6" class="mb-6">
