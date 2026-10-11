@@ -1,7 +1,7 @@
 {{-- Front face of the arovolife Family Card — shared by the dashboard tile
      (compact) and the printable page. Same frame, waves and logo as the
      membership card. Never shows family members' names: the card carries
-     only the fixed "1 + 5" (client decision 2026-10-11, R-115). The
+     only the fixed "1 + 5" (client decision 2026-10-11, R-117). The
      not-an-insurance-policy line sits on the FRONT on purpose — a "1 + 5"
      card reads like a family-floater e-card without it. --}}
 @php $compact = $compact ?? false; @endphp

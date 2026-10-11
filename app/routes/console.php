@@ -231,7 +231,7 @@ Schedule::command(PurgeExpiredDocumentsCommand::class)
 
 // Family Card members registered as children are erased once the year they
 // turn 18 has passed — the parent's consent does not cover the adult (DPDP
-// §6(7), §8(7), R-115). Daily, quiet hour; a no-op on most days.
+// §6(7), §8(7), R-117). Daily, quiet hour; a no-op on most days.
 Schedule::command(ExpireMinorFamilyConsentsCommand::class)
     ->dailyAt('03:30')
     ->timezone('Asia/Kolkata')

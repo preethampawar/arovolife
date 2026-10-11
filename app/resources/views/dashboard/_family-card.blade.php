@@ -1,5 +1,5 @@
 {{-- arovolife Family Card — compact face + links to the printable page and
-     to My Profile → Family members. Display only (R-115). Included from
+     to My Profile → Family members. Display only (R-117). Included from
      dashboard/index.blade.php behind FamilyCardFeature.
 
      Expects: $user, $distributor. --}}

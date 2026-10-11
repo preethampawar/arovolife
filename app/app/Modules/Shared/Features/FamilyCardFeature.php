@@ -13,7 +13,7 @@ namespace App\Modules\Shared\Features;
  *
  * Default: `true` (user decision 2026-10-11 — on by default, production
  * included). The card has no defined benefit yet, so family names are
- * collected as an accepted risk (client decision 2026-10-11, R-115); the
+ * collected as an accepted risk (client decision 2026-10-11, R-117); the
  * Privacy Policy revision that notices the collection (v2026-10-11) must be
  * published on every environment this runs on. This is a killswitch, not a
  * launch gate.

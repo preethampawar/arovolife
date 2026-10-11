@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Erase family members registered as children once the year they turn 18 has
  * passed: the parent's consent covered a child, not the adult (DPDP Act 2023
- * §6(7), §8(7); R-115). The distributor can add them again with the adult
+ * §6(7), §8(7); R-117). The distributor can add them again with the adult
  * consent. Runs whether or not the Family Card flag is on.
  */
 final class ExpireMinorFamilyConsentsCommand extends Command

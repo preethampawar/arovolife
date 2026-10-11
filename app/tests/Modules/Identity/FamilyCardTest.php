@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * arovolife Family Card (R-115): a display-only dashboard card + printable page,
+ * arovolife Family Card (R-117): a display-only dashboard card + printable page,
  * and My Profile → Family members (up to five, consent per member, parent /
  * guardian consent for a child, erased on termination / cooling-off / turns 18).
  */

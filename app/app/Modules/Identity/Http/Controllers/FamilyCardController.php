@@ -16,7 +16,7 @@ use Laravel\Pennant\Feature;
  * members") the distributor can view, print, or save as a 2-page PDF via the
  * browser's print dialog, the same way as the membership card.
  *
- * It is not an insurance policy and carries no benefit (R-115); the card never
+ * It is not an insurance policy and carries no benefit (R-117); the card never
  * shows family members' names.
  */
 final class FamilyCardController extends Controller
