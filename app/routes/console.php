@@ -17,6 +17,7 @@ use App\Modules\Compensation\Services\Recompute\RecomputeState;
 use App\Modules\Compensation\Support\MonthlyRunPlanner;
 use App\Modules\Compensation\Support\WeeklyRunPlanner;
 use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
+use App\Modules\Identity\Console\Commands\ExpireMinorFamilyConsentsCommand;
 use App\Modules\Inventory\Console\Commands\InventoryAlertsCommand;
 use App\Modules\Inventory\Console\Commands\VerifyStockLedgerCommand;
 use App\Modules\Kyc\Console\Commands\PurgeExpiredDocumentsCommand;
@@ -225,6 +226,14 @@ Schedule::command(AdcPurgeRejectedDocumentsCommand::class)
 // (DPDP §8(7), R-31; client decision 2026-09-11). Daily, quiet hour.
 Schedule::command(PurgeExpiredDocumentsCommand::class)
     ->dailyAt('03:25')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping();
+
+// Family Card members registered as children are erased once the year they
+// turn 18 has passed — the parent's consent does not cover the adult (DPDP
+// §6(7), §8(7), R-117). Daily, quiet hour; a no-op on most days.
+Schedule::command(ExpireMinorFamilyConsentsCommand::class)
+    ->dailyAt('03:30')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping();
 

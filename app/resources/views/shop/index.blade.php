@@ -11,8 +11,8 @@
 @if(($categoryBanners ?? collect())->isNotEmpty())
     @include('partials._banner-carousel', ['slides' => $categoryBanners, 'aspectClass' => 'aspect-[1520/350]', 'wrapperClass' => ''])
 @elseif($activeCategory->bannerUrl())
-<section class="relative overflow-hidden">
-    <img src="{{ $activeCategory->bannerUrl() }}" alt="{{ $activeCategory->name }}" class="w-full aspect-[1520/350] object-cover bg-gray-100">
+<section class="relative overflow-hidden banner-sheen">
+    <img src="{{ $activeCategory->bannerUrl() }}" alt="{{ $activeCategory->name }}" class="w-full aspect-[1520/350] object-cover bg-gray-100 banner-breathe">
 </section>
 @endif
 @elseif(($banners ?? collect())->isNotEmpty())

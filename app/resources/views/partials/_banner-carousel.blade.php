@@ -15,8 +15,8 @@
             @foreach($slides as $i => $b)
             <a href="{{ $b->link_url ?: '' }}" @if(! $b->link_url) onclick="return false;" @endif
                data-slide="{{ $i }}"
-               class="relative block w-full h-full shrink-0">
-                <img src="{{ $b->url() }}" alt="{{ $b->title }}" class="w-full h-full object-cover">
+               class="relative block w-full h-full shrink-0 overflow-hidden banner-sheen">
+                <img src="{{ $b->url() }}" alt="{{ $b->title }}" class="w-full h-full object-cover banner-breathe">
                 @if($b->title || $b->caption)
                 <div class="absolute inset-0 flex flex-col justify-center px-8 md:px-14 bg-gradient-to-r from-black/35 via-black/10 to-transparent">
                     @if($b->title)<h2 class="text-2xl md:text-4xl font-bold text-white drop-shadow-md">{{ $b->title }}</h2>@endif

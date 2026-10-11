@@ -8,6 +8,9 @@
     $messagingOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\MessagingFeature::class);
     $announcementsOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\AnnouncementsFeature::class);
     $faqOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FaqLibraryFeature::class);
+    $familyCardOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\FamilyCardFeature::class)
+        && auth()->user()?->distributor !== null
+        && auth()->user()?->status !== 'terminated';
 
     // Position and line-change came out of the dashboard's Placement card,
     // which was removed. Both are standing account facts a distributor wants
@@ -61,6 +64,9 @@
             ['label' => 'Edit Profile',       'route' => 'profile.show',          'icon' => 'user-pen', 'prefix' => 'profile.', 'exclude' => 'profile.password.'],
             ['label' => 'Change Password',    'route' => 'profile.password.show', 'icon' => 'lock',     'prefix' => 'profile.password.'],
             ['label' => 'My Addresses',       'route' => 'addresses.index',       'icon' => 'map-pin',  'prefix' => 'addresses.'],
+            ...($familyCardOn
+                ? [['label' => 'My Family Card', 'route' => 'my.family-card', 'icon' => 'id-card']]
+                : []),
         ],
         'My Account' => [
             ['label' => 'Arete Centres',      'route' => 'my.adc.directory',    'icon' => 'landmark'],

@@ -11,9 +11,11 @@ use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Http\Rules\NotPwned;
 use App\Modules\Identity\Http\Rules\StrongPassword;
+use App\Modules\Identity\Models\DistributorFamilyMember;
 use App\Modules\Identity\Models\DistributorProfile;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Crypto\PiiCrypter;
+use App\Modules\Shared\Features\FamilyCardFeature;
 use App\Modules\Shared\Notifications\OtpCodeNotification;
 use App\Modules\Shared\Otp\OtpService;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +28,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Laravel\Pennant\Feature;
 use Throwable;
 
 /**
@@ -105,6 +108,10 @@ final class ProfileController extends Controller
             'areteCenter' => $areteCenter,
             'availableCenters' => $availableCenters,
             'demographics' => $distributor ? DistributorProfile::where('distributor_id', $distributor->id)->first() : null,
+            'familyCardOn' => Feature::for(null)->active(FamilyCardFeature::class),
+            'familyMembers' => $distributor
+                ? DistributorFamilyMember::where('distributor_id', $distributor->id)->orderBy('id')->get()
+                : collect(),
         ]);
     }
 

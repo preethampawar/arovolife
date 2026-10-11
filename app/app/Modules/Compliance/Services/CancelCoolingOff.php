@@ -11,6 +11,7 @@ use App\Modules\Compliance\Services\Exceptions\CoolingOffAlreadyCancelledError;
 use App\Modules\Compliance\Services\Exceptions\CoolingOffWindowExpiredError;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Identity\Models\DistributorFamilyMember;
 use App\Modules\Identity\Models\DistributorProfile;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Carbon;
@@ -132,8 +133,10 @@ final class CancelCoolingOff
         $distributor->update(['status' => 'inactive']);
 
         // Cancellation closes the ADN without a DistributorTerminated event,
-        // so the anniversary-date erasure (Privacy Policy §5) runs here.
+        // so the anniversary-date and family-member erasure (Privacy Policy
+        // §5) runs here.
         DistributorProfile::eraseWeddingAnniversary($distributorId);
+        DistributorFamilyMember::eraseFor($distributorId);
 
         AuditLog::create([
             'actor_id' => $actorUserId,

@@ -505,6 +505,36 @@ html.dark #adminTopbarStack {
 }
 .glow-pulse { animation: glow-pulse 2.4s ease-in-out infinite; }
 
+/* Shop banner "breathing": a slow, barely-there zoom and drift on each slide
+   image (Ken Burns), plus a soft light sweep, so the hero feels alive without
+   drawing the eye. Motion only for visitors who have not asked their system
+   to reduce it. */
+@keyframes banner-breathe {
+    0%   { transform: scale(1) translate3d(0, 0, 0); }
+    100% { transform: scale(1.06) translate3d(-1.2%, -0.8%, 0); }
+}
+@keyframes banner-sheen {
+    0%, 70% { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+    78%     { opacity: 1; }
+    100%    { transform: translateX(260%) skewX(-18deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+    .banner-breathe {
+        animation: banner-breathe 16s ease-in-out infinite alternate;
+        transform-origin: 70% 50%;
+        will-change: transform;
+    }
+    .banner-sheen::after {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 35%;
+        pointer-events: none;
+        background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.18), transparent);
+        animation: banner-sheen 9s ease-in-out infinite;
+    }
+}
+
 /* One-shot highlight on the cart line just added (see shop/cart.blade.php).
    A brand-tinted background + ring that fades back to the resting card look
    over ~2.8s, so it's obvious which product was added after the redirect. */

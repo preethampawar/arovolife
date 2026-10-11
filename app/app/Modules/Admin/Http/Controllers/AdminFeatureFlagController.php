@@ -11,6 +11,7 @@ use App\Modules\Shared\Features\AnnouncementsFeature;
 use App\Modules\Shared\Features\AreteCenterApplicationsFeature;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\DistributorRequestsFeature;
+use App\Modules\Shared\Features\FamilyCardFeature;
 use App\Modules\Shared\Features\FaqLibraryFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -165,6 +166,14 @@ final class AdminFeatureFlagController extends Controller
                 'class' => DistributorRequestsFeature::class,
                 'label' => 'Distributor requests',
                 'description' => 'Lets a distributor file a formal request about their own record — name correction, name change, date-of-birth correction, membership transfer to an immediate blood relation, or ID cancellation — with supporting documents, and puts the review queue in the admin console. Name and DOB approvals update the record (audit-logged); transfer and cancellation approvals are acknowledgements that compliance then carries out with the existing account tools. OFF leaves no trace: no menu item, no routes, no queue.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
+
+            'identity.family_card' => [
+                'class' => FamilyCardFeature::class,
+                'label' => 'arovolife Family Card',
+                'description' => 'Shows the display-only arovolife Family Card on the distributor dashboard (name, ADN, "1 + 5 family members", with a not-an-insurance-policy line) and its printable / Save-as-PDF page, and lets a distributor register up to five family members on My Profile with a consent declaration — plus a parent/guardian consent for a child, available once KYC is approved. The card never shows the names and carries no benefit. ON by default (decision 2026-10-11); OFF is a killswitch and leaves no trace: no card, no page, no add form. Rows already registered are kept, and the distributor can still remove them; termination, cooling-off and the turns-18 sweep erase them regardless. R-117: the Privacy Policy v2026-10-11 must be published on this environment.',
                 'owner' => 'developer',
                 'requires' => [],
             ],
