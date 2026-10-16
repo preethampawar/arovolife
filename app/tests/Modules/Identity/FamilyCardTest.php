@@ -63,7 +63,17 @@ function seedFamilyMember(Distributor $distributor, array $overrides = []): Dist
     ], $overrides));
 }
 
-it('is on by default — the card shows without anyone switching the flag on', function (): void {
+it('is off by default — no card on the dashboard and no sidebar link until go-live', function (): void {
+    $distributor = familyCardDistributor();
+
+    $this->actingAs($distributor->user)->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('Family Card')
+        ->assertDontSee(route('my.family-card'));
+});
+
+it('shows the card and the sidebar link once the flag is switched on', function (): void {
+    Feature::for(null)->activate(FamilyCardFeature::class);
     $distributor = familyCardDistributor();
 
     $this->actingAs($distributor->user)->get(route('dashboard'))
@@ -73,6 +83,7 @@ it('is on by default — the card shows without anyone switching the flag on', f
 });
 
 it('opens My Family Card from the sidebar: the card, front and back, with a download link', function (): void {
+    Feature::for(null)->activate(FamilyCardFeature::class);
     $distributor = familyCardDistributor();
 
     $this->actingAs($distributor->user)->get(route('my.family-card'))
