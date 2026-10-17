@@ -182,9 +182,9 @@ it('states the go-live date from which the pooled methods and monthly bonuses ap
 
     // No pre-launch §6.2 notice (user decision 2026-10-17, R-118): the page
     // carries the go-live date instead of a placeholder. If go-live moves,
-    // this date and the four on the page move with it.
+    // this date and the seven on the page move with it.
     expect($body)->not->toContain('EFFECTIVE DATE — TO BE INSERTED')
-        ->and(substr_count($body, '8 November 2026'))->toBeGreaterThanOrEqual(4)
+        ->and(substr_count($body, '8 November 2026'))->toBeGreaterThanOrEqual(7)
         // Redeem points stay off at launch.
         ->and($body)->toContain('available only from a date stated on this page under §12');
 });
