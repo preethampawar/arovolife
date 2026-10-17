@@ -14,7 +14,7 @@ final readonly class FortuneDashboardCard
     public function __construct(
         public CarbonImmutable $month,                          // current IST month start
         public FortuneQualification $thisMonth,
-        public ?FortuneBonusResult $lastMonth,                  // credited / skipped / repurchase_wallet_blocked
+        public ?FortuneBonusResult $lastMonth,                  // credited / skipped
         public ?FortuneBonusParticipant $lastMonthEntry,        // enrolled, result not written yet
     ) {}
 }

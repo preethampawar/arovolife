@@ -20,6 +20,10 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
+// Plan migrations write chained audit rows of their own; every case here
+// reasons about a chain it builds from nothing.
+beforeEach(fn () => DB::table('audit_log')->delete());
+
 function alcEntry(string $action, array $details = []): AuditLog
 {
     return AuditLog::create([

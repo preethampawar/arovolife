@@ -57,7 +57,6 @@ final class CommissionHasProductSaleTest extends TestCase
         'rank_credit' => 'rank_bonus_results → rank qualification, itself a BV threshold',
         'fortune_credit' => 'fortune_bonus_results → the month\'s BV pool',
         'adc_credit' => 'adc_monthly_results → centre BV (orders collected at the centre)',
-        'awards_credit' => 'lifetime_award_milestones → lifetime BV thresholds',
     ];
 
     /**
@@ -137,7 +136,6 @@ final class CommissionHasProductSaleTest extends TestCase
         $declared = array_merge(
             CompensationPlanSettingsService::GROUP_A_TYPES,
             CompensationPlanSettingsService::GROUP_B_TYPES,
-            CompensationPlanSettingsService::GROUP_C_TYPES,
             CompensationPlanSettingsService::GROUP_D_TYPES,
         );
 

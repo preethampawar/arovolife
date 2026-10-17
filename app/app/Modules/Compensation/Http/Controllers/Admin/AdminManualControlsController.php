@@ -166,7 +166,8 @@ final class AdminManualControlsController extends Controller
                         $msbOutcome = $mb === null
                             ? ['status' => 'skipped']   // no sponsor, gate failed, or no frozen pool
                             : [
-                                'status' => 'credited',
+                                // credited, or repurchase_gated (client 2026-10-09)
+                                'status' => $mb->status,
                                 'result_id' => $mb->id,
                                 'sponsor_id' => $mb->sponsor_id,
                                 'msb_points' => $mb->msb_points,
@@ -469,8 +470,8 @@ final class AdminManualControlsController extends Controller
 
                 // Both wallets in one call: the net comes out of the main wallet and
                 // the frozen repurchase deduction comes back out of the repurchase
-                // wallet, so a reversed bonus stops failing the wallet-zero gates on
-                // Fortune, Growth Booster and the Rank requalification.
+                // wallet, so a reversed bonus stops failing the wallet-zero check
+                // at the distributor's repurchase cycle due date.
                 $outcome = $this->wallet->reverseBonusCredit(
                     distributorId: $result->distributor_id,
                     netPaise: $result->net_gsb_paise,

@@ -1,7 +1,7 @@
 @developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Monthly Rank Bonus for this distributor. Rank 1 is points-based (RAP for achievers, AO-GO offer points for grantees; income = points × the month's point value); Ranks 2–9 split their pool equally among that rank's achievers.
-    "requalification_held" = re-qualified but missed the month's requalification conditions (the rank's repurchase BV + a cleared repurchase wallet) — recorded, not paid.
+    "requalification_held" = re-qualified but missed the month's requalification conditions (the rank's repurchase BV from own purchases that month) — recorded, not paid.
     A failed repurchase cycle never withholds Rank Bonus: it only removes the failed days' Genos BV from the qualification check.
 </div>
 @enddeveloper
@@ -47,7 +47,7 @@
                 <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
                 <th class="px-3 py-2 text-left text-gray-600">Month</th>
                 <th class="px-3 py-2 text-left text-gray-600">Rank</th>
-                <th class="px-3 py-2 text-right text-gray-600">Points <x-help-tip text="RAP (Rank Achievement Points) for an achiever, or AO-GO offer points for a grantee. Ranks 2–9 are an equal split and show —." /></th>
+                <th class="px-3 py-2 text-right text-gray-600">Points <x-help-tip text="RAP (Rank Achievement Points) for an achiever, or AO-GO offer points for a grantee. Months priced under the earlier per-rank pool rule split Ranks 2–9 equally and show —." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Point value</th>
                 <th class="px-3 py-2 text-right text-gray-600">Pool</th>
                 <x-bonus-credit-head th-class="px-3 py-2 text-right text-gray-600" />
@@ -61,7 +61,6 @@
                     'credited' => 'bg-green-100 text-green-700',
                     'reversed' => 'bg-red-100 text-red-700',
                     'requalification_held' => 'bg-amber-100 text-amber-800',
-                    'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
                     default => 'bg-gray-100 text-gray-600',
                 };
                 $points = $row->rap_points ?? $row->aogo_points;
@@ -186,7 +185,7 @@
 <x-ui.card flush>
     <p class="px-4 py-2.5 text-xs font-semibold text-gray-600 bg-gray-50 border-b border-gray-100">
         AO-GO grants
-        <x-help-tip text="Achieve Once – Get Once: a degraded ex-rank-holder earns offer points in the Rank-1 pool, never in consecutive months, up to the lifetime cap." />
+        <x-help-tip text="Achieve Once – Get Once: only in the month right after a rank achievement — no rank this month and own purchases of that rank's repurchase BV earn offer points in pass 1, up to the lifetime cap. A missed month is not carried forward." />
     </p>
     <div class="overflow-x-auto">
     <table class="w-full text-xs">

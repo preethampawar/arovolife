@@ -41,7 +41,7 @@ final class CompanyBvDistributionService
             [GrowthBoosterBonusFeature::class, 'Growth Booster Bonus', $this->plan->gbbPoolRateBp()],
             [FortuneBonusFeature::class, 'Fortune Bonus', $this->plan->fortunePoolRateBp()],
             [RankBonusFeature::class, 'Rank Bonus', $this->plan->rankEnvelopeBp()],
-            [LifetimeAwardsFeature::class, 'Awards & Rewards', $this->plan->awardsRateBp()],
+            [LifetimeAwardsFeature::class, 'Awards & Rewards', $this->plan->awardsFundRateBp()],
             [AreteDevelopmentCenterBonusFeature::class, 'Arete Development Centre Bonus', $this->plan->adcRateBp()],
         ];
 

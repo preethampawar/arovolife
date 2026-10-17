@@ -194,6 +194,54 @@ it('persists a fortune level edit — points, payout mode and cap — with audit
     Event::assertDispatched(CompensationPlanChanged::class, fn ($e) => $e->area === 'fortune_level' && $e->key === '3');
 });
 
+/**
+ * A complete rank-tier form post for rank 4, as the page submits it.
+ *
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function rankTierPayload(array $overrides = []): array
+{
+    return array_merge([
+        'rank_name' => 'Gold Partner',
+        'pyp_required' => 2,
+        'rap_points' => 1125,
+        'personal_bv_required_paise' => 6_800_000,
+        'group_bv_required_paise' => null,
+        'weaker_leg_topup_bv_paise' => 0,
+        'structural_qualifiers_per_side' => 2,
+        'repurchase_bv_paise' => 130_000,
+        'lifetime_award_budget_paise' => 36_500_000,
+        'is_active' => 1,
+    ], $overrides);
+}
+
+it('saves a rank tier RAP edit with no pool % field (client 2026-10-05 two-pass pool)', function () {
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.rank-tier.update', 4), rankTierPayload(['rap_points' => 1200]))
+        ->assertSessionHasNoErrors();
+
+    expect((int) DB::table('rank_tiers')->where('rank_number', 4)->value('rap_points'))->toBe(1200);
+});
+
+it('rejects a rank tier edit with RAP points missing or zero', function (array $overrides) {
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.rank-tier.update', 4), rankTierPayload($overrides))
+        ->assertSessionHasErrors('rap_points');
+
+    expect((int) DB::table('rank_tiers')->where('rank_number', 4)->value('rap_points'))->toBe(1125);
+})->with(['missing' => [['rap_points' => null]], 'zero' => [['rap_points' => 0]]]);
+
+it('renders the rank tier form without a Pool % input and with RAP required', function () {
+    $this->actingAs(planAdmin('developer'))
+        ->get(route('admin.compensation.plan-settings.index', ['tab' => 'ranks']))
+        ->assertOk()
+        ->assertDontSee('name="pool_pct"', false)
+        ->assertSee('name="rap_points" data-field-label="RAP points" value="1125" required min="1"', false);
+});
+
 it('rejects a fortune level edit without points per member', function () {
     $before = (int) DB::table('fortune_bonus_levels')->where('level', 2)->value('points_per_member');
 
@@ -359,6 +407,23 @@ it('hides the GSB and Rank tabs and their editors while their flags are off', fu
         ->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.compensation.plan-settings.rank-tier.update', 1), [])
         ->assertNotFound();
+});
+
+it('explains Growth Booster with the configured pool rate and cap, not a claimed default', function () {
+    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
+    foreach (['comp.gbb.pool_rate_bp' => '500', 'comp.gbb.point_value_cap_paise' => '30000'] as $key => $value) {
+        DB::table('settings')->updateOrInsert(['key' => $key], ['value' => $value, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    $this->actingAs(planAdmin('admin'))
+        ->get(route('admin.compensation.plan-settings.index'))
+        ->assertOk()
+        ->assertSee('Growth Booster pool rate (currently 5%)')
+        ->assertSee('Growth Booster point value cap (currently ₹300 —', false)
+        ->assertDontSee('default 4%')
+        ->assertDontSee('default ₹240')
+        ->assertDontSee('currently 4%')
+        ->assertDontSee('currently ₹240');
 });
 
 it('shows a "How it is calculated" explainer only for bonuses whose flag is on', function () {

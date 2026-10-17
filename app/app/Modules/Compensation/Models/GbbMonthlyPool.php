@@ -25,6 +25,8 @@ use Illuminate\Support\Carbon;
  * @property int $pool_paise
  * @property int $total_agp
  * @property int $point_value_paise
+ * @property int|null $raw_point_value_paise ⌊pool ÷ total AGP⌋ before the cap; NULL on months frozen before the cap existed
+ * @property int|null $point_value_cap_paise the cap in force at freeze time; NULL on months frozen before the cap existed
  * @property int $payout_paise
  * @property int $leftover_paise
  * @property Carbon|null $created_at
@@ -47,7 +49,8 @@ final class GbbMonthlyPool extends Model
 
     protected $fillable = [
         'month_start', 'company_bv_paise', 'pool_rate_bp', 'pool_paise',
-        'total_agp', 'point_value_paise', 'payout_paise', 'leftover_paise',
+        'total_agp', 'point_value_paise', 'raw_point_value_paise',
+        'point_value_cap_paise', 'payout_paise', 'leftover_paise',
     ];
 
     protected function casts(): array
@@ -58,6 +61,8 @@ final class GbbMonthlyPool extends Model
             'pool_paise' => 'integer',
             'total_agp' => 'integer',
             'point_value_paise' => 'integer',
+            'raw_point_value_paise' => 'integer',
+            'point_value_cap_paise' => 'integer',
             'payout_paise' => 'integer',
             'leftover_paise' => 'integer',
         ];

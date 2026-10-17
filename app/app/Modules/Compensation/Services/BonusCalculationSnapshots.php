@@ -7,8 +7,10 @@ namespace App\Modules\Compensation\Services;
 use App\Modules\Compensation\Models\FortuneMonthlyPool;
 use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GsbDailyPool;
+use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\MsbDailyPool;
 use App\Modules\Compensation\Models\RankAogoGrant;
+use App\Modules\Compensation\Models\RankMonthlyPass;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +38,7 @@ final class BonusCalculationSnapshots
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
         private readonly AreteDevelopmentCenterBonusService $adc,
+        private readonly GsbDailyPoolService $gsbPool,
     ) {}
 
     /**
@@ -212,14 +215,77 @@ final class BonusCalculationSnapshots
     }
 
     /**
+     * The Lifetime Awards fund, month by month (client 2026-10-09, Q1): the
+     * awards are funded from comp.awards.fund_rate_bp (20 %) of each month's
+     * company BV — read through GsbDailyPoolService::companyBvPaiseBetween(),
+     * the BV every other pool uses. Each month adds its share; the award worth
+     * earned that month (the tranche amounts frozen on its non-cancelled
+     * milestones) is set against it; the balance carries forward.
+     *
+     * A report, never a gate (user decision 2026-10-09): an earned award is
+     * released whatever the balance, and a negative balance is shown, not
+     * hidden. The fund is priced at the CURRENT rate for every month. A
+     * refund-heavy month whose BV is negative adds nothing (the GBB rule).
+     *
+     * From the first month that has BV or a milestone, through $through's
+     * month; empty when there is neither.
+     *
+     * @return list<array{month_start: string, bv_paise: int, fund_paise: int, awarded_paise: int, balance_paise: int}>
+     */
+    public function awardsFund(Carbon $through): array
+    {
+        $firsts = array_filter([
+            DB::table('bv_ledger_entries')->min('effective_at'),
+            DB::table('lifetime_award_milestones')->min('triggered_month'),
+        ], fn ($value): bool => $value !== null);
+
+        if ($firsts === []) {
+            return [];
+        }
+
+        $month = collect($firsts)
+            ->map(fn ($value): Carbon => Carbon::parse((string) $value)->startOfMonth())
+            ->min();
+        $last = $through->copy()->startOfMonth();
+
+        $awarded = DB::table('lifetime_award_milestones')
+            ->where('status', '!=', LifetimeAwardMilestone::STATUS_CANCELLED)
+            ->groupBy('triggered_month')
+            ->selectRaw('triggered_month, COALESCE(SUM(amount_paise), 0) as amount_paise')
+            ->get()
+            ->mapWithKeys(fn ($row): array => [Carbon::parse((string) $row->triggered_month)->toDateString() => (int) $row->amount_paise]);
+
+        $rateBp = $this->plan->awardsFundRateBp();
+        $balance = 0;
+        $out = [];
+
+        for (; $month->lessThanOrEqualTo($last); $month = $month->copy()->addMonthNoOverflow()) {
+            $bvPaise = $this->gsbPool->companyBvPaiseBetween($month, $month->copy()->endOfMonth());
+            $fundPaise = max(0, intdiv($bvPaise * $rateBp, 10_000));
+            $awardedPaise = (int) ($awarded[$month->toDateString()] ?? 0);
+            $balance += $fundPaise - $awardedPaise;
+
+            $out[] = [
+                'month_start' => $month->toDateString(),
+                'bv_paise' => $bvPaise,
+                'fund_paise' => $fundPaise,
+                'awarded_paise' => $awardedPaise,
+                'balance_paise' => $balance,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * Per-month Lifetime Awards aggregate, one line per rank: milestones
      * triggered, delivered, cash gross / TDS / net, next to the rank's CURRENT
      * award budget from the rank ladder.
      *
      * @param  array<int, string>  $monthStarts  Y-m-d
      * @return array<string, array{
-     *     milestones: int, delivered: int, computed_at: ?Carbon,
-     *     ranks: list<array{rank: int, name: string, milestones: int, delivered: int, cash: int, budget_paise: int, gross_paise: int, tds_paise: int, net_paise: int}>
+     *     milestones: int, delivered: int, amount_paise: int, computed_at: ?Carbon,
+     *     ranks: list<array{rank: int, name: string, tranche: int, milestones: int, delivered: int, budget_paise: int, amount_paise: int}>
      * }>
      */
     public function awRwMonths(array $monthStarts): array
@@ -228,18 +294,19 @@ final class BonusCalculationSnapshots
             return [];
         }
 
+        // One line per rank and tranche (client 2026-10-09); amount_paise is
+        // the Σ of the tranche amounts frozen on the milestones. Awards are
+        // merchandise only, so there is no cash, gross, TDS or net here.
         $rows = DB::table('lifetime_award_milestones')
             ->whereIn('triggered_month', $monthStarts)
-            ->selectRaw('triggered_month, rank_number')
+            ->selectRaw('triggered_month, rank_number, tranche')
             ->selectRaw('COUNT(*) as milestones')
             ->selectRaw("SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered")
-            ->selectRaw("SUM(CASE WHEN disbursement_type = 'cash' THEN 1 ELSE 0 END) as cash")
-            ->selectRaw('COALESCE(SUM(gross_paise), 0) as gross_paise')
-            ->selectRaw('COALESCE(SUM(tds_paise), 0) as tds_paise')
-            ->selectRaw('COALESCE(SUM(net_paise), 0) as net_paise')
+            ->selectRaw('COALESCE(SUM(amount_paise), 0) as amount_paise')
             ->selectRaw('MAX(created_at) as computed_at')
-            ->groupBy('triggered_month', 'rank_number')
+            ->groupBy('triggered_month', 'rank_number', 'tranche')
             ->orderBy('rank_number')
+            ->orderBy('tranche')
             ->get();
 
         $out = [];
@@ -248,22 +315,21 @@ final class BonusCalculationSnapshots
             $rank = (int) $row->rank_number;
             $computedAt = $row->computed_at !== null ? Carbon::parse((string) $row->computed_at) : null;
 
-            $agg = $out[$key] ?? ['milestones' => 0, 'delivered' => 0, 'computed_at' => null, 'ranks' => []];
+            $agg = $out[$key] ?? ['milestones' => 0, 'delivered' => 0, 'amount_paise' => 0, 'computed_at' => null, 'ranks' => []];
             $agg['milestones'] += (int) $row->milestones;
             $agg['delivered'] += (int) $row->delivered;
+            $agg['amount_paise'] += (int) $row->amount_paise;
             if ($computedAt !== null && ($agg['computed_at'] === null || $computedAt->greaterThan($agg['computed_at']))) {
                 $agg['computed_at'] = $computedAt;
             }
             $agg['ranks'][] = [
                 'rank' => $rank,
                 'name' => $this->plan->rankName($rank),
+                'tranche' => (int) $row->tranche,
                 'milestones' => (int) $row->milestones,
                 'delivered' => (int) $row->delivered,
-                'cash' => (int) $row->cash,
                 'budget_paise' => $this->plan->lifetimeAwardBudgetPaise($rank),
-                'gross_paise' => (int) $row->gross_paise,
-                'tds_paise' => (int) $row->tds_paise,
-                'net_paise' => (int) $row->net_paise,
+                'amount_paise' => (int) $row->amount_paise,
             ];
             $out[$key] = $agg;
         }
@@ -276,17 +342,30 @@ final class BonusCalculationSnapshots
     /**
      * MAX() is safe because every Rank-1 row of the month carries the same
      * snapshot; qualifier_count is the engine's own payable count (held rows
-     * and AO-GO grantee rows already excluded). Null when the month has no
-     * Rank-1 rows.
+     * and AO-GO grantee rows already excluded).
+     *
+     * `passes` is the month's frozen rank_monthly_passes rows keyed by pass
+     * (client 2026-10-05 two-pass pool); empty for a month priced under the
+     * per-rank pool rule in force before it. A two-pass month takes its
+     * turnover and envelope from the pass rows (frozen), and is returned even
+     * with no Rank-1 rows — pass 2 then divides the whole envelope. A legacy
+     * month reads turnover off its Rank-1 rows and pairs it with the CURRENT
+     * envelope_bp (envelope_paise null), and is null without Rank-1 rows.
      *
      * @return ?array{
-     *     turnover_paise: int, envelope_bp: int, pool_pct: float, pool_paise: int,
+     *     turnover_paise: int, envelope_bp: int, envelope_paise: ?int, pool_paise: int,
      *     qualifiers: int, rap_points: ?int, aogo_points: int, total_points: ?int,
-     *     point_value_paise: ?int, computed_at: ?Carbon
+     *     point_value_paise: ?int, computed_at: ?Carbon,
+     *     passes: array<int, array{pool_paise: int, total_points: int, raw_point_value_paise: int, point_value_cap_paise: int, point_value_paise: int, payout_paise: int, leftover_paise: int}>
      * }
      */
     public function rankBonusMonth(Carbon $month): ?array
     {
+        $passRows = RankMonthlyPass::query()
+            ->where('month_start', $month->toDateString())
+            ->orderBy('pass')
+            ->get();
+
         $agg = DB::table('rank_bonus_results')
             ->where('month_start', $month->toDateString())
             ->where('rank_number', 1)
@@ -300,7 +379,12 @@ final class BonusCalculationSnapshots
             ->selectRaw('COUNT(*) as row_count')
             ->first();
 
-        if ($agg === null || (int) $agg->row_count === 0) {
+        $hasRank1Rows = $agg !== null && (int) $agg->row_count > 0;
+
+        /** @var RankMonthlyPass|null $firstPass */
+        $firstPass = $passRows->first();
+
+        if (! $hasRank1Rows && $firstPass === null) {
             return null;
         }
 
@@ -309,17 +393,33 @@ final class BonusCalculationSnapshots
             ->where('status', '!=', RankAogoGrant::STATUS_VOIDED)
             ->sum('points');
 
+        $computedAt = $hasRank1Rows && $agg->computed_at !== null
+            ? Carbon::parse($agg->computed_at)
+            : $passRows->max('created_at');
+
         return [
-            'turnover_paise' => (int) $agg->turnover_paise,
-            'envelope_bp' => $this->plan->rankEnvelopeBp(),
-            'pool_pct' => $this->plan->rankPoolPct(1),
-            'pool_paise' => (int) $agg->pool_paise,
-            'qualifiers' => (int) $agg->qualifier_count,
-            'rap_points' => $agg->rap_points !== null ? (int) $agg->rap_points : null,
+            'turnover_paise' => $firstPass !== null ? (int) $firstPass->company_turnover_paise : (int) $agg->turnover_paise,
+            'envelope_bp' => $firstPass !== null ? (int) $firstPass->envelope_bp : $this->plan->rankEnvelopeBp(),
+            'envelope_paise' => $firstPass !== null ? (int) $firstPass->envelope_paise : null,
+            'pool_paise' => $hasRank1Rows ? (int) $agg->pool_paise : 0,
+            'qualifiers' => $hasRank1Rows ? (int) $agg->qualifier_count : 0,
+            'rap_points' => $hasRank1Rows && $agg->rap_points !== null ? (int) $agg->rap_points : null,
             'aogo_points' => $aogoPoints,
-            'total_points' => $agg->total_points !== null ? (int) $agg->total_points : null,
-            'point_value_paise' => $agg->point_value_paise !== null ? (int) $agg->point_value_paise : null,
-            'computed_at' => $agg->computed_at !== null ? Carbon::parse($agg->computed_at) : null,
+            'total_points' => $hasRank1Rows && $agg->total_points !== null ? (int) $agg->total_points : null,
+            'point_value_paise' => $hasRank1Rows && $agg->point_value_paise !== null ? (int) $agg->point_value_paise : null,
+            'computed_at' => $computedAt !== null ? Carbon::parse($computedAt) : null,
+            'passes' => $passRows
+                ->keyBy(fn (RankMonthlyPass $pass): int => (int) $pass->pass)
+                ->map(fn (RankMonthlyPass $pass): array => [
+                    'pool_paise' => (int) $pass->pool_paise,
+                    'total_points' => (int) $pass->total_points,
+                    'raw_point_value_paise' => (int) $pass->raw_point_value_paise,
+                    'point_value_cap_paise' => (int) $pass->point_value_cap_paise,
+                    'point_value_paise' => (int) $pass->point_value_paise,
+                    'payout_paise' => (int) $pass->payout_paise,
+                    'leftover_paise' => (int) $pass->leftover_paise,
+                ])
+                ->all(),
         ];
     }
 }

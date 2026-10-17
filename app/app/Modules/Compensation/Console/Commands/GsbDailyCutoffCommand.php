@@ -507,6 +507,22 @@ final class GsbDailyCutoffCommand extends Command
         // recorded, and the day would be lost.
         $msbTotalPoints = 0;
 
+        // The Mentorship repurchase gate (client 2026-10-09) reads each
+        // sponsor's verdict and rank as of the day. Every MB accrual and
+        // reservation happens below, after the roster chunks were computed and
+        // their caches released, so the sponsors are warmed here — once, for
+        // the matched distributors only (the only ones whose sponsor accrues) —
+        // on the same Mentorship instance that reads them.
+        if ($mentorshipActive) {
+            $matchedIds = [];
+            foreach ($computations as $distributorId => $computation) {
+                if ($computation->isMatched() && $computation->slabIndex !== null) {
+                    $matchedIds[] = (int) $distributorId;
+                }
+            }
+            $this->mentorship->warmSponsorsFor($matchedIds, $date);
+        }
+
         if ($deferredSeen !== []) {
             try {
                 $msbTotalPoints = DB::transaction(function () use ($deferredSeen, $computations, $pool, $poolPricingActive, $mentorshipActive, $date, $deferredIds, $deferredByEvaluation): int {
@@ -519,7 +535,7 @@ final class GsbDailyCutoffCommand extends Command
                         if ($computation !== null) {
                             $this->cutoff->price($computation, $pool, $poolPricingActive);
                             $reservedPoints = $mentorshipActive && $computation->isMatched() && $computation->slabIndex !== null
-                                ? $this->mentorship->reservedPointsFor($distributorId, $computation->slabIndex)
+                                ? $this->mentorship->reservedPointsFor($distributorId, $computation->slabIndex, $date)
                                 : 0;
                         }
 
@@ -556,6 +572,10 @@ final class GsbDailyCutoffCommand extends Command
                 // console command is a process-lifetime singleton.
                 app(EngineRunContext::class)->noteFailed($message);
 
+                // The command outlives this run; never carry warmed sponsors
+                // into the next one.
+                $this->mentorship->forgetSponsors();
+
                 return self::FAILURE;
             }
         }
@@ -588,9 +608,15 @@ final class GsbDailyCutoffCommand extends Command
                         try {
                             $accrual = $this->mentorship->accrueForSponsee($distributorId, $result);
                             if ($accrual !== null) {
+                                // A repurchase-gated accrual is still credited
+                                // below (as its gated row) but adds nothing to
+                                // the denominator and nothing "paid" — the same
+                                // 0 reservedPointsFor() gives it.
                                 $accruals[] = $accrual;
-                                $msbTotalPoints += $accrual->points;
-                                $paidPoints = $accrual->points;
+                                if ($accrual->countsInDenominator()) {
+                                    $msbTotalPoints += $accrual->points;
+                                    $paidPoints = $accrual->points;
+                                }
                             }
                         } catch (\Throwable $e) {
                             $mbFailed++;
@@ -676,6 +702,8 @@ final class GsbDailyCutoffCommand extends Command
                     ]);
                 }
             }
+
+            $this->mentorship->forgetSponsors();
         }
 
         $msbValue = number_format($msbPointValuePaise / 100, 2);
@@ -957,7 +985,9 @@ final class GsbDailyCutoffCommand extends Command
                     $accrual = $this->mentorship->accrueForSponsee($distributorId, $result);
 
                     if ($accrual !== null) {
-                        $paidPoints = $accrual->points;
+                        // A gated sponsor was paid nothing and reserved
+                        // nothing; its row is still written.
+                        $paidPoints = $accrual->countsInDenominator() ? $accrual->points : 0;
                         $this->mentorship->creditAccrual($accrual, $this->msbPoolService->poolForDate($day));
                     }
                 } catch (\Throwable $e) {

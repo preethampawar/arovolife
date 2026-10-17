@@ -18,5 +18,7 @@ it('carry cards show numbers only and keep both sides', function () {
         ->not->toContain('Remaining after your last slab match')
         ->not->toContain('No new business on this side since your last match')
         ->not->toContain('UnchangedSinceMatch')
-        ->toContain('from-emerald-500 to-green-700');
+        // The payout card became a Total Team-style tile in 7e5f50d3.
+        ->toContain('<x-lucide-wallet')
+        ->toContain('from-brand-400 to-brand-600');
 });

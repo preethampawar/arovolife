@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Services\BonusCalculationSnapshots;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Support\ReportExport;
@@ -24,6 +25,7 @@ final class AdminAwRwCalculationController extends Controller
     public function __construct(
         private readonly PersonalBvTitleService $titleService,
         private readonly BonusCalculationSnapshots $snapshots,
+        private readonly CompensationPlanSettingsService $plan,
     ) {}
 
     public function index(Request $request): View
@@ -34,15 +36,13 @@ final class AdminAwRwCalculationController extends Controller
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
             'status' => ['nullable', 'in:pending,delivered,cancelled'],
-            'type' => ['nullable', 'in:goods,cash'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));
         $month = $request->query('month');
         $status = $request->query('status');
-        $type = $request->query('type');
 
-        $rows = $this->buildQuery($q, $month, $status, $type)
+        $rows = $this->buildQuery($q, $month, $status)
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
@@ -55,11 +55,14 @@ final class AdminAwRwCalculationController extends Controller
 
         return view('admin.compensation.aw-rw-calculation.index', [
             'monthBlocks' => $monthBlocks,
+            // Client 2026-10-09 (Q1): the awards are funded from a share of
+            // each month's BV. Reported only; never gates an award.
+            'awardsFund' => $this->snapshots->awardsFund(Carbon::now('Asia/Kolkata')),
+            'awardsFundRateBp' => $this->plan->awardsFundRateBp(),
             'rows' => $rows,
             'q' => $q ?: null,
             'month' => $month,
             'status' => $status,
-            'type' => $type,
             'titleService' => $this->titleService,
             'personalBvMap' => $personalBvMap,
         ]);
@@ -73,15 +76,13 @@ final class AdminAwRwCalculationController extends Controller
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
             'status' => ['nullable', 'in:pending,delivered,cancelled'],
-            'type' => ['nullable', 'in:goods,cash'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));
         $month = $request->query('month');
         $status = $request->query('status');
-        $type = $request->query('type');
 
-        $rows = $this->buildQuery($q, $month, $status, $type)->get();
+        $rows = $this->buildQuery($q, $month, $status)->get();
 
         $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
         $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
@@ -93,17 +94,14 @@ final class AdminAwRwCalculationController extends Controller
             ['key' => 'title', 'label' => 'Title'],
             ['key' => 'rank',  'label' => 'Rank'],
             ['key' => 'month', 'label' => 'Month'],
-            ['key' => 'type',  'label' => 'Type'],
+            ['key' => 'tranche', 'label' => 'Tranche'],
             ['key' => 'award', 'label' => 'Award Description'],
-            ['key' => 'cash_reward', 'label' => 'Cash Reward (Rs)'],
+            ['key' => 'amount', 'label' => 'Tranche Amount (Rs)'],
             ['key' => 'status', 'label' => 'Status'],
         ];
 
         $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap): array {
             $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
-            $cashReward = ($row->disbursement_type === 'cash' && $row->net_paise)
-                ? $row->net_paise / 100
-                : '—';
 
             return [
                 'sno' => $i + 1,
@@ -112,9 +110,9 @@ final class AdminAwRwCalculationController extends Controller
                 'title' => $title,
                 'rank' => (string) ($row->rank_name ?? 'Rank '.$row->rank_number),
                 'month' => Carbon::parse($row->triggered_month)->format('Y-m'),
-                'type' => (string) ($row->disbursement_type ?? '—'),
+                'tranche' => chr(64 + (int) $row->tranche),
                 'award' => (string) ($row->award_description ?? '—'),
-                'cash_reward' => $cashReward,
+                'amount' => (int) $row->amount_paise / 100,
                 'status' => (string) $row->status,
             ];
         })->all();
@@ -122,7 +120,7 @@ final class AdminAwRwCalculationController extends Controller
         return ReportExport::respond($request, 'aw-rw-'.now()->format('Y-m'), $columns, $out);
     }
 
-    private function buildQuery(string $q, ?string $month, ?string $status, ?string $type): Builder
+    private function buildQuery(string $q, ?string $month, ?string $status): Builder
     {
         return DB::table('lifetime_award_milestones as lam')
             ->join('distributors as d', 'd.id', '=', 'lam.distributor_id')
@@ -134,16 +132,14 @@ final class AdminAwRwCalculationController extends Controller
             ))
             ->when($month, fn ($b) => $b->where('lam.triggered_month', $month.'-01'))
             ->when($status, fn ($b) => $b->where('lam.status', $status))
-            ->when($type, fn ($b) => $b->where('lam.disbursement_type', $type))
             ->select(
                 'lam.id',
                 'lam.distributor_id',
                 'lam.rank_number',
+                'lam.tranche',
+                'lam.amount_paise',
                 'lam.triggered_month',
                 'lam.award_description',
-                'lam.disbursement_type',
-                'lam.gross_paise',
-                'lam.net_paise',
                 'lam.status',
                 'rt.rank_name',
                 'd.adn',
@@ -151,6 +147,7 @@ final class AdminAwRwCalculationController extends Controller
             )
             ->orderByDesc('lam.triggered_month')
             ->orderBy('lam.rank_number')
+            ->orderBy('lam.tranche')
             ->orderByDesc('lam.id');
     }
 

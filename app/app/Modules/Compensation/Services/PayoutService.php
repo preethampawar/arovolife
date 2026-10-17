@@ -75,7 +75,7 @@ final class PayoutService
     ];
 
     /**
-     * The credit types a monthly batch settles: Groups B, C and D.
+     * The credit types a monthly batch settles: Groups B and D.
      *
      * @return list<string>
      */
@@ -83,7 +83,6 @@ final class PayoutService
     {
         return array_merge(
             CompensationPlanSettingsService::GROUP_B_TYPES,
-            CompensationPlanSettingsService::GROUP_C_TYPES,
             CompensationPlanSettingsService::GROUP_D_TYPES,
         );
     }
@@ -256,9 +255,9 @@ final class PayoutService
     }
 
     /**
-     * Monthly payout batch (Groups B/C/D: GBB, Rank, Fortune, Awards, ADC).
+     * Monthly payout batch (Groups B/D: GBB, Rank, Fortune, ADC).
      *
-     * Sweeps all unswept entries for the five monthly bonus streams. Applies the
+     * Sweeps all unswept entries for the four monthly bonus streams. Applies the
      * ₹50L per-distributor rank cap (KP Round-4), the repurchase deduction
      * remainder not already collected by the month's weekly batches, per-group
      * admin charges (each capped at ₹25k), and TDS (5% on payable). Deduction
@@ -560,7 +559,7 @@ final class PayoutService
     }
 
     /**
-     * One distributor's monthly line — the Group B/C/D counterpart of
+     * One distributor's monthly line — the Group B/D counterpart of
      * {@see processWeeklyDistributor()}, extracted for the same reason.
      */
     private function processMonthlyDistributor(PayoutBatch $batch, int $distributorId, Carbon $month): void
@@ -634,20 +633,17 @@ final class PayoutService
             $grossB = $gbbEffective + $rankEffective + $fortuneEffective;
             $capForfeit = $allocation['forfeit'];
 
-            // Group C: Awards.
-            $grossC = (int) $entries->where('type', 'awards_credit')->sum('amount_paise');
-
             // Group D: ADC bonus (formerly also franchise commission).
             $grossD = (int) $entries->where('type', 'adc_credit')->sum('amount_paise');
             $grossAdc = $grossD;
 
-            $gross = $grossB + $grossC + $grossD;
+            $gross = $grossB + $grossD;
 
             // Repurchase was deducted at credit time for Group B bonuses
             // (GBB, Rank, Fortune). Sweep their repurchase_transfer debits
             // alongside the bonus credits; payout_debit uses effectiveGross
             // so the main wallet balance closes to zero exactly.
-            // Awards (Group C) and ADC (Group D) carry no repurchase deduction.
+            // ADC (Group D) carries no repurchase deduction.
             $repurchaseTransfers = $this->unsweptRepurchaseTransfers($distributorId, self::MONTHLY_REPURCHASE_REF_TYPES, earnedForMonthOrBefore: $month)
                 ->lockForUpdate()
                 ->get();
@@ -675,11 +671,10 @@ final class PayoutService
                 [BonusType::Rank, $rankEffective],
                 [BonusType::Fortune, $fortuneEffective],
             ], $adminRateBp, $adminCapPaise);
-            $adminC = $this->adminChargeFor([[BonusType::LifetimeAwards, $grossC]], $adminRateBp, $adminCapPaise);
             $adminD = $this->adminChargeFor([
                 [BonusType::Arete, $grossAdc],
             ], $adminRateBp, $adminCapPaise);
-            $adminCharge = $adminB + $adminC + $adminD;
+            $adminCharge = $adminB + $adminD;
 
             $effectiveGross = max(0, $gross - $repurchase);
 
@@ -688,21 +683,14 @@ final class PayoutService
             // scaled down with it so they still add up to what was taken,
             // which is what the result-row backfill apportions.
             if ($adminCharge > $effectiveGross) {
-                [$adminB, $adminC, $adminD] = $this->apportion($effectiveGross, [$adminB, $adminC, $adminD]);
-                $adminCharge = $adminB + $adminC + $adminD;
+                [$adminB, $adminD] = $this->apportion($effectiveGross, [$adminB, $adminD]);
+                $adminCharge = $adminB + $adminD;
             }
 
             $payable = $effectiveGross - $adminCharge;
 
-            // Group C (Lifetime Award cash) reaches the wallet already NET:
-            // AdminLifetimeAwardsController takes both the admin charge and
-            // the 5% TDS at delivery time, which is why
-            // comp.admin_charge.applies_to_awards defaults to false. It has
-            // to come out of the TDS base for the same reason, or the award
-            // is taxed a second time on its way to the bank.
-            $tdsBase = max(0, $payable - $grossC);
             // min(): see runWeeklyBatch() — never tax past what is payable.
-            $tds = min($payable, (int) round($tdsBase * $tdsRateBp / 10_000));
+            $tds = min($payable, (int) round($payable * $tdsRateBp / 10_000));
             $net = $payable - $tds;
 
             if ($net < $minPayoutPaise) {

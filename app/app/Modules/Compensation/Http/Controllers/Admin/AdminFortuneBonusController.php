@@ -8,7 +8,6 @@ use App\Modules\Compensation\Models\FortuneBonusParticipant;
 use App\Modules\Compensation\Models\FortuneBonusResult;
 use App\Modules\Compensation\Models\FortuneMonthlyPool;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
-use App\Modules\Compensation\Services\FortuneBonusService;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
@@ -17,8 +16,6 @@ use Laravel\Pennant\Feature;
 
 final class AdminFortuneBonusController extends Controller
 {
-    public function __construct(private readonly FortuneBonusService $fortuneBonus) {}
-
     public function index(): View
     {
         abort_unless(Feature::for(null)->active(FortuneBonusFeature::class), 404);
@@ -112,20 +109,8 @@ final class AdminFortuneBonusController extends Controller
             ->where('month_start', $monthStart)
             ->first();
 
-        // Forfeited for the month-end repurchase wallet gate: enrolled and
-        // positioned, gross ₹0, never released. Both the count AND the share
-        // the cascade had allocated them are shown — that share sits inside the
-        // frozen payout_paise but never left the company, so without it the
-        // month does not reconcile.
-        $walletBlockedCount = FortuneBonusResult::where('month_start', $monthStart)
-            ->where('status', FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED)
-            ->count();
-
-        $walletBlockedPaise = $this->fortuneBonus->forfeitedGrossPaiseForMonth($date);
-
         return view('admin.compensation.fortune-bonus.show', compact(
             'rows', 'levelSummaries', 'date', 'resultsByDistributor', 'levelPoints', 'pool',
-            'walletBlockedCount', 'walletBlockedPaise',
         ));
     }
 }

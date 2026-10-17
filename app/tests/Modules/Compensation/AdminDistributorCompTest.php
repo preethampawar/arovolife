@@ -285,6 +285,18 @@ it('shows the repurchase alert traffic-light in the header while the repurchase 
         ['distributor_id' => $distributorId, 'type' => 'repurchase_deduction', 'amount_paise' => 50_000, 'created_at' => now()],
     ]);
 
+    // The alert counts down to the cycle's own due date — the only ₹0 date
+    // (user decision 2026-10-17). Due 30 Sep, so on the 25th it is red.
+    DB::table('repurchase_cycles')->insert([
+        'distributor_id' => $distributorId,
+        'cycle_start_date' => '2026-09-01',
+        'due_date' => '2026-09-30',
+        'required_bv_paise' => 60_000,
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
     Carbon::setTestNow(Carbon::parse('2026-09-25 10:00:00'));
 
     try {

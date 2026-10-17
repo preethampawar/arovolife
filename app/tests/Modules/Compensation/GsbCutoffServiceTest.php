@@ -814,20 +814,20 @@ function statusConstantsNamedIn(string $class, string $method): array
 
 it('keeps repurchase_forfeited out of the carry-forward and pool-funded lists', function (): void {
     // A forfeited day moves neither store and consumes no pool: it is the one
-    // status that appears in neither list. The legacy held/suspended statuses
-    // stay in both — those rows really did advance the store and fund the pool.
+    // status that appears in neither list.
     $forfeited = new GsbCutoffResult(['status' => GsbCutoffResult::STATUS_REPURCHASE_FORFEITED]);
 
     expect($forfeited->advancedCarryForward())->toBeFalse()
         ->and(GsbCutoffResult::POOL_FUNDED_STATUSES)->not->toContain(GsbCutoffResult::STATUS_REPURCHASE_FORFEITED)
-        ->and(GsbCutoffResult::POOL_FUNDED_STATUSES)->toContain(GsbCutoffResult::STATUS_REPURCHASE_HELD)
-        ->and(GsbCutoffResult::POOL_FUNDED_STATUSES)->toContain(GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED);
+        ->and(GsbCutoffResult::POOL_FUNDED_STATUSES)->toBe([
+            GsbCutoffResult::STATUS_CREDITED,
+            GsbCutoffResult::STATUS_FROZEN,
+            GsbCutoffResult::STATUS_REVERSED,
+        ]);
 
     foreach ([
         GsbCutoffResult::STATUS_NO_MATCH,
         GsbCutoffResult::STATUS_FROZEN,
-        GsbCutoffResult::STATUS_REPURCHASE_HELD,
-        GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
         GsbCutoffResult::STATUS_CREDITED,
         GsbCutoffResult::STATUS_REVERSED,
     ] as $status) {
@@ -844,8 +844,6 @@ it('keeps one source of truth for the carry-forward-advancing statuses', functio
     expect(GsbCutoffResult::CARRY_FORWARD_ADVANCING_STATUSES)->toBe([
         GsbCutoffResult::STATUS_NO_MATCH,
         GsbCutoffResult::STATUS_FROZEN,
-        GsbCutoffResult::STATUS_REPURCHASE_HELD,
-        GsbCutoffResult::STATUS_REPURCHASE_SUSPENDED,
         GsbCutoffResult::STATUS_CREDITED,
         GsbCutoffResult::STATUS_REVERSED,
     ]);

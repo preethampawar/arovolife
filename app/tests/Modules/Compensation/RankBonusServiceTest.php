@@ -2,15 +2,20 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Exceptions\RepurchaseVerdictsPending;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Compensation\Models\RankMonthlyPass;
 use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\RankBonusService;
+use App\Modules\Compensation\Services\Rebuild\MonthRebuilder;
+use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
@@ -19,6 +24,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
@@ -33,7 +39,9 @@ beforeEach(function (): void {
  * distributor id so it never collides with the personal-BV rows that the §8
  * requalification gate and the AO-GO offer read per distributor.
  *
- * Pool arithmetic: pool = BV × 20% envelope × the rank's pool_pct.
+ * Pool arithmetic (client 2026-10-05): envelope = BV × 20%; pass 1 (AO-GO +
+ * Ranks 1–3) divides the envelope by its points, pass 2 (Ranks 4–9) the
+ * remainder; each point value floored to the rupee and capped at ₹200.
  */
 function seedRankCompanyBv(int $bvPaise, Carbon $effectiveAt): void
 {
@@ -89,13 +97,14 @@ it('returns zero credited when no qualifiers exist', function (): void {
     expect(RankBonusResult::count())->toBe(0);
 });
 
-it('calculates the rank pool as its share of the 20% envelope of company BV', function (): void {
+it('prices a Rank-1 achiever from the 20% envelope of company BV, capped at ₹200 a point', function (): void {
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
     $monthStart = '2026-06-01';
 
     // Company BV = 200,000,000 paise (20,00,000 BV). Envelope = 20% =
-    // 40,000,000. Rank 1's 7% share of the envelope = 2,800,000 paise.
+    // 40,000,000. Pass 1 holds one achiever's 72 RAP → raw ₹5,555 a point,
+    // capped at ₹200 → 72 × ₹200 = ₹14,400.
     seedRankCompanyBv(200_000_000, $month->copy()->addDays(5));
     seedRankQualification($dist->id, rank: 1, monthStart: $monthStart, occurrence: 1);
 
@@ -108,26 +117,29 @@ it('calculates the rank pool as its share of the 20% envelope of company BV', fu
 
     expect($result)->not->toBeNull();
     expect($result->company_turnover_paise)->toBe(200_000_000);
-    expect($result->pool_paise)->toBe(2_800_000);
-    expect($result->gross_paise)->toBe(2_800_000);
+    expect($result->pool_paise)->toBe(1_440_000); // the rank's allotment
+    expect($result->gross_paise)->toBe(1_440_000);
+    expect(RankMonthlyPass::where('month_start', $monthStart)->where('pass', 1)->value('envelope_paise'))->toBe(40_000_000);
 });
 
-it('KP worked example: 10,00,000 BV → 20% envelope → Rank-1 7% share = ₹14,000', function (): void {
+it('10,00,000 BV → 20% envelope ₹2,00,000 → one Rank-1 achiever paid 72 × ₹200 = ₹14,400', function (): void {
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
-    // 10,00,000 BV = 100,000,000 paise → envelope 20,00,000 → Rank 1 ₹14,000.
+    // 10,00,000 BV = 100,000,000 paise → envelope 20,000,000 paise.
     seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
     seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01', occurrence: 1);
 
     $result = app(RankBonusService::class)->runForMonth($month);
 
     expect($result['turnover_paise'])->toBe(100_000_000);
-    expect($result['by_rank'][1]['pool_paise'])->toBe(1_400_000);
+    expect($result['by_rank'][1]['pool_paise'])->toBe(1_440_000);
+    expect($result['passes'][1]['pool_paise'])->toBe(20_000_000)
+        ->and($result['passes'][2]['leftover_paise'])->toBe(20_000_000 - 1_440_000);
 
     $row = RankBonusResult::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
-    expect($row->pool_paise)->toBe(1_400_000)
-        ->and($row->gross_paise)->toBe(1_400_000)
+    expect($row->pool_paise)->toBe(1_440_000)
+        ->and($row->gross_paise)->toBe(1_440_000)
         ->and($row->status)->toBe(RankBonusResult::STATUS_CREDITED);
 });
 
@@ -157,7 +169,8 @@ it('freezes the repurchase deduction on the row and credits gross minus it', fun
     $month = Carbon::parse('2026-06-01');
     $monthStart = '2026-06-01';
 
-    // Small pool: 1,000,000 BV paise × 20% envelope × 7% = 14,000 paise.
+    // Small pool: 1,000,000 BV paise × 20% envelope = 200,000 paise ÷ 72 RAP
+    // → ₹27 a point (uncapped) → 72 × ₹27 = 194,400 paise.
     seedRankCompanyBv(1_000_000, $month->copy()->addDays(5));
     seedRankQualification($dist->id, rank: 1, monthStart: $monthStart, occurrence: 1);
 
@@ -166,11 +179,11 @@ it('freezes the repurchase deduction on the row and credits gross minus it', fun
 
     $result = RankBonusResult::where('distributor_id', $dist->id)->where('rank_number', 1)->first();
 
-    // 14,000 gross → 10% repurchase = 1,400 taken at credit time; admin
+    // 194,400 gross → 10% repurchase = 19,440 taken at credit time; admin
     // charge and TDS are payout-time figures and stay at zero here.
-    expect($result->gross_paise)->toBe(14_000);
-    expect($result->repurchase_deduction_paise)->toBe(1_400);
-    expect($result->net_paise)->toBe(12_600);
+    expect($result->gross_paise)->toBe(194_400);
+    expect($result->repurchase_deduction_paise)->toBe(19_440);
+    expect($result->net_paise)->toBe(174_960);
     expect($result->admin_charge_paise)->toBe(0);
 });
 
@@ -248,12 +261,12 @@ it('is idempotent — re-running the same month does not double-credit', functio
  * The defect the rank_monthly_pools freeze exists to kill: the engine used to
  * recompute the pool AND the roster on every run, so a held qualifier clearing
  * their §8 conditions later re-divided a pool that had already been paid out.
- * Two qualifiers paid the whole ₹14,000; the third arriving turned that into
- * ₹14,000 × 3 ÷ 3 on top of what was already credited.
+ * Two qualifiers were paid; the third arriving re-divided the pool on top of
+ * what was already credited.
  */
 it('cannot pay more than the frozen pool when a held qualifier clears later', function (): void {
     $month = Carbon::parse('2026-06-01');
-    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // Rank-1 pool ₹14,000
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // envelope ₹2,00,000; 2 × 72 RAP at the ₹200 cap = ₹28,800
 
     $firstTimerA = Distributor::factory()->create();
     $firstTimerB = Distributor::factory()->create();
@@ -280,9 +293,10 @@ it('cannot pay more than the frozen pool when a held qualifier clears later', fu
         ->sum('gross_paise');
 
     expect($creditedGross)->toBeLessThanOrEqual((int) $pool->pool_paise)
-        ->and($creditedGross)->toBe(1_400_000)
+        ->and($creditedGross)->toBe(2_880_000)
         ->and((int) $pool->leftover_paise)->toBe(0)
-        ->and((int) $pool->leftover_paise)->toBeGreaterThanOrEqual(0);
+        ->and((int) $pool->leftover_paise)->toBeGreaterThanOrEqual(0)
+        ->and((int) RankMonthlyPass::where('month_start', '2026-06-01')->sum('payout_paise'))->toBe(2_880_000);
 
     // The status decided at freeze stands; the hold is never back-paid.
     expect(RankBonusResult::where('distributor_id', $repeat->id)->value('status'))
@@ -291,7 +305,7 @@ it('cannot pay more than the frozen pool when a held qualifier clears later', fu
 
     // Credited and non-credited rows of the month agree on the economics.
     expect(RankBonusResult::where('month_start', '2026-06-01')->where('rank_number', 1)
-        ->distinct()->pluck('pool_paise')->all())->toBe([1_400_000]);
+        ->distinct()->pluck('pool_paise')->all())->toBe([2_880_000]);
 });
 
 it('refuses and reports a distributor who qualifies after the pool was frozen', function (): void {
@@ -318,7 +332,7 @@ it('refuses and reports a distributor who qualifies after the pool was frozen', 
     expect(RankBonusResult::where('distributor_id', $late->id)->exists())->toBeFalse();
     expect(WalletLedgerEntry::where('distributor_id', $late->id)->count())->toBe(0);
     expect((int) RankBonusResult::where('distributor_id', $onTime->id)->value('gross_paise'))
-        ->toBe(1_400_000);
+        ->toBe(1_440_000);
 
     // R-35: withholding a month's income permanently is an audit fact with an
     // 8-year retention, not a log line that rotates away.
@@ -357,11 +371,14 @@ it('replaces a premature freeze when nothing it funded was credited', function (
 
     expect(RankMonthlyPool::where('month_start', '2026-06-01')->count())->toBe(9);
     expect((int) RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->value('pool_paise'))
-        ->toBe(1_400_000);
+        ->toBe(1_440_000);
+    // The premature pass rows went with the pools: exactly two, re-priced.
+    expect(RankMonthlyPass::where('month_start', '2026-06-01')->count())->toBe(2)
+        ->and(RankMonthlyPass::where('month_start', '2026-06-01')->where('pass', 1)->value('envelope_paise'))->toBe(20_000_000);
 
     $row = RankBonusResult::where('distributor_id', $dist->id)->firstOrFail();
     expect($row->status)->toBe(RankBonusResult::STATUS_CREDITED)
-        ->and((int) $row->gross_paise)->toBe(1_400_000);
+        ->and((int) $row->gross_paise)->toBe(1_440_000);
 
     // The hard delete must stay reconstructable from audit_log alone: the
     // discarded rows are snapshotted, not merely counted.
@@ -384,7 +401,7 @@ it('replaces a premature freeze when nothing it funded was credited', function (
  */
 it('refuses a month the pre-freeze engine already paid rather than re-pricing it', function (): void {
     $month = Carbon::parse('2026-06-01');
-    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // Rank-1 pool ₹14,000
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // 2 × 72 RAP at ₹200 = ₹28,800
 
     $paidA = Distributor::factory()->create();
     $paidB = Distributor::factory()->create();
@@ -397,11 +414,13 @@ it('refuses a month the pre-freeze engine already paid rather than re-pricing it
 
     $creditedBefore = (int) RankBonusResult::where('month_start', '2026-06-01')
         ->where('status', RankBonusResult::STATUS_CREDITED)->sum('gross_paise');
-    expect($creditedBefore)->toBe(1_400_000);
+    expect($creditedBefore)->toBe(2_880_000);
 
-    // Reproduce a legacy month: the credited rows survive, the pool row never
-    // existed. A third achiever the old run never saw is on today's roster.
+    // Reproduce a legacy month: the credited rows survive, the pool and pass
+    // rows never existed. A third achiever the old run never saw is on
+    // today's roster.
     RankMonthlyPool::query()->delete();
+    RankMonthlyPass::query()->delete();
     $newcomer = Distributor::factory()->create();
     seedRankQualification($newcomer->id, rank: 1, monthStart: '2026-06-01');
 
@@ -410,6 +429,7 @@ it('refuses a month the pre-freeze engine already paid rather than re-pricing it
 
     // Nothing was frozen, nothing was written, nothing was paid a second time.
     expect(RankMonthlyPool::count())->toBe(0)
+        ->and(RankMonthlyPass::count())->toBe(0)
         ->and(RankBonusResult::where('distributor_id', $newcomer->id)->exists())->toBeFalse()
         ->and(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(2);
 
@@ -417,7 +437,7 @@ it('refuses a month the pre-freeze engine already paid rather than re-pricing it
         ->where('status', RankBonusResult::STATUS_CREDITED)->sum('gross_paise');
 
     expect($creditedAfter)->toBe($creditedBefore)
-        ->and($creditedAfter)->toBeLessThanOrEqual(1_400_000);
+        ->and($creditedAfter)->toBeLessThanOrEqual(2_880_000);
 });
 
 it('still freezes a month whose legacy rows moved no money', function (): void {
@@ -459,7 +479,7 @@ it('credits a rank achiever whose repurchase cycle is failed at month end — re
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $month = Carbon::parse('2026-06-01');
-    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // Rank-1 pool ₹14,000
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // 72 RAP at the ₹200 cap = ₹14,400
 
     $failed = Distributor::factory()->create();
     seedRankQualification($failed->id, rank: 1, monthStart: '2026-06-01');
@@ -484,7 +504,7 @@ it('credits a rank achiever whose repurchase cycle is failed at month end — re
     $row = RankBonusResult::where('distributor_id', $failed->id)->firstOrFail();
 
     expect($row->status)->toBe(RankBonusResult::STATUS_CREDITED)
-        ->and((int) $row->gross_paise)->toBe(1_400_000)
+        ->and((int) $row->gross_paise)->toBe(1_440_000)
         ->and($row->credited_at)->not->toBeNull();
 
     // Real money moved: the rank credit exists in the ledger.
@@ -497,7 +517,7 @@ it('credits a rank achiever whose repurchase cycle is failed at month end — re
     // The pool still reconciles against the frozen roster.
     $pool = RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->firstOrFail();
     expect((int) $pool->payable_count)->toBe(1)
-        ->and((int) $pool->payout_paise)->toBe(1_400_000)
+        ->and((int) $pool->payout_paise)->toBe(1_440_000)
         ->and((int) $pool->leftover_paise)->toBe(0);
 });
 
@@ -505,23 +525,216 @@ it('keeps a premature freeze once something it funded was credited', function ()
     $month = Carbon::parse('2026-06-01');
     $dist = Distributor::factory()->create();
     seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
-    seedRankCompanyBv(100_000_000, Carbon::parse('2026-06-05'));
+    // Envelope 200,000 paise ÷ 72 RAP → ₹27 a point (under the cap) → 194,400.
+    seedRankCompanyBv(1_000_000, Carbon::parse('2026-06-05'));
 
     Carbon::setTestNow(Carbon::parse('2026-06-15 10:00:00'));
     $svc = app(RankBonusService::class);
     $svc->runForMonth($month);
 
     // More BV lands before the month closes — it must NOT re-price a pool that
-    // a wallet has already moved on.
+    // a wallet has already moved on (a re-freeze would price ₹55 a point).
     Carbon::setTestNow(Carbon::parse('2026-07-01 04:00:00'));
-    seedRankCompanyBv(100_000_000, Carbon::parse('2026-06-20'));
+    seedRankCompanyBv(1_000_000, Carbon::parse('2026-06-20'));
 
     $svc->runForMonth($month);
 
     expect((int) RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->value('pool_paise'))
-        ->toBe(1_400_000);
+        ->toBe(194_400);
+    expect((int) RankMonthlyPass::where('month_start', '2026-06-01')->where('pass', 1)->value('envelope_paise'))
+        ->toBe(200_000);
     expect(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(1);
-    expect((int) RankBonusResult::where('distributor_id', $dist->id)->value('gross_paise'))->toBe(1_400_000);
+    expect((int) RankBonusResult::where('distributor_id', $dist->id)->value('gross_paise'))->toBe(194_400);
+});
+
+/**
+ * A credited premature freeze with one row the first run never reached — the
+ * shape a crash part-way through the credit loop leaves. The kept freeze has
+ * already decided every figure, so the re-run must credit that row.
+ *
+ * @return array{0: int, 1: int} [credited distributor id, still-pending distributor id]
+ */
+function rankKeptFreezeWithOnePendingRow(): array
+{
+    $a = Distributor::factory()->create()->id;
+    $b = Distributor::factory()->create()->id;
+    seedRankQualification($a, rank: 1, monthStart: '2026-06-01');
+    seedRankQualification($b, rank: 1, monthStart: '2026-06-01');
+    seedRankCompanyBv(1_000_000, Carbon::parse('2026-06-05'));
+
+    Carbon::setTestNow(Carbon::parse('2026-06-15 10:00:00'));
+    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    RankBonusResult::where('distributor_id', $b)->update([
+        'status' => RankBonusResult::STATUS_PENDING,
+        'credited_at' => null,
+        'repurchase_deduction_paise' => 0,
+    ]);
+    WalletLedgerEntry::where('distributor_id', $b)->delete();
+
+    Carbon::setTestNow(Carbon::parse('2026-07-01 04:00:00'));
+
+    return [$a, $b];
+}
+
+it('credits the rest of a kept premature freeze even when the cap has since become invalid', function (): void {
+    [, $b] = rankKeptFreezeWithOnePendingRow();
+    $poolBefore = RankMonthlyPool::where('month_start', '2026-06-01')->orderBy('rank_number')->pluck('point_value_paise')->all();
+    $grossBefore = (int) RankBonusResult::where('distributor_id', $b)->value('gross_paise');
+
+    // A cap the next freeze would refuse — but this run writes no freeze.
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.point_value_cap_paise'],
+        ['value' => '20050', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+
+    $result = app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    expect($result['credited'])->toBe(1)
+        ->and(RankBonusResult::where('distributor_id', $b)->value('status'))->toBe(RankBonusResult::STATUS_CREDITED)
+        ->and((int) RankBonusResult::where('distributor_id', $b)->value('gross_paise'))->toBe($grossBefore)
+        ->and(WalletLedgerEntry::where('distributor_id', $b)->where('type', 'rank_credit')->count())->toBe(1)
+        ->and(RankMonthlyPool::where('month_start', '2026-06-01')->orderBy('rank_number')->pluck('point_value_paise')->all())->toBe($poolBefore)
+        ->and(RankMonthlyPass::where('month_start', '2026-06-01')->count())->toBe(2);
+});
+
+it('credits the rest of a kept premature freeze even while a repurchase verdict is pending', function (): void {
+    [, $b] = rankKeptFreezeWithOnePendingRow();
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    rankSeedPendingCycle($b, '2026-06-25');
+
+    $result = app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    expect($result['credited'])->toBe(1)
+        ->and(RankBonusResult::where('distributor_id', $b)->value('status'))->toBe(RankBonusResult::STATUS_CREDITED)
+        ->and(WalletLedgerEntry::where('distributor_id', $b)->where('type', 'rank_credit')->count())->toBe(1);
+});
+
+it('freezes past a stray legacy pending row, reports it and never credits it', function (): void {
+    // A pre-freeze `pending` row for someone not on the roster this freeze
+    // writes: reconciling it against the pass payout would refuse every
+    // freeze of the month; crediting it would pay a share of a pool it was
+    // never in the denominator of.
+    $m = '2026-06-01';
+    $stray = Distributor::factory()->create()->id;
+    Carbon::setTestNow(Carbon::parse('2026-06-10 10:00:00'));
+    $strayRow = RankBonusResult::create([
+        'distributor_id' => $stray,
+        'month_start' => $m,
+        'rank_number' => 2,
+        'company_turnover_paise' => 0,
+        'pool_paise' => 50_000,
+        'qualifier_count' => 1,
+        'gross_paise' => 50_000,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_paise' => 50_000,
+        'status' => RankBonusResult::STATUS_PENDING,
+    ]);
+
+    Carbon::setTestNow(Carbon::parse('2026-07-01 04:00:00'));
+    seedRankCompanyBv(1_000_000, Carbon::parse('2026-06-05'));
+    $achiever = seedRankCohort(1, 1, $m)[0];
+
+    $svc = app(RankBonusService::class);
+    $result = $svc->runForMonth(Carbon::parse($m));
+
+    expect($result['credited'])->toBe(1)
+        ->and(RankBonusResult::where('distributor_id', $achiever)->value('status'))->toBe(RankBonusResult::STATUS_CREDITED)
+        ->and($strayRow->fresh()->status)->toBe(RankBonusResult::STATUS_PENDING)
+        ->and((int) $strayRow->fresh()->gross_paise)->toBe(50_000)
+        ->and(WalletLedgerEntry::where('distributor_id', $stray)->count())->toBe(0);
+
+    $audit = AuditLog::where('action', 'rank.freeze.stray_pending_rows')->sole();
+    expect($audit->details['month_start'])->toBe($m)
+        ->and($audit->details['rows'])->toHaveCount(1)
+        ->and($audit->details['rows'][0]['id'])->toBe($strayRow->id)
+        ->and($audit->details['rows'][0]['distributor_id'])->toBe($stray)
+        ->and($audit->details['rows'][0]['rank_number'])->toBe(2)
+        ->and($audit->details['rows'][0]['gross_paise'])->toBe(50_000);
+
+    // A re-run over the frozen month still never credits it.
+    $svc->runForMonth(Carbon::parse($m));
+
+    expect($strayRow->fresh()->status)->toBe(RankBonusResult::STATUS_PENDING)
+        ->and(WalletLedgerEntry::where('distributor_id', $stray)->count())->toBe(0)
+        ->and(LifetimeAwardMilestone::where('distributor_id', $stray)->count())->toBe(0);
+});
+
+it('traces a stray pending row that appears after the freeze and never lets its rank refuse the run', function (): void {
+    // A hand-made `pending` row written AFTER the freeze: freezeMonth() never
+    // runs again, so only the credit loop sees it. Its rank having no tranche
+    // rows must not refuse a run that will never sync it an award.
+    $m = '2026-06-01';
+    // A kept premature freeze with one rank-1 roster row still pending — it
+    // must still be credited below.
+    [, $achiever] = rankKeptFreezeWithOnePendingRow();
+
+    $stray = Distributor::factory()->create()->id;
+    $strayRow = RankBonusResult::create([
+        'distributor_id' => $stray,
+        'month_start' => $m,
+        'rank_number' => 7,
+        'company_turnover_paise' => 0,
+        'pool_paise' => 50_000,
+        'qualifier_count' => 1,
+        'gross_paise' => 50_000,
+        'admin_charge_paise' => 0,
+        'tds_paise' => 0,
+        'net_paise' => 50_000,
+        'status' => RankBonusResult::STATUS_PENDING,
+    ]);
+
+    DB::table('lifetime_award_tranches')->where('rank_number', 7)->delete();
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+    app()->forgetInstance(RankBonusService::class);
+
+    Log::spy();
+
+    $result = app(RankBonusService::class)->runForMonth(Carbon::parse($m));
+
+    expect($result['credited'])->toBe(1)
+        ->and(RankBonusResult::where('distributor_id', $achiever)->value('status'))->toBe(RankBonusResult::STATUS_CREDITED)
+        ->and(WalletLedgerEntry::where('distributor_id', $achiever)->where('type', 'rank_credit')->count())->toBe(1)
+        ->and($strayRow->fresh()->status)->toBe(RankBonusResult::STATUS_PENDING)
+        ->and(WalletLedgerEntry::where('distributor_id', $stray)->count())->toBe(0)
+        ->and(LifetimeAwardMilestone::where('distributor_id', $stray)->count())->toBe(0);
+
+    Log::shouldHaveReceived('warning')
+        ->with('rank.credit.stray_pending_row_skipped', [
+            'month_start' => $m,
+            'result_id' => $strayRow->id,
+            'distributor_id' => $stray,
+            'rank_number' => 7,
+            'gross_paise' => 50_000,
+        ])
+        ->once();
+});
+
+it('refuses a pending verdict before replacing an uncredited premature freeze', function (): void {
+    $dist = Distributor::factory()->create()->id;
+    seedRankQualification($dist, rank: 1, monthStart: '2026-06-01');
+
+    // Mid-month, no BV yet: a ₹0 freeze that credited nothing — replaceable.
+    Carbon::setTestNow(Carbon::parse('2026-06-15 10:00:00'));
+    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    Carbon::setTestNow(Carbon::parse('2026-07-01 04:00:00'));
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-06-20'));
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    rankSeedPendingCycle($dist, '2026-06-25');
+    $resultIds = RankBonusResult::pluck('id')->all();
+
+    expect(fn () => app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01')))
+        ->toThrow(RepurchaseVerdictsPending::class);
+
+    // Nothing was deleted: the premature freeze is intact for the re-run.
+    expect(RankMonthlyPool::where('month_start', '2026-06-01')->count())->toBe(9)
+        ->and(RankMonthlyPass::where('month_start', '2026-06-01')->count())->toBe(2)
+        ->and(RankBonusResult::pluck('id')->all())->toBe($resultIds)
+        ->and(AuditLog::where('action', 'rank.pool.refrozen')->count())->toBe(0);
 });
 
 /**
@@ -534,8 +747,8 @@ it('counts one lifetime qualification across three runs even when the gross floo
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
-    // Pool = 50,000 × 20% × 7% = 700 paise over 10 RAP → ₹0 point value.
-    seedRankCompanyBv(50_000, $month->copy()->addDays(5));
+    // Envelope = 30,000 × 20% = 6,000 paise over 72 RAP → ₹0 point value.
+    seedRankCompanyBv(30_000, $month->copy()->addDays(5));
     seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
 
     $svc = app(RankBonusService::class);
@@ -543,8 +756,10 @@ it('counts one lifetime qualification across three runs even when the gross floo
     $svc->runForMonth($month);
     $svc->runForMonth($month);
 
-    expect((int) RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->value('pool_paise'))
-        ->toBe(700);
+    expect((int) RankMonthlyPass::where('month_start', '2026-06-01')->where('pass', 1)->value('pool_paise'))
+        ->toBe(6_000)
+        ->and((int) RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->value('pool_paise'))
+        ->toBe(0);
 
     $row = RankBonusResult::where('distributor_id', $dist->id)->firstOrFail();
     expect((int) $row->gross_paise)->toBe(0)
@@ -597,58 +812,217 @@ it('does not create a duplicate LifetimeAwardMilestone on second qualification',
     expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->where('rank_number', 1)->value('qualification_count'))->toBe(2);
 });
 
-it('divides the rank-1 pool by points — KP worked example: ₹14,000 pool, 40 points, ₹350 per point', function (): void {
+/**
+ * Rank 3 qualified in July and August: tranche A opens in July, tranche B in
+ * August (the client, 2026-10-09 — A on the 1st qualification, B on the 2nd).
+ * August is a 2nd lifetime qualification, so it carries the §8 requalification
+ * purchase (rank 3 = 1,200 BV).
+ */
+function qualifyRankThreeInJulyAndAugust(int $distributorId): void
+{
+    foreach (['2026-07-01', '2026-08-01'] as $m) {
+        seedRankCompanyBv(10_000_000_00, Carbon::parse($m)->addDays(5));
+        seedRankQualification($distributorId, 3, $m);
+        if ($m === '2026-08-01') {
+            seedRankMonthlyBv($distributorId, 120_000, '2026-08-10');
+        }
+        app(RankBonusService::class)->runForMonth(Carbon::parse($m));
+    }
+}
+
+it('opens award tranche A on the first qualification and tranche B on the second (rank 3)', function (): void {
+    $d = Distributor::factory()->create()->id;
+
+    foreach (['2026-07-01', '2026-08-01'] as $i => $m) {
+        seedRankCompanyBv(10_000_000_00, Carbon::parse($m)->addDays(5));
+        seedRankQualification($d, 3, $m);
+        if ($i === 1) {
+            seedRankMonthlyBv($d, 120_000, '2026-08-10');
+        }
+        app(RankBonusService::class)->runForMonth(Carbon::parse($m));
+
+        expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->pluck('tranche')->sort()->values()->all())
+            ->toBe(range(1, $i + 1));
+    }
+
+    $a = LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->where('tranche', 1)->firstOrFail();
+    $b = LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->where('tranche', 2)->firstOrFail();
+
+    expect($a->amount_paise)->toBe(4_860_000)
+        ->and($a->qualification_count)->toBe(2)
+        ->and($a->triggered_month->toDateString())->toBe('2026-07-01')
+        ->and($a->award_description)->toContain('tranche A');
+    expect($b->amount_paise)->toBe(5_940_000)
+        ->and($b->isReleasable())->toBeTrue()
+        ->and($b->triggered_month->toDateString())->toBe('2026-08-01')
+        ->and($b->award_description)->toContain('tranche B');
+});
+
+it('releases a tranche once the rank has been qualified at least tranche times', function (): void {
+    $milestone = new LifetimeAwardMilestone(['tranche' => 3, 'qualification_count' => 2]);
+    expect($milestone->isReleasable())->toBeFalse();
+
+    $milestone->qualification_count = 3;
+    expect($milestone->isReleasable())->toBeTrue();
+});
+
+it('refuses before any write when a rank with an achiever has no award tranche rows', function (): void {
+    $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
-    // June company BV must total exactly 100,000,000 paise (10,00,000 BV) so the
-    // Rank-1 pool is 100,000,000 × 20% envelope × 7% = ₹14,000. The two AO-GO
-    // ex-rankers below each add 1,000 BV (100,000 paise) of their own, so the
-    // sentinel row carries the remaining 9,98,000 BV.
-    seedRankCompanyBv(100_000_000 - 200_000, $month->copy()->addDays(5));
+
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
+    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
+    DB::table('lifetime_award_tranches')->where('rank_number', 1)->delete();
+
+    expect(fn () => app(RankBonusService::class)->runForMonth($month))
+        ->toThrow(RuntimeException::class, 'lifetime_award_tranches has no rows for rank 1');
+
+    expect(RankMonthlyPool::count())->toBe(0)
+        ->and(RankBonusResult::count())->toBe(0)
+        ->and(LifetimeAwardMilestone::count())->toBe(0)
+        ->and(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(0);
+});
+
+it('refuses a re-run of a frozen, credited month before any write when the rank lost its tranche rows', function (): void {
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
+    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
+    app(RankBonusService::class)->runForMonth($month);
+
+    expect(RankBonusResult::where('distributor_id', $dist->id)->value('status'))->toBe(RankBonusResult::STATUS_CREDITED);
+
+    // A late qualifier: the re-run would write a qualified_after_freeze audit row
+    // if it got that far.
+    $late = Distributor::factory()->create();
+    seedRankQualification($late->id, rank: 1, monthStart: '2026-06-01');
+
+    DB::table('lifetime_award_tranches')->where('rank_number', 1)->delete();
+    // Drop any resolved plan cache so the re-run reads the table as it now is.
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+    app()->forgetInstance(RankBonusService::class);
+
+    $milestones = LifetimeAwardMilestone::count();
+    $results = RankBonusResult::count();
+    $lateAudits = AuditLog::where('action', 'rank.result.qualified_after_freeze')->count();
+    $credits = WalletLedgerEntry::count();
+
+    expect(fn () => app(RankBonusService::class)->runForMonth($month))
+        ->toThrow(RuntimeException::class, 'lifetime_award_tranches has no rows for rank 1');
+
+    expect(LifetimeAwardMilestone::count())->toBe($milestones)
+        ->and(RankBonusResult::count())->toBe($results)
+        ->and(AuditLog::where('action', 'rank.result.qualified_after_freeze')->count())->toBe($lateAudits)
+        ->and(WalletLedgerEntry::count())->toBe($credits);
+});
+
+it('removes a pending tranche the rank no longer earns, with an audit row, and keeps tranche A', function (): void {
+    $d = Distributor::factory()->create()->id;
+    qualifyRankThreeInJulyAndAugust($d);
+
+    // August's roster is gone (as a rebuild that re-derives it without the
+    // distributor would leave it) while tranche B, written by August, survives.
+    RankBonusResult::where('month_start', '2026-08-01')->delete();
+    expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('tranche', 2)->exists())->toBeTrue();
+
+    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-07-01'));
+
+    expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->pluck('tranche')->all())->toBe([1]);
+    $a = LifetimeAwardMilestone::where('distributor_id', $d)->where('tranche', 1)->firstOrFail();
+    expect($a->status)->toBe(LifetimeAwardMilestone::STATUS_PENDING)
+        ->and($a->qualification_count)->toBe(1);
+
+    $audit = AuditLog::where('action', 'awards.tranche.unearned_pending_removed')->where('subject_id', $d)->firstOrFail();
+    expect($audit->details['rank'])->toBe(3)
+        ->and($audit->details['qualification_count'])->toBe(1)
+        ->and(array_column($audit->details['removed'], 'tranche'))->toBe([2]);
+});
+
+it('never removes a delivered tranche the rank no longer earns', function (): void {
+    $d = Distributor::factory()->create()->id;
+    qualifyRankThreeInJulyAndAugust($d);
+
+    LifetimeAwardMilestone::where('distributor_id', $d)->where('tranche', 2)
+        ->update(['status' => LifetimeAwardMilestone::STATUS_DELIVERED, 'delivered_at' => now()]);
+    RankBonusResult::where('month_start', '2026-08-01')->delete();
+
+    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-07-01'));
+
+    expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->orderBy('tranche')->pluck('tranche')->all())->toBe([1, 2])
+        ->and(AuditLog::where('action', 'awards.tranche.unearned_pending_removed')->exists())->toBeFalse();
+});
+
+it('a month rebuild of August takes tranche B with it and a July re-run leaves tranche A pending', function (): void {
+    $d = Distributor::factory()->create()->id;
+    qualifyRankThreeInJulyAndAugust($d);
+
+    // MonthRebuilder::pendingMilestones() matches tranche B by its triggered
+    // month, so the wipe removes it before the engine ever sees it as orphaned.
+    app(MonthRebuilder::class)->wipe(Carbon::parse('2026-08-01'), 1, fn (string $line) => null, fn () => null);
+
+    expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('tranche', 2)->exists())->toBeFalse();
+
+    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-07-01'));
+
+    expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->pluck('tranche')->all())->toBe([1])
+        ->and(LifetimeAwardMilestone::where('distributor_id', $d)->where('tranche', 1)->value('status'))->toBe(LifetimeAwardMilestone::STATUS_PENDING);
+});
+
+it('divides pass 1 by points — 3 achievers × 72 + 2 AO-GO × 36 = 288 points, ₹100 per point', function (): void {
+    $month = Carbon::parse('2026-06-01');
+    // June company BV must total exactly 14,400,000 paise (1,44,000 BV) so the
+    // envelope is 14,400,000 × 20% = ₹28,800 = 288 points × ₹100 (under the
+    // ₹200 cap). The two AO-GO ex-rankers below each add 1,000 BV (100,000
+    // paise) of their own, so the sentinel row carries the remaining 1,42,000 BV.
+    seedRankCompanyBv(14_400_000 - 200_000, $month->copy()->addDays(5));
 
     $achievers = Distributor::factory()->count(3)->create();
     foreach ($achievers as $achiever) {
         seedRankQualification($achiever->id, rank: 1, monthStart: '2026-06-01');
     }
 
-    // Two degraded ex-rank-holders: achieved Rank 1 in April, unranked in June,
-    // and meeting the AO-GO monthly conditions (1,000 BV in June).
+    // Two ex-rank-holders: achieved Rank 1 in May (the month right before —
+    // the AO-GO window, user decision 2026-10-17), unranked in June, and
+    // meeting Rank 1's monthly BV (1,000 BV in June).
     $exRankers = Distributor::factory()->count(2)->create();
     foreach ($exRankers as $exRanker) {
-        seedRankQualification($exRanker->id, rank: 1, monthStart: '2026-04-01');
+        seedRankQualification($exRanker->id, rank: 1, monthStart: '2026-05-01');
         seedRankMonthlyBv($exRanker->id, 100_000, '2026-06-10');
     }
 
     $svc = app(RankBonusService::class);
     $result = $svc->runForMonth($month);
 
-    // 3 achievers × 10 RAP + 2 AO-GO × 5 = 40 points → ₹350/point.
-    expect($result['by_rank'][1]['total_points'])->toBe(40);
-    expect($result['by_rank'][1]['point_value_paise'])->toBe(35_000);
+    // 3 achievers × 72 RAP + 2 AO-GO × 36 = 288 points → ₹100/point.
+    expect($result['by_rank'][1]['total_points'])->toBe(288);
+    expect($result['by_rank'][1]['point_value_paise'])->toBe(10_000);
     expect($result['by_rank'][1]['aogo_grants'])->toBe(2);
 
     foreach ($achievers as $achiever) {
         $row = RankBonusResult::where('distributor_id', $achiever->id)->where('rank_number', 1)->first();
-        expect($row->gross_paise)->toBe(350_000) // ₹3,500
-            ->and($row->rap_points)->toBe(10)
+        expect($row->gross_paise)->toBe(720_000) // ₹7,200
+            ->and($row->rap_points)->toBe(72)
             ->and($row->aogo_points)->toBeNull()
             ->and($row->status)->toBe(RankBonusResult::STATUS_CREDITED);
     }
 
     foreach ($exRankers as $exRanker) {
         $row = RankBonusResult::where('distributor_id', $exRanker->id)->where('rank_number', 1)->first();
-        expect($row->gross_paise)->toBe(175_000) // ₹1,750
-            ->and($row->aogo_points)->toBe(5)
+        expect($row->gross_paise)->toBe(360_000) // ₹3,600
+            ->and($row->aogo_points)->toBe(36)
             ->and($row->rap_points)->toBeNull();
 
         $grant = RankAogoGrant::where('distributor_id', $exRanker->id)->first();
         expect($grant->status)->toBe(RankAogoGrant::STATUS_CREDITED)
             ->and($grant->grant_number)->toBe(1)
-            ->and($grant->point_value_paise)->toBe(35_000)
-            ->and($grant->income_paise)->toBe(175_000);
+            ->and($grant->point_value_paise)->toBe(10_000)
+            ->and($grant->income_paise)->toBe(360_000);
     }
 
-    // Whole pool spent: 3 × 3,500 + 2 × 1,750 = ₹14,000.
-    expect($result['by_rank'][1]['gross_total'])->toBe(1_400_000);
+    // Whole envelope spent: 3 × 7,200 + 2 × 3,600 = ₹28,800.
+    expect($result['by_rank'][1]['gross_total'])->toBe(2_880_000)
+        ->and($result['passes'][2]['leftover_paise'])->toBe(0);
 
     // Idempotent rerun: nobody is double-credited.
     $svc->runForMonth($month);
@@ -657,7 +1031,7 @@ it('divides the rank-1 pool by points — KP worked example: ₹14,000 pool, 40 
 
 it('holds a repeat qualification missing the requalification conditions and excludes it from the pool (KP §8)', function (): void {
     $month = Carbon::parse('2026-06-01');
-    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // pool ₹14,000
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5)); // envelope ₹2,00,000
 
     $repeat = Distributor::factory()->create();
     $firstTimer = Distributor::factory()->create();
@@ -676,11 +1050,11 @@ it('holds a repeat qualification missing the requalification conditions and excl
     expect(WalletLedgerEntry::where('distributor_id', $repeat->id)->where('type', 'rank_credit')->exists())->toBeFalse();
 
     // Held achievers do not dilute the pool (MSB precedent): denominator is
-    // the first-timer's 10 RAP alone → the whole ₹14,000 goes to them.
-    expect($result['by_rank'][1]['total_points'])->toBe(10);
+    // the first-timer's 72 RAP alone → 72 × the ₹200 cap.
+    expect($result['by_rank'][1]['total_points'])->toBe(72);
     expect($result['by_rank'][1]['held'])->toBe(1);
     $paidRow = RankBonusResult::where('distributor_id', $firstTimer->id)->where('rank_number', 1)->first();
-    expect($paidRow->gross_paise)->toBe(1_400_000)
+    expect($paidRow->gross_paise)->toBe(1_440_000)
         ->and($paidRow->status)->toBe(RankBonusResult::STATUS_CREDITED);
 });
 
@@ -699,9 +1073,10 @@ it('credits a repeat qualification that meets the requalification conditions', f
     expect($row->status)->toBe(RankBonusResult::STATUS_CREDITED);
 });
 
-it('splits ranks 2–9 pools equally among achievers with null points columns', function (): void {
+it('pays Rank 2 achievers their own RAP × the pass-1 point value, with the points columns filled', function (): void {
     $month = Carbon::parse('2026-06-01');
-    // Rank-2 pool = 10,00,000 BV × 20% envelope × 3.4% = 680,000 paise (₹6,800).
+    // Envelope = 10,00,000 BV × 20% = 20,000,000 paise ÷ 2 × 189 RAP → raw
+    // ₹529 a point, capped at ₹200 → 189 × ₹200 = ₹37,800 each.
     seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
 
     $a = Distributor::factory()->create();
@@ -713,17 +1088,17 @@ it('splits ranks 2–9 pools equally among achievers with null points columns', 
 
     foreach ([$a, $b] as $dist) {
         $row = RankBonusResult::where('distributor_id', $dist->id)->where('rank_number', 2)->first();
-        expect($row->gross_paise)->toBe(340_000)
-            ->and($row->rap_points)->toBeNull()
-            ->and($row->total_points)->toBeNull()
-            ->and($row->point_value_paise)->toBeNull()
+        expect($row->gross_paise)->toBe(3_780_000)
+            ->and($row->rap_points)->toBe(189)
+            ->and($row->total_points)->toBe(378)
+            ->and($row->point_value_paise)->toBe(20_000)
             ->and($row->status)->toBe(RankBonusResult::STATUS_CREDITED);
     }
 });
 
 it('pays ranks 3–9 on the first occurrence — pyp no longer filters payment', function (): void {
     $month = Carbon::parse('2026-06-01');
-    // R3 pool = 10,00,000 BV × 20% envelope × 2.7% = 540,000 paise (₹5,400).
+    // Envelope ₹2,00,000 ÷ 468 RAP → raw ₹427, capped at ₹200 → ₹93,600.
     seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
 
     $dist = Distributor::factory()->create();
@@ -735,7 +1110,7 @@ it('pays ranks 3–9 on the first occurrence — pyp no longer filters payment',
     $row = RankBonusResult::where('distributor_id', $dist->id)->where('rank_number', 3)->first();
     expect($row)->not->toBeNull();
     expect($row->status)->toBe(RankBonusResult::STATUS_CREDITED)
-        ->and($row->gross_paise)->toBe(540_000);
+        ->and($row->gross_paise)->toBe(9_360_000);
 });
 
 /**
@@ -749,7 +1124,8 @@ it('pays ranks 3–9 on the first occurrence — pyp no longer filters payment',
  */
 it('pays only the highest qualified rank when a distributor cleared several', function (): void {
     $month = Carbon::parse('2026-06-01');
-    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
+    // Envelope = 13,050,000 × 20% = 2,610,000 paise.
+    seedRankCompanyBv(13_050_000, $month->copy()->addDays(5));
 
     // One pure Rank-1 achiever, one dual achiever (cleared both bars).
     $silverOnly = Distributor::factory()->create();
@@ -766,19 +1142,20 @@ it('pays only the highest qualified rank when a distributor cleared several', fu
     expect($pearlRows)->toHaveCount(1)
         ->and($pearlRows->first()->rank_number)->toBe(2);
 
-    // Rank-1 pool = ₹14,000; only the pure R1 achiever's 10 RAP are in the
-    // denominator → ₹1,400/point → ₹14,000, all to the silver-only achiever.
+    // Pass 1 holds the pure R1 achiever's 72 RAP and the dual achiever's Rank-2
+    // 189 RAP only — never their Rank-1 points too: 261 points → ₹100/point.
+    expect($result['passes'][1]['total_points'])->toBe(261);
     $silverRow = RankBonusResult::where('distributor_id', $silverOnly->id)->firstOrFail();
     expect($silverRow->rank_number)->toBe(1)
-        ->and($silverRow->rap_points)->toBe(10)
-        ->and((int) $silverRow->point_value_paise)->toBe(140_000)
-        ->and((int) $silverRow->gross_paise)->toBe(1_400_000)
+        ->and($silverRow->rap_points)->toBe(72)
+        ->and((int) $silverRow->point_value_paise)->toBe(10_000)
+        ->and((int) $silverRow->gross_paise)->toBe(720_000)
         // 10% repurchase deduction frozen on the row at credit time.
-        ->and((int) $silverRow->repurchase_deduction_paise)->toBe(140_000)
-        ->and((int) $silverRow->net_paise)->toBe(1_260_000);
+        ->and((int) $silverRow->repurchase_deduction_paise)->toBe(72_000)
+        ->and((int) $silverRow->net_paise)->toBe(648_000);
 
-    // Rank-2 pool = 100,000,000 × 20% × 3.4% = ₹6,800, sole achiever takes it.
-    expect((int) $pearlRows->first()->gross_paise)->toBe(680_000)
+    // Rank 2: 189 × ₹100 = ₹18,900.
+    expect((int) $pearlRows->first()->gross_paise)->toBe(1_890_000)
         ->and($result['credited'])->toBe(2);
 });
 
@@ -794,7 +1171,8 @@ it('pays every cleared rank when pay_highest_rank_only is switched off', functio
     ]);
 
     $month = Carbon::parse('2026-06-01');
-    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
+    // Envelope = 13,050,000 × 20% = 2,610,000 paise (the exclusive test's).
+    seedRankCompanyBv(13_050_000, $month->copy()->addDays(5));
 
     $silverOnly = Distributor::factory()->create();
     seedRankQualification($silverOnly->id, rank: 1, monthStart: '2026-06-01');
@@ -809,11 +1187,13 @@ it('pays every cleared rank when pay_highest_rank_only is switched off', functio
     expect(RankBonusResult::where('distributor_id', $pearl->id)->count())->toBe(2)
         ->and($result['credited'])->toBe(3);
 
-    // R1 pool ₹14,000 across 2 achievers × 10 RAP = 20 points → ₹700/point.
+    // Pass 1 counts the dual achiever's Rank-1 points too: 2 × 72 + 189 = 333
+    // points → floor(₹26,100 ÷ 333) = ₹78/point (₹100 when exclusive).
+    expect($result['passes'][1]['total_points'])->toBe(333);
     $silverRow = RankBonusResult::where('distributor_id', $silverOnly->id)->firstOrFail();
-    expect((int) $silverRow->point_value_paise)->toBe(70_000)
-        ->and((int) $silverRow->gross_paise)->toBe(700_000)
-        ->and((int) $silverRow->net_paise)->toBe(630_000);
+    expect((int) $silverRow->point_value_paise)->toBe(7_800)
+        ->and((int) $silverRow->gross_paise)->toBe(561_600)
+        ->and((int) $silverRow->net_paise)->toBe(505_440);
 });
 
 it('refuses the monthly run when the rank qualification check has not succeeded for that month', function () {
@@ -849,3 +1229,313 @@ it('lets --force run a month whose qualification check never ran', function () {
     expect(Artisan::call('rank:monthly-run', ['--month' => '2026-06', '--force' => true]))
         ->toBe(Command::SUCCESS);
 });
+
+// ── Two-pass pool at a capped point value (client 2026-10-05) ───────────────
+
+/**
+ * Qualify $n fresh distributors at $rank for the month.
+ *
+ * @return list<int>
+ */
+function seedRankCohort(int $n, int $rank, string $monthStart): array
+{
+    $ids = [];
+    for ($i = 0; $i < $n; $i++) {
+        $id = Distributor::factory()->create()->id;
+        seedRankQualification($id, $rank, $monthStart);
+        $ids[] = $id;
+    }
+
+    return $ids;
+}
+
+/**
+ * $n AO-GO grants for the month, 36 points each — written directly, as the
+ * engine reuses a month's live grants (AogoOfferService::grantForMonth()).
+ *
+ * @return list<int>
+ */
+function seedAogoGrants(int $n, string $monthStart): array
+{
+    $ids = [];
+    for ($i = 0; $i < $n; $i++) {
+        $id = Distributor::factory()->create()->id;
+        RankAogoGrant::create([
+            'distributor_id' => $id,
+            'month_start' => $monthStart,
+            'grant_number' => 1,
+            'points' => 36,
+            'previous_rank_number' => 1,
+            'status' => RankAogoGrant::STATUS_GRANTED,
+        ]);
+        $ids[] = $id;
+    }
+
+    return $ids;
+}
+
+/**
+ * F-9 identities on a frozen month: Σ rank allotments + pass-2 leftover =
+ * envelope; pass-2 pool = envelope − pass-1 payout; every payout ≤ its pool;
+ * Σ pool payout = Σ pass payout ≤ envelope; every pending roster row's gross =
+ * its points × the point value of its pass.
+ */
+function rankAssertPassIdentities(string $monthStart): void
+{
+    $passes = RankMonthlyPass::where('month_start', $monthStart)->get()->keyBy('pass');
+    $pools = RankMonthlyPool::where('month_start', $monthStart)->get()->keyBy('rank_number');
+
+    expect($passes->keys()->sort()->values()->all())->toBe([1, 2])
+        ->and($pools)->toHaveCount(9);
+
+    $envelope = (int) $passes[1]->envelope_paise;
+
+    expect((int) $passes[2]->envelope_paise)->toBe($envelope)
+        ->and((int) $pools->sum('pool_paise') + (int) $passes[2]->leftover_paise)->toBe($envelope)
+        ->and((int) $passes[1]->pool_paise)->toBe($envelope)
+        ->and((int) $passes[2]->pool_paise)->toBe($envelope - (int) $passes[1]->payout_paise)
+        ->and((int) $pools->sum('payout_paise'))->toBe((int) $passes->sum('payout_paise'))
+        ->and((int) $passes->sum('payout_paise'))->toBeLessThanOrEqual($envelope);
+
+    foreach ($passes as $pass) {
+        expect((int) $pass->payout_paise)->toBeLessThanOrEqual((int) $pass->pool_paise)
+            ->and((int) $pass->payout_paise)->toBe((int) $pass->total_points * (int) $pass->point_value_paise)
+            ->and((int) $pass->point_value_paise)->toBeLessThanOrEqual((int) $pass->point_value_cap_paise);
+    }
+
+    $rows = RankBonusResult::where('month_start', $monthStart)
+        ->whereIn('status', [RankBonusResult::STATUS_PENDING, RankBonusResult::STATUS_CREDITED])
+        ->get();
+
+    foreach ($rows as $row) {
+        $pass = $passes[(int) $pools[(int) $row->rank_number]->pass];
+        $points = (int) ($row->aogo_points ?? $row->rap_points);
+
+        expect((int) $row->gross_paise)->toBe($points * (int) $pass->point_value_paise)
+            ->and((int) $row->point_value_paise)->toBe((int) $pass->point_value_paise);
+    }
+}
+
+/** An active cycle due inside the month that repurchase:evaluate has not judged yet. */
+function rankSeedPendingCycle(int $distributorId, string $dueDate): RepurchaseCycle
+{
+    $due = Carbon::parse($dueDate);
+
+    return RepurchaseCycle::create([
+        'distributor_id' => $distributorId,
+        'cycle_start_date' => $due->copy()->subDays(29)->toDateString(),
+        'due_date' => $due->toDateString(),
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 0,
+        'wallet_balance_paise' => 0,
+        'wallet_zeroed' => true,
+        'status' => RepurchaseCycle::STATUS_ACTIVE,
+        'failure_reason' => null,
+        'resolved_at' => null,
+    ]);
+}
+
+it('example A2: AGO + Rank 1 share the whole pool at the floored value (188)', function (): void {
+    $m = '2026-09-01';
+    seedRankCompanyBv(95_000_000, Carbon::parse('2026-09-10')); // 9,50,000 BV → envelope 1,90,000
+    $r1 = seedRankCohort(9, 1, $m);
+    seedAogoGrants(10, $m); // 10 AO-GO grantees for the month, 36 points each
+    $out = app(RankBonusService::class)->runForMonth(Carbon::parse($m));
+
+    expect($out['passes'][1]['total_points'])->toBe(1_008)
+        ->and($out['passes'][1]['raw_point_value_paise'])->toBe(18_800)
+        ->and($out['passes'][1]['point_value_paise'])->toBe(18_800)
+        ->and(RankBonusResult::where('distributor_id', $r1[0])->value('gross_paise'))->toBe(72 * 18_800)   // ₹13,536
+        ->and($out['passes'][1]['leftover_paise'])->toBe(49_600)                 // what pass 1 hands to pass 2
+        ->and($out['passes'][2]['pool_paise'])->toBe(19_000_000 - 1_008 * 18_800) // ₹496 remainder, nobody in pass 2
+        ->and($out['passes'][2]['total_points'])->toBe(0)
+        ->and($out['passes'][2]['leftover_paise'])->toBe(49_600);
+
+    rankAssertPassIdentities($m);
+});
+
+it('example C1: pass 1 is capped at ₹200 when the raw value exceeds it', function (): void {
+    $m = '2026-09-01';
+    seedRankCompanyBv(630_000_000, Carbon::parse('2026-09-10')); // 63L BV → envelope 12,60,000
+    seedRankCohort(9, 1, $m);
+    seedRankCohort(8, 2, $m);
+    $r3 = seedRankCohort(7, 3, $m);
+    seedAogoGrants(10, $m);
+    $out = app(RankBonusService::class)->runForMonth(Carbon::parse($m));
+
+    expect($out['passes'][1]['raw_point_value_paise'])->toBe(21_700)
+        ->and($out['passes'][1]['point_value_paise'])->toBe(20_000)
+        ->and(RankBonusResult::where('distributor_id', $r3[0])->value('gross_paise'))->toBe(468 * 20_000) // ₹93,600
+        ->and($out['passes'][2]['pool_paise'])->toBe(126_000_000 - 115_920_000)                        // ₹1,00,800 left
+        ->and($out['passes'][2]['leftover_paise'])->toBe(10_080_000);
+
+    rankAssertPassIdentities($m);
+});
+
+it('example D2: ranks 4–9 share the remainder at the floored value (186)', function (): void {
+    $m = '2026-09-01';
+    seedRankCompanyBv(16_000_000_000, Carbon::parse('2026-09-10')); // 16 Cr BV → envelope 3.2 Cr
+    seedRankCohort(9, 1, $m);
+    seedRankCohort(8, 2, $m);
+    seedRankCohort(7, 3, $m);
+    seedAogoGrants(10, $m);
+    seedRankCohort(6, 4, $m);
+    seedRankCohort(5, 5, $m);
+    seedRankCohort(4, 6, $m);
+    seedRankCohort(3, 7, $m);
+    $r8 = seedRankCohort(2, 8, $m);
+    $r9 = seedRankCohort(1, 9, $m);
+    $out = app(RankBonusService::class)->runForMonth(Carbon::parse($m));
+
+    expect($out['passes'][1]['point_value_paise'])->toBe(20_000)
+        ->and($out['passes'][1]['payout_paise'])->toBe(115_920_000)                 // ₹11,59,200
+        ->and($out['passes'][2]['pool_paise'])->toBe(3_200_000_000 - 115_920_000)   // ₹3,08,40,800
+        ->and($out['passes'][2]['total_points'])->toBe(165_474)
+        ->and($out['passes'][2]['raw_point_value_paise'])->toBe(18_600)
+        ->and(RankBonusResult::where('distributor_id', $r8[0])->value('gross_paise'))->toBe(23_877 * 18_600) // ₹44,41,122
+        ->and(RankBonusResult::where('distributor_id', $r9[0])->value('gross_paise'))->toBe(39_501 * 18_600) // ₹73,47,186
+        ->and($out['passes'][2]['leftover_paise'])->toBe(6_263_600);                 // ₹62,636
+
+    // Per-rank rows carry the rank's allotment; the pass row carries the leftover.
+    $r8Pool = RankMonthlyPool::where('month_start', $m)->where('rank_number', 8)->firstOrFail();
+    expect($r8Pool->pass)->toBe(2)
+        ->and($r8Pool->pool_paise)->toBe(2 * 23_877 * 18_600)
+        ->and($r8Pool->leftover_paise)->toBe(0);
+
+    rankAssertPassIdentities($m);
+});
+
+it('with nobody in pass 1, pass 2 divides the whole envelope', function (): void {
+    $m = '2026-09-01';
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-09-10')); // 10L BV → envelope 2,00,000
+    $r4 = seedRankCohort(1, 4, $m);
+    $out = app(RankBonusService::class)->runForMonth(Carbon::parse($m));
+    expect($out['passes'][1]['total_points'])->toBe(0)->and($out['passes'][1]['point_value_paise'])->toBe(0)
+        ->and($out['passes'][2]['pool_paise'])->toBe(20_000_000)
+        ->and($out['passes'][2]['raw_point_value_paise'])->toBe(17_700) // floor(2,00,000 / 1,125) = 177
+        ->and(RankBonusResult::where('distributor_id', $r4[0])->value('gross_paise'))->toBe(1_125 * 17_700);
+
+    rankAssertPassIdentities($m);
+});
+
+it('a refund-heavy month prices both passes at zero and credits nothing', function (): void {
+    $m = '2026-09-01';
+    seedRankCompanyBv(-500_000_000, Carbon::parse('2026-09-10'));
+    seedRankCohort(2, 1, $m);
+    $out = app(RankBonusService::class)->runForMonth(Carbon::parse($m));
+    expect($out['credited'])->toBe(0)->and($out['passes'][1]['point_value_paise'])->toBe(0)
+        ->and($out['passes'][2]['pool_paise'])->toBe(0)
+        ->and(RankMonthlyPass::where('month_start', $m)->min('envelope_paise'))->toBe(0)
+        ->and(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(0);
+
+    rankAssertPassIdentities($m);
+});
+
+it('refuses a point value cap below ₹1 before any write (fail-safe principle 1)', function (): void {
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.point_value_cap_paise'],
+        ['value' => '50', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+    $m = '2026-09-01';
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-09-10'));
+    seedRankCohort(1, 1, $m);
+    seedAogoGrants(1, $m);
+    $grantsBefore = RankAogoGrant::count();
+
+    expect(fn () => app(RankBonusService::class)->runForMonth(Carbon::parse($m)))
+        ->toThrow(RuntimeException::class, 'comp.rank.point_value_cap_paise must be at least 100 paise');
+
+    expect(RankMonthlyPass::count())->toBe(0)
+        ->and(RankMonthlyPool::count())->toBe(0)
+        ->and(RankBonusResult::count())->toBe(0)
+        ->and(RankAogoGrant::count())->toBe($grantsBefore)
+        ->and(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(0);
+});
+
+it('refuses a point value cap that is not a whole rupee before any write (fail-safe principle 1)', function (): void {
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.point_value_cap_paise'],
+        ['value' => '20050', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+    $m = '2026-09-01';
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-09-10'));
+    seedRankCohort(1, 1, $m);
+    seedAogoGrants(1, $m);
+    $grantsBefore = RankAogoGrant::count();
+    $ledgerBefore = WalletLedgerEntry::count();
+
+    expect(fn () => app(RankBonusService::class)->runForMonth(Carbon::parse($m)))
+        ->toThrow(RuntimeException::class, 'comp.rank.point_value_cap_paise must be a whole rupee (a multiple of 100 paise)');
+
+    expect(RankMonthlyPass::count())->toBe(0)
+        ->and(RankMonthlyPool::count())->toBe(0)
+        ->and(RankBonusResult::count())->toBe(0)
+        ->and(RankAogoGrant::count())->toBe($grantsBefore)
+        ->and(WalletLedgerEntry::count())->toBe($ledgerBefore);
+});
+
+it('refuses a pass-1 rank ceiling below 1 before any write (fail-safe principle 1)', function (): void {
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.first_pass_max_rank'],
+        ['value' => '0', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+    $m = '2026-09-01';
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-09-10'));
+    seedRankCohort(1, 1, $m);
+    seedAogoGrants(1, $m);
+    $grantsBefore = RankAogoGrant::count();
+    $ledgerBefore = WalletLedgerEntry::count();
+
+    expect(fn () => app(RankBonusService::class)->runForMonth(Carbon::parse($m)))
+        ->toThrow(RuntimeException::class, 'comp.rank.first_pass_max_rank must be between 1 and 9');
+
+    expect(RankMonthlyPass::count())->toBe(0)
+        ->and(RankMonthlyPool::count())->toBe(0)
+        ->and(RankBonusResult::count())->toBe(0)
+        ->and(RankAogoGrant::count())->toBe($grantsBefore)
+        ->and(WalletLedgerEntry::count())->toBe($ledgerBefore);
+});
+
+it('refuses a rank with payable achievers but no RAP points before any write (fail-safe principle 1)', function (): void {
+    DB::table('rank_tiers')->where('rank_number', 4)->update(['rap_points' => 0]);
+    $m = '2026-09-01';
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-09-10'));
+    seedRankCohort(1, 4, $m);
+
+    expect(fn () => app(RankBonusService::class)->runForMonth(Carbon::parse($m)))
+        ->toThrow(RuntimeException::class, 'rank_tiers.rap_points is not set for rank 4');
+
+    expect(RankMonthlyPass::count())->toBe(0)
+        ->and(RankMonthlyPool::count())->toBe(0)
+        ->and(RankBonusResult::count())->toBe(0)
+        ->and(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(0);
+});
+
+it('refuses to freeze while an achiever has an unresolved repurchase cycle due inside the month (fail-safe principle 2)', function (): void {
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $m = '2026-09-01';
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-09-10'));
+    $r1 = seedRankCohort(1, 1, $m);
+    rankSeedPendingCycle($r1[0], '2026-09-20');
+
+    expect(fn () => app(RankBonusService::class)->runForMonth(Carbon::parse($m)))
+        ->toThrow(RepurchaseVerdictsPending::class, 'Run repurchase:evaluate first');
+
+    expect(RankMonthlyPool::count())->toBe(0)
+        ->and(RankMonthlyPass::count())->toBe(0)
+        ->and(RankBonusResult::count())->toBe(0)
+        ->and(WalletLedgerEntry::count())->toBe(0);
+});
+
+it('records a pending repurchase verdict as a failed Rank Bonus run', function (): void {
+    Feature::for(null)->activate(RankBonusFeature::class);
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+    $r1 = seedRankCohort(1, 1, '2026-06-01');
+    rankSeedPendingCycle($r1[0], '2026-06-20');
+
+    expect(Artisan::call('rank:monthly-run', ['--month' => '2026-06', '--force' => true]))->toBe(Command::FAILURE)
+        ->and(Artisan::output())->toContain('Run repurchase:evaluate first')
+        ->and(RankMonthlyPool::count())->toBe(0);
+});
+
+// F-10 (a freeze that throws leaves no pass rows) is pinned in PlanInvariantsTest.php.

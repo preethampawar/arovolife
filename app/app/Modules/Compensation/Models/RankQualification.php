@@ -86,4 +86,18 @@ final class RankQualification extends Model
         $query->where('month_start', $monthStart)
             ->where('status', self::STATUS_QUALIFIED);
     }
+
+    /**
+     * Qualified in any month strictly before $monthStart (lifetime Growth Booster
+     * exclusion, the client 2026-10-09). Carry-forward rows COUNT — a paid carry
+     * row still means the distributor was ranked.
+     *
+     * @param  Builder<RankQualification>  $query
+     */
+    #[Scope]
+    protected function rankedBefore(Builder $query, string $monthStart): void
+    {
+        $query->where('month_start', '<', $monthStart)
+            ->where('status', self::STATUS_QUALIFIED);
+    }
 }

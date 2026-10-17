@@ -36,14 +36,17 @@
                 </td>
                 <td class="px-3 py-2 text-right font-semibold">
                     @if($row->msb_points !== null){{ $row->msb_points }}@else<span class="text-gray-600 font-normal">—</span>@endif
+                    @if((int) $row->royalty_cap_withheld_paise > 0)
+                    <div class="mt-0.5 text-[10px] font-normal text-amber-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->royalty_cap_withheld_paise / 100, 2) }} withheld by the daily royalty cap</div>
+                    @endif
                 </td>
                 <td class="px-3 py-2 text-right text-gray-600">
                     @if($row->msb_point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->msb_point_value_paise / 100, 2) }}@else<span class="text-gray-600">—</span>@endif
                 </td>
                 <x-bonus-credit-cells td-class="px-3 py-2 text-right" :gross="$row->mb_gross_paise" :deduction="$row->repurchase_deduction_paise" :credited="$row->mb_net_paise" :is-credited="$row->status === 'credited'" />
                 <td class="px-3 py-2 text-center">
-                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $row->status === 'credited' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">
-                        {{ ucfirst($row->status) }}
+                    <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $row->status === 'credited' ? 'bg-green-100 text-green-700' : ($row->status === 'repurchase_gated' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600') }}">
+                        {{ $row->status === 'repurchase_gated' ? 'Repurchase gated' : ucfirst($row->status) }}
                     </span>
                 </td>
             </tr>

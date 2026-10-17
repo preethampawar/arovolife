@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Console\Commands;
 
-use App\Modules\Compensation\Exceptions\RepurchaseWalletVerdictNotAvailable;
 use App\Modules\Compensation\Services\FortuneBonusService;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\FrozenPayoutGuard;
@@ -63,23 +62,7 @@ final class FortuneBonusRunCommand extends Command
 
         $this->info("Fortune Bonus payout — {$month->format('F Y')}");
 
-        // `--in-flight` freezes a partial month deliberately; it cannot conjure
-        // a month-end repurchase-wallet verdict for a month that has not ended,
-        // and the gate refuses rather than silently answering "as of now" —
-        // which is how one engine's own deductions came to be counted against
-        // the month it was judging (staging, 14 Sep 2026). Reported as a clean
-        // refusal rather than an uncaught exception; the message says what to
-        // do. With the repurchase engine off there is no verdict to want and
-        // this never fires.
-        try {
-            $result = $this->fortuneBonus->runForMonth($month);
-        } catch (RepurchaseWalletVerdictNotAvailable $e) {
-            $this->error($e->getMessage());
-
-            app(EngineRunContext::class)->noteSkipped($e->getMessage());
-
-            return self::FAILURE;
-        }
+        $result = $this->fortuneBonus->runForMonth($month);
 
         $this->line('Pool: ₹'.Number::format($result['pool_paise'] / 100, 2));
         $this->line('Total FB points: '.Number::format($result['total_points']));
@@ -88,7 +71,6 @@ final class FortuneBonusRunCommand extends Command
             $this->warn('Shortfall month — the pool could not cover the minimum guarantees; every qualifier received the same pro-rated share.');
         }
         $this->line('Credited: '.$result['credited']);
-        $this->line('Forfeited (repurchase wallet not cleared at month end): '.$result['repurchase_wallet_blocked'].' — ₹'.Number::format($result['repurchase_wallet_blocked_paise'] / 100, 2));
         $this->line('Skipped (zero income): '.$result['skipped_zero_income']);
         $this->line('Total credited: ₹'.Number::format($result['total_net_paise'] / 100, 2));
         $this->line('Leftover: ₹'.Number::format($result['leftover_paise'] / 100, 2));

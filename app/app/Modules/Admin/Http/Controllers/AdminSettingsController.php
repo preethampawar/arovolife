@@ -63,6 +63,9 @@ final class AdminSettingsController extends Controller
      * while that flag is off the key is invisible on the settings page and a
      * 404 on the update endpoint — a disabled feature leaves no trace.
      *
+     * The optional 'multiple_of' field (int keys only) refuses a value that is
+     * not an exact multiple — 100 on a paise cap means whole rupees only.
+     *
      * @return array<string, array{
      *   group: string,
      *   owner?: string,
@@ -75,6 +78,7 @@ final class AdminSettingsController extends Controller
      *   options?: array<int, array{value: string, label: string, note?: string}>,
      *   min?: int,
      *   max?: int,
+     *   multiple_of?: int,
      *   format?: string,
      *   read_only?: bool,
      *   read_only_reason?: string,
@@ -1114,7 +1118,7 @@ final class AdminSettingsController extends Controller
             'comp.admin_charge.rate_bp' => [
                 'group' => 'compensation_plan',
                 'label' => 'Admin charge rate (basis points)',
-                'description' => 'Admin charge applied to all seven bonus streams (GSB, Mentorship, Rank, Growth Booster, Fortune, ADC, Lifetime Awards) — per the applies-to toggles below. 300 = 3%. Stored in basis points (100 bp = 1%).',
+                'description' => 'Admin charge applied to the six cash bonus streams (GSB, Mentorship, Rank, Growth Booster, Fortune, ADC) — per the applies-to toggles below. Lifetime Awards are merchandise only and carry no admin charge. 300 = 3%. Stored in basis points (100 bp = 1%).',
                 'impact' => 'Raising this reduces every distributor\'s net bonus. Takes effect from the next engine run.',
                 'type' => 'int',
                 'min' => 0,
@@ -1135,7 +1139,7 @@ final class AdminSettingsController extends Controller
             'comp.admin_charge.monthly_cap_paise' => [
                 'group' => 'compensation_plan',
                 'label' => 'Admin charge cap — monthly batch',
-                'description' => 'Maximum admin charge per distributor per bonus group in each monthly payout batch (Groups B/C/D: GBB, Rank, Fortune, Awards, ADC — each group capped independently). Edit in paise. KP-confirmed: ₹25,000.',
+                'description' => 'Maximum admin charge per distributor per bonus group in each monthly payout batch (Groups B/D: GBB, Rank, Fortune, ADC — each group capped independently). Edit in paise. KP-confirmed: ₹25,000.',
                 'impact' => 'Raising this lets each monthly bonus group deduct more admin charge before capping. Takes effect from the next monthly payout run.',
                 'display_unit' => 'rupees',
                 'type' => 'int',
@@ -1154,7 +1158,7 @@ final class AdminSettingsController extends Controller
                 'max' => 100_000_000_000,
                 'default' => '500000000',
             ],
-            // Admin-charge scope — KP Q&A 2026-06-27: applies to all 7 bonuses.
+            // Admin-charge scope — KP Q&A 2026-06-27: applies to all 6 cash bonuses.
             // Each toggle exempts one stream when turned OFF.
             'comp.admin_charge.applies_to_gsb' => [
                 'group' => 'compensation_plan',
@@ -1203,14 +1207,6 @@ final class AdminSettingsController extends Controller
                 'description' => 'When ON, the admin charge is deducted from ADC payouts. KP-confirmed ON (2026-06-27; previously exempt).',
                 'type' => 'bool',
                 'default' => 'true',
-            ],
-            'comp.admin_charge.applies_to_awards' => [
-                'group' => 'compensation_plan',
-                'feature' => LifetimeAwardsFeature::class,
-                'label' => 'Admin charge: apply to Lifetime Awards & Rewards',
-                'description' => 'When ON, the admin charge is deducted from Lifetime Awards. Default OFF: KP confirmed (2026-06-27 Round-2 Q6) that non-cash awards (gifts/goods) carry NO admin charge or TDS — only awards released as cash/cheque are charged. The Lifetime Awards payout engine ships in a later phase; turn this ON only if a cash award component is paid.',
-                'type' => 'bool',
-                'default' => 'false',
             ],
             'comp.tds.rate_bp' => [
                 'group' => 'compensation_plan',
@@ -1276,6 +1272,43 @@ final class AdminSettingsController extends Controller
                 'max' => 10000,
                 'default' => '300',
             ],
+            'comp.msb.point_value_cap_paise' => [
+                'group' => 'compensation_plan',
+                'feature' => MentorshipBonusFeature::class,
+                'label' => 'MSB point value cap (paise)',
+                'description' => 'Highest rupee value one Mentorship Bonus point can be worth on a day. 12000 = ₹120. When the day\'s pool ÷ points exceeds it, every earner is paid at the cap and the difference stays with the company. Must be a whole rupee (a multiple of 100) and at least 100 (₹1): any other value stops the cut-off instead of paying ₹0 or a sub-rupee value. 100000000 (₹10 lakh) effectively switches the cap off.',
+                'impact' => 'Lowers what Mentorship earners receive on strong days. Takes effect from the next daily cut-off; frozen days are unchanged (each day keeps the cap it was priced with).',
+                'display_unit' => 'rupees',
+                'type' => 'int',
+                'min' => 100,
+                'max' => 100_000_000,
+                'multiple_of' => 100,
+                'default' => '12000',
+            ],
+            'comp.msb.royalty_min_rank' => [
+                'group' => 'compensation_plan',
+                'feature' => MentorshipBonusFeature::class,
+                'label' => 'Mentorship Royalty from rank',
+                'description' => 'From this rank the Mentorship Bonus becomes Mentorship Royalty: it is paid even while the sponsor\'s repurchase condition is failed, subject to the daily royalty cap. Below it, a failed sponsor earns no MB points that day. Set to 1 to switch the gate off (every sponsor is treated as royalty). Must be between 1 and 9: any other value stops the cut-off instead of guessing.',
+                'impact' => 'Takes effect from the next daily cut-off; days already settled are unchanged (each gated row keeps the verdict it was judged with).',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 9,
+                'default' => '6',
+            ],
+            'comp.msb.royalty_failed_daily_cap_paise' => [
+                'group' => 'compensation_plan',
+                'feature' => MentorshipBonusFeature::class,
+                'label' => 'Mentorship Royalty daily cap while failed (paise)',
+                'description' => 'Most a rank-6+ sponsor can earn from Mentorship on one cut-off day while their repurchase condition is failed. 360000 = ₹3,600 (₹1,08,000 a month). Not applied while the condition is met. Must be a whole rupee (a multiple of 100) and at least 100 (₹1): Save refuses any other value, and a lower value stops the cut-off instead of paying ₹0. 100000000 (₹10 lakh) effectively switches the cap off.',
+                'impact' => 'Takes effect from the next daily cut-off; days already settled are unchanged (each row keeps the cap it was priced with).',
+                'display_unit' => 'rupees',
+                'type' => 'int',
+                'min' => 100,
+                'max' => 100_000_000,
+                'multiple_of' => 100,
+                'default' => '360000',
+            ],
             'comp.gbb.pool_rate_bp' => [
                 'group' => 'compensation_plan',
                 'feature' => GrowthBoosterBonusFeature::class,
@@ -1286,22 +1319,36 @@ final class AdminSettingsController extends Controller
                 'max' => 10000,
                 'default' => '400',
             ],
-            'comp.gbb.agp_cap' => [
+            'comp.gbb.point_value_cap_paise' => [
                 'group' => 'compensation_plan',
                 'feature' => GrowthBoosterBonusFeature::class,
-                'label' => 'Growth Booster AGP cap per distributor',
-                'description' => 'Maximum Arovolife Growth Points a single distributor can earn in a month. Default 120.',
+                'label' => 'Growth Booster point value cap (paise)',
+                'description' => 'Highest rupee value one Growth Booster point can be worth in a month. 24000 = ₹240. Pool ÷ points above it is capped and the difference stays with the company. Must be a whole rupee (a multiple of 100) and at least 100 (₹1): any other value stops the monthly freeze instead of paying ₹0 or a sub-rupee value. 100000000 (₹10 lakh) effectively switches the cap off.',
+                'impact' => 'Lowers what Growth Booster earners receive in strong months. Takes effect from the next freeze; frozen months are unchanged (each month keeps the cap it was priced with).',
+                'display_unit' => 'rupees',
                 'type' => 'int',
-                'min' => 1,
-                'max' => 100000,
-                'default' => '120',
+                'min' => 100,
+                'max' => 100_000_000,
+                'multiple_of' => 100,
+                'default' => '24000',
+            ],
+            'comp.awards.fund_rate_bp' => [
+                'group' => 'compensation_plan',
+                'feature' => LifetimeAwardsFeature::class,
+                'label' => 'Lifetime Awards fund rate (basis points)',
+                'description' => 'Share of monthly company BV that funds the Lifetime Awards & Rewards. 2000 = 20%. Reported on the Awards calculation page as the fund added each month against the award worth earned; it never delays an earned award.',
+                'impact' => 'Changes the awards fund shown for every month, including past months (the fund is a report, not a frozen pool). No award, wallet or payout changes.',
+                'type' => 'int',
+                'min' => 0,
+                'max' => 10000,
+                'default' => '2000',
             ],
             'comp.rank.envelope_bp' => [
                 'group' => 'compensation_plan',
                 'feature' => RankBonusFeature::class,
                 'label' => 'Rank Bonus envelope (basis points)',
-                'description' => 'Share of monthly company BV set aside for all nine Rank Bonus pools together. 2000 = 20%. Each rank\'s percentage is a share of THIS envelope, not of BV directly — the nine rank percentages sum to 100% of the envelope (20% of BV). Example: 10,00,000 BV → 2,00,000 envelope → Rank 1 (7%) = ₹14,000.',
-                'impact' => 'Rescales every rank pool. Takes effect from the next monthly Rank Bonus run; already-credited months are untouched.',
+                'description' => 'Share of monthly company BV set aside for the Rank Bonus. 2000 = 20%. One pool: the AGO offer and Ranks 1–3 are priced from it first, Ranks 4–9 from the remainder, both at most ₹200 per point.',
+                'impact' => 'Rescales the whole Rank Bonus pool. Takes effect from the next monthly Rank Bonus run; already-credited months are untouched.',
                 'type' => 'int',
                 'min' => 0,
                 'max' => 10000,
@@ -1310,9 +1357,9 @@ final class AdminSettingsController extends Controller
             'comp.rank.pay_highest_rank_only' => [
                 'group' => 'compensation_plan',
                 'feature' => RankBonusFeature::class,
-                'label' => 'Rank pools: pay highest rank only',
-                'description' => 'ON (exclusive): a distributor who cleared several ranks in a month is paid only their highest — the plan-text reading ("reaching Rank 2 cancels the Rank-1 benefit"). OFF (cumulative): they are paid from every rank pool whose bar they cleared. Also changes each pool\'s denominator, so it re-prices every achiever in the affected pools.',
-                'impact' => 'Changes who is paid from which rank pool and how each pool divides. Takes effect from the next monthly Rank Bonus run; already-credited months are untouched. Awaiting the product owner\'s exclusive-vs-cumulative ruling — change only on that ruling.',
+                'label' => 'Rank Bonus: pay highest rank only',
+                'description' => 'ON (exclusive): a distributor who cleared several ranks in a month is paid only the RAP points of their highest — the plan-text reading ("reaching Rank 2 cancels the Rank-1 benefit"). OFF (cumulative): they are paid the RAP points of every rank whose bar they cleared. Also changes the pass point totals (the denominators of the one pool\'s two passes), so it re-prices every achiever in the affected passes.',
+                'impact' => 'Changes how many points each achiever holds and how each pass of the one rank pool divides. Takes effect from the next monthly Rank Bonus run; already-credited months are untouched. Awaiting the product owner\'s exclusive-vs-cumulative ruling — change only on that ruling.',
                 'type' => 'bool',
                 'default' => 'true',
             ],
@@ -1320,12 +1367,36 @@ final class AdminSettingsController extends Controller
                 'group' => 'compensation_plan',
                 'feature' => RankBonusFeature::class,
                 'label' => 'AO-GO points per grant',
-                'description' => 'Points a degraded ex-rank-holder earns in the Rank-1 pool under the Achieve Once – Get Once offer. Default 5 (Rank-1 achievers earn 10 RAP).',
-                'impact' => 'Changes every AO-GO grantee\'s share of the Rank-1 pool. Takes effect from the next monthly Rank Bonus run.',
+                'description' => 'Points a degraded ex-rank-holder earns in pass 1 of the Rank Bonus under the Achieve Once – Get Once offer. Default 36 (Rank-1 achievers earn 72 RAP).',
+                'impact' => 'Changes every AO-GO grantee\'s share of pass 1 and the pass-1 point value. Takes effect from the next monthly Rank Bonus run.',
                 'type' => 'int',
                 'min' => 0,
                 'max' => 1000,
-                'default' => '5',
+                'default' => '36',
+            ],
+            'comp.rank.point_value_cap_paise' => [
+                'group' => 'compensation_plan',
+                'feature' => RankBonusFeature::class,
+                'label' => 'Rank point value cap (paise)',
+                'description' => 'Highest rupee value one Rank Achievement Point can be worth in a month, in either pass. 20000 = ₹200. A pass whose pool ÷ points is above it is capped and the difference passes on (pass 1) or stays with the company (pass 2). Must be a whole rupee (a multiple of 100) and at least 100 (₹1): any other value stops the monthly freeze instead of paying ₹0 or a sub-rupee value. 100000000 (₹10 lakh) effectively switches the cap off.',
+                'impact' => 'Takes effect from the next monthly freeze; frozen months are unchanged.',
+                'display_unit' => 'rupees',
+                'type' => 'int',
+                'min' => 100,
+                'max' => 100_000_000,
+                'multiple_of' => 100,
+                'default' => '20000',
+            ],
+            'comp.rank.first_pass_max_rank' => [
+                'group' => 'compensation_plan',
+                'feature' => RankBonusFeature::class,
+                'label' => 'Ranks priced in pass 1 (1..N)',
+                'description' => 'The AGO offer and Ranks 1 to N are priced first from the whole Rank Bonus envelope; Ranks N+1 to 9 share what pass 1 left. Default 3. 9 puts every rank in one pass (one pool, same cap). The AGO offer always travels with Rank 1. Must be between 1 and 9: any other value stops the monthly freeze instead of guessing.',
+                'impact' => 'Takes effect from the next monthly freeze; frozen months are unchanged.',
+                'type' => 'int',
+                'min' => 1,
+                'max' => 9,
+                'default' => '3',
             ],
             'comp.rank.aogo_lifetime_max' => [
                 'group' => 'compensation_plan',
@@ -1347,16 +1418,6 @@ final class AdminSettingsController extends Controller
                 'min' => 0,
                 'max' => 10000,
                 'default' => '300',
-            ],
-            'comp.awards.rate_bp' => [
-                'group' => 'compensation_plan',
-                'feature' => LifetimeAwardsFeature::class,
-                'label' => 'Awards & Rewards share (basis points)',
-                'description' => 'Share of company BV shown for Awards & Rewards on Compensation → BV Distribution. Display only — no engine reads it and nothing is reserved or paid from it. 2000 = 20%.',
-                'type' => 'int',
-                'min' => 0,
-                'max' => 10000,
-                'default' => '2000',
             ],
             'comp.adc.cap_paise' => [
                 'group' => 'compensation_plan',
@@ -1394,7 +1455,7 @@ final class AdminSettingsController extends Controller
                 'group' => 'compensation_plan',
                 'feature' => RepurchaseEngineFeature::class,
                 'label' => 'Repurchase cycle length (days)',
-                'description' => 'Length of each distributor\'s repurchase window, counted from the day they completed 600 BV of personal purchase. The due date is this many days after the cycle start date (start 7 Jul → due 6 Aug).',
+                'description' => 'Length of each distributor\'s repurchase window, counted from the day they completed 600 BV of personal purchase, inclusive of that day. The due date is this many days minus one after the cycle start date (30 days: start 14 Feb → due 15 Mar).',
                 'type' => 'int',
                 'min' => 1,
                 'max' => 365,
@@ -1463,14 +1524,6 @@ final class AdminSettingsController extends Controller
                 'feature' => FortuneBonusFeature::class,
                 'label' => 'Fortune Bonus: exclude Rank 9 (Elite Diamond)',
                 'description' => 'When ON, Rank 9 distributors are ineligible for the Fortune Bonus. KP-confirmed ON.',
-                'type' => 'bool',
-                'default' => 'true',
-            ],
-            'comp.fortune.require_repurchase_wallet_zero' => [
-                'group' => 'compensation_plan',
-                'feature' => FortuneBonusFeature::class,
-                'label' => 'Fortune Bonus: require repurchase wallet zero',
-                'description' => 'When ON, a non-ranked or rank 1–5 distributor is enrolled in the month\'s Fortune matrix only if their repurchase wallet balance was ₹0 on the last day of that month (the plan\'s "Repurchase Wallet zero" condition). Month-1 joiners are exempt. Awaiting the client\'s confirmation of this reading.',
                 'type' => 'bool',
                 'default' => 'true',
             ],
@@ -1877,7 +1930,7 @@ final class AdminSettingsController extends Controller
      * are reported via the by-ref $error so the caller can redirect back
      * with errors instead of throwing through abort().
      *
-     * @param  array{type: string, options?: array<int, array{value: string, label: string}>, min?: int, max?: int, format?: string, label: string}  $meta
+     * @param  array{type: string, options?: array<int, array{value: string, label: string}>, min?: int, max?: int, multiple_of?: int, format?: string, label: string}  $meta
      */
     private function normalizeIncomingValue(Request $request, array $meta, ?string &$error = null): string
     {
@@ -1906,6 +1959,17 @@ final class AdminSettingsController extends Controller
                 $max = $meta['max'] ?? PHP_INT_MAX;
                 if ($n < $min || $n > $max) {
                     $error = "{$meta['label']} must be between {$min} and {$max}.";
+
+                    return '';
+                }
+                // A paise cap the engines price in whole rupees: refuse the
+                // value here rather than let the freeze refuse it later.
+                // Fail closed — never round to the nearest multiple.
+                $multipleOf = $meta['multiple_of'] ?? null;
+                if ($multipleOf !== null && $n % $multipleOf !== 0) {
+                    $error = $multipleOf === 100
+                        ? 'Enter a whole-rupee amount (a multiple of 100 paise).'
+                        : "{$meta['label']} must be a multiple of {$multipleOf}.";
 
                     return '';
                 }

@@ -35,16 +35,6 @@ final class FortuneBonusResult extends Model
 
     public const string STATUS_SKIPPED = 'skipped';
 
-    /**
-     * Enrolled and positioned for the month, but the distributor still held
-     * repurchase-wallet money at the last instant of it — a mandatory monthly
-     * qualification condition (client 2026-09-05, re-confirmed 2026-09-07).
-     * Gross is 0, nothing is credited, the matrix position is kept, and the
-     * share the cascade allowed for stays with the company as leftover. The
-     * verdict is written once and NEVER released.
-     */
-    public const string STATUS_REPURCHASE_WALLET_BLOCKED = 'repurchase_wallet_blocked';
-
     protected $fillable = [
         'distributor_id',
         'month_start',

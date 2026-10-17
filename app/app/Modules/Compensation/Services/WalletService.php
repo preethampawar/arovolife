@@ -36,8 +36,8 @@ class WalletService
      * Note this is deliberately WIDER than the six rows
      * IncomeOverviewService::bonusSummaryFromTotals() shows a distributor:
      * that list is a feature-gated display of the bonuses they can earn, while
-     * this is every rupee that left the company as commission — awards,
-     * franchise payouts and manual credits included.
+     * this is every rupee that left the company as commission — franchise
+     * payouts and manual credits included.
      */
     public const BONUS_CREDIT_TYPES = [
         'gsb_credit',
@@ -46,7 +46,6 @@ class WalletService
         'rank_credit',
         'fortune_credit',
         'adc_credit',
-        'awards_credit',
         'franchise_credit',
         'manual_credit',
     ];
@@ -75,8 +74,8 @@ class WalletService
      *
      * The income dashboard's per-bonus summary reads the wallet ledger rather
      * than the per-engine result tables so that "credited to wallet" means
-     * exactly that for every bonus, from one source — held/suspended engine
-     * rows never appear here because they were never credited.
+     * exactly that for every bonus, from one source — blocked or uncredited
+     * engine rows never appear here because they were never credited.
      *
      * @return array<string, int> type => total paise
      */
@@ -207,7 +206,6 @@ class WalletService
         $saleDerived = array_merge(
             CompensationPlanSettingsService::GROUP_A_TYPES,
             CompensationPlanSettingsService::GROUP_B_TYPES,
-            CompensationPlanSettingsService::GROUP_C_TYPES,
             CompensationPlanSettingsService::GROUP_D_TYPES,
         );
 
@@ -361,9 +359,9 @@ class WalletService
      *
      * A reversal that only debits the net from the main wallet leaves the
      * repurchase wallet holding its share of a bonus that no longer exists. That
-     * phantom balance is not cosmetic — Fortune, Growth Booster and the Rank
-     * requalification all gate on the repurchase wallet being zero, so a bonus
-     * an admin reversed goes on excluding the distributor from later income.
+     * phantom balance is not cosmetic — the repurchase cycle is judged on the
+     * wallet being zero at its due date, so a bonus an admin reversed would go
+     * on failing the distributor's cycle and forfeiting their Genos BV.
      * Both sides therefore have to come back in one transaction.
      *
      * The repurchase side is written as a NEGATIVE `repurchase_deduction` entry
@@ -602,8 +600,8 @@ class WalletService
      * Same arithmetic as repurchaseWalletBalancePaise(); distributors with no
      * entries are simply absent from the result (balance 0).
      *
-     * Used by the Fortune enrolment gate, which runs on the 1st but has to
-     * judge the wallet as of the last day of the month being enrolled.
+     * Used by the repurchase cycle verdict, which has to judge the wallet as
+     * of the cycle's due date rather than as of now.
      *
      * Only the two repurchase entry types are counted: a repurchase deduction
      * must be undone by a negative `repurchase_deduction` entry, never by a

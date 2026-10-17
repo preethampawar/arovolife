@@ -47,9 +47,8 @@ final class CompensationStateWiper
                 if ($table === 'wallet_ledger_entries') {
                     // The repurchase-wallet debits written at checkout are a
                     // record of a purchase, not a derived figure: nothing in the
-                    // replay recreates them, and both the cycle verdict
-                    // (condition B) and the month-end wallet gate read the
-                    // ledger. Truncating them would re-judge every distributor
+                    // replay recreates them, and the cycle verdict
+                    // (condition B) reads the ledger. Truncating them would re-judge every distributor
                     // who spent their repurchase wallet as if they never had.
                     $query = $this->db->table($table)
                         ->whereNotIn('type', DerivedTables::PRESERVED_WALLET_TYPES);

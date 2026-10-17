@@ -10,16 +10,15 @@
         'pending'  => 'bg-amber-100 text-amber-700',
         'reversed' => 'bg-red-100 text-red-700',
         'requalification_held' => 'bg-orange-100 text-orange-700',
-        'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
     ];
 @endphp
 
 @developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly Rank Bonus (RB) calculation — one row per distributor per month.
-    Rank 1 is points-based (achievers earn RAP, AO-GO grantees earn offer points; income = points × point value).
-    Ranks 2–9 split each pool equally among achievers. "requalification_held" = re-qualified but missed the
-    month's requalification conditions (rank's repurchase BV + cleared repurchase wallet) — recorded, not paid.
+    Every rank earns RAP points and is paid points × the value of the pass that priced it (one pool, two passes,
+    each value capped); AO-GO grantees earn offer points in pass 1. "requalification_held" = re-qualified but missed the
+    month's requalification conditions (the rank's repurchase BV from own purchases that month) — recorded, not paid.
     A failed repurchase cycle never withholds Rank Bonus: it only removes the failed days' Genos BV from the qualification check.
 </div>
 @enddeveloper
@@ -138,8 +137,8 @@
     @endif
 </x-ui.card>
 
-{{-- ── Ranks 2–9 — equal split ─────────────────────────────────────────── --}}
-<h2 class="text-sm font-semibold text-gray-800 mb-2">Ranks 2–9 — equal split per rank pool</h2>
+{{-- ── Ranks 2–9 ──────────────────────────────────────────────────────── --}}
+<h2 class="text-sm font-semibold text-gray-800 mb-2">Ranks 2–9</h2>
 <x-ui.card flush>
     @if($rankRows->isEmpty())
     <x-ui.empty-state title="No Rank 2–9 records found." />

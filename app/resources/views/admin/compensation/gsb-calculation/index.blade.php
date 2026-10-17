@@ -30,8 +30,6 @@
         <option value="">All statuses</option>
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="calculated" {{ $status === 'calculated' ? 'selected' : '' }}>Calculated</option>
-        <option value="repurchase_held" {{ $status === 'repurchase_held' ? 'selected' : '' }}>Repurchase held</option>
-        <option value="repurchase_suspended" {{ $status === 'repurchase_suspended' ? 'selected' : '' }}>Repurchase suspended</option>
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
     </select>
     <x-ui.button >Apply</x-ui.button>
@@ -93,8 +91,6 @@
                         'reversed'             => 'bg-red-100 text-red-700',
                         'failed'               => 'bg-red-100 text-red-700',
                         'calculated'           => 'bg-blue-100 text-blue-700',
-                        'repurchase_held'      => 'bg-amber-100 text-amber-700',
-                        'repurchase_suspended' => 'bg-orange-100 text-orange-700',
                     ];
                 @endphp
                 <tr class="hover:bg-gray-50">

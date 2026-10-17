@@ -177,9 +177,11 @@ final readonly class RepurchaseCycleCard
      * How far into the window the distributor is, as a traffic light.
      *
      * Thirds of the window rather than hardcoded day counts, because the
-     * window length is the DB-driven comp.repurchase.cycle_days: on the
-     * default 30-day window that is green to day 10, amber to day 20, red
-     * from day 21 — and it still reads correctly if the setting changes.
+     * window length is the DB-driven comp.repurchase.cycle_days, counted
+     * inclusive of the start day (due = start + cycle_days − 1, client
+     * 2026-10-09): on the default 30-day window, with the start day as day 1,
+     * that is green to day 10, amber to day 20, red from day 21 — and it still
+     * reads correctly if the setting changes.
      */
     public function urgencyTier(): string
     {

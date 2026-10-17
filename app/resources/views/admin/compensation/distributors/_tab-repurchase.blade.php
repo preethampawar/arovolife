@@ -30,8 +30,8 @@
 
 @developer
 <div class="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-    A 30-day repurchase window: the due date falls 30 days after the day the distributor first reached 600
-    personal BV, and a failed window re-anchors on the day they fulfil it. It passes only if BOTH conditions
+    A 30-day repurchase window, inclusive of its first day: the due date falls 29 days after the day the
+    distributor first reached 600 personal BV (client 2026-10-09: 14 Feb → 15 Mar), and a failed window re-anchors on the day they fulfil it. It passes only if BOTH conditions
     hold: self-purchase BV inside the window at least the required amount, AND a repurchase wallet of ₹0 on
     the window's LAST day — which is why a window is never judged before it closes. From the day after the
     due date until the day they fulfil, the distributor's Genos BV for those days is not counted and the

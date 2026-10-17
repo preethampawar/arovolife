@@ -9,7 +9,6 @@ use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
-use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
@@ -796,7 +795,9 @@ it('shows the AO-GO offer and its conditions once a rank has been achieved, and 
         ->assertSee('Achieve Once – Get Once', false)
         ->assertSee('Used 0 of 3')
         ->assertSee("This month's conditions", false)
-        ->assertSee('A rank achieved in an earlier month')
+        // Achieved two months ago: the AO-GO window (the month right after
+        // the achievement) has passed, and the checklist says which rule.
+        ->assertSee('A rank achieved last month')
         ->assertSee('No rank held this month')
         ->assertSee('Lifetime uses remaining');
 });
@@ -862,8 +863,11 @@ it('shows the repurchase alert traffic-light on the wallet page while a balance 
         $this->actingAs($user)
             ->get(route('income.wallet'))
             ->assertOk()
-            ->assertSee('Clear now')
-            ->assertSee('Bring this to ₹0 by');
+            // No cycle yet: no countdown, and no month-end date (user
+            // decision 2026-10-17) — the balance is shown with the one rule.
+            ->assertSee('On track')
+            ->assertSee('Spend this at checkout on your own purchases.')
+            ->assertDontSee('Bring this to ₹0 by');
     } finally {
         Carbon::setTestNow();
     }
@@ -946,7 +950,7 @@ it('keeps every other cut-off status out of the distributor gsb history', functi
         ['cutoff_date' => today()->subDays(1)->toDateString(), 'left_bv_paise' => 111_100, 'right_bv_paise' => 0, 'status' => 'no_match'],
         ['cutoff_date' => today()->subDays(2)->toDateString(), 'left_bv_paise' => 222_200, 'right_bv_paise' => 0, 'status' => 'below_600bv'],
         ['cutoff_date' => today()->subDays(3)->toDateString(), 'left_bv_paise' => 333_300, 'right_bv_paise' => 0, 'status' => 'frozen'],
-        ['cutoff_date' => today()->subDays(4)->toDateString(), 'left_bv_paise' => 444_400, 'right_bv_paise' => 0, 'status' => 'repurchase_held'],
+        ['cutoff_date' => today()->subDays(4)->toDateString(), 'left_bv_paise' => 444_400, 'right_bv_paise' => 0, 'status' => 'failed'],
     ]));
 
     $this->get(route('income.gsb-history'))
@@ -963,155 +967,6 @@ it('keeps every other cut-off status out of the distributor gsb history', functi
 // published plan condition, so a distributor is entitled to see the month it
 // cost them. The row carries no money (gross 0, net 0), so page totals are
 // unchanged. Own data only, historical fact — never a projection (hard rule 3).
-
-it('shows a wallet-blocked month on the growth booster page without paying it', function (): void {
-    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
-
-    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
-    $this->actingAs($user);
-
-    DB::table('gbb_monthly_results')->insert([
-        [
-            'distributor_id' => $distributorId,
-            'year_month' => '2026-07-01',
-            'agp_earned' => 12,
-            'company_turnover_paise' => 100_000_000,
-            'pool_paise' => 5_000_000,
-            'total_pool_agp' => 100,
-            'point_value_paise' => 50_000,
-            'gbb_gross_paise' => 600_000,
-            'admin_charge_paise' => 0,
-            'tds_paise' => 0,
-            'repurchase_deduction_paise' => 60_000,
-            'gbb_net_paise' => 540_000,
-            'status' => 'credited',
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
-        ],
-        [
-            // Shaped the way the engine writes a blocked row: the AGP and the
-            // month's point value are real, only the money is zero. A fixture
-            // with a null point value would not exercise the suppression.
-            'distributor_id' => $distributorId,
-            'year_month' => '2026-08-01',
-            'agp_earned' => 17,
-            'company_turnover_paise' => 100_000_000,
-            'pool_paise' => 5_000_000,
-            'total_pool_agp' => 100,
-            'point_value_paise' => 50_000,
-            'gbb_gross_paise' => 0,
-            'admin_charge_paise' => 0,
-            'tds_paise' => 0,
-            'repurchase_deduction_paise' => 0,
-            'gbb_net_paise' => 0,
-            'status' => 'repurchase_wallet_blocked',
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
-        ],
-    ]);
-
-    $this->get(route('income.growth-booster', ['f' => 1]))
-        ->assertOk()
-        ->assertSee('August 2026')
-        ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
-        // Credited-only totals: the ₹5,400 credited July, nothing from August.
-        ->assertSee('₹5,400')
-        // The AGP is shown as the historical fact it is, but never multiplied
-        // out into an income line for a month that will never be paid.
-        ->assertSee('17 AGP')
-        ->assertDontSee('17 AGP × ', false);
-});
-
-it('shows a wallet-blocked month on the fortune bonus page without paying it', function (): void {
-    Feature::for(null)->activate(FortuneBonusFeature::class);
-
-    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
-    $this->actingAs($user);
-
-    DB::table('fortune_bonus_results')->insert([
-        [
-            'distributor_id' => $distributorId,
-            'month_start' => '2026-07-01',
-            'position' => 4,
-            'matrix_level' => 1,
-            'points' => 9,
-            'point_value_paise' => 10_000,
-            'gross_paise' => 90_000,
-            'admin_charge_paise' => 0,
-            'tds_paise' => 0,
-            'repurchase_deduction_paise' => 9_000,
-            'net_paise' => 81_000,
-            'status' => 'credited',
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
-        ],
-        [
-            // Shaped the way the engine writes a blocked row: the matrix
-            // position, points and the level's point value are all real, and
-            // only the money is zero.
-            'distributor_id' => $distributorId,
-            'month_start' => '2026-08-01',
-            'position' => 4,
-            'matrix_level' => 1,
-            'points' => 9,
-            'point_value_paise' => 10_000,
-            'gross_paise' => 0,
-            'admin_charge_paise' => 0,
-            'tds_paise' => 0,
-            'repurchase_deduction_paise' => 0,
-            'net_paise' => 0,
-            'status' => 'repurchase_wallet_blocked',
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
-        ],
-    ]);
-
-    $html = $this->get(route('income.fortune-bonus', ['f' => 1]))
-        ->assertOk()
-        ->assertSee('August 2026')
-        ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
-        // Credited-only total: only July's ₹810 reaches the summary card.
-        ->assertSee('₹810')
-        ->getContent();
-
-    // Both months carry 9 points at ₹100, but only the credited one may show
-    // the arithmetic: an income line on a blocked month states an amount as
-    // though it were owed.
-    expect(substr_count($html, '9 × ₹100.00'))->toBe(1);
-});
-
-it('counts a wallet-blocked month out of the fortune page total', function (): void {
-    Feature::for(null)->activate(FortuneBonusFeature::class);
-
-    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
-    $this->actingAs($user);
-
-    // A blocked row that (defensively) still carries a gross must never be
-    // added to the "credited to wallet" card.
-    DB::table('fortune_bonus_results')->insert([
-        'distributor_id' => $distributorId,
-        'month_start' => '2026-08-01',
-        'position' => 4,
-        'matrix_level' => 1,
-        'points' => 9,
-        'point_value_paise' => 10_000,
-        'gross_paise' => 90_000,
-        'admin_charge_paise' => 0,
-        'tds_paise' => 0,
-        'repurchase_deduction_paise' => 0,
-        'net_paise' => 81_000,
-        'status' => 'repurchase_wallet_blocked',
-        'created_at' => now()->toDateTimeString(),
-        'updated_at' => now()->toDateTimeString(),
-    ]);
-
-    $this->get(route('income.fortune-bonus'))
-        ->assertOk()
-        ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
-        // Neither the net in the credited column nor the arithmetic behind it.
-        ->assertDontSee('₹810')
-        ->assertDontSee('9 × ₹100.00', false);
-});
 
 // ── Rank progress: the days this month that were not counted ──
 
@@ -1250,7 +1105,7 @@ it('gives the personal-BV top-up its own genos ledger line instead of "No Genos 
         ->assertSee('Your own purchase BV added to your weaker group')
         ->assertSee('applied at the cut-off to your Right Genos')
         ->assertSee('+600')
-        ->assertSee('power (Left)')
+        ->assertSee('power (Left Genos)')
         ->assertDontSee('No Genos BV added this day.');
 });
 
@@ -1279,6 +1134,118 @@ it('dates every mentorship bonus row on the distributor page (F62)', function ()
     $this->get(route('income.mentorship', ['f' => 1]))
         ->assertOk()
         ->assertSee('06 Sep 2026');
+});
+
+it('tells the sponsor why a repurchase-gated Mentorship day paid nothing, without internal names (client 2026-10-09)', function (): void {
+    ['user' => $user, 'distributorId' => $sponsorId] = incomeDistributor();
+    ['distributorId' => $sponseeId] = incomeDistributor();
+    $this->actingAs($user);
+
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    DB::table('mentorship_bonus_results')->insert([
+        'sponsor_id' => $sponsorId,
+        'sponsee_id' => $sponseeId,
+        'cutoff_date' => '2026-09-06',
+        'sponsee_gsb_paise' => 1_000_00,
+        'slab' => 1,
+        'msb_points' => 21,
+        'msb_point_value_paise' => 10_000,
+        'mb_gross_paise' => 0,
+        'mb_net_paise' => 0,
+        'status' => 'repurchase_gated',
+        'failure_reason' => 'bv_short',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $this->get(route('income.mentorship', ['f' => 1]))
+        ->assertOk()
+        ->assertSee('Not awarded')
+        ->assertSee('your repurchase condition was not met on this day')
+        ->assertDontSee('repurchase_gated')
+        ->assertDontSee('bv_short');
+});
+
+it('tells a royalty sponsor what the daily Mentorship Royalty cap withheld on a day (client 2026-10-09)', function (): void {
+    ['user' => $user, 'distributorId' => $sponsorId] = incomeDistributor();
+    ['distributorId' => $sponseeId] = incomeDistributor();
+    $this->actingAs($user);
+
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    DB::table('mentorship_bonus_results')->insert([
+        'sponsor_id' => $sponsorId,
+        'sponsee_id' => $sponseeId,
+        'cutoff_date' => '2026-09-06',
+        'sponsee_gsb_paise' => 1_000_00,
+        'slab' => 1,
+        'msb_points' => 21,
+        'msb_point_value_paise' => 12_000,
+        'mb_gross_paise' => 108_000,
+        'mb_net_paise' => 108_000,
+        'status' => 'credited',
+        'sponsor_repurchase_failed' => true,
+        'royalty_cap_paise' => 360_000,
+        'royalty_cap_withheld_paise' => 144_000,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $this->get(route('income.mentorship', ['f' => 1]))
+        ->assertOk()
+        ->assertSee('₹1,440.00 withheld by the daily Mentorship Royalty cap', false)
+        ->assertDontSee('royalty_cap_withheld_paise')
+        ->assertDontSee('sponsor_repurchase_failed');
+});
+
+function seedIncomeRank(int $distributorId, int $rank, string $monthStart): void
+{
+    disableTestForeignKeys();
+    try {
+        DB::table('rank_qualifications')->insert([
+            'distributor_id' => $distributorId,
+            'rank_number' => $rank,
+            'month_start' => $monthStart,
+            'occurrence_in_month' => 1,
+            'is_carry_forward' => false,
+            'status' => 'qualified',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } finally {
+        enableTestForeignKeys();
+    }
+}
+
+it('calls the income Mentorship Royalty from the royalty rank (client 2026-10-09, Q2)', function (): void {
+    ['user' => $user, 'distributorId' => $sponsorId] = incomeDistributor();
+    $this->actingAs($user);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    // Rank 6 decided in an earlier month: a royalty sponsor today.
+    seedIncomeRank($sponsorId, 6, Carbon::today('Asia/Kolkata')->subMonthNoOverflow()->startOfMonth()->toDateString());
+
+    $this->get(route('income.mentorship', ['f' => 1]))
+        ->assertOk()
+        ->assertSee('<title>My Income — Mentorship Royalty', false)
+        ->assertSee('No Mentorship Royalty yet.');
+});
+
+it('keeps the Mentorship Bonus name below the royalty rank and for a rank this month has not decided yet', function (): void {
+    ['user' => $user, 'distributorId' => $sponsorId] = incomeDistributor();
+    $this->actingAs($user);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+
+    $today = Carbon::today('Asia/Kolkata');
+    seedIncomeRank($sponsorId, 5, $today->copy()->subMonthNoOverflow()->startOfMonth()->toDateString());
+    // A Rank 6 row for the current month is decided only on the 1st of next month.
+    seedIncomeRank($sponsorId, 6, $today->copy()->startOfMonth()->toDateString());
+
+    $this->get(route('income.mentorship', ['f' => 1]))
+        ->assertOk()
+        ->assertSee('No Mentorship Bonus yet.')
+        ->assertDontSee('Mentorship Royalty');
 });
 
 it('dates the wallet ledger by when the money was earned, and names its bonus month and payout batch (F63)', function (): void {

@@ -20,6 +20,10 @@
             <x-help-tip text="The pool rate is frozen on the month's pool row together with every figure in this header." /></span>
         <span class="text-gray-500">Total AGP <strong class="text-gray-700">{{ \App\Modules\Shared\Support\IndianNumber::format($pool->total_agp) }}</strong></span>
         <span class="text-gray-500">Point value <strong class="text-gray-700">{{ $inr($pool->point_value_paise) }}</strong></span>
+        <span class="text-gray-500">Raw point value <strong class="text-gray-700">{{ $pool->raw_point_value_paise !== null ? $inr($pool->raw_point_value_paise) : '—' }}</strong>
+            <x-help-tip text="Pool ÷ total AGP, floored to the whole rupee, before the cap. Above the cap every earner is paid the cap and the difference stays with the company. — for months frozen before the cap existed." /></span>
+        <span class="text-gray-500">Cap <strong class="text-gray-700">{{ $pool->point_value_cap_paise !== null ? $inr($pool->point_value_cap_paise) : '—' }}</strong>
+            <x-help-tip text="The point value cap in force when this month was frozen. A later setting change never moves a frozen month." /></span>
         <span class="text-gray-500 ml-auto">Computed <strong class="text-gray-700">{{ $pool->created_at?->format('d M Y H:i') ?? '—' }}</strong>
             <x-help-tip text="When this month's pool was frozen — the figures reflect the data as it stood at this moment. On a testing recompute this is the recompute time, not the month's end." /></span>
         @endif
@@ -30,8 +34,8 @@
             <p class="font-semibold text-gray-800 mb-2">How the AGP point value is calculated</p>
             <ol class="space-y-1.5 font-mono text-gray-700">
                 <li><span class="text-gray-500">1.</span> GBB pool = Month total BV × GBB pool %</li>
-                <li><span class="text-gray-500">2.</span> Total AGP = Σ (each earner's AGP for the month, capped per distributor)</li>
-                <li><span class="text-gray-500">3.</span> Point value = ⌊ GBB pool ÷ Total AGP ⌋ <span class="font-sans text-gray-500">(floored to the whole rupee; remainder stays unspent)</span></li>
+                <li><span class="text-gray-500">2.</span> Total AGP = Σ (each earner's AGP for the month)</li>
+                <li><span class="text-gray-500">3.</span> Point value = min( Cap, ⌊ GBB pool ÷ Total AGP ⌋ ) <span class="font-sans text-gray-500">(floored to the whole rupee; above the cap every earner is paid the cap and the excess stays unspent)</span></li>
                 <li><span class="text-gray-500">4.</span> Income = Earner's AGP × Point value</li>
             </ol>
         </div>
@@ -40,7 +44,14 @@
             <ol class="space-y-1.5 font-mono text-gray-700">
                 <li><span class="text-gray-500">1.</span> @bv($pool->company_bv_paise) × {{ $pct }} = <strong>{{ $inr($pool->pool_paise) }}</strong></li>
                 <li><span class="text-gray-500">2.</span> Total AGP = <strong>{{ \App\Modules\Shared\Support\IndianNumber::format($pool->total_agp) }}</strong></li>
-                @if($rawValue !== null)
+                @if($rawValue !== null && $pool->point_value_cap_paise !== null)
+                <li><span class="text-gray-500">3.</span> min( {{ $inr($pool->point_value_cap_paise, 0) }}, ⌊ {{ $inr($pool->pool_paise) }} ÷ {{ \App\Modules\Shared\Support\IndianNumber::format($pool->total_agp) }} ⌋ = ⌊ {{ $inr($rawValue) }} ⌋ ) = <strong>{{ $inr($pool->point_value_paise, 0) }}</strong>
+                    @if($pool->raw_point_value_paise !== null && $pool->point_value_paise < $pool->raw_point_value_paise)
+                    <span class="font-sans text-amber-700">capped (raw {{ $inr($pool->raw_point_value_paise, 0) }})</span>
+                    @endif
+                </li>
+                <li><span class="text-gray-500">4.</span> e.g. 10 AGP → 10 × {{ $inr($pool->point_value_paise, 0) }} = <strong>{{ $inr(10 * $pool->point_value_paise, 0) }}</strong></li>
+                @elseif($rawValue !== null)
                 <li><span class="text-gray-500">3.</span> ⌊ {{ $inr($pool->pool_paise) }} ÷ {{ \App\Modules\Shared\Support\IndianNumber::format($pool->total_agp) }} ⌋ = ⌊ {{ $inr($rawValue) }} ⌋ = <strong>{{ $inr($pool->point_value_paise, 0) }}</strong></li>
                 <li><span class="text-gray-500">4.</span> e.g. 10 AGP → 10 × {{ $inr($pool->point_value_paise, 0) }} = <strong>{{ $inr(10 * $pool->point_value_paise, 0) }}</strong></li>
                 @else

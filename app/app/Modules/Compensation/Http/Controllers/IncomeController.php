@@ -305,7 +305,28 @@ final class IncomeController extends Controller
             $activeSponsees = 0;
         }
 
-        return view('income.mentorship', compact('distributor', 'rows', 'mbThisMonthPaise', 'mbLifetimePaise', 'activeSponsees'));
+        $incomeLabel = $this->mentorshipIncomeLabel($distributor->id);
+
+        return view('income.mentorship', compact('distributor', 'rows', 'mbThisMonthPaise', 'mbLifetimePaise', 'activeSponsees', 'incomeLabel'));
+    }
+
+    /**
+     * The client 2026-10-09 (Q2): from the royalty rank the income is called
+     * "Mentorship Royalty". Copy only. The rank is the one the cut-off reads
+     * today ({@see RepurchaseCycleService::rankAsOf()}), so the page and the
+     * engine never disagree about who is a royalty sponsor.
+     */
+    private function mentorshipIncomeLabel(int $distributorId): string
+    {
+        try {
+            $royalty = app(RepurchaseCycleService::class)->rankAsOf($distributorId, Carbon::today('Asia/Kolkata'))
+                >= app(CompensationPlanSettingsService::class)->msbRoyaltyMinRank();
+        } catch (\RuntimeException) {
+            // A royalty rank outside 1–9 stops the cut-off; the page keeps the plain name.
+            $royalty = false;
+        }
+
+        return $royalty ? 'Mentorship Royalty' : 'Mentorship Bonus';
     }
 
     public function growthBooster(Request $request): View
@@ -317,24 +338,17 @@ final class IncomeController extends Controller
         IncomeFilterDefaults::apply($request, 'monthly');
 
         try {
-            // Credited months and wallet-blocked months only. A blocked row
-            // carries no money, so the page's totals are unchanged, but the
-            // distributor is entitled to see the month the month-end
-            // repurchase-wallet condition cost them — client spec 2026-09-07
-            // §2. Every other status is engine bookkeeping, not history.
+            // Credited months only. Every other status is engine bookkeeping,
+            // not history.
             $rows = GbbMonthlyResult::where('distributor_id', $distributor->id)
-                ->whereIn('status', [
-                    GbbMonthlyResult::STATUS_CREDITED,
-                    GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED,
-                ])
+                ->where('status', GbbMonthlyResult::STATUS_CREDITED)
                 ->when($request->filled('from'), fn ($q) => $q->where('year_month', '>=', $request->input('from').'-01'))
                 ->when($request->filled('to'), fn ($q) => $q->where('year_month', '<=', $request->input('to').'-01'))
                 ->orderByDesc('year_month')
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
 
-            // Totals stay credited-only: a blocked month is never money.
-            $credited = $rows->getCollection()->where('status', GbbMonthlyResult::STATUS_CREDITED);
+            $credited = $rows->getCollection();
             $totalAgp = $credited->sum('agp_earned');
             $totalNet = $credited->sum('gbb_net_paise');
         } catch (QueryException) {
@@ -394,14 +408,11 @@ final class IncomeController extends Controller
         IncomeFilterDefaults::apply($request, 'monthly');
 
         try {
-            // Wallet-blocked months join credited and skipped ones: the month
-            // is a published plan condition the distributor did not meet, and
-            // the row carries no money — client spec 2026-09-07 §2.
+            // Credited and skipped (₹0 pool) months.
             $rows = FortuneBonusResult::where('distributor_id', $distributor->id)
                 ->whereIn('status', [
                     FortuneBonusResult::STATUS_CREDITED,
                     FortuneBonusResult::STATUS_SKIPPED,
-                    FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
                 ])
                 ->when($request->filled('from'), fn ($q) => $q->where('month_start', '>=', $request->input('from').'-01'))
                 ->when($request->filled('to'), fn ($q) => $q->where('month_start', '<=', $request->input('to').'-01'))
@@ -409,7 +420,7 @@ final class IncomeController extends Controller
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
 
-            // Totals stay credited-only: a blocked month is never money.
+            // Totals stay credited-only: a skipped month is never money.
             $totalNet = $rows->getCollection()
                 ->where('status', FortuneBonusResult::STATUS_CREDITED)
                 ->sum('net_paise');
@@ -498,7 +509,7 @@ final class IncomeController extends Controller
         $minThresholdPaise = app(CompensationPlanSettingsService::class)->minPayoutPaise();
 
         // The window's last day only exists while the repurchase engine is on;
-        // with it off the only ₹0 date is the month end (see DashboardController).
+        // with it off there is no ₹0 date and no countdown (see DashboardController).
         $repurchaseWalletStatus = RepurchaseWalletStatus::for(
             $repurchaseWalletBalancePaise,
             deadline: Feature::for(null)->active(RepurchaseEngineFeature::class)

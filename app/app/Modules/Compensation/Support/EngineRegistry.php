@@ -297,7 +297,9 @@ final class EngineRegistry
                 periodOption: '--month',
                 dependencies: [
                     ['key' => 'gsb.daily-cutoff', 'expand' => 'month'],
-                    ['key' => 'rank.check', 'shift' => 'prev-month'],
+                    // Every earlier month, not only M−1: the lifetime exclusion
+                    // reads them all (RankQualificationsGate::monthsMissingCheck()).
+                    ['key' => 'rank.check', 'expand' => 'prior-months'],
                     ['key' => 'repurchase.evaluate'],
                 ],
                 featureFlagClass: GrowthBoosterBonusFeature::class,

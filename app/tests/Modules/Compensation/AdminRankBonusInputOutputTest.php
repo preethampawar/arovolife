@@ -7,12 +7,16 @@ use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
 use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
+use App\Modules\Compensation\Services\RankBonusService;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Database\Seeders\RankTiersSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 use Tests\Support\XlsxReader;
 
@@ -130,7 +134,7 @@ it('renders a month block with per-rank frozen economics, the AO-GO line and der
     $res->assertSee('₹560.00');
     $res->assertSee('11,200.00');              // 2 qualifiers × 10 RAP × ₹560
 
-    // The AO-GO line shares the Rank 1 pool.
+    // The AO-GO line shared the Rank 1 pool in a legacy month.
     $res->assertSee('AO-GO');
     $res->assertSee('2,800.00');               // 5 points × ₹560
 
@@ -138,11 +142,11 @@ it('renders a month block with per-rank frozen economics, the AO-GO line and der
     $res->assertSee('6,800.00');
     $res->assertSee('Held');
 
-    // A rank with no rows shows the estimated, asterisked unspent pool
-    // (Rank 3 = 2.7% of the envelope).
-    $res->assertSee('5,400.00');
+    // A rank with no rows in a legacy month is asterisked; the per-rank pool %
+    // that once estimated its unspent pool is retired (client 2026-10-05).
     $res->assertSee('unspent *');
-    $res->assertSee('estimated from the month');
+    $res->assertSee('priced before the two-pass rule');
+    $res->assertDontSee('Pool %');
 
     // Grand total: 2 × 5,600 + 2,800 + 6,800 = ₹20,800; every frozen rank
     // reconciled to zero leftover.
@@ -196,7 +200,8 @@ it('exports a CSV with per-rank rows, the AO-GO line and a month total', functio
 
     expect(XlsxReader::anyCellContains($rows, 'Month Turnover'))->toBeTrue();
     expect(XlsxReader::anyCellContains($rows, '14000'))->toBeTrue();       // Rank 1 pool, ungrouped
-    expect(XlsxReader::anyCellContains($rows, 'AO-GO (Rank 1 pool)'))->toBeTrue();
+    expect(XlsxReader::anyCellContains($rows, 'AO-GO (Rank 1 pool)'))->toBeTrue();   // legacy month
+    expect(XlsxReader::anyCellContains($rows, 'AO-GO (pass 1)'))->toBeFalse();
     expect(XlsxReader::anyCellContains($rows, 'MONTH TOTAL'))->toBeTrue();
     expect(XlsxReader::anyCellContains($rows, 'Computed At'))->toBeTrue();
     expect(XlsxReader::anyCellContains($rows, '20800'))->toBeTrue();       // grand total income
@@ -229,7 +234,8 @@ it('shows the Rank 1 month header and the point-value formula with this month\'s
     $res->assertSee(Bv::format(100_000_000));
     $res->assertSee('Rank envelope (20%)');
     $res->assertSee('₹2,00,000.00');
-    $res->assertSee('pool (7% of envelope)');
+    $res->assertSee('Silver Partner pool');
+    $res->assertDontSee('of envelope');
     $res->assertSee('₹14,000.00');
     $res->assertSee('₹560');
 
@@ -259,7 +265,7 @@ it('shows the Rank 1 month header and formula on the monthly calculation report'
     $res->assertSee('July 2026');
     $res->assertSee('Rank envelope (20%)');
     $res->assertSee('₹2,00,000.00');
-    $res->assertSee('pool (7% of envelope)');
+    $res->assertSee('Silver Partner pool');
     $res->assertSee('How the');
     $res->assertSee('(2 × 10) + 5 = <strong>25</strong>', false);
     $res->assertSee('<strong>₹5,600</strong> per qualifier', false);
@@ -358,53 +364,16 @@ it('carries the deduction and credited columns into the rank bonus I&O CSV', fun
     expect(XlsxReader::anyCellContains($rows, '12600'))->toBeTrue();
 });
 
-it('counts qualifiers blocked by the repurchase wallet gate so their unspent share is explained', function () {
-    $paid = Distributor::factory()->create();
-    $blocked = Distributor::factory()->create();
-
-    rbIoResult($paid->id, '2026-07-01', 2, 1_400_000, 2, 700_000);
-    rbIoResult($blocked->id, '2026-07-01', 2, 1_400_000, 2, 0, [
-        'status' => RankBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
-    ]);
-
-    $res = $this->actingAs(rbIoAdmin())
-        ->get(route('admin.compensation.rb-input-output.index', ['month' => '2026-07']))
-        ->assertOk();
-
-    $res->assertSee('Blocked');
-    $res->assertSee('Qualifiers whose repurchase wallet was not at ₹0 at month end', false);
-    // Half the pool went unpaid, and the Blocked count is the only thing on the
-    // page that says why.
-    $res->assertSee('7,000.00');
-});
-
-it('carries the blocked count into the rank bonus I&O CSV', function () {
-    $blocked = Distributor::factory()->create();
-    rbIoResult($blocked->id, '2026-07-01', 2, 1_400_000, 1, 0, [
-        'status' => RankBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
-    ]);
-
+it('no longer carries a repurchase-blocked column in the rank bonus I&O CSV', function () {
     $rows = XlsxReader::rows($this->actingAs(rbIoAdmin())
         ->get(route('admin.compensation.rb-input-output.export'))
         ->assertOk()
         ->streamedContent());
 
+    // The month-end wallet gate was retired (user decision 2026-10-17).
     expect($rows[0])->toContain('Qualifiers')
         ->and($rows[0])->toContain('Held')
-        ->and($rows[0])->toContain('Repurchase Blocked')
-        ->and($rows[0])->toContain('Total Points');
-
-    $qualifiersCol = array_search('Qualifiers', $rows[0], true);
-    $heldCol = array_search('Held', $rows[0], true);
-    $blockedCol = array_search('Repurchase Blocked', $rows[0], true);
-    $totalCol = array_search('Total Points', $rows[0], true);
-
-    // qualifiers, held, blocked — the rank-2 row.
-    $rank2Row = collect($rows)->first(fn (array $row): bool => ($row[$qualifiersCol] ?? null) === '1'
-        && ($row[$heldCol] ?? null) === '0'
-        && ($row[$blockedCol] ?? null) === '1');
-    expect($rank2Row)->not->toBeNull();
-    expect($totalCol)->not->toBeFalse();
+        ->and($rows[0])->not->toContain('Repurchase Blocked');
 });
 
 it('F91: rank-bonus tiles use the stored qualifier count and never truncate the pool/credited paise', function () {
@@ -443,7 +412,6 @@ it('names distributors who qualified after the rank pool was frozen', function (
         'rank_number' => 1,
         'company_turnover_paise' => 100_000_000,
         'envelope_bp' => 2_000,
-        'pool_pct' => 7.0,
         'pool_paise' => 1_400_000,
         'rap_points' => 10,
         'payable_count' => 1,
@@ -475,4 +443,329 @@ it('names distributors who qualified after the rank pool was frozen', function (
 
     $res->assertSee('Qualified after the pool was frozen');
     $res->assertSee($late->adn);
+});
+
+/**
+ * Runs the real engine for July 2026 on a 10,00,000 BV month (envelope
+ * ₹2,00,000) with one achiever qualified at the given rank, or nobody at all
+ * when $rank is null.
+ */
+function rbIoRunTwoPassMonth(?int $rank): void
+{
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => 999001, 'order_id' => 980001, 'bv_paise' => 100_000_000, 'type' => 'accrual',
+        'effective_at' => '2026-07-10 10:00:00', 'created_at' => '2026-07-10 10:00:00', 'updated_at' => '2026-07-10 10:00:00',
+    ]);
+    if ($rank !== null) {
+        RankQualification::create([
+            'distributor_id' => Distributor::factory()->create()->id, 'rank_number' => $rank, 'month_start' => '2026-07-01',
+            'occurrence_in_month' => 1, 'is_carry_forward' => false, 'status' => RankQualification::STATUS_QUALIFIED,
+        ]);
+    }
+    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-07-01'));
+}
+
+/**
+ * A month frozen under the client's 2026-10-05 two-pass rule: one Rank-1
+ * achiever paid 72 × min(₹200, ⌊₹2,00,000 ÷ 72⌋) = ₹14,400 in pass 1; pass 2
+ * has ₹1,85,600 and nobody to share it, so all of it is the month's leftover.
+ */
+it('renders a two-pass frozen month on the rank bonus reports', function () {
+    rbIoRunTwoPassMonth(1);
+
+    $res = $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('14,400.00')
+        ->assertSee('leftover ₹1,85,600.00', false);
+
+    // Pass summary above the rank table, and a Pass column instead of a pool %.
+    $res->assertSee('Pass 1')->assertSee('Pass 2')->assertDontSee('Pool %');
+    $res->assertSee('₹200.00');                 // pass-1 point value
+    $res->assertSee('₹1,85,600.00');            // pass-2 pool and leftover
+    $res->assertSee('Which pass priced this rank');
+    $res->assertSee('Two-pass formula');
+    $res->assertDontSee('per-rank pool rule in force before the two-pass rule');
+    $res->assertDontSee('freeze is incomplete');
+
+    // The envelope % and ₹ are the pass row's frozen figures, not the current
+    // setting: moving the setting after the freeze changes nothing on the page.
+    DB::table('settings')->insert(['key' => 'comp.rank.envelope_bp', 'value' => '1000', 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('Rank envelope (20%)')
+        ->assertSee('₹2,00,000.00')
+        ->assertDontSee('Rank envelope (10%)');
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rank-bonus.show', '2026-07'))
+        ->assertOk()
+        ->assertSee('Pass 1 value')
+        ->assertSee('Pass 1 points = Σ (payable × RAP) of the pass-1 ranks + AO-GO points')
+        ->assertSee('min(₹200, ⌊ ₹2,00,000.00 ÷ 72 ⌋)', false)
+        ->assertSee('72 × ₹200 = <strong>₹14,400.00</strong>', false)
+        ->assertSee('₹2,00,000.00 − ₹14,400.00 = <strong>₹1,85,600.00</strong>', false)
+        ->assertDontSee('Silver Partner pool');
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-calculation.index', ['month' => '2026-07']))
+        ->assertOk()
+        ->assertSee('Pass 2 value')
+        ->assertSee('min(₹200, ⌊ ₹2,00,000.00 ÷ 72 ⌋)', false);
+});
+
+it('exports the Pass column and one summary row per pass for a two-pass month', function () {
+    rbIoRunTwoPassMonth(1);
+
+    $rows = XlsxReader::rows($this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.export'))
+        ->assertOk()
+        ->streamedContent());
+
+    $passCol = array_search('Pass', $rows[0], true);
+    $nameCol = array_search('Rank Name', $rows[0], true);
+    $poolCol = array_search('Pool (Rs)', $rows[0], true);
+    $valueCol = array_search('Point Value / Share (Rs)', $rows[0], true);
+    $leftoverCol = array_search('Leftover (Rs)', $rows[0], true);
+    expect($passCol)->toBeInt()
+        ->and($nameCol)->toBeInt()
+        ->and($poolCol)->toBeInt()
+        ->and($valueCol)->toBeInt()
+        ->and($leftoverCol)->toBeInt();
+    assert(is_int($passCol) && is_int($nameCol) && is_int($poolCol) && is_int($valueCol) && is_int($leftoverCol));
+    expect($passCol)->toBe($nameCol + 1);
+
+    $byName = collect($rows)->keyBy(fn (array $row): string => (string) ($row[$nameCol] ?? ''));
+
+    expect($byName->get('Silver Partner')[$passCol])->toBe('1');
+    expect($byName->get('Gold Partner')[$passCol])->toBe('2');
+    expect($byName->get('PASS 1')[$poolCol])->toBe('200000');
+    expect($byName->get('PASS 1')[$valueCol])->toBe('200');
+    expect($byName->get('PASS 2')[$poolCol])->toBe('185600');
+    expect($byName->get('PASS 2')[$leftoverCol])->toBe('185600');
+    expect(XlsxReader::anyCellContains($rows, 'MONTH TOTAL'))->toBeTrue();
+});
+
+/**
+ * Task 10 hand-off: a month priced by the real engine with a Rank-1 achiever,
+ * one AO-GO grant (36 points, pass 1) and a Rank-4 achiever (pass 2). The page
+ * shows a Pass cell of 2 and labels the AO-GO line as priced in pass 1; the
+ * export names it `AO-GO (pass 1)`.
+ */
+it('labels the AO-GO line as pass 1 and shows a Pass cell of 2 for a month priced by the engine', function () {
+    $grantee = Distributor::factory()->create()->id;
+    RankAogoGrant::create([
+        'distributor_id' => $grantee,
+        'month_start' => '2026-07-01',
+        'grant_number' => 1,
+        'points' => 36,
+        'previous_rank_number' => 1,
+        'status' => RankAogoGrant::STATUS_GRANTED,
+    ]);
+    RankQualification::create([
+        'distributor_id' => Distributor::factory()->create()->id, 'rank_number' => 1, 'month_start' => '2026-07-01',
+        'occurrence_in_month' => 1, 'is_carry_forward' => false, 'status' => RankQualification::STATUS_QUALIFIED,
+    ]);
+    rbIoRunTwoPassMonth(4);
+
+    // The grant was priced through the engine, in pass 1.
+    expect(RankAogoGrant::where('distributor_id', $grantee)->value('status'))->toBe(RankAogoGrant::STATUS_CREDITED)
+        ->and(RankMonthlyPool::where('month_start', '2026-07-01')->where('rank_number', 4)->value('pass'))->toBe(2);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('data-pass-cell>1<', false)
+        ->assertSee('data-pass-cell>2<', false)
+        ->assertSee('priced in pass 1 with Rank 1')
+        ->assertDontSee('shared the Rank 1 pool');
+
+    $rows = XlsxReader::rows($this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.export'))
+        ->assertOk()
+        ->streamedContent());
+
+    $passCol = array_search('Pass', $rows[0], true);
+    $nameCol = array_search('Rank Name', $rows[0], true);
+    expect($passCol)->toBeInt()->and($nameCol)->toBeInt();
+    assert(is_int($passCol) && is_int($nameCol));
+
+    $byName = collect($rows)->keyBy(fn (array $row): string => (string) ($row[$nameCol] ?? ''));
+
+    expect(XlsxReader::anyCellContains($rows, 'AO-GO (pass 1)'))->toBeTrue()
+        ->and(XlsxReader::anyCellContains($rows, 'AO-GO (Rank 1 pool)'))->toBeFalse()
+        ->and($byName->get('AO-GO (pass 1)')[$passCol] ?? null)->toBe('1')
+        ->and($byName->get('Gold Partner')[$passCol] ?? null)->toBe('2');
+});
+
+/**
+ * Review Focus 2: pass 2 divides the whole envelope when pass 1 has nobody, and
+ * the month has no Rank-1 rows at all — the formula strip must still render.
+ * 1,125 Gold points → ⌊₹2,00,000 ÷ 1,125⌋ = ₹177 a point, ₹1,99,125 paid, ₹875 left.
+ */
+it('shows the two-pass formula for a month whose only achiever is priced in pass 2', function () {
+    rbIoRunTwoPassMonth(4);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('two-pass point values were calculated')
+        ->assertSee('Pass 1 points =')
+        ->assertSee('= <strong>0</strong>', false)
+        ->assertSee('min(₹200, ⌊ ₹2,00,000.00 ÷ 1,125 ⌋)', false)
+        ->assertSee('<strong>₹177</strong>', false)
+        ->assertSee('leftover ₹875.00', false);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rank-bonus.show', '2026-07'))
+        ->assertOk()
+        ->assertSee('Pass 2 value')
+        ->assertSee('min(₹200, ⌊ ₹2,00,000.00 ÷ 1,125 ⌋)', false);
+});
+
+/**
+ * A frozen two-pass month with nobody to pay has result rows for no one: its
+ * two pass rows (the whole envelope left over) are what lists it.
+ */
+it('lists a two-pass month frozen with no achievers, with the whole envelope as leftover', function () {
+    rbIoRunTwoPassMonth(null);
+
+    expect(DB::table('rank_bonus_results')->count())->toBe(0);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('July 2026')
+        ->assertSee('Two-pass formula')
+        ->assertSee('leftover ₹2,00,000.00', false)
+        ->assertDontSee('No Rank Bonus months yet.');
+});
+
+/**
+ * Principle 5: the engine writes both pass rows in one transaction, so a month
+ * with one is a corrupted freeze — the page says so instead of reading the
+ * missing pass-2 row as "leftover ₹0".
+ */
+it('flags a two-pass month whose pass-2 row is missing instead of showing leftover zero', function () {
+    rbIoRunTwoPassMonth(1);
+    DB::table('rank_monthly_passes')->where('month_start', '2026-07-01')->where('pass', 2)->delete();
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('freeze is incomplete')
+        ->assertSee('leftover unknown (pass row missing)')
+        ->assertDontSee('leftover ₹0.00', false);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rank-bonus.show', '2026-07'))
+        ->assertOk()
+        ->assertSee('Pass 2 row missing')
+        ->assertSee('2–8. Not shown — a pass row is missing.');
+});
+
+/**
+ * An out-of-range pass-1 ceiling is refused by Save but reachable through the
+ * database. The engine refuses to price with it; the report of a month already
+ * frozen must still render, reading each rank's pass off its frozen pool row.
+ */
+it('renders a frozen two-pass month when the pass-1 ceiling setting is out of range', function () {
+    rbIoRunTwoPassMonth(1);
+
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.first_pass_max_rank'],
+        ['value' => '0', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('data-pass-cell>1<', false)
+        ->assertSee('data-pass-cell>2<', false);
+});
+
+it('labels a month priced before the two-pass rule and gives it no pass summary', function () {
+    rbIoSeedWorkedMonth('2026-07-01');
+    // A pool row frozen under the old rule carries the migrated column default
+    // pass = 1; the report must not read it as "priced in pass 1".
+    RankMonthlyPool::create([
+        'month_start' => '2026-07-01',
+        'rank_number' => 1,
+        'company_turnover_paise' => 100_000_000,
+        'envelope_bp' => 2_000,
+        'pool_paise' => 1_400_000,
+        'rap_points' => 10,
+        'payable_count' => 2,
+        'aogo_points' => 5,
+        'total_points' => 25,
+        'point_value_paise' => 56_000,
+        'gross_per_qualifier_paise' => 560_000,
+        'payout_paise' => 1_400_000,
+        'leftover_paise' => 0,
+    ]);
+    expect(RankMonthlyPool::query()->value('pass'))->toBe(1);
+
+    $res = $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk();
+
+    $res->assertSee('This month was priced under the per-rank pool rule in force before the two-pass rule (client 2026-10-05); it has no pass summary.');
+    $res->assertDontSee('Pass 1');
+    $res->assertDontSee('Two-pass formula');
+    // The Pass cell of a legacy rank is a dash, never the migrated default 1.
+    $res->assertSee('data-pass-cell>—<', false);
+    $res->assertDontSee('data-pass-cell>1<', false);
+
+    $rows = XlsxReader::rows($this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.export'))
+        ->assertOk()
+        ->streamedContent());
+    expect(XlsxReader::anyCellContains($rows, 'PASS 1'))->toBeFalse();
+});
+
+/**
+ * Task 14 L7: a month frozen under the old per-rank rule with nobody to pay
+ * wrote only its pool rows (no results, no pass rows) — like September 2026 on
+ * dev. It is still listed, labelled legacy, with no achievers and the frozen
+ * pool rows' own leftover (₹14,000 + ₹6,800), never a computed "₹0".
+ */
+it('lists a legacy month frozen with no achievers from its pool rows alone', function () {
+    foreach ([1 => 1_400_000, 2 => 680_000] as $rank => $poolPaise) {
+        RankMonthlyPool::create([
+            'month_start' => '2026-09-01',
+            'rank_number' => $rank,
+            'company_turnover_paise' => 100_000_000,
+            'envelope_bp' => 2_000,
+            'pool_paise' => $poolPaise,
+            'rap_points' => $rank === 1 ? 10 : null,
+            'payable_count' => 0,
+            'aogo_points' => 0,
+            'total_points' => $rank === 1 ? 0 : null,
+            'point_value_paise' => $rank === 1 ? 0 : null,
+            'gross_per_qualifier_paise' => 0,
+            'payout_paise' => 0,
+            'leftover_paise' => $poolPaise,
+        ]);
+    }
+
+    expect(DB::table('rank_bonus_results')->count())->toBe(0)
+        ->and(DB::table('rank_monthly_passes')->count())->toBe(0);
+
+    $this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.index'))
+        ->assertOk()
+        ->assertSee('September 2026')
+        ->assertSee('This month was priced under the per-rank pool rule in force before the two-pass rule (client 2026-10-05); it has no pass summary.')
+        ->assertSee('leftover ₹20,800.00', false)
+        ->assertDontSee('leftover ₹0.00', false)
+        ->assertDontSee('Two-pass formula')
+        ->assertDontSee('No Rank Bonus months yet.');
+
+    $rows = XlsxReader::rows($this->actingAs(rbIoAdmin())
+        ->get(route('admin.compensation.rb-input-output.export'))
+        ->assertOk()
+        ->streamedContent());
+    expect(XlsxReader::anyCellContains($rows, '2026-09'))->toBeTrue();
 });

@@ -135,57 +135,6 @@ it('shows the frozen point value and renders a dash for legacy rows', function (
         ->assertSee('—');        // legacy row has no snapshot
 });
 
-it('badges the repurchase held and suspended statuses', function () {
-    $held = gbbReportDistributor('GBBHLD', 'Hema');
-    $susp = gbbReportDistributor('GBBSUS', 'Suresh');
-    makeGbbRow($held, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
-    makeGbbRow($susp, 12, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED, '2026-07-01');
-
-    $this->actingAs(gbbReportAdmin())
-        ->get(route('admin.compensation.gbb-calculation.index'))
-        ->assertOk()
-        ->assertSee('repurchase held')
-        ->assertSee('repurchase suspended')
-        ->assertSee('bg-orange-100 text-orange-700', false);
-});
-
-it('filters by the repurchase wallet blocked status', function () {
-    $blocked = gbbReportDistributor('GBBBLK', 'Bhavana');
-    $credited = gbbReportDistributor('GBBOK1', 'Kiran');
-    makeGbbRow($blocked, 12, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED, '2026-07-01');
-    makeGbbRow($credited, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
-
-    $this->actingAs(gbbReportAdmin())
-        ->get(route('admin.compensation.gbb-calculation.index', ['status' => 'repurchase_wallet_blocked']))
-        ->assertOk()
-        ->assertSee('GBBBLK')
-        ->assertDontSee('GBBOK1');
-});
-
-it('rejects the retired repurchase hold statuses as filters', function () {
-    // Nothing writes them any more; a legacy row still renders in the
-    // unfiltered list, but they are no longer offered as a filter.
-    $admin = gbbReportAdmin();
-
-    $this->actingAs($admin)
-        ->get(route('admin.compensation.gbb-calculation.index', ['status' => 'repurchase_held']))
-        ->assertSessionHasErrors('status');
-
-    $this->actingAs($admin)
-        ->get(route('admin.compensation.gbb-calculation.index', ['status' => 'repurchase_suspended']))
-        ->assertSessionHasErrors('status');
-});
-
-it('still renders a legacy repurchase_held row in the unfiltered list', function () {
-    $held = gbbReportDistributor('GBBHLD', 'Hema');
-    makeGbbRow($held, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
-
-    $this->actingAs(gbbReportAdmin())
-        ->get(route('admin.compensation.gbb-calculation.index'))
-        ->assertOk()
-        ->assertSee('GBBHLD');
-});
-
 it('rejects an unknown status filter', function () {
     $this->actingAs(gbbReportAdmin())
         ->get(route('admin.compensation.gbb-calculation.index', ['status' => 'nonsense']))
@@ -204,15 +153,57 @@ it('exports the point value column', function () {
     $res->assertOk();
     $rows = XlsxReader::rows($res->streamedContent());
 
-    expect($rows[0])->toBe(['SNo', 'ADN', 'Name', 'Title', 'Month', 'AGP Points', 'Point Value (Rs)', 'AGP Value Per Point (Rs)', 'Gross GBB (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status']);
+    expect($rows[0])->toBe(['SNo', 'ADN', 'Name', 'Title', 'Month', 'AGP Points', 'Point Value (Rs)', 'Raw Point Value (Rs)', 'Point Value Cap (Rs)', 'AGP Value Per Point (Rs)', 'Gross GBB (Rs)', 'Repurchase Deduction (Rs)', 'Credited to Wallet (Rs)', 'Status']);
 
-    // frozen value then realised value
+    // frozen value then realised value; no pool row for the month, so no raw value or cap
     $aliceRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'GBBAAA');
-    expect($aliceRow)->toBe(['2', 'GBBAAA', 'Alice', '', '2026-07', '12', '250', '250', '3000', '0', '3000', 'credited']);
+    expect($aliceRow)->toBe(['2', 'GBBAAA', 'Alice', '', '2026-07', '12', '250', '', '', '250', '3000', '0', '3000', 'credited']);
 
     // legacy row: empty frozen value
     $legacyRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'GBBBBB');
-    expect($legacyRow)->toBe(['1', 'GBBBBB', 'Bob', '', '2026-07', '5', '', '200', '1000', '0', '1000', 'credited']);
+    expect($legacyRow)->toBe(['1', 'GBBBBB', 'Bob', '', '2026-07', '5', '', '', '', '200', '1000', '0', '1000', 'credited']);
+});
+
+it('exports the frozen raw point value and cap next to the point value, empty for a legacy month', function () {
+    $capped = gbbReportDistributor('GBBCP1', 'Capped');
+    $legacy = gbbReportDistributor('GBBLG1', 'Legacy');
+    makeGbbRow($capped, 125, 24_000, 3_000_000, GbbMonthlyResult::STATUS_CREDITED, '2026-08-01');
+    makeGbbRow($legacy, 20, 25_000, 500_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
+
+    // Client example 1 (2026-10-09): ₹2,00,000 ÷ 625 = ₹320 → capped at ₹240.
+    GbbMonthlyPool::create([
+        'month_start' => '2026-08-01', 'company_bv_paise' => 500_000_000, 'pool_rate_bp' => 400,
+        'pool_paise' => 20_000_000, 'total_agp' => 625, 'point_value_paise' => 24_000,
+        'raw_point_value_paise' => 32_000, 'point_value_cap_paise' => 24_000,
+        'payout_paise' => 15_000_000, 'leftover_paise' => 5_000_000,
+    ]);
+    // Frozen before the cap existed: no raw value, no cap.
+    GbbMonthlyPool::create([
+        'month_start' => '2026-07-01', 'company_bv_paise' => 10_000_000, 'pool_rate_bp' => 500,
+        'pool_paise' => 500_000, 'total_agp' => 20, 'point_value_paise' => 25_000,
+        'payout_paise' => 500_000, 'leftover_paise' => 0,
+    ]);
+
+    $rows = XlsxReader::rows($this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb-calculation.export'))
+        ->assertOk()
+        ->streamedContent());
+
+    $pointValueAt = array_search('Point Value (Rs)', $rows[0], true);
+    expect($pointValueAt)->toBeInt();
+    assert(is_int($pointValueAt));
+    expect(array_search('Raw Point Value (Rs)', $rows[0], true))->toBe($pointValueAt + 1)
+        ->and(array_search('Point Value Cap (Rs)', $rows[0], true))->toBe($pointValueAt + 2);
+
+    $cappedRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'GBBCP1');
+    expect($cappedRow)->toBeArray();
+    assert(is_array($cappedRow));
+    expect(array_slice($cappedRow, $pointValueAt, 3))->toBe(['240', '320', '240']);
+
+    $legacyRow = collect($rows)->first(fn (array $row): bool => ($row[1] ?? null) === 'GBBLG1');
+    expect($legacyRow)->toBeArray();
+    assert(is_array($legacyRow));
+    expect(array_slice($legacyRow, $pointValueAt, 3))->toBe(['250', '', '']);
 });
 
 it('surfaces the frozen monthly pool on the GBB month screen', function () {
@@ -283,34 +274,6 @@ function gbbRenderIncomePage(int $distributorId): string
     ])->render();
 }
 
-it('never presents a legacy repurchase_held month as payable to the distributor', function () {
-    // Nothing releases these rows any more. The page must not label them
-    // "held" (which promises a later credit) and must not show the AGP ×
-    // point-value income line for money that will never be credited.
-    $distributorId = gbbReportDistributor('GBBHLD', 'Hema');
-    makeGbbRow($distributorId, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
-
-    $html = gbbRenderIncomePage($distributorId);
-
-    expect($html)
-        ->toContain('Not paid — legacy record')
-        ->toContain('Recorded under a superseded rule; this amount is not payable');
-    expect(str_contains($html, 'Repurchase held'))->toBeFalse();
-    expect(str_contains($html, '12 AGP × ₹'.Number::format(250, 2)))->toBeFalse();
-});
-
-it('presents a repurchase wallet forfeit without an income line', function () {
-    $distributorId = gbbReportDistributor('GBBBLK', 'Bhavana');
-    makeGbbRow($distributorId, 12, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED, '2026-07-01');
-
-    $html = gbbRenderIncomePage($distributorId);
-
-    expect($html)
-        // One badge, not a badge plus a footnote: the reason IS the status.
-        ->toContain('Repurchase wallet not cleared at month end — not paid');
-    expect(str_contains($html, '12 AGP × ₹'.Number::format(250, 2)))->toBeFalse();
-});
-
 it('degrades to a dash when a month has no frozen pool row', function () {
     $distributorId = gbbReportDistributor('GBBAAA', 'Alice');
     makeGbbRow($distributorId, 12, null, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-06-01');
@@ -333,8 +296,6 @@ it('lists credited GBB batches without tripping the reserved YEAR_MONTH keyword'
 
     makeGbbRow($alice, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-06-01');
     makeGbbRow($bob, 5, 25_000, 125_000, GbbMonthlyResult::STATUS_CREDITED, '2026-06-01');
-    // A held row must not be counted as a credited batch.
-    makeGbbRow($bob, 5, 25_000, 125_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
 
     $this->actingAs(gbbReportAdmin())
         ->get(route('admin.compensation.gbb.index'))
@@ -371,6 +332,36 @@ it('still says the engine has not run when there is neither a pool nor a result'
         ->get(route('admin.compensation.gbb.index'))
         ->assertOk()
         ->assertSee('The engine has not run for any month.');
+});
+
+it('shows the configured pool rate and cap in the developer explainer, never a hardcoded figure', function () {
+    foreach (['comp.gbb.pool_rate_bp' => '500', 'comp.gbb.point_value_cap_paise' => '30000'] as $key => $value) {
+        DB::table('settings')->updateOrInsert(['key' => $key], ['value' => $value, 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    $developer = gbbReportAdmin();
+    $developer->assignRole('developer');
+
+    $this->actingAs($developer)
+        ->get(route('admin.compensation.gbb.index'))
+        ->assertOk()
+        ->assertSee("is 5% of the month's company-wide BV", false)
+        ->assertSee('The point value is capped at ₹300;')
+        ->assertDontSee('4%')
+        ->assertDontSee('₹240');
+});
+
+it('still renders the developer explainer over a cap the engine refuses, and says so', function () {
+    DB::table('settings')->updateOrInsert(['key' => 'comp.gbb.point_value_cap_paise'], ['value' => '24050', 'version' => 1, 'created_at' => now(), 'updated_at' => now()]);
+
+    $developer = gbbReportAdmin();
+    $developer->assignRole('developer');
+
+    $this->actingAs($developer)
+        ->get(route('admin.compensation.gbb.index'))
+        ->assertOk()
+        ->assertSee('The point value cap setting holds a value the engine refuses')
+        ->assertDontSee('capped at ₹');
 });
 
 it('hides the GBB calculation report while the feature is off', function (): void {
@@ -410,8 +401,12 @@ it('shows the frozen month header and the AGP point-value formula with the month
     $res->assertSee('GBB pool (5%)');
     $res->assertSee('₹5,000.00');
     $res->assertSee('How the AGP point value is calculated');
-    $res->assertSee('Point value = ⌊ GBB pool ÷ Total AGP ⌋');
+    $res->assertSee('Point value = min( Cap, ⌊ GBB pool ÷ Total AGP ⌋ )');
+    // A month frozen before the cap existed keeps the uncapped worked line and
+    // shows "—" for the raw value and the cap — never throws.
     $res->assertSee('⌊ ₹5,000.00 ÷ 20 ⌋ = ⌊ ₹250.00 ⌋ = <strong>₹250</strong>', false);
+    $res->assertSee('Raw point value <strong class="text-gray-700">—</strong>', false);
+    $res->assertSee('Cap <strong class="text-gray-700">—</strong>', false);
     $res->assertSee('GBBAAA');
 
     // Unfiltered: one block per month among the rows on the page.
@@ -421,13 +416,42 @@ it('shows the frozen month header and the AGP point-value formula with the month
         ->assertSee('How the AGP point value is calculated');
 });
 
+it('shows the GBB cap in the worked line and flags a capped month', function () {
+    $alice = gbbReportDistributor('GBBCAP', 'Alice');
+    makeGbbRow($alice, 125, 24_000, 3_000_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
+
+    // Client example 1 (2026-10-09): ₹2,00,000 ÷ 625 = ₹320 → capped at ₹240.
+    GbbMonthlyPool::create([
+        'month_start' => '2026-07-01',
+        'company_bv_paise' => 500_000_000,
+        'pool_rate_bp' => 400,
+        'pool_paise' => 20_000_000,
+        'total_agp' => 625,
+        'point_value_paise' => 24_000,
+        'raw_point_value_paise' => 32_000,
+        'point_value_cap_paise' => 24_000,
+        'payout_paise' => 15_000_000,
+        'leftover_paise' => 5_000_000,
+    ]);
+
+    $res = $this->actingAs(gbbReportAdmin())
+        ->get(route('admin.compensation.gbb-calculation.index', ['month' => '2026-07']))
+        ->assertOk();
+
+    $res->assertSee('GBB pool (4%)');
+    $res->assertSee('min( ₹240, ⌊ ₹2,00,000.00 ÷ 625 ⌋ = ⌊ ₹320.00 ⌋ ) = <strong>₹240</strong>', false);
+    $res->assertSee('capped (raw ₹320)');
+    $res->assertSee('Raw point value <strong class="text-gray-700">₹320.00</strong>', false);
+    $res->assertSee('Cap <strong class="text-gray-700">₹240.00</strong>', false);
+});
+
 it('shows the repurchase deduction per row and counts only credited rows in the credited-to-wallets card — never TDS', function () {
     $alice = gbbReportDistributor('GBRPD1', 'Alice');
     $bob = gbbReportDistributor('GBRPD2', 'Bob');
     $credited = makeGbbRow($alice, 4, 100_000, 400_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
     $credited->update(['repurchase_deduction_paise' => 40_000, 'gbb_net_paise' => 360_000]);
-    // Held rows carry net = gross but never reached a wallet.
-    makeGbbRow($bob, 3, 100_000, 300_000, GbbMonthlyResult::STATUS_REPURCHASE_HELD, '2026-07-01');
+    // A pending row carries net = gross but has not reached a wallet.
+    makeGbbRow($bob, 3, 100_000, 300_000, GbbMonthlyResult::STATUS_PENDING, '2026-07-01');
 
     $this->actingAs(gbbReportAdmin())
         ->get(route('admin.compensation.gbb.show', ['month' => '2026-07']))

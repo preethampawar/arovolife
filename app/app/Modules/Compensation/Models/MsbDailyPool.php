@@ -19,6 +19,8 @@ use Illuminate\Support\Carbon;
  * @property int $pool_paise
  * @property int $total_points
  * @property int $point_value_paise
+ * @property int|null $raw_point_value_paise
+ * @property int|null $point_value_cap_paise
  * @property int $payout_paise
  * @property int $leftover_paise
  * @property Carbon|null $created_at
@@ -41,7 +43,8 @@ final class MsbDailyPool extends Model
 
     protected $fillable = [
         'cutoff_date', 'company_bv_paise', 'pool_rate_bp', 'pool_paise',
-        'total_points', 'point_value_paise', 'payout_paise', 'leftover_paise',
+        'total_points', 'point_value_paise', 'raw_point_value_paise',
+        'point_value_cap_paise', 'payout_paise', 'leftover_paise',
     ];
 
     protected function casts(): array
@@ -53,6 +56,8 @@ final class MsbDailyPool extends Model
             'pool_paise' => 'integer',
             'total_points' => 'integer',
             'point_value_paise' => 'integer',
+            'raw_point_value_paise' => 'integer',
+            'point_value_cap_paise' => 'integer',
             'payout_paise' => 'integer',
             'leftover_paise' => 'integer',
         ];

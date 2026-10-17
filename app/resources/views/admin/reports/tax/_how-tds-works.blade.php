@@ -26,11 +26,10 @@
             not agree inside a short window. Neither is wrong; they answer different questions.
         </p>
         <p>
-            <strong>TDS may be less than {{ $tds_rate }} of the payable shown.</strong> Payable here is
-            <em>gross − repurchase deduction − admin charge</em>. On a monthly batch the tax is
-            computed on a narrower base that leaves out Lifetime Award cash already taxed when it was
-            delivered, and that base is not stored anywhere, so it cannot be shown as a column. The
-            register therefore shows payable and TDS and never a "TDS base".
+            <strong>TDS is {{ $tds_rate }} of the payable shown.</strong> Payable here is
+            <em>gross − repurchase deduction − admin charge</em>, on weekly and monthly batches alike,
+            rounded to the paisa and never more than the payable itself. Lifetime Awards are
+            merchandise only and never reach a payout, so nothing is left out of the base.
         </p>
         <p>
             <strong>PAN is masked, and only masked.</strong> The register reads the last four digits

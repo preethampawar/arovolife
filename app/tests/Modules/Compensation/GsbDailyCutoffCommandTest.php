@@ -8,10 +8,12 @@ use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbDailyPool;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\MsbDailyPool;
+use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GsbDailyPoolPricingFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -109,6 +111,46 @@ it('freezes one MSB pool for the day and prices every sponsor from it', function
     }
     expect((int) $rows->sum('mb_gross_paise'))->toBe($pool->payout_paise);
     expect($pool->payout_paise)->toBeLessThanOrEqual($pool->pool_paise);
+});
+
+it('keeps a repurchase-gated sponsor\'s points out of the day\'s MSB denominator and records them (client 2026-10-09)', function (): void {
+    // Sponsor A eligible, sponsor B (never ranked) failed on the cut-off day:
+    // both sponsees match slab 1 → 21 points apiece, only A's join the divisor.
+    [$sponsorA] = seedGsbCreditingPair();
+    $sponsorB = Distributor::factory()->create(['status' => 'active', 'adn' => '100000003']);
+    $sponseeB = Distributor::factory()->create(['status' => 'active', 'adn' => '100000004']);
+    BvLedgerEntry::create(['distributor_id' => $sponseeB->id, 'order_id' => 999_003, 'bv_paise' => 300_000, 'type' => 'accrual', 'effective_at' => now()]);
+    BvLedgerEntry::create(['distributor_id' => $sponsorB->id, 'order_id' => 999_004, 'bv_paise' => 60_000, 'type' => 'accrual', 'effective_at' => now()]);
+    GroupBvDaily::create(['distributor_id' => $sponseeB->id, 'date' => today()->toDateString(), 'left_bv_paise' => 2_000_000, 'right_bv_paise' => 1_600_000]);
+    DB::table('sponsorship')->insert(['sponsor_id' => $sponsorB->id, 'distributor_id' => $sponseeB->id, 'created_at' => now()]);
+    RepurchaseCycle::create([
+        'distributor_id' => $sponsorB->id,
+        'cycle_start_date' => today()->subDays(32)->toDateString(),
+        'due_date' => today()->subDays(3)->toDateString(),
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 0,
+        'status' => RepurchaseCycle::STATUS_SUSPENDED,
+        'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
+        'resolved_at' => today()->subDays(2)->toDateTimeString(),
+    ]);
+
+    Feature::for(null)->activate(GenosSalesBonusFeature::class);
+    Feature::for(null)->activate(MentorshipBonusFeature::class);
+    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+
+    expect(Artisan::call('gsb:daily-cutoff', ['--in-flight' => true, '--force' => true]))->toBe(0);
+
+    $pool = MsbDailyPool::whereDate('cutoff_date', today()->toDateString())->sole();
+    expect($pool->total_points)->toBe(21);
+
+    $rowA = MentorshipBonusResult::where('sponsor_id', $sponsorA->id)->sole();
+    expect($rowA->status)->toBe(MentorshipBonusResult::STATUS_CREDITED)
+        ->and($rowA->mb_gross_paise)->toBe(21 * $pool->point_value_paise);
+
+    $rowB = MentorshipBonusResult::where('sponsor_id', $sponsorB->id)->sole();
+    expect($rowB->status)->toBe(MentorshipBonusResult::STATUS_REPURCHASE_GATED)
+        ->and($rowB->msb_points)->toBe(21)
+        ->and($rowB->mb_gross_paise)->toBe(0);
 });
 
 it('does not re-price or double-pay MSB when the day is re-run', function (): void {

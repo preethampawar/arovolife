@@ -98,7 +98,7 @@ final class AdminFeatureFlagController extends Controller
                 'class' => RepurchaseEngineFeature::class,
                 'label' => 'Repurchase / income-eligibility engine (Phase 4)',
                 'requires' => ['compensation.genos_sales_bonus'],
-                'description' => 'When ON, each distributor\'s rolling 30-day repurchase window is judged once on its last day (self-purchase BV met AND repurchase wallet ₹0). From the day after a missed due date until they fulfil, that distributor\'s Genos BV is not counted: no GSB match those days and no rank qualification from them — forfeited, never released. The month-end repurchase-wallet gate on Growth Booster, Fortune, rank requalification and AO-GO is separate and stays on. Never Mentorship or ADC. When OFF, repurchase status is ignored. Run repurchase:evaluate daily.',
+                'description' => 'When ON, each distributor\'s rolling 30-day repurchase window is judged once on its last day (self-purchase BV met AND repurchase wallet ₹0). From the day after a missed due date until they fulfil, that distributor\'s Genos BV is not counted: no GSB match those days and no rank qualification from them — forfeited, never released. There is no month-end repurchase-wallet gate on Growth Booster, Fortune, rank requalification or AO-GO. Never Mentorship or ADC. When OFF, repurchase status is ignored. Run repurchase:evaluate daily.',
                 'owner' => 'developer',
             ],
             'compensation.growth_booster_bonus' => [

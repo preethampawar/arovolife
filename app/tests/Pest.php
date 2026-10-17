@@ -11,6 +11,7 @@ use Database\Seeders\FortuneBonusLevelsSeeder;
 use Database\Seeders\FortuneBonusTiersSeeder;
 use Database\Seeders\GsbSlabsSeeder;
 use Database\Seeders\LifetimeAwardRewardsSeeder;
+use Database\Seeders\LifetimeAwardTranchesSeeder;
 use Database\Seeders\RankTiersSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -59,6 +60,7 @@ function seedCompensationPlanTables(): void
         RankTiersSeeder::class,
         FortuneBonusLevelsSeeder::class,
         FortuneBonusTiersSeeder::class,
+        LifetimeAwardTranchesSeeder::class,
         LifetimeAwardRewardsSeeder::class,
     ] as $seeder) {
         (new $seeder)->run();

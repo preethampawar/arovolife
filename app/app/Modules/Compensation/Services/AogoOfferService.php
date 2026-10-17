@@ -9,29 +9,37 @@ use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Services\DTOs\AogoCondition;
 use App\Modules\Compensation\Services\DTOs\AogoRuleCheck;
 use App\Modules\Compensation\Services\DTOs\AogoStatus;
+use App\Modules\Shared\Support\IndianNumber;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
  * AO-GO ("Achieve Once – Get Once") offer — KP 2026-08-05, replaces the
- * retired "1+2 rule" carry-forward.
+ * retired "1+2 rule" carry-forward; window rule rewritten by the user's
+ * decision of 2026-10-17.
  *
- * A distributor who genuinely achieved a rank at least once but holds no rank
- * this month earns `comp.rank.aogo_points` (default 5) in the Rank-1 pool,
- * subject to (all confirmed 2026-08-05):
- *  1. lifetime uses < `comp.rank.aogo_lifetime_max` (default 3);
- *  2. never in consecutive months;
- *  3. grants #2/#3 require a rank re-achieved in a month after the previous
- *     grant;
- *  4. the month's requalification conditions (Rank-1 repurchase BV + wallet
- *     cleared) — a failed month consumes NOTHING; the offer stays available
- *     for a later eligible month.
+ * AO-GO can only be granted in the month IMMEDIATELY after a month in which
+ * the distributor genuinely achieved a rank (call that month M). In M+1 the
+ * distributor earns `comp.rank.aogo_points` in pass 1 of the Rank Bonus pool
+ * when all of these hold:
+ *  1. a rank achieved in M (a carry-forward row is not an achievement);
+ *  2. no rank held in M+1;
+ *  3. lifetime uses < `comp.rank.aogo_lifetime_max` (default 3);
+ *  4. own purchase BV in M+1 ≥ the repurchase BV of the rank achieved in M
+ *     (rank_tiers.repurchase_bv_paise — Rank 3 → 1,200 BV, not always Rank 1's
+ *     1,000).
  *
- * Rules 1–3 are decided in exactly one place, {@see checkRules()}; the source
- * rows are selected through the `achieved()` / `rankedInMonth()` / `live()`
- * model scopes. The monthly run and the read-only checklists therefore share
- * both the predicates and the decision — what is paid and what is displayed
- * cannot drift.
+ * A miss is final: if the BV falls short in M+1 there is no grant, and M+2 is
+ * never considered — the offer comes back only after a new rank achievement.
+ * There is no repurchase-wallet condition. The old "never in consecutive
+ * months" and "rank re-achieved between uses" rules now hold by construction
+ * (the month before a grant always carries a rank achievement), so they are no
+ * longer checked.
+ *
+ * Rules 1–3 are decided in exactly one place, {@see checkRules()}, and rule 4
+ * by {@see RankRequalificationGateService::passMapByRank()}. The monthly run
+ * and the read-only checklist share both, so what is paid and what is
+ * displayed cannot drift.
  */
 final class AogoOfferService
 {
@@ -49,20 +57,11 @@ final class AogoOfferService
     public function grantForMonth(Carbon $month): Collection
     {
         $monthStart = $month->copy()->startOfMonth()->toDateString();
-        $prevMonthStart = $month->copy()->startOfMonth()->subMonth()->toDateString();
 
-        // Everyone who genuinely achieved a rank before this month, with their
-        // latest achievement month and highest rank ever held (audit column).
-        $history = RankQualification::query()
-            ->achieved()
-            ->where('month_start', '<', $monthStart)
-            ->toBase()
-            ->groupBy('distributor_id')
-            ->selectRaw('distributor_id, MAX(month_start) as last_qual_month, MAX(rank_number) as highest_rank')
-            ->get();
+        $lastMonthRanks = $this->ranksAchievedLastMonth($month);
 
-        if ($history->isNotEmpty()) {
-            $candidateIds = $history->pluck('distributor_id')->map(fn ($id) => (int) $id)->all();
+        if ($lastMonthRanks !== []) {
+            $candidateIds = array_keys($lastMonthRanks);
 
             $rankedNow = RankQualification::query()
                 ->rankedInMonth($monthStart)
@@ -85,19 +84,18 @@ final class AogoOfferService
 
             $points = $this->plan->aogoPointsPerGrant();
 
+            /** @var array<int, array{grant_number: int, previous_rank_number: int}> $eligible */
             $eligible = [];
-            foreach ($history as $row) {
-                $distributorId = (int) $row->distributor_id;
+            foreach ($lastMonthRanks as $distributorId => $rank) {
                 $agg = $grantAgg->get($distributorId);
                 $used = $agg !== null ? (int) $agg->used : 0;
 
                 $check = $this->checkRules(
-                    lastQualMonth: (string) $row->last_qual_month,
+                    rankLastMonth: $rank,
                     rankedThisMonth: $rankedNow->has($distributorId),
                     used: $used,
                     lastGrantMonth: $agg?->last_grant_month !== null ? (string) $agg->last_grant_month : null,
                     monthStart: $monthStart,
-                    prevMonthStart: $prevMonthStart,
                 );
 
                 if ($check->alreadyGrantedThisMonth || ! $check->structurallyEligible()) {
@@ -106,14 +104,17 @@ final class AogoOfferService
 
                 $eligible[$distributorId] = [
                     'grant_number' => $used + 1,
-                    'previous_rank_number' => (int) $row->highest_rank,
+                    'previous_rank_number' => $rank,
                 ];
             }
 
-            // Requalification conditions (Rank-1 repurchase BV + wallet
-            // cleared). Failing here creates no grant and consumes no use.
+            // Own purchase BV of the rank achieved last month. A miss creates no
+            // grant, and next month is never considered (no achievement then).
             if ($eligible !== []) {
-                $passMap = $this->gate->passMap(array_keys($eligible), $month, rank: 1);
+                $passMap = $this->gate->passMapByRank(
+                    array_map(fn (array $meta): int => $meta['previous_rank_number'], $eligible),
+                    $month,
+                );
 
                 foreach ($eligible as $distributorId => $meta) {
                     if (! ($passMap[$distributorId] ?? false)) {
@@ -150,18 +151,10 @@ final class AogoOfferService
     public function eligibilityFor(int $distributorId, Carbon $month): AogoStatus
     {
         $monthStart = $month->copy()->startOfMonth()->toDateString();
-        $prevMonthStart = $month->copy()->startOfMonth()->subMonth()->toDateString();
 
-        $lastQual = RankQualification::query()
-            ->achieved()
-            ->where('distributor_id', $distributorId)
-            ->where('month_start', '<', $monthStart)
-            ->max('month_start');
-        $lastQualMonth = $lastQual !== null ? (string) $lastQual : null;
+        $rankLastMonth = $this->ranksAchievedLastMonth($month, $distributorId)[$distributorId] ?? null;
 
-        // An achievement in this month or later still counts as "ever ranked"
-        // for the purpose of showing the offer at all.
-        $everAchieved = $lastQualMonth !== null || RankQualification::query()
+        $everAchieved = RankQualification::query()
             ->achieved()
             ->where('distributor_id', $distributorId)
             ->exists();
@@ -182,12 +175,11 @@ final class AogoOfferService
         $lifetimeMax = $this->plan->aogoLifetimeMax();
 
         $check = $this->checkRules(
-            lastQualMonth: $lastQualMonth,
+            rankLastMonth: $rankLastMonth,
             rankedThisMonth: $rankedNow,
             used: $used,
             lastGrantMonth: $grants?->last_grant_month !== null ? (string) $grants->last_grant_month : null,
             monthStart: $monthStart,
-            prevMonthStart: $prevMonthStart,
         );
 
         $thisMonthGrant = RankAogoGrant::query()
@@ -196,11 +188,15 @@ final class AogoOfferService
             ->where('month_start', $monthStart)
             ->first();
 
+        $rankNames = $this->plan->rankNames();
+
         $conditions = [
             new AogoCondition(
-                label: 'A rank achieved in an earlier month',
-                met: $check->achievedBefore,
-                note: 'The offer is only for distributors who have genuinely achieved a rank at least once before this month.',
+                label: $rankLastMonth !== null
+                    ? 'A rank achieved last month ('.($rankNames[$rankLastMonth] ?? 'Rank '.$rankLastMonth).')'
+                    : 'A rank achieved last month',
+                met: $check->achievedLastMonth,
+                note: 'The offer applies only in the month right after a month in which you achieved a rank. If that month passes without the offer, it is not carried to a later month.',
             ),
             new AogoCondition(
                 label: 'No rank held this month',
@@ -214,25 +210,17 @@ final class AogoOfferService
             ),
         ];
 
-        // Rules 2 and 3 only bite once the offer has been used at least once.
-        if ($used > 0) {
+        if ($rankLastMonth !== null) {
+            $requiredBvPaise = $this->plan->rankRepurchaseBvPaise($rankLastMonth);
+            $bvSoFarPaise = $this->gate->monthlyPersonalBvSoFarPaise($distributorId, $month);
+
             $conditions[] = new AogoCondition(
-                label: 'Not used last month',
-                met: $check->notUsedLastMonth,
-                note: 'The offer can never be used in two consecutive months.',
-            );
-            $conditions[] = new AogoCondition(
-                label: 'A rank re-achieved since your last use',
-                met: $check->reAchievedSinceLastUse,
-                note: 'After using the offer you must achieve a rank again in a later month before it can be used the next time.',
+                label: 'Your own purchases this month: at least '.IndianNumber::format(intdiv($requiredBvPaise, 100)).' BV (as things stand today)',
+                met: $bvSoFarPaise >= $requiredBvPaise,
+                note: 'The monthly purchase BV of the rank you achieved last month. Your purchases so far this month: '
+                    .IndianNumber::format(intdiv($bvSoFarPaise, 100)).' BV.',
             );
         }
-
-        $conditions[] = new AogoCondition(
-            label: "This month's requalification conditions (as things stand today)",
-            met: $this->gate->passesSoFar($distributorId, $month, rank: 1),
-            note: 'The Rank-1 repurchase BV for the month completed and your repurchase wallet cleared. This is how the month looks right now and it is checked again once the month has ended — money you are credited later this month lands in the repurchase wallet too. A month that misses this uses nothing: the offer stays available for a later month.',
-        );
 
         return new AogoStatus(
             everAchievedRank: $everAchieved,
@@ -251,30 +239,47 @@ final class AogoOfferService
     }
 
     /**
-     * The standing AO-GO rules, evaluated from the four facts they depend on.
-     * The only place these comparisons exist — grantForMonth() pays on them and
+     * The highest rank each distributor genuinely achieved in the month before
+     * $month (carry-forward rows excluded) — the AO-GO window and the rank whose
+     * repurchase BV the offer asks for.
+     *
+     * @return array<int, int> distributor id → rank number
+     */
+    private function ranksAchievedLastMonth(Carbon $month, ?int $distributorId = null): array
+    {
+        $prevMonthStart = $month->copy()->startOfMonth()->subMonth()->toDateString();
+
+        return RankQualification::query()
+            ->achieved()
+            ->where('month_start', $prevMonthStart)
+            ->when($distributorId !== null, fn ($q) => $q->where('distributor_id', $distributorId))
+            ->toBase()
+            ->groupBy('distributor_id')
+            ->selectRaw('distributor_id, MAX(rank_number) as rank_number')
+            ->get()
+            ->mapWithKeys(fn ($row): array => [(int) $row->distributor_id => (int) $row->rank_number])
+            ->all();
+    }
+
+    /**
+     * The standing AO-GO rules, evaluated from the facts they depend on. The
+     * only place these comparisons exist — grantForMonth() pays on them and
      * eligibilityFor() labels them.
      *
-     * @param  string|null  $lastQualMonth  latest genuine achievement BEFORE this month
+     * @param  int|null  $rankLastMonth  rank genuinely achieved in the month before, if any
      * @param  string|null  $lastGrantMonth  most recent live grant, this month included
      */
     private function checkRules(
-        ?string $lastQualMonth,
+        ?int $rankLastMonth,
         bool $rankedThisMonth,
         int $used,
         ?string $lastGrantMonth,
         string $monthStart,
-        string $prevMonthStart,
     ): AogoRuleCheck {
         return new AogoRuleCheck(
-            achievedBefore: $lastQualMonth !== null,
+            achievedLastMonth: $rankLastMonth !== null,
             notRankedThisMonth: ! $rankedThisMonth,
             usesRemaining: $used < $this->plan->aogoLifetimeMax(),
-            notUsedLastMonth: $lastGrantMonth !== $prevMonthStart,
-            // First use has nothing to re-achieve against; later uses need an
-            // achievement in a month strictly after the previous grant.
-            reAchievedSinceLastUse: $lastGrantMonth === null
-                || ($lastQualMonth !== null && $lastQualMonth > $lastGrantMonth),
             alreadyGrantedThisMonth: $lastGrantMonth === $monthStart,
         );
     }

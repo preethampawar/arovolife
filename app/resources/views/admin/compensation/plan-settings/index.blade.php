@@ -111,16 +111,17 @@
                 <li><strong>Ranks 1–2</strong> need the tier's Genos BV match on <strong>both sides within one calendar month</strong> (Rank 1: 2,50,000 per side; Rank 2: 6,00,000) plus the tier's lifetime personal BV (7,000 / 15,000).</li>
                 <li>Up to the tier's <strong>weaker-leg top-up</strong> (15,000 / 30,000 BV) of <strong>that month's</strong> personal purchase BV supplements the weaker side. Rank 1 may be skipped — Rank 2 is attainable directly.</li>
                 <li><strong>Ranks 3–9</strong> need the configured qualifiers of the previous rank on <strong>each</strong> Genos side, the tier's personal BV, and the candidate's own completed <strong>Q-Period</strong> of the rank below.</li>
-                <li>A <strong>2nd-or-later</strong> qualification of the same rank pays only if that month's repurchase BV is met and the repurchase wallet is clear — otherwise the row is held.</li>
+                <li>A <strong>2nd-or-later</strong> qualification of the same rank pays only if that month's repurchase BV is met from own purchases — otherwise the row is held.</li>
             </ol>
         </div>
 
         <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
-            <h3 class="text-xs font-semibold text-gray-700 mb-2">Paying — pool shares of the 20% envelope</h3>
+            <h3 class="text-xs font-semibold text-gray-700 mb-2">Paying — one 20% pool, two passes</h3>
             <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
-                <li>The month's <strong>envelope</strong> is the Rank envelope rate (20%) of the month's company-wide BV; each rank's <strong>pool</strong> is its Pool % share of that envelope.</li>
-                <li><strong>Rank 1 is points-based</strong>: every achiever earns the tier's RAP (10 points) and every AO-GO grantee 5 points. Point value = pool ÷ total points, floored to whole rupees; income = own points × value.</li>
-                <li><strong>Ranks 2–9 split their pool equally</strong> among that rank's paid achievers.</li>
+                <li>The month's <strong>envelope</strong> is the Rank envelope rate (20%) of the month's company-wide BV. It is one pool for every rank.</li>
+                <li><strong>Pass 1</strong>: the AO-GO grantees and the achievers of Ranks 1–3 share the whole envelope. Point value = envelope ÷ their total RAP, floored to whole rupees and capped at the Rank point value cap (₹200).</li>
+                <li><strong>Pass 2</strong>: the achievers of Ranks 4–9 share what pass 1 left, priced the same way. What pass 2 leaves stays with the company.</li>
+                <li>Income = own RAP × the point value of the pass. Every rank's RAP and both settings are listed on this page.</li>
                 <li>A distributor holding several ranks in one month is paid from their <strong>highest</strong> qualified rank only.</li>
             </ol>
         </div>
@@ -130,11 +131,11 @@
         <p class="font-semibold mb-1">Worked example — a 10,00,000 BV month</p>
         <p class="mb-1 text-[11px] text-blue-700">Illustrative arithmetic only — not an earnings projection.</p>
         <p>
-            Envelope = 20% = <strong>₹2,00,000</strong>, so the Rank 1 pool is its 7% share = <strong>₹14,000</strong>.
-            Two Silver achievers (10 RAP each) and one AO-GO grantee (5 points) make <strong>25 points</strong>.
-            Point value = 14,000 ÷ 25 = <strong>₹560</strong>.
-            Each achiever earns 10 × 560 = ₹5,600 and the AO-GO grantee 5 × 560 = ₹2,800 —
-            <strong>₹14,000</strong> in total, exactly the pool.
+            Envelope = 20% = <strong>₹2,00,000</strong>, one pool for every rank.
+            Two Silver achievers (72 RAP each) and one AO-GO grantee (36 points) make <strong>180 points</strong> in pass 1.
+            2,00,000 ÷ 180 = ₹1,111 a point, above the cap, so the point value is <strong>₹200</strong>.
+            Each achiever earns 72 × 200 = ₹14,400 and the AO-GO grantee 36 × 200 = ₹7,200 — <strong>₹36,000</strong>.
+            The remaining ₹1,64,000 is pass 2's pool for Ranks 4–9; with nobody there it stays with the company.
         </p>
     </div>
 
@@ -153,10 +154,10 @@
 
     <div class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
         <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
-            <li>Only distributors who held <strong>no rank in the previous month</strong> are eligible (reaching a first rank in the current month is fine).</li>
-            <li><strong>AGP</strong> (arovolife Growth Points) accrue per GSB slab match during the month — <strong>12</strong> for slab 1, <strong>5</strong> for slab 2, <strong>2</strong> for slab 3, none above — capped at <strong>120 AGP</strong> per month, nothing carried over.</li>
-            <li>The month's <strong>pool</strong> is the GBB monthly pool rate (4%) of the month's company-wide BV.</li>
-            <li><strong>Point value = pool ÷ the total AGP of all eligible distributors</strong>, floored to whole rupees; income = <strong>own AGP × that value</strong>. A distributor still holding repurchase-wallet money at the last instant of the month forfeits it — their AGP is left out of the denominator and nothing is ever paid back. The repurchase cycle itself never withholds GBB: a failed day produced no slab match, so no AGP came from it.</li>
+            <li>Only distributors who have <strong>never held a rank</strong> are eligible (the month a first rank is reached still pays GBB; from the next month it stops for good).</li>
+            <li><strong>AGP</strong> (arovolife Growth Points) accrue per GSB slab match during the month — <strong>12</strong> for slab 1, <strong>5</strong> for slab 2, <strong>2</strong> for slab 3, none above — no per-distributor cap, nothing carried over.</li>
+            <li>The month's <strong>pool</strong> is the Growth Booster pool rate (currently {{ \App\Modules\Shared\Support\IndianNumber::percentFromBp($gbbPoolRateBp) }}) of the month's company-wide BV.</li>
+            <li><strong>Point value = pool ÷ the total AGP of all eligible distributors</strong>, floored to whole rupees and capped at the Growth Booster point value cap (@if($gbbPointValueCapPaise !== null)currently ₹{{ \App\Modules\Shared\Support\IndianNumber::format(intdiv($gbbPointValueCapPaise, 100)) }}@else currently a value the engine refuses — no month can be frozen until it is corrected in Settings @endif — the difference stays with the company); income = <strong>own AGP × that value</strong>. No month-end repurchase condition withholds GBB (user decision 2026-10-17): a failed repurchase day only produces no slab, and so no AGP, that day.</li>
         </ol>
     </div>
 
@@ -188,7 +189,7 @@
             <h3 class="text-xs font-semibold text-gray-700 mb-2">The monthly matrix &amp; points</h3>
             <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
                 <li>A <strong>3-wide, 9-level forced matrix</strong> is rebuilt from scratch every month; qualifiers enrol <strong>first-come first-served</strong> by the date of their first GSB credit.</li>
-                <li>Qualification is per tier (the Fortune Bonus tab below): the tier's personal BV plus its required count of GSB slab achievements in the month, with a clear repurchase wallet. Ranks 6–9 are not eligible.</li>
+                <li>Qualification is per tier (the Fortune Bonus tab below): the tier's personal BV plus its required count of GSB slab achievements in the month. Ranks 6–9 are not eligible.</li>
                 <li>Points come from members placed <strong>below</strong> you: 9 points per member one level down, 8 for two levels, … 1 for nine levels (editable on the matrix-levels table).</li>
             </ol>
         </div>
@@ -261,10 +262,10 @@
 
     <div class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
         <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
-            <li>Lifetime Awards are <strong>non-cash milestones</strong>, not a pool: a distributor's first qualification at a rank creates one milestone worth that rank's <strong>lifetime award budget</strong> (the itemised reward catalogue — insurance, trips, gold, down payments…).</li>
-            <li>A milestone becomes <strong>releasable only after re-qualification</strong>: ranks 1–2 need 1 lifetime qualification, ranks 3–5 need 2, ranks 6–9 need 3.</li>
-            <li>Awards delivered as <strong>goods</strong> carry no admin charge or TDS; only a component released as cash/cheque is charged.</li>
-            <li>Each rank is awarded <strong>once per lifetime</strong> — there is no monthly recurrence.</li>
+            <li>Lifetime Awards are <strong>merchandise milestones</strong>, not a pool: each rank's award is split into tranches (A, B, C) whose amounts sum to the rank's <strong>lifetime award budget</strong>; the catalogue lists the merchandise per tranche.</li>
+            <li>Tranche A is released on a distributor's <strong>1st</strong> qualification at the rank, B on the <strong>2nd</strong>, C on the <strong>3rd</strong>. Ranks 1–2 have one tranche, ranks 3–5 two, ranks 6–9 three (the client, 2026-10-09).</li>
+            <li>Awards are <strong>merchandise only, never cash</strong>: no admin charge, no TDS, no wallet credit.</li>
+            <li>Each tranche is awarded <strong>once per lifetime</strong> — there is no monthly recurrence.</li>
         </ol>
     </div>
 
@@ -272,10 +273,9 @@
         <p class="font-semibold mb-1">Worked example — an Emerald (Rank 3) milestone</p>
         <p class="mb-1 text-[11px] text-blue-700">Illustrative only — not an earnings projection.</p>
         <p>
-            A distributor's first Rank 3 qualification creates a milestone against the Rank 3 budget of
-            <strong>₹90,000</strong> (health insurance + a foreign trip + gold).
-            Rank 3 requires <strong>2</strong> lifetime qualifications, so the award is deliverable only after they
-            qualify at Rank 3 a second time — until then it stays pending.
+            Rank 3 carries a budget of <strong>₹1,08,000</strong> in two tranches. A distributor's first Rank 3
+            qualification opens tranche A (<strong>₹48,600</strong> of merchandise), releasable at once. Their second
+            Rank 3 qualification opens tranche B (<strong>₹59,400</strong>) — until then only tranche A can be delivered.
         </p>
     </div>
 
@@ -420,7 +420,7 @@
               data-editable
               data-confirm="Update rank {{ $row->rank_number }} ({{ $row->rank_name }})?"
               data-confirm-title="Confirm: Rank {{ $row->rank_number }}"
-              data-confirm-impact="Changes rank qualification and pool % for all distributors. Audit-logged; takes effect on the next monthly run."
+              data-confirm-impact="Changes rank qualification and Rank Achievement Points for all distributors. Audit-logged; takes effect on the next monthly run."
               class="rounded-xl border border-gray-200 bg-white p-4">
             @csrf
             {{-- Plan values are shown to every console role for monitoring;
@@ -435,18 +435,13 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Pool % <x-help-tip text="This rank's share of the company Rank Bonus pool, as a percent of monthly turnover." /></label>
-                    <input type="number" step="0.01" name="pool_pct" data-field-label="Pool %" value="{{ rtrim(rtrim(number_format($row->pool_pct, 2, '.', ''), '0'), '.') }}" required min="0" max="100"
-                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
-                </div>
-                <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Q-Period (PYP) <x-help-tip text="Times this rank must be achieved (distinct months) before the NEXT rank opens for the distributor. KP 2026-08-05: R1/R2 = 1, R3–R5 = 2, R6–R9 = 3." /></label>
                     <input type="number" name="pyp_required" data-field-label="Q-Period (PYP)" value="{{ $row->pyp_required }}" required min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">RAP points <x-help-tip text="Rank Achievement Points per achiever. When set, this rank's pool is divided by total points (achievers × RAP + AO-GO points) and each participant is paid points × point value. Leave blank for an equal split among achievers (ranks 2–9). KP 2026-08-05: Rank 1 = 10." /></label>
-                    <input type="number" name="rap_points" data-field-label="RAP points" value="{{ $row->rap_points }}" min="0"
+                    <label class="block text-xs font-medium text-gray-600 mb-1">RAP points <x-help-tip text="Rank Achievement Points per achiever (client 2026-10-05: 72 / 189 / 468 / 1,125 / 2,583 / 5,688 / 11,934 / 23,877 / 39,501). Each achiever is paid RAP × the point value of their pass; the AGO offer and Ranks 1–3 are priced in pass 1, Ranks 4–9 in pass 2." /></label>
+                    <input type="number" name="rap_points" data-field-label="RAP points" value="{{ $row->rap_points }}" required min="1"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                 </div>
                 <div>

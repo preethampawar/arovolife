@@ -9,6 +9,7 @@ use App\Modules\Compensation\Services\DTOs\EngineChainPlan;
 use App\Modules\Compensation\Services\DTOs\EngineChainStep;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EngineRegistry;
+use App\Modules\Compensation\Support\RankQualificationsGate;
 use Illuminate\Support\Carbon;
 use Laravel\Pennant\Feature;
 
@@ -167,6 +168,10 @@ final class EngineChainResolver
             );
         }
 
+        if ($expand === 'prior-months') {
+            return $this->monthsMissingRankCheck($prerequisite, $period);
+        }
+
         if (($dependency['shift'] ?? null) === 'prev-month') {
             return [$prerequisite->periodStart($period->copy()->startOfMonth()->subMonthNoOverflow())];
         }
@@ -203,6 +208,31 @@ final class EngineChainResolver
         $warnings['Repurchase Evaluation was left out for past dates: it refreshes each cycle as at today, so re-running it for an old date would overwrite current repurchase status.'] = true;
 
         return [];
+    }
+
+    /**
+     * Every month before $period whose Rank Qualification Check Growth
+     * Booster's lifetime exclusion still needs, oldest first — the same walk
+     * the GBB command refuses on ({@see RankQualificationsGate::monthsMissingCheck()}),
+     * so a trigger fills every gap instead of ending in a refusal naming an
+     * older one. M−1 is always proposed, as it was before the walk existed:
+     * a check for a quiet month is harmless, and visit() still leaves out any
+     * month already computed.
+     *
+     * @return list<Carbon>
+     */
+    private function monthsMissingRankCheck(EngineDefinition $prerequisite, Carbon $period): array
+    {
+        $lastMonth = $prerequisite->periodStart($period->copy()->startOfMonth()->subMonthNoOverflow());
+
+        $months = [];
+        foreach ([...RankQualificationsGate::monthsMissingCheck($lastMonth), $lastMonth] as $month) {
+            $months[$month->format('Y-m')] = $month;
+        }
+
+        ksort($months);
+
+        return array_values($months);
     }
 
     /**

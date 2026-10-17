@@ -236,10 +236,9 @@ it('spends the repurchase balance the cycle is judged on, and not a paisa that l
 it('settles the calendar month end as well as the cycle close, because different engines read each', function (): void {
     Artisan::call('compensation:seed-paying-period', ['--month' => '2026-08', '--force' => true]);
 
-    // A cycle opened 02 Jul is judged on 01 Aug. The monthly gates
-    // (RepurchaseWalletGateService::clearedAtMonthEnd) instead read 31 Jul
-    // 23:59:59, so a fixture that settles only the cycle leaves every monthly
-    // bonus blocked through a month whose daily bonuses pay.
+    // A cycle opened 02 Jul is judged on 01 Aug. The fixture also settles the
+    // calendar month end (31 Jul 23:59:59) so every fixture wallet sits at ₹0
+    // there; no engine reads that instant since 2026-10-17.
     DB::table('repurchase_cycles')->insert([
         'distributor_id' => 2,
         'cycle_start_date' => '2026-07-02',

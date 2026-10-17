@@ -116,6 +116,27 @@ it('F90: labels the weaker BV figure with an explicit Left/Right side', function
         ->assertSee('weaker (Right)', false);
 });
 
+it('offers only the live statuses as filters and rejects anything else', function () {
+    $admin = reportAdmin();
+
+    $html = $this->actingAs($admin)
+        ->get(route('admin.compensation.gsb-calculation.index'))
+        ->assertOk()
+        ->getContent();
+
+    preg_match('/<select name="status".*?<\/select>/s', (string) $html, $select);
+    preg_match_all('/<option value="([^"]*)"/', $select[0] ?? '', $values);
+    expect($values[1])->toBe(['', 'credited', 'calculated', 'reversed']);
+
+    $this->actingAs($admin)
+        ->get(route('admin.compensation.gsb-calculation.index', ['status' => 'reversed']))
+        ->assertOk();
+
+    $this->actingAs($admin)
+        ->get(route('admin.compensation.gsb-calculation.index', ['status' => 'nonsense']))
+        ->assertSessionHasErrors('status');
+});
+
 it('filters by ADN search', function () {
     $a = reportDistributor('ADNAAA', 'Alice');
     $b = reportDistributor('ADNBBB', 'Bob');

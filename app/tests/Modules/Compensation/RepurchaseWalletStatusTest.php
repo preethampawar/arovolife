@@ -21,27 +21,26 @@ it('escalates the tone by days left in the cycle while the wallet holds a balanc
     ['2026-09-30', 'red'],    // 1 left
 ]);
 
-it('follows the distributor own cycle end when it falls before the month end', function () {
-    // Anchored on the 20th of August: the window closes on 19 September, well
-    // before the month-end gate, and on the 5th they have 15 days.
+it('follows the distributor own cycle end', function () {
+    // Anchored on the 21st of August: the window closes on 19 September, and
+    // on the 5th they have 15 days.
     $status = RepurchaseWalletStatus::for(50_000, Carbon::parse('2026-09-05'), Carbon::parse('2026-09-19'));
 
     expect($status->tone)->toBe('amber')
-        ->and($status->deadline->toDateString())->toBe('2026-09-19')
+        ->and($status->deadline?->toDateString())->toBe('2026-09-19')
         ->and($status->detail())->toBe('Bring this to ₹0 by 19 Sep — 15 days left');
 });
 
-it('counts down to the month-end gate when the cycle runs past it', function () {
-    // Anchored on the 8th: the window closes on 8 October, but the monthly
-    // bonus engines read the wallet at the last instant of September first —
-    // a countdown to 8 October would let September's Growth Booster and
-    // Fortune be forfeited while the pill still read "on track".
+it('counts down past the month end to the cycle end — there is no month-end wallet date', function () {
+    // User decision 2026-10-17: the wallet is judged only on the cycle's last
+    // day, so a window closing on 8 October counts down to 8 October even on
+    // 25 September.
     $status = RepurchaseWalletStatus::for(50_000, Carbon::parse('2026-09-25'), Carbon::parse('2026-10-08'));
 
-    expect($status->tone)->toBe('red')
-        ->and($status->deadline->toDateString())->toBe('2026-09-30')
+    expect($status->tone)->toBe('amber')
+        ->and($status->deadline?->toDateString())->toBe('2026-10-08')
         ->and($status->overdue())->toBeFalse()
-        ->and($status->detail())->toBe('Bring this to ₹0 by 30 Sep — 6 days left');
+        ->and($status->detail())->toBe('Bring this to ₹0 by 08 Oct — 14 days left');
 });
 
 it('reports one day left on the last day of the cycle', function () {
@@ -65,9 +64,13 @@ it('says the window was missed once its last day has passed with a balance', fun
         ->and($status->detail())->toBe('Your repurchase window closed on 28 Feb with a balance — your Genos BV for each day until this is ₹0 is not counted.');
 });
 
-it('falls back to month end for a distributor with no cycle yet', function () {
-    expect(RepurchaseWalletStatus::for(50_000, Carbon::parse('2026-09-05'))->detail())
-        ->toBe('Bring this to ₹0 by 30 Sep — 26 days left');
+it('shows no countdown for a distributor with no cycle', function () {
+    $status = RepurchaseWalletStatus::for(50_000, Carbon::parse('2026-09-05'));
+
+    expect($status->tone)->toBe('green')
+        ->and($status->deadline)->toBeNull()
+        ->and($status->overdue())->toBeFalse()
+        ->and($status->detail())->toBe('Spend this at checkout on your own purchases.');
 });
 
 it('shows the cleared state whatever the day once the balance is zero', function () {

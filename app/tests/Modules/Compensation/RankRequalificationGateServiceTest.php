@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\RankRequalificationGateService;
 use App\Modules\Identity\Models\Distributor;
@@ -18,7 +17,7 @@ beforeEach(function (): void {
     disableTestForeignKeys();
 });
 
-/** Personal-purchase BV dated inside the month — condition (a) of the §8 gate. */
+/** Personal-purchase BV dated inside the month — the §8 gate's only condition. */
 function requalSeedMonthlyBv(int $distributorId, int $bvPaise, string $date): void
 {
     static $fakeOrderId = 960000;
@@ -34,7 +33,7 @@ function requalSeedMonthlyBv(int $distributorId, int $bvPaise, string $date): vo
     ]);
 }
 
-/** A repurchase-wallet movement in the ledger — condition (b) of the §8 gate. */
+/** A repurchase-wallet movement in the ledger — which the §8 gate no longer reads. */
 function requalSeedWalletEntry(int $distributorId, int $amountPaise, string $type, string $createdAt): void
 {
     DB::table('wallet_ledger_entries')->insert([
@@ -58,9 +57,10 @@ function requalSeedSufficientBv(int $distributorId): void
     );
 }
 
-it('passes a distributor with enough BV and an empty repurchase wallet at month end', function (): void {
-    Feature::for(null)->activate(RepurchaseEngineFeature::class);
+// §8 requalification: the month's own purchase BV ≥ the rank's repurchase BV.
+// No wallet condition since the user's decision of 2026-10-17.
 
+it('passes a distributor with enough BV in the month', function (): void {
     $dist = Distributor::factory()->create();
     requalSeedSufficientBv($dist->id);
 
@@ -68,81 +68,9 @@ it('passes a distributor with enough BV and an empty repurchase wallet at month 
         ->toBeTrue();
 });
 
-it('reads the wallet condition as the month-end balance, not the cycle verdict', function (): void {
-    // Client 2026-09-05, re-confirmed 2026-09-07. The repurchase CYCLE no
-    // longer decides this gate: a distributor whose cycle lapsed but whose
-    // repurchase wallet is empty at month end meets condition (b).
+it('passes a distributor still holding repurchase wallet money at month end — there is no wallet condition', function (): void {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
-    $dist = Distributor::factory()->create();
-    requalSeedSufficientBv($dist->id);
-
-    RepurchaseCycle::create([
-        'distributor_id' => $dist->id,
-        'cycle_start_date' => '2026-05-01',
-        'due_date' => '2026-05-31',
-        'required_bv_paise' => 60_000,
-        'completed_bv_paise' => 0,
-        'wallet_balance_paise' => 0,
-        'wallet_zeroed' => true,
-        'status' => RepurchaseCycle::STATUS_SUSPENDED,
-        'failure_reason' => RepurchaseCycle::REASON_BV_SHORT,
-        'resolved_at' => Carbon::parse('2026-06-01 00:05:00'),
-    ]);
-
-    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
-        ->toBeTrue();
-});
-
-it('fails a distributor still holding repurchase wallet money at month end, even on a completed cycle', function (): void {
-    Feature::for(null)->activate(RepurchaseEngineFeature::class);
-
-    $dist = Distributor::factory()->create();
-    requalSeedSufficientBv($dist->id);
-    requalSeedWalletEntry($dist->id, 50_000, 'repurchase_deduction', '2026-06-20 09:00:00');
-
-    RepurchaseCycle::create([
-        'distributor_id' => $dist->id,
-        'cycle_start_date' => '2026-05-01',
-        'due_date' => '2026-05-31',
-        'required_bv_paise' => 60_000,
-        'completed_bv_paise' => 60_000,
-        'wallet_balance_paise' => 0,
-        'wallet_zeroed' => true,
-        'status' => RepurchaseCycle::STATUS_COMPLETED,
-        'fulfilled_on' => '2026-05-20',
-        'failure_reason' => null,
-        'resolved_at' => Carbon::parse('2026-06-01 00:05:00'),
-    ]);
-
-    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
-        ->toBeFalse();
-});
-
-it('ignores a repurchase-wallet balance that only appears after the month closed', function (): void {
-    Feature::for(null)->activate(RepurchaseEngineFeature::class);
-
-    $dist = Distributor::factory()->create();
-    requalSeedSufficientBv($dist->id);
-
-    // The June run credits a bonus on 1 July; the deduction it takes lands
-    // after June closed and cannot retroactively fail June.
-    requalSeedWalletEntry($dist->id, 50_000, 'repurchase_deduction', '2026-07-01 00:06:00');
-
-    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
-        ->toBeTrue();
-});
-
-it('fails a distributor short of the rank\'s monthly repurchase BV whatever the wallet says', function (): void {
-    Feature::for(null)->activate(RepurchaseEngineFeature::class);
-
-    $dist = Distributor::factory()->create();
-
-    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
-        ->toBeFalse();
-});
-
-it('leaves the wallet condition open when the repurchase engine is off', function (): void {
     $dist = Distributor::factory()->create();
     requalSeedSufficientBv($dist->id);
     requalSeedWalletEntry($dist->id, 50_000, 'repurchase_deduction', '2026-06-20 09:00:00');
@@ -151,27 +79,38 @@ it('leaves the wallet condition open when the repurchase engine is off', functio
         ->toBeTrue();
 });
 
-it('shows the month a distributor is still living in as it stands, without refusing', function (): void {
-    // The dashboard checklist and the AO-GO card ask about the CURRENT month on
-    // every page load. The engine verdict does not exist for a month that has
-    // not ended and refuses outright; this view answers "as things stand" and
-    // must never throw, or the dashboard 500s for the first days of every month.
-    Feature::for(null)->activate(RepurchaseEngineFeature::class);
-
+it('fails a distributor short of the rank\'s monthly repurchase BV', function (): void {
     $dist = Distributor::factory()->create();
-    $thisMonth = Carbon::now()->startOfMonth();
+    requalSeedMonthlyBv($dist->id, 99_900, '2026-06-10'); // 999 BV < Rank 1's 1,000
 
-    requalSeedMonthlyBv(
-        $dist->id,
-        app(CompensationPlanSettingsService::class)->rankRepurchaseBvPaise(1),
-        Carbon::now()->toDateString(),
+    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
+        ->toBeFalse();
+});
+
+it('counts only the month\'s own BV — not the month before or after', function (): void {
+    $dist = Distributor::factory()->create();
+    requalSeedMonthlyBv($dist->id, 100_000, '2026-05-31');
+    requalSeedMonthlyBv($dist->id, 100_000, '2026-07-01');
+
+    expect(app(RankRequalificationGateService::class)->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])
+        ->toBeFalse();
+});
+
+it('reads each distributor against the obligation of their own rank', function (): void {
+    $rank1 = Distributor::factory()->create();
+    $rank3 = Distributor::factory()->create();
+    requalSeedMonthlyBv($rank1->id, 100_000, '2026-06-10'); // 1,000 BV
+    requalSeedMonthlyBv($rank3->id, 100_000, '2026-06-10'); // 1,000 BV < Rank 3's 1,200
+
+    $map = app(RankRequalificationGateService::class)->passMapByRank(
+        [$rank1->id => 1, $rank3->id => 3],
+        Carbon::parse('2026-06-01'),
     );
 
-    expect(app(RankRequalificationGateService::class)->passesSoFar($dist->id, $thisMonth, 1))
-        ->toBeTrue();
+    expect($map)->toBe([$rank1->id => true, $rank3->id => false]);
 });
 
-it('counts repurchase-wallet money the distributor is still holding right now', function (): void {
+it('shows the month a distributor is still living in as it stands, wallet balance or not', function (): void {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
 
     $dist = Distributor::factory()->create();
@@ -185,5 +124,5 @@ it('counts repurchase-wallet money the distributor is still holding right now', 
     requalSeedWalletEntry($dist->id, 50_000, 'repurchase_deduction', Carbon::now()->subHour()->toDateTimeString());
 
     expect(app(RankRequalificationGateService::class)->passesSoFar($dist->id, $thisMonth, 1))
-        ->toBeFalse();
+        ->toBeTrue();
 });

@@ -28,9 +28,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * Day/week numbers count from the first pooled day (gsb_daily_pools anchor).
  *
  * Per-slab aggregates cover the statuses whose gross funded the day's pool
- * (credited / frozen / legacy repurchase held / suspended / reversed) so the
- * day's grand total reconciles with the pool row's leftover. Legacy suspended
- * income was forfeited and reversed income was debited back from the wallet, so
+ * (credited / frozen / reversed) so the day's grand total reconciles with the
+ * pool row's leftover. Reversed income was debited back from the wallet, so
  * on such days the stored leftover understates the real residue — the report
  * shows the pool row verbatim (frozen economics). Per-slab score value uses
  * MAX(score_value_paise): when a day+slab mixes snapshotted and legacy rows

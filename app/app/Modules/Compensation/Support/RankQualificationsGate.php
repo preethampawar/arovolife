@@ -9,6 +9,7 @@ use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Laravel\Pennant\Feature;
 
 /**
@@ -23,9 +24,10 @@ use Laravel\Pennant\Feature;
  *   • Rank Bonus prices the pool from turnover, pays no RAP achiever, and still
  *     issues AO-GO grants against the whole Rank 1 pool, consuming a lifetime
  *     use that `alreadyGrantedThisMonth` will not re-issue.
- *   • Growth Booster's `rejectRankedLastMonth()` rejects NOBODY, so every
- *     distributor the plan excludes is credited and the inflated denominator
- *     dilutes the point value for the genuinely eligible.
+ *   • Growth Booster's `rejectEverRanked()` misses that month's rankers
+ *     (earlier months' rankers are still rejected), so distributors the plan
+ *     excludes are credited and the inflated denominator dilutes the point
+ *     value for the genuinely eligible.
  *   • Fortune's `buildIneligibleRankIds()` returns [], so rank 6–9 seniors are
  *     enrolled into the capacity-capped 29,524-position FCFS matrix and
  *     permanently displace eligible distributors for that month.
@@ -37,7 +39,8 @@ use Laravel\Pennant\Feature;
  *
  * The MONTH DIFFERS PER ENGINE, which is exactly why this lives in one place:
  * Rank Bonus and Fortune enrolment for month M read month M, while Growth
- * Booster for month M reads M-1 (`rejectRankedLastMonth`).
+ * Booster for month M reads every month before M (`rejectEverRanked`), M-1
+ * being the latest — earlier months were checked before their own closes.
  */
 final class RankQualificationsGate
 {
@@ -78,6 +81,28 @@ final class RankQualificationsGate
     }
 
     /**
+     * Whether the month's `rank:check-qualifications` was a flag-off no-op
+     * (STATUS_SKIPPED, reason `feature_flag_off`), whatever the flag is now.
+     *
+     * FOR MONTHS BEFORE M-1 ONLY, in Growth Booster's lifetime walk. With the
+     * Rank Bonus engine off that month no qualification row was written, so
+     * there is nobody that month for the lifetime exclusion to miss. Without
+     * this, turning the flag on would make every flag-off month a permanent
+     * refusal — and running the check retroactively would lifetime-exclude
+     * people for months the engine was off. M-1 keeps {@see checkedFor()}'s
+     * strict reading.
+     */
+    public static function skippedForFeatureFlagOff(Carbon $month): bool
+    {
+        return EngineRun::query()
+            ->where('engine_key', 'rank.check')
+            ->whereDate('period_start', $month->copy()->startOfMonth()->toDateString())
+            ->where('status', EngineRun::STATUS_SKIPPED)
+            ->where('summary->reason', 'feature_flag_off')
+            ->exists();
+    }
+
+    /**
      * True when a month could not possibly have produced a rank qualification:
      * `group_bv_daily` has zero rows dated inside it AND `rank_qualifications`
      * has zero rows for it. With no Genos BV posted, nobody could have ranked,
@@ -104,6 +129,62 @@ final class RankQualificationsGate
             && ! RankQualification::query()
                 ->where('month_start', $start->toDateString())
                 ->exists();
+    }
+
+    /**
+     * Every month Growth Booster's lifetime exclusion reads that still lacks a
+     * check, oldest first: each month from the first `group_bv_daily` or
+     * `rank_qualifications` row up to and including $lastMonth (M-1) that has
+     * no succeeded check, except the two that provably cannot hide a ranker —
+     *
+     *   • a month with no Genos BV and no qualification row
+     *     ({@see monthHadNoGenosBv()}), M-1 included;
+     *   • a flag-off skipped check ({@see skippedForFeatureFlagOff()}), for
+     *     months strictly before M-1 only — M-1 keeps {@see checkedFor()}'s
+     *     strict reading.
+     *
+     * One walk for the two places that need it: the GBB command refuses on the
+     * first month listed, and the Engine Runs dependency resolver fills every
+     * month listed before it runs the GBB.
+     *
+     * @return list<Carbon>
+     */
+    public static function monthsMissingCheck(Carbon $lastMonth): array
+    {
+        $last = $lastMonth->copy()->startOfMonth();
+        $first = $last->copy();
+
+        foreach ([GroupBvDaily::query()->min('date'), RankQualification::query()->min('month_start')] as $earliest) {
+            if ($earliest !== null) {
+                $candidate = Carbon::parse((string) $earliest)->startOfMonth();
+                $first = $candidate->lt($first) ? $candidate : $first;
+            }
+        }
+
+        $missing = [];
+
+        for ($month = $first; $month->lte($last); $month = $month->copy()->addMonthNoOverflow()) {
+            if (self::checkedFor($month)) {
+                continue;
+            }
+
+            // A waived month runs nothing, so it leaves this trace instead.
+            $waivedFor = match (true) {
+                $month->lt($last) && self::skippedForFeatureFlagOff($month) => 'rank_engine_off',
+                self::monthHadNoGenosBv($month) => 'no_genos_bv',
+                default => null,
+            };
+
+            if ($waivedFor !== null) {
+                Log::info('rank.check.prerequisite_waived', ['month' => $month->format('Y-m'), 'reason' => $waivedFor]);
+
+                continue;
+            }
+
+            $missing[] = $month->copy();
+        }
+
+        return $missing;
     }
 
     /** Operator-facing refusal naming the month at fault and the way out. */

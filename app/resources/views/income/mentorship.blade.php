@@ -1,9 +1,9 @@
 @extends('layouts.app')
-@section('title', 'My Income — Mentorship Bonus')
+@section('title', 'My Income — '.$incomeLabel)
 
 @section('content')
 <div>
-    <h1 class="text-2xl font-bold text-gray-900 mb-2">Mentorship Bonus</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ $incomeLabel }}</h1>
 
     @include('income._tabs')
 
@@ -19,7 +19,7 @@
         <div class="bg-sky-100 rounded-2xl border border-sky-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1">
                 MB Credited This Month
-                <x-help-tip text="Mentorship Bonus that landed in your main wallet this month — gross minus the repurchase deduction taken when each bonus was credited." />
+                <x-help-tip text="Mentorship income that landed in your main wallet this month — gross minus the repurchase deduction taken when each bonus was credited." />
             </p>
             <p class="text-2xl font-bold text-gray-900">₹{{ \App\Modules\Shared\Support\IndianNumber::format(($mbThisMonthPaise ?? 0) / 100, 2) }}</p>
         </div>
@@ -50,7 +50,7 @@
 
     @if($rows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <p class="text-gray-600 font-medium">No Mentorship Bonus yet.</p>
+            <p class="text-gray-600 font-medium">No {{ $incomeLabel }} yet.</p>
             <p class="text-sm text-gray-600 mt-1">Your bonus will appear here once one of the distributors you directly sponsored earns their first Genos Sales Bonus.</p>
         </div>
     @else
@@ -94,6 +94,11 @@
                         </td>
                         <td class="px-4 py-3 text-right font-mono font-semibold">
                             @if($row->msb_points !== null){{ $row->msb_points }}@else<span class="text-gray-600 font-normal">—</span>@endif
+                            @if($row->status === \App\Modules\Compensation\Models\MentorshipBonusResult::STATUS_REPURCHASE_GATED)
+                            <div class="mt-0.5 text-[11px] font-sans font-normal text-amber-700">Not awarded — your repurchase condition was not met on this day</div>
+                            @elseif((int) $row->royalty_cap_withheld_paise > 0)
+                            <div class="mt-0.5 text-[11px] font-sans font-normal text-amber-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->royalty_cap_withheld_paise / 100, 2) }} withheld by the daily Mentorship Royalty cap</div>
+                            @endif
                         </td>
                         <td class="px-4 py-3 text-right font-mono text-gray-600">
                             @if($row->msb_point_value_paise !== null)₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->msb_point_value_paise / 100, 0) }}@else<span class="text-gray-600">—</span>@endif

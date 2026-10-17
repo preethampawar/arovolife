@@ -58,20 +58,9 @@ final class GsbCutoffResult extends Model
     public const STATUS_REPURCHASE_FORFEITED = 'repurchase_forfeited';
 
     /**
-     * LEGACY — never written again (superseded by STATUS_REPURCHASE_FORFEITED).
-     * Repurchase missed, within grace — calculated but held (not credited).
-     * Existing rows stay valid data: they really did advance the carry-forward
-     * store and consume the day's pool, so they remain in both lists below.
-     */
-    public const STATUS_REPURCHASE_HELD = 'repurchase_held';
-
-    /** LEGACY — never written again. Repurchase grace lapsed — calculated but suspended. */
-    public const STATUS_REPURCHASE_SUSPENDED = 'repurchase_suspended';
-
-    /**
      * Statuses whose gross was priced against (and funded by) the day's frozen
-     * GSB pool. Suspended income is later forfeited and reversed income was
-     * debited back, but their gross still consumed the pool on the day. Used by
+     * GSB pool. Reversed income was debited back, but its gross still consumed
+     * the pool on the day. Used by
      * the Input & Output report and by GsbDailyPoolService to decide whether a
      * prematurely frozen pool row can still be safely replaced.
      *
@@ -81,8 +70,6 @@ final class GsbCutoffResult extends Model
     public const POOL_FUNDED_STATUSES = [
         self::STATUS_CREDITED,
         self::STATUS_FROZEN,
-        self::STATUS_REPURCHASE_HELD,
-        self::STATUS_REPURCHASE_SUSPENDED,
         self::STATUS_REVERSED,
     ];
 
@@ -99,7 +86,7 @@ final class GsbCutoffResult extends Model
 
     /**
      * Statuses whose run advanced the rolling gsb_carryforwards store: no_match,
-     * frozen, repurchase held/suspended, credited — and reversed, which was
+     * frozen, credited — and reversed, which was
      * credited when it ran; the admin reversal only debits the wallet, never
      * rewinds CF. below_600bv returns before touching the store and the failed
      * path rolls its CF mutation back, so those never advanced it. Neither did
@@ -118,8 +105,6 @@ final class GsbCutoffResult extends Model
     public const CARRY_FORWARD_ADVANCING_STATUSES = [
         self::STATUS_NO_MATCH,
         self::STATUS_FROZEN,
-        self::STATUS_REPURCHASE_HELD,
-        self::STATUS_REPURCHASE_SUSPENDED,
         self::STATUS_CREDITED,
         self::STATUS_REVERSED,
     ];

@@ -63,8 +63,8 @@ Nobody creates a payout batch by hand.
    server was down — the next night builds it, still dated that Tuesday, so
    the week it pays is unchanged and distributors do not wait an extra week
    for an outage that had nothing to do with them.
-   The **monthly payout** runs on the 8th for Growth Booster, Rank, Fortune,
-   Awards and ADC — as the Monthly Run's payout phase, independent of that
+   The **monthly payout** runs on the 8th for Growth Booster, Rank, Fortune
+   and ADC — as the Monthly Run's payout phase, independent of that
    night's Nightly or Weekly runs since it pays what the 1st already
    credited — a week after the crediting engines close the month on the 1st,
    and only if every one of them succeeded (see § Monthly close below). It pays ONE month, the one it is
@@ -566,11 +566,11 @@ date a 26Q return is built around. The Company snapshot dates the same rupees by
 when the ledger debit was written, so the two pages will not agree inside a short
 window; neither is wrong.
 
-**TDS can be less than the plan's TDS rate (a Plan setting) applied to the
-payable shown.** Payable is *gross − repurchase deduction − admin charge*. On a
-monthly batch the tax is computed on a narrower base that excludes Lifetime
-Award cash already taxed when it was delivered, and that base is not stored, so
-the register shows payable and TDS and never a "TDS base".
+**TDS is the plan's TDS rate (a Plan setting) applied to the payable shown.**
+Payable is *gross − repurchase deduction − admin charge*, on weekly and monthly
+batches alike, rounded to the paisa and never more than the payable itself.
+Lifetime Awards are merchandise only and never reach a payout, so nothing is
+left out of the base.
 
 **PAN is masked and only masked** — the last four digits, read from the
 distributor record. The full number for a filing comes from the KYC documents in

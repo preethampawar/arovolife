@@ -107,14 +107,15 @@
                     @if($card->qualified())
                         {{-- Start (to the minute) and end (11:59 PM on the inclusive
                              due date) plus the window length. daysTotal counts both
-                             ends, so minus one is the DB-driven
-                             comp.repurchase.cycle_days length, never a hardcoded 30.
+                             ends, which IS the DB-driven comp.repurchase.cycle_days
+                             length (the window is inclusive of the start day: client
+                             2026-10-09, 14 Feb → 15 Mar = 30 days), never a hardcoded 30.
                              Times are display only; eligibility is by whole day. --}}
                         <p class="ms-auto text-xs text-gray-500 flex flex-col sm:flex-row sm:gap-1 sm:items-center">
                             <span>Started <span class="font-semibold text-gray-900">{{ $card->startedAt?->format('j M Y, g:i A') }}</span></span>
                             <span class="hidden sm:inline">&middot;</span>
                             <span>Ends <span class="font-semibold text-gray-900">{{ $card->endDate?->format('j M Y') }}, 11:59 PM</span></span>
-                            <span class="hidden sm:inline">&middot; {{ $card->daysTotal - 1 }}-day window</span>
+                            <span class="hidden sm:inline">&middot; {{ $card->daysTotal }}-day window</span>
                         </p>
                     @endif
                 </div>

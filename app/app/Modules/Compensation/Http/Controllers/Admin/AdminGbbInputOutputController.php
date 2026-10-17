@@ -30,13 +30,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * to the frozen payout and leftover.
  *
  * Driven FROM gbb_monthly_pools (the frozen economics row) so a month whose
- * pool went unspent still appears. Repurchase-wallet-blocked rows are listed
- * with ₹0 — the wallet was not cleared at the last instant of the month, so
- * their AGP was excluded from the denominator and is never paid. Legacy held
- * and suspended rows are listed too: no run writes them any more, but held rows
- * WERE priced into their month's pool, so the month only reconciles with them
- * on the page. The report renders the pool row verbatim; it never recomputes
- * frozen economics.
+ * pool went unspent still appears. No month-end repurchase condition blocks
+ * GBB (user decision 2026-10-17), so every listed earner is credited. The
+ * report renders the pool row verbatim; it never recomputes frozen economics.
  */
 final class AdminGbbInputOutputController extends Controller
 {
@@ -45,9 +41,6 @@ final class AdminGbbInputOutputController extends Controller
     /** Statuses listed in the earner table (reversed rows are excluded). */
     private const EARNER_STATUSES = [
         GbbMonthlyResult::STATUS_CREDITED,
-        GbbMonthlyResult::STATUS_REPURCHASE_HELD,
-        GbbMonthlyResult::STATUS_REPURCHASE_SUSPENDED,
-        GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED,
     ];
 
     public function __construct(private readonly GrowthBoosterBonusService $gbb) {}
@@ -94,7 +87,9 @@ final class AdminGbbInputOutputController extends Controller
             ['key' => 'gbb_pool',       'label' => 'GBB Pool (Rs)'],
             ['key' => 'total_agp',      'label' => 'Total AGP'],
             ['key' => 'point_value',    'label' => 'Point Value (Rs)'],
-            ['key' => 'adn',            'label' => 'Distributor ADN'],
+            ['key' => 'raw_point_value', 'label' => 'Raw Point Value (Rs)'],
+            ['key' => 'point_value_cap', 'label' => 'Point Value Cap (Rs)'],
+            ['key' => 'adn',           'label' => 'Distributor ADN'],
             ['key' => 'name',           'label' => 'Distributor Name'],
             ['key' => 'agp',            'label' => 'AGP'],
             ['key' => 'income',         'label' => 'Income (Rs)'],
@@ -109,6 +104,10 @@ final class AdminGbbInputOutputController extends Controller
         foreach ($pools as $pool) {
             $monthLabel = Carbon::parse($pool->month_start)->format('Y-m');
             $computedAt = $pool->created_at?->format('Y-m-d H:i:s') ?? '';
+            // Frozen with the month; months frozen before the cap existed
+            // carry neither, and export an empty cell rather than a false 0.
+            $rawPointValue = $pool->raw_point_value_paise !== null ? $pool->raw_point_value_paise / 100 : '';
+            $pointValueCap = $pool->point_value_cap_paise !== null ? $pool->point_value_cap_paise / 100 : '';
             $totalIncome = 0;
             $totalDeduction = 0;
             $totalCredited = 0;
@@ -124,6 +123,8 @@ final class AdminGbbInputOutputController extends Controller
                     'gbb_pool' => $pool->pool_paise / 100,
                     'total_agp' => $pool->total_agp,
                     'point_value' => $pool->point_value_paise / 100,
+                    'raw_point_value' => $rawPointValue,
+                    'point_value_cap' => $pointValueCap,
                     'adn' => (string) ($row->adn ?? ''),
                     'name' => (string) ($row->full_name ?? ''),
                     'agp' => (int) $row->agp_earned,
@@ -141,6 +142,8 @@ final class AdminGbbInputOutputController extends Controller
                 'gbb_pool' => $pool->pool_paise / 100,
                 'total_agp' => $pool->total_agp,
                 'point_value' => $pool->point_value_paise / 100,
+                'raw_point_value' => $rawPointValue,
+                'point_value_cap' => $pointValueCap,
                 'adn' => '',
                 'name' => 'MONTH TOTAL',
                 'agp' => $pool->total_agp,
@@ -198,9 +201,7 @@ final class AdminGbbInputOutputController extends Controller
 
     /**
      * Per-month AGP earners: one row per distributor with the AGP they earned,
-     * the frozen point value and their gross. Includes held rows (their AGP is
-     * in the frozen denominator) and suspended rows (₹0, excluded from the
-     * denominator) so the month's total AGP reconciles visibly.
+     * the frozen point value and their gross.
      *
      * @param  list<string>  $monthStarts  'Y-m-01' keys
      * @return array<string, list<\stdClass>> month_start → rows {distributor_id, adn, full_name, agp_earned, point_value_paise, income_paise, deduction_paise, credited_paise, status}

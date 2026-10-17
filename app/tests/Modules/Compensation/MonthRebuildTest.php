@@ -17,6 +17,7 @@ use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\RankAogoGrant;
 use App\Modules\Compensation\Models\RankBonusResult;
+use App\Modules\Compensation\Models\RankMonthlyPass;
 use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -128,10 +129,17 @@ function seedCreditingMonth(): array
         'grant_number' => 1, 'points' => 5, 'previous_rank_number' => 1,
     ]);
     RankMonthlyPool::create([
-        'month_start' => $month, 'rank_number' => 1, 'company_turnover_paise' => 0, 'envelope_bp' => 0,
-        'pool_pct' => 0, 'pool_paise' => 0, 'payable_count' => 0, 'aogo_points' => 0,
+        'month_start' => $month, 'rank_number' => 1, 'pass' => 1, 'company_turnover_paise' => 0, 'envelope_bp' => 0,
+        'pool_paise' => 0, 'payable_count' => 0, 'aogo_points' => 0,
         'gross_per_qualifier_paise' => 0, 'payout_paise' => 0, 'leftover_paise' => 0,
     ]);
+    foreach ([1, 2] as $pass) {
+        RankMonthlyPass::create([
+            'month_start' => $month, 'pass' => $pass, 'company_turnover_paise' => 0, 'envelope_bp' => 0,
+            'envelope_paise' => 0, 'pool_paise' => 0, 'total_points' => 0, 'raw_point_value_paise' => 0,
+            'point_value_cap_paise' => 20_000, 'point_value_paise' => 0, 'payout_paise' => 0, 'leftover_paise' => 0,
+        ]);
+    }
     RankQualification::create([
         'distributor_id' => $distributor->id, 'rank_number' => 1, 'month_start' => $month,
         'is_carry_forward' => false,
@@ -210,14 +218,14 @@ function seedCreditingMonth(): array
         referenceType: 'gbb_monthly_result',
         bonusMonth: Carbon::parse($month),
     );
-    // A lifetime award is released by hand, never by an engine — a rebuild does
+    // A manual credit is written by hand, never by an engine — a rebuild does
     // not take one back.
     $wallet->credit(
         distributorId: $distributor->id,
         amountPaise: 25_000,
-        type: 'awards_credit',
+        type: 'manual_credit',
         referenceId: walletRef(),
-        referenceType: 'lifetime_award_milestone',
+        referenceType: 'manual_adjustment',
         bonusMonth: Carbon::parse($month),
     );
 
@@ -233,7 +241,7 @@ it('wipes every one of the month\'s tables and leaves what the engines did not w
     expect($plan->refusals)->toBe([]);
     expect($plan->rowsToRemove)->toHaveKeys([
         'wallet_ledger_entries', 'rank_aogo_grants', 'rank_bonus_results', 'rank_monthly_pools',
-        'rank_qualifications', 'lifetime_award_milestones', 'gbb_monthly_results', 'gbb_monthly_pools',
+        'rank_monthly_passes', 'rank_qualifications', 'lifetime_award_milestones', 'gbb_monthly_results', 'gbb_monthly_pools',
         'fortune_bonus_results', 'fortune_monthly_pool_levels', 'fortune_monthly_pools',
         'fortune_bonus_participants', 'adc_bonus_results', 'redeem_point_entries', 'purchase_offer_grants',
     ]);
@@ -247,6 +255,7 @@ it('wipes every one of the month\'s tables and leaves what the engines did not w
     expect(RankAogoGrant::count())->toBe(0);
     expect(RankBonusResult::count())->toBe(0);
     expect(RankMonthlyPool::count())->toBe(0);
+    expect(RankMonthlyPass::count())->toBe(0);
     expect(LifetimeAwardMilestone::where('status', LifetimeAwardMilestone::STATUS_PENDING)->count())->toBe(0);
     expect(GbbMonthlyResult::count())->toBe(0);
     expect(GbbMonthlyPool::count())->toBe(0);
@@ -265,10 +274,10 @@ it('wipes every one of the month\'s tables and leaves what the engines did not w
     expect(PurchaseOfferGrant::first()->consumed_order_id)->toBe(12_345);
     expect(RedeemPointEntry::count())->toBe(1);
 
-    // The month's credits and their repurchase halves are gone; the hand-released
-    // award credit is not.
+    // The month's credits and their repurchase halves are gone; the hand-written
+    // manual credit is not.
     expect(WalletLedgerEntry::whereIn('type', ['rank_credit', 'gbb_credit', 'repurchase_transfer', 'repurchase_deduction'])->count())->toBe(0);
-    expect(WalletLedgerEntry::where('type', 'awards_credit')->count())->toBe(1);
+    expect(WalletLedgerEntry::where('type', 'manual_credit')->count())->toBe(1);
 
     // The close was re-run for the month, with --restart.
     expect(StubMonthlyClose::$calls)->toBe([['month' => REBUILD_MONTH, 'restart' => true]]);
@@ -321,6 +330,7 @@ it('un-builds the month\'s pending payout batch first and says the batch has to 
     expect(implode("\n", $plan->warnings))->toContain('compensation:rebuild-payout --month='.REBUILD_MONTH);
     expect(implode("\n", $plan->warnings))->toContain('1 purchase-offer grant(s) already used on an order are kept');
     expect(implode("\n", $plan->warnings))->toContain('Repurchase cycle verdicts');
+    expect(implode("\n", $plan->warnings))->toContain('Growth Booster eligibility in later months depends on this month\'s rank qualifications.');
 
     expect(Artisan::call('compensation:rebuild-month', [
         '--month' => REBUILD_MONTH,

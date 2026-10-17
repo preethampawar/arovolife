@@ -73,6 +73,7 @@ final class DerivedTables
         'gbb_monthly_pools',
         'rank_bonus_results',
         'rank_monthly_pools',
+        'rank_monthly_passes',
         'rank_aogo_grants',
         'rank_qualifications',
         // Progress read-model rebuilt nightly from the same BV; a survivor
@@ -143,6 +144,7 @@ final class DerivedTables
         'gbb_monthly_pools' => ['column' => 'month_start', 'granularity' => 'month'],
         'rank_bonus_results' => ['column' => 'month_start', 'granularity' => 'month'],
         'rank_monthly_pools' => ['column' => 'month_start', 'granularity' => 'month'],
+        'rank_monthly_passes' => ['column' => 'month_start', 'granularity' => 'month'],
         'rank_aogo_grants' => ['column' => 'month_start', 'granularity' => 'month'],
         'rank_qualifications' => ['column' => 'month_start', 'granularity' => 'month'],
         'rank_provisional_standings' => ['column' => 'month_start', 'granularity' => 'month'],
@@ -158,8 +160,8 @@ final class DerivedTables
      * Wallet ledger entry types that are NOT derived and survive every wipe:
      * the repurchase-wallet debit recorded at checkout (`reference_type` =
      * `order`). It is written by the Commerce checkout, never by an engine, so
-     * no replay can rebuild it — and the repurchase cycle verdict and the
-     * month-end wallet gate both read the ledger for the balance it reduces.
+     * no replay can rebuild it — and the repurchase cycle verdict reads the
+     * ledger for the balance it reduces.
      *
      * @var list<string>
      */

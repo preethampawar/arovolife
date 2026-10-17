@@ -96,7 +96,7 @@
                     <p class="text-[11px] text-gray-500 mt-0.5">Payout date</p>
                 </div>
 
-                {{-- Repurchase alert — urgency of clearing the repurchase wallet before month end --}}
+                {{-- Repurchase alert — urgency of clearing the repurchase wallet before the cycle ends --}}
                 @if(($repurchaseWalletStatus ?? null) !== null)
                 @php $alertUrgent = $repurchaseWalletStatus->tone === 'red' || $repurchaseWalletStatus->overdue(); @endphp
                 <div data-card="repurchase-alert" class="rounded-xl border p-4 col-span-2 bg-gradient-to-br to-white {{ $alertUrgent ? 'border-red-300 from-red-50' : 'border-amber-300 from-amber-50' }}">

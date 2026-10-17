@@ -21,8 +21,9 @@ use Illuminate\Support\Facades\DB;
  *
  * A cycle is a fixed 30-day window (`comp.repurchase.cycle_days`) anchored on
  * the date the distributor first reached 600 BV of personal purchase. That day
- * is day 0 and the due date falls `cycle_days` days AFTER it — start 7 Jul,
- * due 6 Aug, as in every one of the client's worked examples. It passes only if
+ * is day 1 and the due date is `cycle_days − 1` days after it — start 14 Feb,
+ * due 15 Mar: 30 days inclusive of the start day (client 2026-10-09, which
+ * supersedes the earlier start + 30 reading). It passes only if
  * BOTH of the client's conditions hold:
  *
  *   (A) self-purchase BV inside the window >= the rank's obligation, and
@@ -65,6 +66,15 @@ final class RepurchaseCycleService
 
     /** @var array<int, int> Highest qualified rank per distributor. */
     private array $rankCache = [];
+
+    /**
+     * Highest rank decided before a date's month, per date and distributor —
+     * {@see rankAsOf()}. Kept apart from $rankCache: that one is the lifetime
+     * maximum the repurchase obligation reads, this one is dated.
+     *
+     * @var array<string, array<int, int>> Y-m-d => distributor => rank
+     */
+    private array $rankAsOfCache = [];
 
     /** @var array<int, array<string, int>> distributor => Y-m-d => self-purchase BV paise. */
     private array $selfPurchaseByDay = [];
@@ -454,6 +464,72 @@ final class RepurchaseCycleService
             ->max('rank_number');
     }
 
+    /**
+     * Highest rank the distributor held as decided by $date; 0 = non-ranked.
+     *
+     * A month's rank is decided on the 1st of the NEXT month, so a
+     * qualification whose month_start falls inside $date's month is not yet
+     * known on any day of that month and does not count. Unlike
+     * {@see currentRank()} this is a function of the date: a later month's
+     * qualification can never change the answer for a day already judged, so a
+     * backfill or a replay of that day reaches the live run's verdict (F-2).
+     */
+    public function rankAsOf(int $distributorId, Carbon $date): int
+    {
+        $key = $date->toDateString();
+
+        if (isset($this->rankAsOfCache[$key]) && array_key_exists($distributorId, $this->rankAsOfCache[$key])) {
+            return $this->rankAsOfCache[$key][$distributorId];
+        }
+
+        return (int) RankQualification::query()
+            ->where('distributor_id', $distributorId)
+            ->where('status', RankQualification::STATUS_QUALIFIED)
+            ->whereDate('month_start', '<', $date->copy()->startOfMonth()->toDateString())
+            ->max('rank_number');
+    }
+
+    /**
+     * Pre-load {@see rankAsOf()} for these distributors on $date, one grouped
+     * query per chunk. A strict accelerator: an id not warmed falls through to
+     * the live query.
+     *
+     * @param  array<int, int>  $distributorIds
+     */
+    public function warmRanksAsOf(array $distributorIds, Carbon $date): void
+    {
+        if ($distributorIds === []) {
+            return;
+        }
+
+        $key = $date->toDateString();
+        $before = $date->copy()->startOfMonth()->toDateString();
+
+        foreach (array_chunk($distributorIds, self::WARM_CHUNK) as $chunk) {
+            $rows = RankQualification::query()
+                ->whereIn('distributor_id', $chunk)
+                ->where('status', RankQualification::STATUS_QUALIFIED)
+                ->whereDate('month_start', '<', $before)
+                ->selectRaw('distributor_id, MAX(rank_number) as rank_number')
+                ->groupBy('distributor_id')
+                ->pluck('rank_number', 'distributor_id');
+
+            foreach ($rows as $id => $rank) {
+                $this->rankAsOfCache[$key][(int) $id] = (int) $rank;
+            }
+        }
+
+        foreach ($distributorIds as $id) {
+            $this->rankAsOfCache[$key][(int) $id] ??= 0;
+        }
+    }
+
+    /** Release everything {@see warmRanksAsOf()} loaded. */
+    public function forgetRanksAsOf(): void
+    {
+        $this->rankAsOfCache = [];
+    }
+
     /** Monthly repurchase BV obligation (paise) for this distributor's rank. */
     public function requiredBvPaise(int $distributorId): int
     {
@@ -653,7 +729,9 @@ final class RepurchaseCycleService
     private function openCycle(int $distributorId, Carbon $start): RepurchaseCycle
     {
         $start = $start->copy()->startOfDay();
-        $due = $start->copy()->addDays($this->plan->repurchaseCycleDays());
+        // 30 days INCLUSIVE of the start day (client 2026-10-09: 14 Feb → 15 Mar),
+        // so the verdict day is cycle_days − 1 after the anchor.
+        $due = $start->copy()->addDays($this->plan->repurchaseCycleDays() - 1);
 
         $cycle = RepurchaseCycle::create([
             'distributor_id' => $distributorId,

@@ -242,7 +242,35 @@ it('shows the frozen day header and the point-value formula with the day\'s valu
     $res->assertSee('MSB pool (3%)');
     $res->assertSee('₹3,000.00');
     $res->assertSee('How the MSB point value is calculated');
-    $res->assertSee('Point value = ⌊ MSB pool ÷ Total MSB points ⌋');
+    $res->assertSee('Point value = min( Cap, ⌊ MSB pool ÷ Total MSB points ⌋ )');
+    // A row frozen before the cap shipped keeps the uncapped worked line.
     $res->assertSee('⌊ ₹3,000.00 ÷ 12 ⌋ = ⌊ ₹250.00 ⌋ = <strong>₹250</strong>', false);
     $res->assertSee('10 × ₹250 = <strong>₹2,500</strong>', false);
+});
+
+it('shows the cap in the worked line and flags a capped day', function () {
+    $sponsor = msbReportDistributor('MSBAAA', 'Alice');
+    $sponsee = msbReportDistributor('MSBSPA', 'Anu');
+    makeMbRow($sponsor, $sponsee, 1, 1_000, 12_000, 12_000_000, '2026-07-10');
+
+    // Client example 1 (2026-10-09): ₹1,50,000 ÷ 1,000 = ₹150 → capped at ₹120.
+    MsbDailyPool::create([
+        'cutoff_date' => '2026-07-10',
+        'company_bv_paise' => 500_000_000,
+        'pool_rate_bp' => 300,
+        'pool_paise' => 15_000_000,
+        'total_points' => 1_000,
+        'point_value_paise' => 12_000,
+        'raw_point_value_paise' => 15_000,
+        'point_value_cap_paise' => 12_000,
+        'payout_paise' => 12_000_000,
+        'leftover_paise' => 3_000_000,
+    ]);
+
+    $res = $this->actingAs(msbReportAdmin())
+        ->get(route('admin.compensation.msb-calculation.index'))
+        ->assertOk();
+
+    $res->assertSee('min( ₹120, ⌊ ₹1,50,000.00 ÷ 1,000 ⌋ = ⌊ ₹150.00 ⌋ ) = <strong>₹120</strong>', false);
+    $res->assertSee('capped (raw ₹150)');
 });

@@ -53,6 +53,7 @@ final class Customer extends Model
         return $this->hasMany(Order::class);
     }
 
+    /** @return BelongsTo<Distributor, $this> */
     public function distributor(): BelongsTo
     {
         return $this->belongsTo(Distributor::class, 'distributor_id');

@@ -6,15 +6,19 @@ namespace App\Modules\Compensation\Http\Controllers\Admin;
 
 use App\Modules\Compensation\Models\GbbMonthlyPool;
 use App\Modules\Compensation\Models\GbbMonthlyResult;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use Illuminate\Contracts\View\View;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Laravel\Pennant\Feature;
+use RuntimeException;
 
 final class AdminGbbController extends Controller
 {
+    public function __construct(private readonly CompensationPlanSettingsService $plan) {}
+
     public function index(): View
     {
         abort_unless(Feature::for(null)->active(GrowthBoosterBonusFeature::class), 404);
@@ -42,7 +46,26 @@ final class AdminGbbController extends Controller
             GbbMonthlyPool::query()->orderByDesc('month_start')->pluck('month_start'),
         );
 
-        return view('admin.compensation.gbb.index', compact('months'));
+        // The developer explainer states the rate and cap the next run will
+        // use, read from the plan settings rather than written into the copy.
+        $poolRateBp = $this->plan->gbbPoolRateBp();
+        $pointValueCapPaise = $this->gbbPointValueCapPaise();
+
+        return view('admin.compensation.gbb.index', compact('months', 'poolRateBp', 'pointValueCapPaise'));
+    }
+
+    /**
+     * The configured cap, or null when the stored value is one the engine
+     * refuses to price with — the explainer then says so instead of the
+     * page failing over a display-only figure. The engine still refuses.
+     */
+    private function gbbPointValueCapPaise(): ?int
+    {
+        try {
+            return $this->plan->gbbPointValueCapPaise();
+        } catch (RuntimeException) {
+            return null;
+        }
     }
 
     /**

@@ -231,7 +231,7 @@ it('weekly batch: sweeps repurchase_transfer entries and reports deduction in li
 });
 
 it('weekly batch: no repurchase deduction when plain credit() is used (no repurchase_transfer entries)', function () {
-    // A plain credit() call (e.g. manual_credit, awards_credit) writes no
+    // A plain credit() call (e.g. manual_credit) writes no
     // repurchase_transfer debit, so the payout reports zero deduction and
     // sweeps the full gross.
     $dist = makePayoutEligibleDistributor();
@@ -1060,21 +1060,20 @@ it('weekly batch: never charges more admin than the wallet actually holds', func
     expect($wallet->balancePaise($dist->id))->toBe(180_000);
 });
 
-it('monthly batch: does not tax lifetime award cash a second time', function () {
-    // Award cash reaches the wallet already net of the admin charge and 5% TDS
-    // (AdminLifetimeAwardsController takes both at delivery), so the payout must
-    // leave it out of the TDS base as well as the admin base.
+it('monthly batch: TDS is the plan rate on the whole payable', function () {
+    // Lifetime Awards are merchandise only and never reach the wallet, so no
+    // part of a monthly payable is left out of the TDS base.
     $dist = makePayoutEligibleDistributor();
     $wallet = app(WalletService::class);
-    $wallet->credit($dist->id, 100_000, 'awards_credit', walletRef(), 'lifetime_award_milestone');
+    $wallet->credit($dist->id, 100_000, 'adc_credit', walletRef(), 'test_reference', bonusMonth: Carbon::today()->startOfMonth());
 
     app(PayoutService::class)->runMonthlyBatch(Carbon::today()->startOfMonth());
 
     $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
     expect($line->gross_paise)->toBe(100_000);
-    expect($line->admin_charge_paise)->toBe(0);
-    expect($line->tds_paise)->toBe(0);
-    expect($line->net_transferred_paise)->toBe(100_000);
+    expect($line->admin_charge_paise)->toBe(3_000);          // 3%
+    expect($line->tds_paise)->toBe(4_850);                   // 5% of the 97,000 payable
+    expect($line->net_transferred_paise)->toBe(92_150);
     expect($wallet->balancePaise($dist->id))->toBe(0);
 });
 

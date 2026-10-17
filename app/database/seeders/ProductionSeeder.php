@@ -289,6 +289,7 @@ final class ProductionSeeder extends Seeder
             'gsb_slabs' => GsbSlabsSeeder::class,
             'fortune_bonus_levels' => FortuneBonusLevelsSeeder::class,
             'fortune_bonus_tiers' => FortuneBonusTiersSeeder::class,
+            'lifetime_award_tranches' => LifetimeAwardTranchesSeeder::class,
             'lifetime_award_rewards' => LifetimeAwardRewardsSeeder::class,
         ];
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Modules\Compensation\Jobs\RunEngineChainJob;
 use App\Modules\Compensation\Listeners\RecordEngineRun;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -10,14 +11,18 @@ use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
+use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithConsoleEvents;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\NullOutput;
@@ -265,6 +270,29 @@ it('records a deliberate refusal as skipped, with the reason, not as a failure',
     expect($run->summary['reason'])->toContain('is a Wednesday');
 });
 
+it('records a Growth Booster rank-gate refusal as skipped, naming the unchecked month', function (): void {
+    // The lifetime walk names the month at fault; recorded as an anonymous
+    // `failed` run, that month lived only in console output.
+    Feature::activate(GrowthBoosterBonusFeature::class);
+    DB::table('group_bv_daily')->insert([
+        'distributor_id' => Distributor::factory()->create()->id,
+        'date' => '2026-06-15',
+        'left_bv_paise' => 1_000_000,
+        'right_bv_paise' => 0,
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+
+    $exitCode = Artisan::call('gbb:monthly-run', ['--month' => '2026-07']);
+
+    expect($exitCode)->toBe(1);
+
+    $run = EngineRun::where('engine_key', 'gbb.monthly')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->period_start->toDateString())->toBe('2026-07-01');
+    expect($run->summary['reason'])->toContain('rank:check-qualifications --month=2026-06');
+});
+
 it('keeps the engine declared reason when the run is closed out by the run service', function (): void {
     // finalise() used to overwrite `error` with the null it holds whenever
     // Artisan::call returns a non-zero exit code without throwing — which is
@@ -283,4 +311,194 @@ it('keeps the engine declared reason when the run is closed out by the run servi
 
     expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
     expect($run->error)->toContain('is a Wednesday');
+});
+
+it('records a Rank Bonus rank-gate refusal as skipped, naming the unchecked month', function (): void {
+    // The Growth Booster twin (above): an unchecked month is a refusal a re-run
+    // cannot fix until the check runs — recorded as an anonymous `failed` row,
+    // the month at fault lived only in console output.
+    Feature::activate(RankBonusFeature::class);
+
+    $exitCode = Artisan::call('rank:monthly-run', ['--month' => '2026-07']);
+
+    expect($exitCode)->toBe(1);
+
+    $run = EngineRun::where('engine_key', 'rank.bonus')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->period_start->toDateString())->toBe('2026-07-01');
+    expect($run->error)->toContain('rank:check-qualifications --month=2026-07');
+    expect($run->summary['reason'])->toContain('rank:check-qualifications --month=2026-07');
+    expect(EngineRun::where('status', EngineRun::STATUS_FAILED)->count())->toBe(0);
+});
+
+it('records a Fortune enrolment rank-gate refusal as skipped, naming the unchecked month', function (): void {
+    Feature::activate(FortuneBonusFeature::class);
+
+    $exitCode = Artisan::call('fortune:enroll-eligible', ['--month' => '2026-07']);
+
+    expect($exitCode)->toBe(1);
+
+    $run = EngineRun::where('engine_key', 'fortune.enroll')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->period_start->toDateString())->toBe('2026-07-01');
+    expect($run->error)->toContain('rank:check-qualifications --month=2026-07');
+    expect($run->summary['reason'])->toContain('rank:check-qualifications --month=2026-07');
+    expect(EngineRun::where('status', EngineRun::STATUS_FAILED)->count())->toBe(0);
+});
+
+/** An active repurchase cycle due on $dueDate that repurchase:evaluate has not judged yet. */
+function seedUnjudgedCycle(int $distributorId, string $dueDate): void
+{
+    DB::table('repurchase_cycles')->insert([
+        'distributor_id' => $distributorId,
+        'cycle_start_date' => Carbon::parse($dueDate)->subDays(29)->toDateString(),
+        'due_date' => $dueDate,
+        'required_bv_paise' => 60_000,
+        'completed_bv_paise' => 0,
+        'wallet_balance_paise' => 0,
+        'wallet_zeroed' => true,
+        'status' => 'active',
+        'resolved_at' => null,
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+}
+
+it('records an in-flight Rank Bonus run of an open month as skipped, not as a pending verdict', function (): void {
+    Carbon::setTestNow('2026-07-20 10:00:00');
+    Feature::activate(RankBonusFeature::class);
+    Feature::activate(RepurchaseEngineFeature::class);
+    $distributor = Distributor::factory()->create();
+    DB::table('rank_qualifications')->insert([
+        'distributor_id' => $distributor->id,
+        'rank_number' => 1,
+        'month_start' => '2026-07-01',
+        'occurrence_in_month' => 1,
+        'is_carry_forward' => false,
+        'status' => 'qualified',
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+    seedUnjudgedCycle($distributor->id, '2026-07-31');
+
+    $exitCode = Artisan::call('rank:monthly-run', ['--month' => '2026-07', '--force' => true, '--in-flight' => true]);
+
+    expect($exitCode)->toBe(1);
+
+    $run = EngineRun::where('engine_key', 'rank.bonus')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_SKIPPED);
+    expect($run->error)->toContain('July 2026 has not closed yet');
+    expect($run->error)->not->toContain('Run repurchase:evaluate first');
+    expect(DB::table('rank_monthly_pools')->count())->toBe(0);
+    expect(DB::table('rank_monthly_passes')->count())->toBe(0);
+    expect(DB::table('rank_bonus_results')->count())->toBe(0);
+    expect(WalletLedgerEntry::count())->toBe(0);
+});
+
+it('still records a pending verdict on a closed month as a failed Rank Bonus run', function (): void {
+    Feature::activate(RankBonusFeature::class);
+    Feature::activate(RepurchaseEngineFeature::class);
+    $distributor = Distributor::factory()->create();
+    DB::table('rank_qualifications')->insert([
+        'distributor_id' => $distributor->id,
+        'rank_number' => 1,
+        'month_start' => '2026-07-01',
+        'occurrence_in_month' => 1,
+        'is_carry_forward' => false,
+        'status' => 'qualified',
+        'created_at' => now()->toDateTimeString(),
+        'updated_at' => now()->toDateTimeString(),
+    ]);
+    seedUnjudgedCycle($distributor->id, '2026-07-25');
+
+    expect(Artisan::call('rank:monthly-run', ['--month' => '2026-07', '--force' => true]))->toBe(1);
+
+    $run = EngineRun::where('engine_key', 'rank.bonus')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_FAILED);
+    expect($run->error)->toContain('Run repurchase:evaluate first');
+    expect(DB::table('rank_monthly_pools')->count())->toBe(0);
+});
+
+/** A succeeded Rank Qualification Check for the month, so the Rank run passes its gate. */
+function seedSucceededRankCheck(string $monthStart): void
+{
+    EngineRun::create([
+        'engine_key' => 'rank.check',
+        'period_start' => $monthStart,
+        'status' => EngineRun::STATUS_SUCCEEDED,
+        'trigger' => EngineRun::TRIGGER_CONSOLE,
+        'started_at' => now(),
+        'finished_at' => now(),
+    ]);
+}
+
+it('records a manual trigger whose engine throws once, as failed with the exception message', function (): void {
+    // A cap that is not a whole rupee makes the Rank freeze throw before any
+    // write (fail-safe principle 1). The run must be ONE failed row carrying
+    // the message, never a second row beside it.
+    Feature::activate(RankBonusFeature::class);
+    seedSucceededRankCheck('2026-07-01');
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.point_value_cap_paise'],
+        ['value' => '20050', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+
+    $run = app(EngineRunService::class)->runOne(
+        EngineRegistry::get('rank.bonus'),
+        Carbon::parse('2026-07-01'),
+        EngineRun::TRIGGER_MANUAL,
+        7,
+        'chain-throws',
+    );
+
+    $rows = EngineRun::where('engine_key', 'rank.bonus')->get();
+
+    expect($rows)->toHaveCount(1);
+    expect($rows->first()->id)->toBe($run->id);
+    expect($run->fresh()->status)->toBe(EngineRun::STATUS_FAILED);
+    expect($run->fresh()->error)->toContain('must be a whole rupee');
+    expect($run->fresh()->chain_id)->toBe('chain-throws');
+});
+
+it('records a queued manual chain whose engine throws once, as failed with the exception message', function (): void {
+    // The whole admin path behind the trigger button: the chain job resolves
+    // the plan and runs each step through the run service.
+    Feature::activate(RankBonusFeature::class);
+    seedSucceededRankCheck('2026-07-01');
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.point_value_cap_paise'],
+        ['value' => '20050', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+
+    RunEngineChainJob::dispatchSync('rank.bonus', '2026-07', 7, 'chain-throws');
+
+    $run = EngineRun::where('engine_key', 'rank.bonus')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_FAILED);
+    expect($run->error)->toContain('must be a whole rupee');
+    expect($run->chain_id)->toBe('chain-throws');
+});
+
+it('records a console run whose engine throws once, as failed', function (): void {
+    // The scheduler / developer CLI path: no run service around the call, so
+    // nothing catches the exception to hand its message over — the row says
+    // the cause is in the application log, where the console reported it.
+    Feature::activate(RankBonusFeature::class);
+    seedSucceededRankCheck('2026-07-01');
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.rank.point_value_cap_paise'],
+        ['value' => '20050', 'version' => 1, 'created_at' => now(), 'updated_at' => now()],
+    );
+
+    expect(fn () => Artisan::call('rank:monthly-run', ['--month' => '2026-07']))
+        ->toThrow(RuntimeException::class, 'must be a whole rupee');
+
+    $run = EngineRun::where('engine_key', 'rank.bonus')->sole();
+
+    expect($run->status)->toBe(EngineRun::STATUS_FAILED);
+    expect($run->error)->toContain('application log');
 });

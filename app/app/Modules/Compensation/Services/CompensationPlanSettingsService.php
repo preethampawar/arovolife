@@ -27,14 +27,13 @@ final class CompensationPlanSettingsService
     /**
      * Wallet ledger entry types belonging to each payout admin-charge group.
      * Each group has its own ₹25,000/cycle ceiling (KP 2026-06-30 Round-5).
-     * Group C (Awards) carries no admin charge by default (non-cash gifts).
+     * There is no Group C: Lifetime Awards are merchandise only and never
+     * reach the wallet (client 2026-10-09).
      * ADC is Group D — separate ceiling from the five cash bonuses.
      */
     public const GROUP_A_TYPES = ['gsb_credit', 'mb_credit'];
 
     public const GROUP_B_TYPES = ['gbb_credit', 'rank_credit', 'fortune_credit'];
-
-    public const GROUP_C_TYPES = ['awards_credit'];
 
     public const GROUP_D_TYPES = ['adc_credit'];
 
@@ -49,7 +48,7 @@ final class CompensationPlanSettingsService
     private const SCALAR_DEFAULTS = [
         'comp.admin_charge.rate_bp' => 300,
         // Per-group admin-charge ceilings (KP 2026-06-30 Round-5).
-        // Group A = GSB+MB (weekly), Groups B/C/D = monthly streams.
+        // Group A = GSB+MB (weekly), Groups B/D = monthly streams.
         // Each group has an independent ₹25,000/cycle ceiling.
         'comp.admin_charge.weekly_cap_paise' => 2_500_000,
         'comp.admin_charge.monthly_cap_paise' => 2_500_000,
@@ -59,16 +58,14 @@ final class CompensationPlanSettingsService
         // at payout with an income_cap_forfeit ledger debit.
         // ADC and Awards are excluded from this cap.
         'comp.monthly_income_cap_paise' => 500_000_000,
-        // Admin charge scope flags. ON for the six cash bonuses; OFF for
-        // Lifetime Awards — KP confirmed (2026-06-27 Round-2 Q6) that non-cash
-        // awards carry no admin charge or TDS (only cash/cheque releases do).
+        // Admin charge scope flags, ON for the six cash bonuses. Lifetime
+        // Awards are merchandise only and carry no admin charge or TDS.
         'comp.admin_charge.applies_to_gsb' => true,
         'comp.admin_charge.applies_to_mb' => true,
         'comp.admin_charge.applies_to_rank' => true,
         'comp.admin_charge.applies_to_gbb' => true,
         'comp.admin_charge.applies_to_fortune' => true,
         'comp.admin_charge.applies_to_adc' => true,
-        'comp.admin_charge.applies_to_awards' => false,
         'comp.tds.rate_bp' => 500,
         'comp.gsb.power_cf_cap_paise' => 45_000_000,
         'comp.gsb.min_bv_paise' => 60_000,
@@ -88,23 +85,47 @@ final class CompensationPlanSettingsService
         // Mentorship Bonus. Divided by the day's total MSB score points to give
         // one point value for every earner. 300 bp = 3%.
         'comp.msb.pool_rate_bp' => 300,
-        // Growth Booster pool (client 2026-10-10): 400 bp = 4% of the
-        // month's company BV.
+        // Client 2026-10-09: the highest MB point value the company pays.
+        // ₹120 = 12,000 paise. Pool ÷ points above this is capped; the excess
+        // stays with the company as leftover.
+        'comp.msb.point_value_cap_paise' => 12_000,
+        // Client 2026-10-09: from this rank the Mentorship Bonus is Mentorship
+        // Royalty and is paid even while the sponsor is failed on their
+        // repurchase condition. Below it, a failed sponsor earns no MB points
+        // that day. 1 switches the gate off (everyone is royalty).
+        'comp.msb.royalty_min_rank' => 6,
+        // Client 2026-10-09: the most a royalty-rank sponsor can earn from
+        // Mentorship on one cut-off day while failed on their repurchase
+        // condition. ₹3,600 = 360,000 paise (₹1,08,000 a month); the excess is
+        // withheld. Not applied while the condition is met.
+        'comp.msb.royalty_failed_daily_cap_paise' => 360_000,
+        // Client 2026-10-09: the GBB pool is 4% of the month's company BV.
         'comp.gbb.pool_rate_bp' => 400,
-        'comp.gbb.agp_cap' => 120,
+        // Client 2026-10-09: the highest GBB point value the company pays.
+        // ₹240 = 24,000 paise. Pool ÷ AGP above this is capped; the excess stays
+        // with the company as leftover. Replaced the per-distributor AGP cap.
+        'comp.gbb.point_value_cap_paise' => 24_000,
         'comp.adc.rate_bp' => 300,
-        // Awards & Rewards share of company BV (client, 2026-10-10 BV
-        // distribution chart). 2000 bp = 20%.
-        'comp.awards.rate_bp' => 2_000,
         'comp.adc.cap_paise' => 10_000_000,
-        // Rank Bonus envelope (KP 2026-08-05): share of company BV set aside for
-        // ALL nine rank pools together. 2000 bp = 20%.
+        // Rank Bonus envelope (client 2026-08-05): share of company BV set
+        // aside for the Rank Bonus. 2000 bp = 20%. One pool, two passes.
         'comp.rank.envelope_bp' => 2_000,
-        // AO-GO offer (KP 2026-08-05): points a degraded ex-rank-holder earns
-        // in the Rank-1 pool, and the lifetime cap on how many times the offer
-        // can be used.
-        'comp.rank.aogo_points' => 5,
+        // Lifetime Awards & Rewards fund (client 2026-10-09, Q1): share of
+        // company BV the awards are funded from. 2000 bp = 20%. Tracked and
+        // reported only — an earned award is never delayed by it.
+        'comp.awards.fund_rate_bp' => 2_000,
+        // AO-GO offer (client 2026-08-05; 36 points per the client's 2026-10-05
+        // Rank Income Point System): points a degraded ex-rank-holder earns in
+        // pass 1 on the Rank-1 row, and the lifetime cap on how many times the
+        // offer can be used.
+        'comp.rank.aogo_points' => 36,
         'comp.rank.aogo_lifetime_max' => 3,
+        // Client 2026-10-05 Rank Income Point System: one 20% pool, two passes,
+        // ₹200 ceiling per Rank Achievement Point.
+        'comp.rank.point_value_cap_paise' => 20_000,
+        // Ranks 1..N (plus the AGO offer) are priced first from the whole
+        // envelope; ranks N+1..9 share what is left.
+        'comp.rank.first_pass_max_rank' => 3,
         // Exclusive (true) vs cumulative (false) rank pools. Exclusive pays a
         // multi-rank qualifier only their highest rank — the plan-text reading
         // ("reaching Rank 2 cancels the Rank-1 benefit"). Cumulative pays every
@@ -113,9 +134,9 @@ final class CompensationPlanSettingsService
         'comp.rank.pay_highest_rank_only' => true,
         'comp.repurchase.rate_bp' => 1000,
         'comp.repurchase.cap_paise' => 1_000_000,
-        // Length of a distributor's repurchase window in days (client
-        // 2026-09-07, §1): the anchor day is day 0 and the verdict is taken
-        // this many days later, so due_date = start + days (7 Jul → 6 Aug).
+        // Length of a distributor's repurchase window in days, inclusive of
+        // the anchor day (client 2026-10-09, superseding 2026-09-07 §1): the
+        // anchor is day 1, so due_date = start + days − 1 (14 Feb → 15 Mar).
         'comp.repurchase.cycle_days' => 30,
         'comp.repurchase.non_ranked_bv_paise' => 60_000,
         'payout.min_threshold_paise' => 10_000,
@@ -133,14 +154,6 @@ final class CompensationPlanSettingsService
         'comp.fortune.exclude_rank_7' => true,
         'comp.fortune.exclude_rank_8' => true,
         'comp.fortune.exclude_rank_9' => true,
-        // "Repurchase Wallet zero" gate (the client's plan text, rules 2–7):
-        // a ranked or non-ranked distributor is enrolled only if their
-        // repurchase wallet stood at ₹0 on the last day of the month, i.e.
-        // the 10% deduction credited to it was spent on products. Month-1
-        // joiners are exempt (rule 1 carries no wallet condition). Reading (a)
-        // of the open question to the client — switch OFF if they rule that
-        // only the repurchase BV matters.
-        'comp.fortune.require_repurchase_wallet_zero' => true,
     ];
 
     /** @var array<string, string>|null Lazily-loaded settings key→value map. */
@@ -154,6 +167,9 @@ final class CompensationPlanSettingsService
 
     /** @var array<int, list<array{item: string, worth_paise: int}>>|null lifetime award items keyed by rank. */
     private ?array $lifetimeAwardCache = null;
+
+    /** @var array<int, list<array{tranche: int, amount_paise: int}>>|null lifetime award tranches keyed by rank. */
+    private ?array $lifetimeAwardTrancheCache = null;
 
     /** @var array<int, int>|null fortune matrix depth → points_per_member. */
     private ?array $fortunePointsCache = null;
@@ -177,7 +193,7 @@ final class CompensationPlanSettingsService
         return $this->scalarInt('comp.admin_charge.weekly_cap_paise');
     }
 
-    /** Per-cycle admin-charge ceiling for Group B/C/D (GBB/Rank/Fortune/Awards/ADC, monthly). */
+    /** Per-cycle admin-charge ceiling for Group B/D (GBB/Rank/Fortune/ADC, monthly). */
     public function adminChargeMonthlyCapPaise(): int
     {
         return $this->scalarInt('comp.admin_charge.monthly_cap_paise');
@@ -192,7 +208,7 @@ final class CompensationPlanSettingsService
     /**
      * Whether the admin charge applies to the given bonus stream. Driven by the
      * per-bonus `comp.admin_charge.applies_to_{value}` toggle (default true for
-     * all seven, per KP 2026-06-27), so admins can exempt a stream from the UI.
+     * all six, per KP 2026-06-27), so admins can exempt a stream from the UI.
      */
     public function adminChargeAppliesTo(BonusType $bonus): bool
     {
@@ -259,6 +275,75 @@ final class CompensationPlanSettingsService
     }
 
     /**
+     * Ceiling on the daily MSB point value (client 2026-10-09: ₹120).
+     * Fail-safe principle 1 / F-6: a cap under ₹1 would pay every sponsor ₹0 for
+     * the day and look like a quiet day, so it stops the engine instead of
+     * being clamped — a clamp pays a number nobody chose.
+     *
+     * Point values are whole rupees (Money::floorRupee), so the cap must be a
+     * whole rupee too — otherwise a capped day would pay a sub-rupee value
+     * that every display rounds away.
+     *
+     * @throws \RuntimeException when the stored value is below 100 paise or not a whole rupee
+     */
+    public function msbPointValueCapPaise(): int
+    {
+        $cap = $this->scalarInt('comp.msb.point_value_cap_paise');
+        if ($cap < 100) {
+            throw new \RuntimeException('comp.msb.point_value_cap_paise must be ≥ 100 paise (₹1); refusing to price the MSB pool with a cap of '.$cap);
+        }
+        if ($cap % 100 !== 0) {
+            throw new \RuntimeException('comp.msb.point_value_cap_paise must be a whole rupee (a multiple of 100 paise); refusing to price the MSB pool with a cap of '.$cap);
+        }
+
+        return $cap;
+    }
+
+    /**
+     * The rank from which the Mentorship Bonus becomes Mentorship Royalty
+     * (client 2026-10-09: rank 6). A sponsor below it who is failed on their
+     * repurchase condition on a cut-off day earns no MB points that day; at or
+     * above it the accrual stands. 1 neutralises the gate.
+     *
+     * Fail-safe principle 1 / F-6: a value outside 1–9 stops the cut-off rather
+     * than being clamped — 0 would silently pay every failed sponsor, 10 would
+     * silently gate every rank.
+     *
+     * @throws \RuntimeException when the stored value is outside 1–9
+     */
+    public function msbRoyaltyMinRank(): int
+    {
+        $rank = $this->scalarInt('comp.msb.royalty_min_rank');
+        if ($rank < 1 || $rank > 9) {
+            throw new \RuntimeException('comp.msb.royalty_min_rank must be between 1 and 9; refusing to gate Mentorship with '.$rank);
+        }
+
+        return $rank;
+    }
+
+    /**
+     * Daily Mentorship Royalty cap for a sponsor at or above the royalty rank
+     * who is failed on their repurchase condition (client 2026-10-09: ₹3,600).
+     * Everything credited to the sponsor for the cut-off day counts against it;
+     * the excess is withheld.
+     *
+     * Fail-safe principle 1 / F-6: a cap under ₹1 would pay every failed royalty
+     * sponsor ₹0 and look like a quiet day, so it stops the credit instead of
+     * being clamped.
+     *
+     * @throws \RuntimeException when the stored value is below 100 paise
+     */
+    public function msbRoyaltyFailedDailyCapPaise(): int
+    {
+        $cap = $this->scalarInt('comp.msb.royalty_failed_daily_cap_paise');
+        if ($cap < 100) {
+            throw new \RuntimeException('comp.msb.royalty_failed_daily_cap_paise must be ≥ 100 paise (₹1); refusing to credit Mentorship Royalty with a cap of '.$cap);
+        }
+
+        return $cap;
+    }
+
+    /**
      * Share of the day's company-wide BV that funds the daily GSB pool for the
      * pro-rated slabs 3–7 (KP 2026-07-29). Basis points: 4500 = 45%.
      */
@@ -272,19 +357,35 @@ final class CompensationPlanSettingsService
         return $this->scalarInt('comp.gbb.pool_rate_bp');
     }
 
-    public function gbbAgpCap(): int
+    /**
+     * Ceiling on the monthly Growth Booster point value (client 2026-10-09:
+     * ₹240). It replaced the retired per-distributor AGP cap.
+     * Fail-safe principle 1 / F-6: a cap under ₹1 would pay every earner ₹0 for
+     * the month and look like a quiet month, so it stops the freeze instead of
+     * being clamped — a clamp pays a number nobody chose.
+     *
+     * Point values are whole rupees (Money::floorRupee), so the cap must be a
+     * whole rupee too — otherwise a capped month would pay a sub-rupee value
+     * that every display rounds away.
+     *
+     * @throws \RuntimeException when the stored value is below 100 paise or not a whole rupee
+     */
+    public function gbbPointValueCapPaise(): int
     {
-        return $this->scalarInt('comp.gbb.agp_cap');
+        $cap = $this->scalarInt('comp.gbb.point_value_cap_paise');
+        if ($cap < 100) {
+            throw new \RuntimeException('comp.gbb.point_value_cap_paise must be ≥ 100 paise (₹1); refusing to price the Growth Booster pool with a cap of '.$cap);
+        }
+        if ($cap % 100 !== 0) {
+            throw new \RuntimeException('comp.gbb.point_value_cap_paise must be a whole rupee (a multiple of 100 paise); refusing to price the Growth Booster pool with a cap of '.$cap);
+        }
+
+        return $cap;
     }
 
     public function adcRateBp(): int
     {
         return $this->scalarInt('comp.adc.rate_bp');
-    }
-
-    public function awardsRateBp(): int
-    {
-        return $this->scalarInt('comp.awards.rate_bp');
     }
 
     public function adcCapPaise(): int
@@ -302,7 +403,7 @@ final class CompensationPlanSettingsService
         return $this->scalarInt('comp.repurchase.cap_paise');
     }
 
-    /** Length of one repurchase window in days: due_date = start + this many. */
+    /** Length of one repurchase window in days, inclusive of the start day: due_date = start + (this many − 1). */
     public function repurchaseCycleDays(): int
     {
         return max(1, $this->scalarInt('comp.repurchase.cycle_days'));
@@ -348,6 +449,27 @@ final class CompensationPlanSettingsService
         }
 
         return $this->lifetimeAwardCache[$rank] ?? [];
+    }
+
+    /**
+     * The rank's Lifetime Award tranches from lifetime_award_tranches: A is
+     * released on the 1st qualification, B on the 2nd, C on the 3rd.
+     *
+     * @return list<array{tranche: int, amount_paise: int}> ordered by tranche (client 2026-10-09).
+     */
+    public function lifetimeAwardTranches(int $rank): array
+    {
+        if ($this->lifetimeAwardTrancheCache === null) {
+            $this->lifetimeAwardTrancheCache = [];
+            foreach (DB::table('lifetime_award_tranches')->orderBy('rank_number')->orderBy('tranche')->get() as $row) {
+                $this->lifetimeAwardTrancheCache[(int) $row->rank_number][] = [
+                    'tranche' => (int) $row->tranche,
+                    'amount_paise' => (int) $row->amount_paise,
+                ];
+            }
+        }
+
+        return $this->lifetimeAwardTrancheCache[$rank] ?? [];
     }
 
     public function minPayoutPaise(): int
@@ -515,9 +637,8 @@ final class CompensationPlanSettingsService
                 $this->rankTierCache[(int) $row->rank_number] = [
                     'rank_number' => (int) $row->rank_number,
                     'rank_name' => (string) $row->rank_name,
-                    'pool_pct' => (float) $row->pool_pct,
                     'pyp_required' => (int) $row->pyp_required,
-                    'rap_points' => ($row->rap_points ?? null) !== null ? (int) $row->rap_points : null,
+                    'rap_points' => (int) ($row->rap_points ?? 0),
                     'personal_bv_required_paise' => (int) $row->personal_bv_required_paise,
                     'group_bv_required_paise' => $row->group_bv_required_paise !== null ? (int) $row->group_bv_required_paise : null,
                     'weaker_leg_topup_bv_paise' => (int) ($row->weaker_leg_topup_bv_paise ?? 0),
@@ -532,26 +653,76 @@ final class CompensationPlanSettingsService
         return $this->rankTierCache;
     }
 
-    public function rankPoolPct(int $rank): float
-    {
-        return (float) ($this->rankTiers()[$rank]['pool_pct'] ?? 0.0);
-    }
-
     /**
      * Share of company BV (the signed bv_ledger_entries sum for the month) that
      * funds the Rank Bonus envelope. Basis points: 2000 = 20%.
      *
-     * Each rank's `rank_tiers.pool_pct` is a share OF THIS ENVELOPE, not of
-     * turnover directly — which is why the seeded per-rank percentages
-     * (7.00, 3.40, 2.70, 2.20, 1.70, 1.20, 0.90, 0.60, 0.30) sum to exactly 20
-     * and are stored verbatim as the product owner writes them.
-     *
-     * Worked example (product owner 2026-08-05): 10,00,000 BV in the month →
-     * 20% envelope = 2,00,000 → Rank 1's 7% share = ₹14,000.
+     * The whole envelope is one pool, divided in two passes (see
+     * RankBonusService): the AGO offer and Ranks 1..N first, Ranks N+1..9
+     * from what is left, both at most {@see rankPointValueCapPaise()} a point.
      */
     public function rankEnvelopeBp(): int
     {
         return $this->scalarInt('comp.rank.envelope_bp');
+    }
+
+    /**
+     * Share of company BV (the signed bv_ledger_entries sum for the month) that
+     * funds the Lifetime Awards & Rewards (client 2026-10-09, Q1: one of the
+     * seven shares — GSB 45, MB 3, GBB 4, Rank 20, Fortune 5, Awards 20,
+     * ADC 3 = 100 %). Basis points: 2000 = 20%. Reporting only: the awards
+     * fund is tracked against the fixed tranche amounts and never delays an
+     * earned award (user decision 2026-10-09).
+     */
+    public function awardsFundRateBp(): int
+    {
+        return $this->scalarInt('comp.awards.fund_rate_bp');
+    }
+
+    /**
+     * Highest value one Rank Achievement Point can be worth (client 2026-10-05:
+     * ₹200 = 20,000 paise).
+     * Fail-safe principle 1 / F-6: a cap under ₹1 would price every point at ₹0
+     * and look like a quiet month, so it stops the freeze instead of being
+     * clamped — a clamp pays a number nobody chose.
+     *
+     * Point values are whole rupees (Money::floorRupee), so the cap must be a
+     * whole rupee too — otherwise a capped pass would pay a sub-rupee value
+     * that every display rounds away.
+     *
+     * @throws \RuntimeException when the stored value is below 100 paise or not a whole rupee
+     */
+    public function rankPointValueCapPaise(): int
+    {
+        $cap = $this->scalarInt('comp.rank.point_value_cap_paise');
+        if ($cap < 100) {
+            throw new \RuntimeException('comp.rank.point_value_cap_paise must be at least 100 paise (₹1); refusing to price the Rank Bonus with a cap of '.$cap);
+        }
+        if ($cap % 100 !== 0) {
+            throw new \RuntimeException('comp.rank.point_value_cap_paise must be a whole rupee (a multiple of 100 paise); refusing to price the Rank Bonus with a cap of '.$cap);
+        }
+
+        return $cap;
+    }
+
+    /**
+     * Ranks 1..N (plus the AGO offer) are priced in pass 1 from the whole
+     * envelope; ranks N+1..9 share the remainder in pass 2. 9 = one pass.
+     *
+     * Fail-safe principle 1 / F-6: a value outside 1–9 stops the freeze rather
+     * than being clamped — 0 would silently move the AGO offer and Rank 1 into
+     * pass 2, 10 would silently mean 9.
+     *
+     * @throws \RuntimeException when the stored value is outside 1–9
+     */
+    public function rankFirstPassMaxRank(): int
+    {
+        $rank = $this->scalarInt('comp.rank.first_pass_max_rank');
+        if ($rank < 1 || $rank > 9) {
+            throw new \RuntimeException('comp.rank.first_pass_max_rank must be between 1 and 9; refusing to price the Rank Bonus with '.$rank);
+        }
+
+        return $rank;
     }
 
     /**
@@ -574,18 +745,17 @@ final class CompensationPlanSettingsService
     }
 
     /**
-     * Rank Achievement Points per achiever (KP 2026-08-05). Non-null switches
-     * the rank's pool to points division (pool ÷ (Σ RAP + Σ AO-GO points));
-     * null keeps the equal split among achievers. Seeded: Rank 1 = 10, 2–9 null.
+     * Rank Achievement Points per achiever (client 2026-10-05 Rank Income
+     * Point System): 72 / 189 / 468 / 1,125 / 2,583 / 5,688 / 11,934 /
+     * 23,877 / 39,501. 0 when the rank is unset — the freeze refuses a rank
+     * with payable achievers and no points.
      */
-    public function rankRapPoints(int $rank): ?int
+    public function rankRapPoints(int $rank): int
     {
-        $value = $this->rankTiers()[$rank]['rap_points'] ?? null;
-
-        return $value !== null ? (int) $value : null;
+        return (int) ($this->rankTiers()[$rank]['rap_points'] ?? 0);
     }
 
-    /** AO-GO points a degraded ex-rank-holder earns in the Rank-1 pool. */
+    /** AO-GO points a degraded ex-rank-holder earns in pass 1 on the Rank-1 row. */
     public function aogoPointsPerGrant(): int
     {
         return $this->scalarInt('comp.rank.aogo_points');
@@ -660,15 +830,6 @@ final class CompensationPlanSettingsService
     public function fortuneMinCommissionPaise(): int
     {
         return $this->scalarInt('comp.fortune.min_commission_paise');
-    }
-
-    /**
-     * Whether Fortune enrolment requires the repurchase wallet to be ₹0 at
-     * month end for every tier except the month-1 joiner.
-     */
-    public function fortuneRequiresRepurchaseWalletZero(): bool
-    {
-        return $this->scalarBool('comp.fortune.require_repurchase_wallet_zero');
     }
 
     /**

@@ -9,8 +9,8 @@ namespace App\Modules\Compensation\Events;
  * 2026-09-07) the cycle itself reaches exactly two things: the GSB cut-off,
  * which forfeits every failed day outright, and the Genos BV counted at rank
  * qualification, which skips those same days. Mentorship, Growth Booster,
- * Fortune and Rank Bonus are never suspended by the cycle — their own
- * month-end repurchase-wallet gate is a separate rule. Fire-and-forget.
+ * Fortune and Rank Bonus are never suspended by the cycle, and no month-end
+ * repurchase-wallet gate exists (retired 2026-10-17). Fire-and-forget.
  */
 final class IncomeSuspended
 {

@@ -10,9 +10,7 @@
     <strong>GBB pool</strong> (the configured pool rate of that month's BV), every distributor who earned AGP,
     the <strong>point value</strong> the month froze and each distributor's income.
     <span class="font-medium">AGP point value = (GBB pool) ÷ (total AGP)</span>, floored to whole rupees — so
-    the month's payout equals the pool apart from that remainder. Held rows sit inside the frozen denominator
-    and release at the frozen point value; suspended rows, and rows blocked by an unspent repurchase wallet,
-    earned AGP that was excluded and is never paid.
+    the month's payout equals the pool apart from that remainder.
     Search by month or month range.
 </div>
 @enddeveloper
@@ -51,11 +49,6 @@
     @php
         $rows = collect($earners[$pool->month_start] ?? []);
         $creditedIncome = (int) $rows->where('status', \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_CREDITED)->sum('income_paise');
-        // Legacy rows only — priced into their month's pool, so they still have
-        // to reconcile here, but nothing releases them any more.
-        $heldIncome = (int) $rows->where('status', \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_HELD)->sum('income_paise');
-        $walletBlockedCount = $rows->where('status', \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED)->count();
-        $totalIncome = $creditedIncome + $heldIncome;
         $totalDeduction = (int) $rows->sum('deduction_paise');
         $totalCredited = (int) $rows->sum('credited_paise');
     @endphp
@@ -68,6 +61,12 @@
             <span class="text-gray-500">Total AGP <strong class="text-gray-700">{{ \App\Modules\Shared\Support\IndianNumber::format($pool->total_agp) }}</strong></span>
             <span class="text-gray-500">Point value
                 <strong class="text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($pool->point_value_paise / 100, 2) }}</strong></span>
+            <span class="text-gray-500">Raw point value
+                <strong class="text-gray-700">{{ $pool->raw_point_value_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->raw_point_value_paise / 100, 2) : '—' }}</strong>
+                <x-help-tip text="Pool ÷ total AGP, floored to the whole rupee, before the cap. Above the cap every earner is paid the cap and the difference stays with the company. — for months frozen before the cap existed." /></span>
+            <span class="text-gray-500">Cap
+                <strong class="text-gray-700">{{ $pool->point_value_cap_paise !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format($pool->point_value_cap_paise / 100, 2) : '—' }}</strong>
+                <x-help-tip text="The point value cap in force when this month was frozen. A later setting change never moves a frozen month." /></span>
             <span class="text-gray-500 ml-auto">Computed
                 <strong class="text-gray-700">{{ $pool->created_at?->format('d M Y H:i') ?? '—' }}</strong>
                 <x-help-tip text="When this month's pool was frozen — the figures reflect the data as it stood at this moment. On a testing recompute this is the recompute time, not the month's end." /></span>
@@ -97,30 +96,13 @@
         </div>
         @endif
 
-        @if($walletBlockedCount > 0)
-        <div class="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800">
-            {{ \App\Modules\Shared\Support\IndianNumber::format($walletBlockedCount) }}
-            {{ $walletBlockedCount === 1 ? 'distributor' : 'distributors' }} forfeited this month: the repurchase
-            wallet was not cleared at the last instant of it. Their AGP was excluded from the denominator, so the
-            month's point value was priced without them and nothing here will ever pay them.
-        </div>
-        @endif
-
-        @if($heldIncome > 0)
-        <div class="px-4 py-2 bg-amber-50 border-b border-amber-100 text-[11px] text-amber-800">
-            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($heldIncome / 100, 2) }} of the frozen
-            payout sits on legacy <code>repurchase_held</code> rows. Their AGP was inside the denominator, so the
-            pool was priced with them, but the release path was removed with the 2026-09-07 repurchase rules and
-            nothing credits them now. Escalate rather than paying them from this page.
-        </div>
-        @endif
 
         <div class="overflow-x-auto">
             <table class="w-full text-xs">
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-3 py-2 text-left text-gray-500 font-medium">S.no</th>
-                        <th class="px-3 py-2 text-left text-gray-500 font-medium">Distributor <x-help-tip text="Each distributor who earned AGP this month, with the AGP they earned. Blocked = the repurchase wallet was not cleared at the last instant of the month: that AGP was excluded from the denominator and is never paid. Held and suspended are legacy states no run writes any more." /></th>
+                        <th class="px-3 py-2 text-left text-gray-500 font-medium">Distributor <x-help-tip text="Each distributor who earned AGP this month, with the AGP they earned." /></th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">AGP</th>
                         <th class="px-3 py-2 text-right text-gray-500 font-medium">Point value <x-help-tip text="The GBB pool divided by the month's total AGP, floored to whole rupees. One value applies to every earner in the month." /></th>
                         <x-bonus-credit-head gross-label="Income" th-class="px-3 py-2 text-right text-gray-500 font-medium" />
@@ -146,12 +128,8 @@
                         <td class="px-3 py-2 text-center">
                             @if($row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_CREDITED)
                             <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700">Credited</span>
-                            @elseif($row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_HELD)
-                            <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">Held (legacy)</span>
-                            @elseif($row->status === \App\Modules\Compensation\Models\GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED)
-                            <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800">Blocked — repurchase wallet not ₹0</span>
                             @else
-                            <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">Suspended — AGP excluded (legacy)</span>
+                            <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600">{{ ucfirst(str_replace('_', ' ', $row->status)) }}</span>
                             @endif
                         </td>
                     </tr>
@@ -169,7 +147,7 @@
                     </tr>
                     <tr class="font-semibold">
                         <td class="px-3 py-2 text-right text-xs" colspan="4">Total income / deduction / credited</td>
-                        <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalIncome / 100, 2) }}</td>
+                        <td class="px-3 py-2 text-right text-gray-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($creditedIncome / 100, 2) }}</td>
                         <td class="px-3 py-2 text-right {{ $totalDeduction > 0 ? 'text-red-600' : 'text-gray-500' }}">{{ $totalDeduction > 0 ? '-₹'.\App\Modules\Shared\Support\IndianNumber::format($totalDeduction / 100, 2) : '—' }}</td>
                         <td class="px-3 py-2 text-right text-green-700">₹{{ \App\Modules\Shared\Support\IndianNumber::format($totalCredited / 100, 2) }}</td>
                         <td class="px-3 py-2 text-right {{ $pool->leftover_paise < 0 ? 'text-red-600' : 'text-gray-500' }} text-[11px]">

@@ -22,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Laravel\Pennant\Feature;
+use RuntimeException;
 
 /**
  * Admin editor for the tabular compensation-plan ladders (GSB slabs, rank
@@ -43,6 +44,7 @@ final class AdminPlanSettingsController extends Controller
         $gsbOn = Feature::for(null)->active(GenosSalesBonusFeature::class);
         $rankOn = Feature::for(null)->active(RankBonusFeature::class);
         $fortuneOn = Feature::for(null)->active(FortuneBonusFeature::class);
+        $gbbOn = Feature::for(null)->active(GrowthBoosterBonusFeature::class);
 
         return view('admin.compensation.plan-settings.index', [
             // Viewing the plan is monitoring (whole admin family); editing it
@@ -56,7 +58,11 @@ final class AdminPlanSettingsController extends Controller
             // The "How X is calculated" explainers follow the same flags as
             // every other surface of their bonus.
             'msbOn' => Feature::for(null)->active(MentorshipBonusFeature::class),
-            'gbbOn' => Feature::for(null)->active(GrowthBoosterBonusFeature::class),
+            'gbbOn' => $gbbOn,
+            // The GBB explainer states the configured rate and cap, never a
+            // figure written into the copy.
+            'gbbPoolRateBp' => $gbbOn ? $this->plan->gbbPoolRateBp() : null,
+            'gbbPointValueCapPaise' => $gbbOn ? $this->gbbPointValueCapPaise() : null,
             'adcOn' => Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class),
             'awardsOn' => Feature::for(null)->active(LifetimeAwardsFeature::class),
             'slabs' => $gsbOn ? DB::table('gsb_slabs')->orderBy('slab')->get() : collect(),
@@ -135,9 +141,8 @@ final class AdminPlanSettingsController extends Controller
 
         $data = $request->validate([
             'rank_name' => ['required', 'string', 'max:100'],
-            'pool_pct' => ['required', 'numeric', 'min:0', 'max:100'],
             'pyp_required' => ['required', 'integer', 'min:0', 'max:50'],
-            'rap_points' => ['nullable', 'integer', 'min:0', 'max:65535'],
+            'rap_points' => ['required', 'integer', 'min:1', 'max:65535'],
             'personal_bv_required_paise' => ['required', 'integer', 'min:0', 'max:1000000000000'],
             'group_bv_required_paise' => ['nullable', 'integer', 'min:0', 'max:1000000000000'],
             'weaker_leg_topup_bv_paise' => ['required', 'integer', 'min:0', 'max:1000000000000'],
@@ -149,9 +154,8 @@ final class AdminPlanSettingsController extends Controller
 
         $new = [
             'rank_name' => $data['rank_name'],
-            'pool_pct' => (float) $data['pool_pct'],
             'pyp_required' => (int) $data['pyp_required'],
-            'rap_points' => $data['rap_points'] !== null ? (int) $data['rap_points'] : null,
+            'rap_points' => (int) $data['rap_points'],
             'personal_bv_required_paise' => (int) $data['personal_bv_required_paise'],
             'group_bv_required_paise' => $data['group_bv_required_paise'] !== null ? (int) $data['group_bv_required_paise'] : null,
             'weaker_leg_topup_bv_paise' => (int) $data['weaker_leg_topup_bv_paise'],
@@ -214,6 +218,20 @@ final class AdminPlanSettingsController extends Controller
         ];
 
         return $this->persistRow('fortune_bonus_tiers', 'tier', $tier, $new, 'fortune_tier', $tier, $request);
+    }
+
+    /**
+     * The configured GBB cap, or null when the stored value is one the engine
+     * refuses to price with — the explainer then says so instead of the page
+     * failing over a display-only figure. The engine still refuses.
+     */
+    private function gbbPointValueCapPaise(): ?int
+    {
+        try {
+            return $this->plan->gbbPointValueCapPaise();
+        } catch (RuntimeException) {
+            return null;
+        }
     }
 
     /**
