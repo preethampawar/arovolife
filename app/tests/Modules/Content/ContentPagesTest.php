@@ -175,14 +175,16 @@ it('publishes the compensation plan formulas and the no-projection statement', f
         ->toContain('no MSB is payable for a day on which nobody qualified');
 });
 
-it('flags that the pooled methods are not yet in force until the §6.2 date is set', function (): void {
+it('states the go-live date from which the pooled methods and monthly bonuses apply', function (): void {
     publishHeldContentPages();
 
     $body = (string) $this->get('/p/compensation')->getContent();
 
-    // Guard against the page going live claiming an effective date it does not
-    // have. Once the notice is issued the placeholder is replaced with a real
-    // date and this test is updated to assert that date instead.
-    expect($body)->toContain('EFFECTIVE DATE — TO BE INSERTED');
-    expect($body)->toContain('not yet operative');
+    // No pre-launch §6.2 notice (user decision 2026-10-17, R-118): the page
+    // carries the go-live date instead of a placeholder. If go-live moves,
+    // this date and the four on the page move with it.
+    expect($body)->not->toContain('EFFECTIVE DATE — TO BE INSERTED')
+        ->and(substr_count($body, '8 November 2026'))->toBeGreaterThanOrEqual(4)
+        // Redeem points stay off at launch.
+        ->and($body)->toContain('available only from a date stated on this page under §12');
 });

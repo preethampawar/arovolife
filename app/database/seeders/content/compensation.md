@@ -1,6 +1,6 @@
-<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-10-17 (removed the month-end repurchase-wallet condition from §7.2 and §8; added §11.2 Rank Bonus terms — rank conditions, qualifying again, the AO-GO offer and the two-pass pool — still not operative; previously v2026-09-17, which removed §11.1 Franchise commission; previously v2026-09-03, which amended §7.2 repurchase-wallet condition and §7.4 per-level maximums; previous v2026-08-07). CONTAINS AN UNRESOLVED PLACEHOLDER: the §6.2 effective date in §5.4, §6.5, §7.6, §11.1 and §11.2 must be inserted before any of those components is switched on. -->
+<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-10-17 (removed the month-end repurchase-wallet condition from §7.2 and §8; added §11.2 Rank Bonus terms — rank conditions, qualifying again, the AO-GO offer and the two-pass pool; replaced the effective-date placeholders with the 8 November 2026 start; corrected the DSA citation from a non-existent §6.2 to §12 (Modification); previously v2026-09-17, which removed §11.1 Franchise commission; previously v2026-09-03, which amended §7.2 repurchase-wallet condition and §7.4 per-level maximums; previous v2026-08-07). START DATE: §5.4, §6.5, §7.6 and §11.2 apply from 8 November 2026, the go-live date; change all four if go-live moves. No pre-launch notice (user decision 2026-10-17: no Distributor exists before launch, so there is no one to notify; R-118). §12's 30-day notice still governs every amendment after launch. The Growth Booster, Lifetime Awards and ADC have no section yet and must be published before they pay. -->
 
-This page is the published Compensation Plan disclosure of Arovolife Private Limited (CIN U46909TS2026PTC210896) ("arovolife", "the Company"), required by §6.2 of the [Direct Seller Agreement](/p/terms) and by Rule 5 of the Consumer Protection (Direct Selling) Rules 2021 ("DSR 2021").
+This page is the published Compensation Plan disclosure of Arovolife Private Limited (CIN U46909TS2026PTC210896) ("arovolife", "the Company"), required by Rule 5 of the Consumer Protection (Direct Selling) Rules 2021 ("DSR 2021") and published under §12 (Modification) of the [Direct Seller Agreement](/p/terms).
 
 It sets out how Business Volume is generated, how each operative bonus is calculated, the thresholds and caps that apply, what is deducted before payment, and how the plan may be changed. It is the authoritative statement of the plan: where any presentation, training material, social-media post or statement by any person differs from this page, **this page prevails**.
 
@@ -74,9 +74,7 @@ The score value is capped at **₹250 per point for every slab, without exceptio
 
 ### 5.4 The pooled score value for slabs 3–7
 
-> **Method in force today:** slabs 3–7 are paid at the fixed ₹250 per point.
->
-> **Amendment noticed under §6.2, effective [EFFECTIVE DATE — TO BE INSERTED WHEN THE §6.2 NOTICE IS ISSUED]:** from that date, slabs 3–7 are paid at the pooled score value below. Slabs 1 and 2 are unaffected and remain fixed at ₹250 per point.
+> **From 8 November 2026, the date this plan opens to Distributors:** slabs 3–7 are paid at the pooled score value below. Slabs 1 and 2 remain fixed at ₹250 per point.
 
 After the fixed slab-1 and slab-2 bonuses have been met from the day's 45% pool, whatever remains is shared across everyone who matched slabs 3–7 that day, in proportion to their scores:
 
@@ -132,7 +130,7 @@ If no Distributor earns any MSB points on a given day, the point value for that 
 
 ### 6.5 Status
 
-> The Mentorship Bonus is **not yet operative**. It becomes payable on **[EFFECTIVE DATE — TO BE INSERTED WHEN THE §6.2 NOTICE IS ISSUED]**, being not less than 30 days after written notice is given to all active Distributors under §6.2 of the Direct Seller Agreement. No MSB has been paid to any Distributor to date.
+> The Mentorship Bonus is operative from **8 November 2026**, the date this plan opens to Distributors.
 
 ## 7. Fortune Bonus
 
@@ -189,7 +187,7 @@ Every point value depends on the Company's total BV for the month, on how many o
 
 ### 7.6 Status
 
-> The Fortune Bonus is **not yet operative**. It becomes payable on **[EFFECTIVE DATE — TO BE INSERTED WHEN THE §6.2 NOTICE IS ISSUED]**, being not less than 30 days after written notice is given to all active Distributors under §6.2 of the Direct Seller Agreement. No Fortune Bonus has been paid to any Distributor to date.
+> The Fortune Bonus is operative from **8 November 2026**, the date this plan opens to Distributors.
 
 ## 8. Deductions
 
@@ -220,11 +218,9 @@ Non-cash awards are not subject to the administrative charge. Applicable tax on 
 
 Capped and flushed amounts are not owed, carried forward or payable at a later date.
 
-## 11. Benefits not yet operative
+## 11. Further benefits
 
-The Direct Seller Agreement contemplates further components — the Growth Booster Bonus, Rank Bonus, Lifetime Awards & Rewards and the Arete Development Centre Bonus. **None of these is operative, and none is payable, until it is published on this page with an effective date following the notice period in §12.** No representation is made that any of them will be introduced, or on what terms. Where terms are set out below (§11.2), they describe how the component would operate from its effective date; until then nothing under it is payable.
-
-The Fortune Bonus is published at §7 above and is likewise not yet operative; it becomes payable only on the effective date stated in §7.6.
+The Direct Seller Agreement contemplates further components — the Growth Booster Bonus, Lifetime Awards & Rewards and the Arete Development Centre Bonus. **None of these is operative, and none is payable, until it is published on this page with the date from which it applies.** No representation is made that any of them will be introduced, or on what terms. The redeem-points offer (§11.1) is likewise not yet operative. The Rank Bonus (§11.2) is operative from the date stated in that section.
 
 ### 11.1 Redeem points for Distributors holding no rank
 
@@ -236,7 +232,7 @@ A refund reduces the month the returned purchase belongs to, not the month of th
 
 **Redeem points are not money.** They are a discount entitlement. One point reduces the product value of a future arovolife purchase by ₹1. They carry no cash value, cannot be withdrawn, transferred or exchanged, are not paid out in any circumstance, and cannot be used to pay GST or delivery charges. If an order paid partly in points is cancelled or refunded, the points are restored.
 
-> Redeem points are **not yet operative**. They become available on **[EFFECTIVE DATE — TO BE INSERTED WHEN THE §6.2 NOTICE IS ISSUED]**, being not less than 30 days after written notice is given to all active Distributors under §6.2 of the Direct Seller Agreement. No redeem point has been credited to any Distributor to date.
+> Redeem points are **not yet operative**. They become available only from a date stated on this page under §12. No redeem point has been credited to any Distributor to date.
 
 ### 11.2 Rank Bonus
 
@@ -273,14 +269,14 @@ No Distributor is required to buy anything. These conditions concern products bo
 
 The total Rank Bonus paid for a month can never exceed the 20% pool. Whatever the two passes do not pay out — rounding remainders and amounts above the ₹200 cap — remains with the Company and is not redistributed. Every point value depends on the Company's total BV for the month and on how many Distributors qualified, none of which any Distributor can know in advance or control. **A point value may be ₹0**, in which case no Rank Bonus is payable for that month.
 
-> The Rank Bonus is **not yet operative**. It becomes payable on **[EFFECTIVE DATE — TO BE INSERTED WHEN THE §6.2 NOTICE IS ISSUED]**, being not less than 30 days after written notice is given to all active Distributors under §6.2 of the Direct Seller Agreement. No Rank Bonus has been paid to any Distributor to date.
+> The Rank Bonus is operative from **8 November 2026**, the date this plan opens to Distributors.
 
 ## 12. Changes to this plan
 
-This plan may be amended only with **30 days' prior written notice** to all active Distributors, under §6.2 of the Direct Seller Agreement. An amendment takes effect from the date stated in that notice and never retrospectively: bonuses already calculated are settled at the values that applied on the day they were calculated, and are not recomputed when the plan changes.
+This plan may be amended only with **30 days' prior written notice** to all active Distributors. This is the Company's undertaking under §12 (Modification) of the Direct Seller Agreement. An amendment takes effect from the date stated in that notice and never retrospectively: bonuses already calculated are settled at the values that applied on the day they were calculated, and are not recomputed when the plan changes.
 
 The current version of this page is always available at `/p/compensation`. If you believe a payment does not match what is published here, raise it through [Grievance Redressal](/p/grievance); it will be answered within the SLA published on that page.
 
 ---
 
-*Compensation Plan disclosure version: v2026-10-17 (removed the month-end repurchase-wallet condition from §7.2 and §8; added the §11.2 Rank Bonus terms, not yet operative). Published under §6.2 of the Direct Seller Agreement. Read together with the [Direct Seller Agreement](/p/terms), the [Code of Ethics](/p/ethics) and the [Grievance Redressal Policy](/p/grievance).*
+*Compensation Plan disclosure version: v2026-10-17 (removed the month-end repurchase-wallet condition from §7.2 and §8; added the §11.2 Rank Bonus terms; GSB pooled pricing, Mentorship, Fortune and Rank Bonus apply from 8 November 2026). Published under §12 (Modification) of the Direct Seller Agreement. Read together with the [Direct Seller Agreement](/p/terms), the [Code of Ethics](/p/ethics) and the [Grievance Redressal Policy](/p/grievance).*
