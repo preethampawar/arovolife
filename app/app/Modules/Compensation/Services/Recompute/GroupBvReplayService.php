@@ -81,7 +81,7 @@ final class GroupBvReplayService
             // never pages. Offset paging is safe here precisely because this
             // loop writes to group_bv_* and never to `orders`, so the set it
             // walks cannot shift underneath it.
-            ->chunk(self::PROGRESS_CHUNK, function ($orders) use (&$propagated, $log): void {
+            ->chunk(self::PROGRESS_CHUNK, function ($orders) use (&$propagated, $log, $from): void {
                 foreach ($orders as $order) {
                     $bvPaise = (int) BvLedgerEntry::where('order_id', $order->id)
                         ->where('type', BvLedgerEntry::TYPE_ACCRUAL)
@@ -94,10 +94,13 @@ final class GroupBvReplayService
                     $paidAt = Carbon::parse($order->getAttribute('paid_at'));
 
                     // Travel the clock so created_at on the rebuilt rows tells
-                    // the truth. The job takes the date explicitly, so the
-                    // accumulation lands on the right day either way — this is
-                    // only about the audit timestamps.
-                    Carbon::setTestNow($paidAt);
+                    // the truth, and so the accumulator sees the paid day as
+                    // today and lands the BV on it. An order paid before a
+                    // window's start is only here because its BV landed inside
+                    // the window (it reached the worker after its day's
+                    // cut-off); replayed at the window's start, it lands there
+                    // again rather than on a day the window does not rebuild.
+                    Carbon::setTestNow($from !== null && $paidAt->lt($from->copy()->startOfDay()) ? $from->copy()->startOfDay() : $paidAt);
 
                     PropagateGroupBvJob::dispatchSync(
                         orderId: (int) $order->id,
@@ -121,6 +124,11 @@ final class GroupBvReplayService
     /**
      * The orders whose BV this replay is responsible for re-propagating.
      *
+     * A windowed replay takes the orders paid inside the window, and also any
+     * paid earlier that no longer have a propagation marker — the wipe
+     * deleted it because the order's BV landed inside the window (the marker
+     * is dated by the landing day, see GroupBvAccumulatorService).
+     *
      * @return Builder<Order>
      */
     private function eligibleOrders(?Carbon $from): Builder
@@ -129,6 +137,11 @@ final class GroupBvReplayService
             ->where('status', Order::STATUS_PAID)
             ->whereNotNull('attributed_distributor_id')
             ->whereNotNull('paid_at')
-            ->when($from !== null, fn ($q) => $q->where('paid_at', '>=', $from->copy()->startOfDay()));
+            ->when($from !== null, fn ($q) => $q->where(function ($q) use ($from): void {
+                $q->where('paid_at', '>=', $from->copy()->startOfDay())
+                    ->orWhereNotExists(fn ($log) => $log->selectRaw('1')
+                        ->from('bv_propagation_log')
+                        ->whereColumn('bv_propagation_log.order_id', 'orders.id'));
+            }));
     }
 }

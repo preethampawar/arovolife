@@ -265,3 +265,65 @@ it('is idempotent on reversal — calling twice does not double-debit', function
     $daily = GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', today())->first();
     expect($daily->left_bv_paise)->toBe(0);
 });
+
+function settleTopupDay(int $distributorId, string $date, string $status): void
+{
+    GsbCutoffResult::create([
+        'distributor_id' => $distributorId,
+        'cutoff_date' => $date,
+        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
+        'gross_gsb_paise' => 0, 'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 0,
+        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
+        'status' => $status,
+    ]);
+}
+
+it('takes a cancelled top-up back from today when its day settled with no match — that day already carried it forward', function (): void {
+    $dist = makeDistributorForTopupTest();
+    $yesterday = Carbon::yesterday()->toDateString();
+    $today = Carbon::today()->toDateString();
+
+    $orderId = accrueTopup($dist->id, 50_000, $yesterday);
+    setGroupBvTopup($dist->id, 0, 300_000, $yesterday);
+    app(GsbPersonalBvTopupService::class)->applyPendingForDistributor($dist->id, Carbon::yesterday(), 'L');
+    settleTopupDay($dist->id, $yesterday, GsbCutoffResult::STATUS_NO_MATCH);
+    setGroupBvTopup($dist->id, 120_000, 0, $today);
+
+    app(GsbPersonalBvTopupService::class)->reverseForOrder($orderId);
+
+    expect(GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', $yesterday)->value('left_bv_paise'))->toBe(50_000);
+    expect(GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', $today)->value('left_bv_paise'))->toBe(70_000);
+});
+
+it('turns the part of a cancelled top-up today cannot cover into a same-side debt instead of failing', function (): void {
+    $dist = makeDistributorForTopupTest();
+    $yesterday = Carbon::yesterday()->toDateString();
+    $today = Carbon::today()->toDateString();
+
+    $orderId = accrueTopup($dist->id, 50_000, $yesterday);
+    setGroupBvTopup($dist->id, 0, 300_000, $yesterday);
+    app(GsbPersonalBvTopupService::class)->applyPendingForDistributor($dist->id, Carbon::yesterday(), 'L');
+    settleTopupDay($dist->id, $yesterday, GsbCutoffResult::STATUS_CREDITED);
+    setGroupBvTopup($dist->id, 20_000, 0, $today);
+
+    app(GsbPersonalBvTopupService::class)->reverseForOrder($orderId);
+
+    expect(GroupBvDaily::where('distributor_id', $dist->id)->whereDate('date', $today)->value('left_bv_paise'))->toBe(0);
+    expect((int) DB::table('group_bv_debts')->where('distributor_id', $dist->id)->where('side', 'L')->value('bv_paise'))->toBe(30_000);
+    expect(GsbPersonalBvTopup::first()->reversed_at)->not->toBeNull();
+});
+
+it('records the whole cancelled top-up as debt when nothing has landed today yet', function (): void {
+    $dist = makeDistributorForTopupTest();
+    $yesterday = Carbon::yesterday()->toDateString();
+
+    $orderId = accrueTopup($dist->id, 50_000, $yesterday);
+    setGroupBvTopup($dist->id, 0, 300_000, $yesterday);
+    app(GsbPersonalBvTopupService::class)->applyPendingForDistributor($dist->id, Carbon::yesterday(), 'L');
+    settleTopupDay($dist->id, $yesterday, GsbCutoffResult::STATUS_NO_MATCH);
+
+    app(GsbPersonalBvTopupService::class)->reverseForOrder($orderId);
+
+    expect((int) DB::table('group_bv_debts')->where('distributor_id', $dist->id)->where('side', 'L')->value('bv_paise'))->toBe(50_000);
+});

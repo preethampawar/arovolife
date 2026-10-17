@@ -295,7 +295,7 @@ The Growth Booster Bonus is subject to the deductions in §8 and the caps in §1
 
 The Arete Development Centre Bonus is paid only to the Distributor who operates an Arete Development Centre that the Company has approved after an application and review. It is not available to any other Distributor.
 
-**How it is earned.** The operator earns **3%** of the net BV of the orders that were consigned to that centre and handed over to the buyer there in the month, as recorded by the Company. Orders are placed with the Company in the usual way; the centre is a collection point and does not sell. A cancellation or refund is deducted in the month in which it is recorded. A month whose net BV is zero or below pays nothing. Nothing is earned for opening a centre, for enrolling anyone, or for anything other than those product sales.
+**How it is earned.** The operator earns **3%** of the net BV of the orders that were consigned to that centre and handed over to the buyer there in the month, as recorded by the Company. Orders are placed with the Company in the usual way; the centre is a collection point and does not sell. A cancellation or refund is deducted in the month in which it is recorded, or in the month of handover if that is later. A month whose net BV is zero or below pays nothing. Nothing is earned for opening a centre, for enrolling anyone, or for anything other than those product sales.
 
 **Cap.** At most **₹1,00,000** per centre per month. The Company may set a lower cap for a particular centre, never a higher one. Any amount above the cap is not paid, carried forward or payable later.
 

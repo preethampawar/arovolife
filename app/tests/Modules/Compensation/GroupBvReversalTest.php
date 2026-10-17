@@ -371,3 +371,113 @@ it('reverses group BV when a refund is approved (cooling-off / buyback path)', f
     expect(gbrDaily($root->id)->fresh()->right_bv_paise)->toBe(0);
     expect(DB::table('bv_propagation_log')->where('order_id', $order->id)->value('reversed_at'))->not->toBeNull();
 });
+
+it('creates no debt for an ancestor whose credit day was forfeited for a failed repurchase cycle', function (): void {
+    $root = gbrRoot();
+    $left = gbrChild($root, 'L');
+    $order = gbrOrder($left, 25_000);
+
+    // The root was failed yesterday: the cut-off forfeited the day and kept
+    // none of its group BV, so cancelling the order must not take it again.
+    $yesterday = Carbon::yesterday();
+    app(GroupBvAccumulatorService::class)->propagate($left->id, 25_000, $yesterday, $order->id);
+    DB::table('bv_propagation_log')->insert([
+        'order_id' => $order->id, 'distributor_id' => $left->id, 'bv_paise' => 25_000, 'date' => $yesterday->toDateString(),
+    ]);
+    gbrSettle($root->id, $yesterday, 'repurchase_forfeited');
+    // A later day has run, so the forfeit is final.
+    gbrSettle($root->id, Carbon::today(), 'no_match');
+
+    app(GroupBvReversalService::class)->reverseForOrder($order);
+
+    expect(gbrDebt($root->id, 'L'))->toBe(0);
+    expect(gbrDaily($root->id, $yesterday->toDateString())->left_bv_paise)->toBe(25_000);
+
+    $rootReversal = DB::table('group_bv_reversals')->where('order_id', $order->id)->where('ancestor_id', $root->id)->first();
+    expect((int) $rootReversal->absorbed_paise)->toBe(0);
+    expect((int) $rootReversal->debt_paise)->toBe(0);
+});
+
+it('restores the debt an order paid down when that order is itself cancelled', function (): void {
+    $root = gbrRoot();
+    $left = gbrChild($root, 'L');
+
+    // An earlier cancellation left 5,000 BV of debt on the root's left.
+    DB::table('group_bv_debts')->insert([
+        'distributor_id' => $root->id, 'side' => 'L', 'bv_paise' => 5_000,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    // Order Y (8,000) pays the 5,000 off and credits 3,000 today.
+    $orderY = gbrOrder($left, 8_000);
+    app(GroupBvAccumulatorService::class)->propagate($left->id, 8_000, Carbon::today(), $orderY->id);
+    DB::table('bv_propagation_log')->insert([
+        'order_id' => $orderY->id, 'distributor_id' => $left->id, 'bv_paise' => 8_000, 'date' => Carbon::today()->toDateString(),
+    ]);
+    expect(gbrDebt($root->id, 'L'))->toBe(0);
+    expect(gbrDaily($root->id)->left_bv_paise)->toBe(3_000);
+
+    // Y is cancelled: its 3,000 comes off today and the 5,000 debt stands again.
+    app(GroupBvReversalService::class)->reverseForOrder($orderY);
+
+    expect(gbrDaily($root->id)->left_bv_paise)->toBe(0);
+    expect(gbrDebt($root->id, 'L'))->toBe(5_000);
+});
+
+it('restores the debt even when an order was swallowed whole by it', function (): void {
+    $root = gbrRoot();
+    $left = gbrChild($root, 'L');
+
+    DB::table('group_bv_debts')->insert([
+        'distributor_id' => $root->id, 'side' => 'L', 'bv_paise' => 10_000,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $order = gbrOrder($left, 4_000);
+    app(GroupBvAccumulatorService::class)->propagate($left->id, 4_000, Carbon::today(), $order->id);
+    DB::table('bv_propagation_log')->insert([
+        'order_id' => $order->id, 'distributor_id' => $left->id, 'bv_paise' => 4_000, 'date' => Carbon::today()->toDateString(),
+    ]);
+    expect(gbrDebt($root->id, 'L'))->toBe(6_000);
+
+    app(GroupBvReversalService::class)->reverseForOrder($order);
+
+    expect(gbrDebt($root->id, 'L'))->toBe(10_000);
+});
+
+it('treats an admin-reversed day as settled — the cut-off never reads that day again', function (): void {
+    $root = gbrRoot();
+    $left = gbrChild($root, 'L');
+    $order = gbrOrder($left, 25_000);
+
+    $yesterday = Carbon::yesterday();
+    app(GroupBvAccumulatorService::class)->propagate($left->id, 25_000, $yesterday, $order->id);
+    DB::table('bv_propagation_log')->insert([
+        'order_id' => $order->id, 'distributor_id' => $left->id, 'bv_paise' => 25_000, 'date' => $yesterday->toDateString(),
+    ]);
+    gbrSettle($root->id, $yesterday, 'reversed');
+
+    app(GroupBvReversalService::class)->reverseForOrder($order);
+
+    expect(gbrDaily($root->id, $yesterday->toDateString())->left_bv_paise)->toBe(25_000);
+    expect(gbrDebt($root->id, 'L'))->toBe(25_000);
+});
+
+it('takes cancelled BV off a forfeited day that may still be re-run, without a debt', function (): void {
+    $root = gbrRoot();
+    $left = gbrChild($root, 'L');
+    $order = gbrOrder($left, 25_000);
+
+    $yesterday = Carbon::yesterday();
+    app(GroupBvAccumulatorService::class)->propagate($left->id, 25_000, $yesterday, $order->id);
+    DB::table('bv_propagation_log')->insert([
+        'order_id' => $order->id, 'distributor_id' => $left->id, 'bv_paise' => 25_000, 'date' => $yesterday->toDateString(),
+    ]);
+    // Forfeited, and nothing later has run: a re-resolved cycle could re-run it.
+    gbrSettle($root->id, $yesterday, 'repurchase_forfeited');
+
+    app(GroupBvReversalService::class)->reverseForOrder($order);
+
+    expect(gbrDaily($root->id, $yesterday->toDateString())->left_bv_paise)->toBe(0)
+        ->and(gbrDebt($root->id, 'L'))->toBe(0);
+});

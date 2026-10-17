@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
-use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbPersonalBvTopup;
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Database\Eloquent\Collection;
@@ -32,14 +31,16 @@ use Illuminate\Support\Facades\DB;
  *   propagation jobs don't race with the topup.
  * - Idempotent via UNIQUE(order_id) on gsb_personal_bv_topups — a retry never
  *   double-credits.
- * - Reversal mirrors GroupBvReversalService: if the cut-off date is unsettled,
- *   deduct from that date's accumulator; if already settled with a payout,
- *   deduct from today's accumulator (no clawback of paid bonuses).
+ * - Reversal goes through GroupBvReversalService::reverseSideCredit(): off the
+ *   top-up date's accumulator while that date is unsettled, otherwise off
+ *   today's, with any shortfall a same-side forward debt (no clawback of paid
+ *   bonuses).
  */
 final class GsbPersonalBvTopupService
 {
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
+        private readonly GroupBvReversalService $reversal,
     ) {}
 
     /**
@@ -222,9 +223,9 @@ final class GsbPersonalBvTopupService
      * refunded. Called from ReverseGroupBvJob alongside GroupBvReversalService.
      *
      * Already-paid GSB is never clawed back: if the cut-off date is settled,
-     * the deduction targets today's accumulator on the same side (forward debt
-     * pattern). If the cut-off date is unsettled the deduction targets that
-     * date's accumulator directly (no BV ever paid out for it).
+     * the deduction targets today's accumulator on the same side and any
+     * shortfall becomes a forward debt. If the cut-off date is unsettled the
+     * deduction targets that date's accumulator directly.
      */
     public function reverseForOrder(int $orderId): void
     {
@@ -238,43 +239,18 @@ final class GsbPersonalBvTopupService
 
         foreach ($topups as $topup) {
             DB::transaction(function () use ($topup): void {
-                $settled = $this->cutoffIsSettled($topup->distributor_id, $topup->date);
-
-                if ($settled) {
-                    // Settled (GSB paid) — reduce today's accumulator so future
-                    // cut-offs reflect the cancelled BV.
-                    $today = Carbon::today('Asia/Kolkata')->toDateString();
-                    $sideColumn = $topup->side === 'L' ? 'left_bv_paise' : 'right_bv_paise';
-
-                    $existing = DB::table('group_bv_daily')
-                        ->where('distributor_id', $topup->distributor_id)
-                        ->whereDate('date', $today)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if ($existing !== null) {
-                        DB::table('group_bv_daily')
-                            ->where('distributor_id', $topup->distributor_id)
-                            ->whereDate('date', $today)
-                            ->decrement($sideColumn, $topup->bv_paise);
-                    }
-                    // If today's row doesn't exist yet the topup simply won't
-                    // inflate it — no action needed.
-                } else {
-                    // Unsettled — directly reduce the topup date's accumulator.
-                    $sideColumn = $topup->side === 'L' ? 'left_bv_paise' : 'right_bv_paise';
-
-                    DB::table('group_bv_daily')
-                        ->where('distributor_id', $topup->distributor_id)
-                        ->whereDate('date', $topup->date->toDateString())
-                        ->lockForUpdate()
-                        ->first(); // acquire lock
-
-                    DB::table('group_bv_daily')
-                        ->where('distributor_id', $topup->distributor_id)
-                        ->whereDate('date', $topup->date->toDateString())
-                        ->decrement($sideColumn, $topup->bv_paise);
-                }
+                // The same BV in the same stores as any other group credit,
+                // so it comes back the same way: off the top-up day while that
+                // day is unsettled, otherwise off today with any shortfall a
+                // same-side debt. A settled day — a no-match day included —
+                // already folded the top-up into the carry-forward, and taking
+                // it off a row nothing reads again would leave it there.
+                $reversal = $this->reversal->reverseSideCredit(
+                    (int) $topup->distributor_id,
+                    (string) $topup->side,
+                    (int) $topup->bv_paise,
+                    $topup->date->toDateString(),
+                );
 
                 $topup->reversed_at = Carbon::now();
                 $topup->save();
@@ -289,30 +265,12 @@ final class GsbPersonalBvTopupService
                         'bv_paise' => $topup->bv_paise,
                         'side' => $topup->side,
                         'date' => $topup->date->toDateString(),
-                        'settled' => $settled,
+                        'absorbed_paise' => $reversal['absorbed'],
+                        'debt_paise' => $reversal['debt'],
+                        'absorbed_on' => $reversal['date'],
                     ],
                 ]);
             });
         }
-    }
-
-    /**
-     * Returns whether the GSB cut-off for the given distributor on the given
-     * date resulted in a payout that must not be clawed back.
-     */
-    private function cutoffIsSettled(int $distributorId, Carbon $date): bool
-    {
-        $result = GsbCutoffResult::where('distributor_id', $distributorId)
-            ->whereDate('cutoff_date', $date->toDateString())
-            ->value('status');
-
-        return in_array($result, [
-            GsbCutoffResult::STATUS_CREDITED,
-            GsbCutoffResult::STATUS_FROZEN,
-            // A forfeited day paid nothing, but it is settled all the same: the
-            // date is closed and its Genos BV permanently out of the plan, so a
-            // reversal must take the forward-debt route rather than rewrite it.
-            GsbCutoffResult::STATUS_REPURCHASE_FORFEITED,
-        ], true);
     }
 }

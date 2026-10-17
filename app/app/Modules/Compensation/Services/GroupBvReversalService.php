@@ -91,50 +91,45 @@ final class GroupBvReversalService
                 ]);
             }
 
-            $todayStr = Carbon::now()->toDateString();
             $totalReversed = 0;
             $totalAbsorbed = 0;
             $totalDebt = 0;
+            $totalDebtRestored = 0;
 
             foreach ($credits as $credit) {
                 $amount = (int) $credit->bv_paise;
+                $ancestorId = (int) $credit->ancestor_id;
+
+                // This order paid down an earlier cancellation's debt before
+                // anything reached the accumulator. Cancelling it voids that
+                // payment too, so the debt it cleared stands again — otherwise
+                // two cancelled sales leave the ancestor BV neither one earned.
+                $debtConsumed = (int) ($credit->debt_consumed_paise ?? 0);
+                if ($debtConsumed > 0) {
+                    $this->addDebt($ancestorId, $credit->side, $debtConsumed, $this->lockDebt($ancestorId, $credit->side));
+                    $totalDebtRestored += $debtConsumed;
+                }
+
                 if ($amount <= 0) {
+                    if ($debtConsumed > 0) {
+                        // Swallowed whole by the debt: nothing reached the
+                        // accumulator, but the restored debt is on record.
+                        DB::table('group_bv_reversals')->insert([
+                            'order_id' => $order->id,
+                            'ancestor_id' => $ancestorId,
+                            'side' => $credit->side,
+                            'bv_paise' => 0,
+                            'absorbed_paise' => 0,
+                            'debt_paise' => $debtConsumed,
+                            'date' => Carbon::now()->toDateString(),
+                        ]);
+                    }
+
                     continue;
                 }
 
-                $ancestorId = (int) $credit->ancestor_id;
-
-                // Absorb from the day the BV was credited while that day is
-                // still unsettled (cut-off not yet run, failed, or reversed)
-                // so a late settlement can never match cancelled BV; once the
-                // day is settled, absorb from today's open accumulator.
                 $creditDate = Carbon::parse((string) $credit->date)->toDateString();
-                $settledStatus = $creditDate !== $todayStr
-                    ? $this->settledStatus($ancestorId, $creditDate)
-                    : null;
-
-                if ($settledStatus === GsbCutoffResult::STATUS_BELOW_600BV) {
-                    // The cut-off discarded this ancestor's whole day (below
-                    // the personal-BV gate): the credited BV was never kept,
-                    // never carried forward — so there is nothing to recover.
-                    // Creating a debt here would deduct BV they never had.
-                    $absorbed = 0;
-                    $debt = 0;
-                    $absorbDate = $todayStr;
-                } else {
-                    $absorbDate = $settledStatus === null ? $creditDate : $todayStr;
-
-                    // Lock order matches GroupBvAccumulatorService (debts →
-                    // daily) so a concurrent propagation and reversal on the
-                    // same ancestor+side cannot deadlock on crossed locks.
-                    $lockedDebt = $this->lockDebt($ancestorId, $credit->side);
-                    $absorbed = $this->absorbFromAccumulator($ancestorId, $credit->side, $amount, $absorbDate);
-                    $debt = $amount - $absorbed;
-
-                    if ($debt > 0) {
-                        $this->addDebt($ancestorId, $credit->side, $debt, $lockedDebt);
-                    }
-                }
+                ['absorbed' => $absorbed, 'debt' => $debt, 'date' => $absorbDate] = $this->reverseSideCredit($ancestorId, $credit->side, $amount, $creditDate);
 
                 DB::table('group_bv_reversals')->insert([
                     'order_id' => $order->id,
@@ -162,17 +157,86 @@ final class GroupBvReversalService
                     'bv_paise' => $totalReversed,
                     'absorbed_paise' => $totalAbsorbed,
                     'debt_paise' => $totalDebt,
+                    'debt_restored_paise' => $totalDebtRestored,
                 ],
             ]);
         }, attempts: 3);
     }
 
     /**
+     * Take back BV once credited to one side of one distributor's Genos.
+     * Callers hold a transaction.
+     *
+     * Absorb from the day the BV was credited while that day is still
+     * unsettled (cut-off not yet run, or failed) so a late settlement can
+     * never match cancelled BV; once the day is settled, absorb from today's
+     * open accumulator. Whatever the accumulator cannot cover becomes a
+     * same-side forward debt. A day the cut-off discarded outright — below
+     * the 600 BV gate, or forfeited for a failed repurchase cycle — kept none
+     * of the BV, so it never creates a debt; a forfeited day that may still be
+     * re-run has the BV taken off its own row.
+     *
+     * Also the reversal path for a cancelled personal-BV top-up
+     * ({@see GsbPersonalBvTopupService::reverseForOrder()}): the same BV, the
+     * same stores, one rule.
+     *
+     * @return array{absorbed: int, debt: int, date: string}
+     */
+    public function reverseSideCredit(int $distributorId, string $side, int $amount, string $creditDate): array
+    {
+        $todayStr = Carbon::now()->toDateString();
+        $settledStatus = $creditDate !== $todayStr
+            ? $this->settledStatus($distributorId, $creditDate)
+            : null;
+
+        if ($settledStatus === GsbCutoffResult::STATUS_BELOW_600BV) {
+            return ['absorbed' => 0, 'debt' => 0, 'date' => $todayStr];
+        }
+
+        if ($settledStatus === GsbCutoffResult::STATUS_REPURCHASE_FORFEITED) {
+            // A forfeited day is re-run as eligible when the cycle behind it
+            // is re-resolved and nothing later has run (GsbCutoffService's
+            // out-of-order guard), and it then reads its own accumulator — so
+            // take the cancelled BV off that day while it still could be. Once
+            // a later day has run the forfeit is final and the BV was never
+            // kept. Never a debt either way.
+            $laterRun = DB::table('gsb_cutoff_results')
+                ->where('distributor_id', $distributorId)
+                ->where('cutoff_date', '>', $creditDate)
+                ->exists();
+
+            $absorbed = $laterRun ? 0 : $this->absorbFromAccumulator($distributorId, $side, $amount, $creditDate);
+
+            return ['absorbed' => $absorbed, 'debt' => 0, 'date' => $creditDate];
+        }
+
+        $absorbDate = $settledStatus === null ? $creditDate : $todayStr;
+
+        // Lock order matches GroupBvAccumulatorService (debts → daily) so a
+        // concurrent propagation and reversal on the same ancestor+side
+        // cannot deadlock on crossed locks.
+        $lockedDebt = $this->lockDebt($distributorId, $side);
+        $absorbed = $this->absorbFromAccumulator($distributorId, $side, $amount, $absorbDate);
+        $debt = $amount - $absorbed;
+
+        if ($debt > 0) {
+            $this->addDebt($distributorId, $side, $debt, $lockedDebt);
+        }
+
+        return ['absorbed' => $absorbed, 'debt' => $debt, 'date' => $absorbDate];
+    }
+
+    /**
      * The standing settlement status of this distributor's cut-off for the
-     * given day, or null when the day is still unsettled. A missing row, a
-     * FAILED run, or a REVERSED (awaiting recalculate) result all mean the
-     * day will still be (re)processed, so its accumulator is safe — and
-     * necessary — to debit directly.
+     * given day, or null when the day is still unsettled. A missing row or a
+     * FAILED run means the day will still be (re)processed, so its
+     * accumulator is safe — and necessary — to debit directly.
+     *
+     * A REVERSED row is settled: the admin reversal debited the wallet but
+     * kept the day's carry-forward advance, and the cut-off treats the row as
+     * terminal ({@see GsbCutoffService::computeForDistributor()}), so the
+     * day's accumulator is never read again — debiting it would let the
+     * cancelled BV stand in the carry-forward.
      */
     private function settledStatus(int $distributorId, string $dateStr): ?string
     {
@@ -181,9 +245,7 @@ final class GroupBvReversalService
             ->where('cutoff_date', $dateStr)
             ->value('status');
 
-        if ($status === null
-            || $status === GsbCutoffResult::STATUS_FAILED
-            || $status === GsbCutoffResult::STATUS_REVERSED) {
+        if ($status === null || $status === GsbCutoffResult::STATUS_FAILED) {
             return null;
         }
 

@@ -12,11 +12,10 @@ use Illuminate\Support\Facades\DB;
 /**
  * Arete Development Center Bonus engine.
  *
- * Earning: configurable % (default 3%) on the net attributed BV — the BV from
- * orders where a buyer selected this centre as their collection point
- * (orders.arete_center_id). Cancellations and refunds automatically net out:
- * BvLedgerService::reverse() writes a negative entry with the same order_id,
- * so the SUM query deducts them without extra code.
+ * Earning: configurable % (default 3%) on the net BV of orders handed over to
+ * the buyer at this centre in the month (shipments.collected_at). Cancellations
+ * and refunds net out in the month they are recorded:
+ * BvLedgerService::reverse() writes a negative entry with the same order_id.
  *
  * Cap: configurable (default ₹1,00,000/month); a per-center
  * `monthly_cap_override_paise` may lower (never raise) it — the client's
@@ -42,7 +41,6 @@ final class AreteDevelopmentCenterBonusService
     public function runForMonth(Carbon $month): array
     {
         $monthStart = $month->copy()->startOfMonth()->toDateString();
-        $monthEnd = $month->copy()->endOfMonth()->toDateString();
 
         $centers = AreteCenter::where('status', AreteCenter::STATUS_ACTIVE)->get();
 
@@ -51,7 +49,7 @@ final class AreteDevelopmentCenterBonusService
         $skippedNetNegative = 0;
         $totalNet = 0;
 
-        DB::transaction(function () use ($centers, $monthStart, $monthEnd, &$credited, &$skippedNoBv, &$skippedNetNegative, &$totalNet): void {
+        DB::transaction(function () use ($centers, $monthStart, &$credited, &$skippedNoBv, &$skippedNetNegative, &$totalNet): void {
             foreach ($centers as $center) {
                 $alreadyCredited = AdcBonusResult::where('center_id', $center->id)
                     ->where('month_start', $monthStart)
@@ -76,10 +74,6 @@ final class AreteDevelopmentCenterBonusService
                     continue;
                 }
 
-                // Sum attributed BV: BV from all orders collected at this centre
-                // in the month. `bv_paise` is signed (+ accrual, − reversal from
-                // BvLedgerService::reverse()), so the SUM nets out cancelled and
-                // refunded orders automatically — no extra cancellation handling needed.
                 // Only orders the centre actually handed over count (R-24, H5).
                 //
                 // The bonus is defended under DSR 2021 Rule 5(1)(c) as
@@ -89,21 +83,14 @@ final class AreteDevelopmentCenterBonusService
                 // released — consideration for work the system itself records
                 // as not done. A recorded handover is the evidence, so the
                 // money has to read it.
-                $totalBv = (int) DB::table('bv_ledger_entries')
-                    ->join('orders', 'orders.id', '=', 'bv_ledger_entries.order_id')
-                    ->join('shipments', 'shipments.order_id', '=', 'orders.id')
-                    ->where('orders.arete_center_id', $center->id)
-                    ->where('shipments.arete_center_id', $center->id)
-                    ->whereNotNull('shipments.collected_at')
-                    ->whereBetween('bv_ledger_entries.effective_at', [$monthStart.' 00:00:00', $monthEnd.' 23:59:59'])
-                    ->sum('bv_ledger_entries.bv_paise');
+                $totalBv = $this->collectedBvPaise($center->id, $monthStart);
 
                 $orderCount = (int) DB::table('orders')
                     ->join('shipments', 'shipments.order_id', '=', 'orders.id')
                     ->where('orders.arete_center_id', $center->id)
                     ->where('shipments.arete_center_id', $center->id)
-                    ->whereNotNull('shipments.collected_at')
-                    ->whereBetween('orders.placed_at', [$monthStart.' 00:00:00', $monthEnd.' 23:59:59'])
+                    ->where('shipments.collected_at', '>=', $monthStart.' 00:00:00')
+                    ->where('shipments.collected_at', '<', $this->nextMonthStart($monthStart))
                     ->whereNotIn('orders.status', ['cancelled', 'draft'])
                     ->count();
 
@@ -189,18 +176,53 @@ final class AreteDevelopmentCenterBonusService
 
     /**
      * Live attributed BV for a single centre in the given month — used by
-     * admin reports before the monthly engine has run.
+     * admin reports before the monthly engine has run. The same figure the
+     * engine pays on, so the preview never shows BV the engine will not pay.
      */
     public function attributedBvPaise(int $centerId, Carbon $month): int
     {
-        $monthStart = $month->copy()->startOfMonth()->toDateString();
-        $monthEnd = $month->copy()->endOfMonth()->toDateString();
+        return $this->collectedBvPaise($centerId, $month->copy()->startOfMonth()->toDateString());
+    }
+
+    /**
+     * The net BV a centre earns on for one month (plan §11.4).
+     *
+     * A sale counts in the month it was handed over to the buyer at the
+     * centre — not the month it was paid. Bounding by payment date as well
+     * dropped every order paid at the end of one month and collected in the
+     * next: the first run had no handover yet, the second saw a payment
+     * outside its month, and the credited-month guard closed both for good.
+     *
+     * A refund or cancellation counts in the month it was recorded (its own
+     * `effective_at`), or in the handover month when it was recorded before
+     * the handover, so it always nets against a month in which the sale was
+     * counted. `bv_paise` is signed (+ accrual, − reversal from
+     * BvLedgerService::reverse()), so the sum nets them out.
+     */
+    private function collectedBvPaise(int $centerId, string $monthStart): int
+    {
+        $from = $monthStart.' 00:00:00';
+        $before = $this->nextMonthStart($monthStart);
+
+        // The month an entry belongs to: the handover for a sale; the later of
+        // the handover and the recording for a reversal.
+        $countedAt = "CASE WHEN bv_ledger_entries.type = 'accrual' OR bv_ledger_entries.effective_at < shipments.collected_at "
+            .'THEN shipments.collected_at ELSE bv_ledger_entries.effective_at END';
 
         return (int) DB::table('bv_ledger_entries')
             ->join('orders', 'orders.id', '=', 'bv_ledger_entries.order_id')
+            ->join('shipments', 'shipments.order_id', '=', 'orders.id')
             ->where('orders.arete_center_id', $centerId)
-            ->whereBetween('bv_ledger_entries.effective_at', [$monthStart.' 00:00:00', $monthEnd.' 23:59:59'])
+            ->where('shipments.arete_center_id', $centerId)
+            ->whereNotNull('shipments.collected_at')
+            ->whereRaw("{$countedAt} >= ?", [$from])
+            ->whereRaw("{$countedAt} < ?", [$before])
             ->sum('bv_ledger_entries.bv_paise');
+    }
+
+    private function nextMonthStart(string $monthStart): string
+    {
+        return Carbon::parse($monthStart)->addMonthNoOverflow()->startOfMonth()->toDateString().' 00:00:00';
     }
 
     /**

@@ -1282,3 +1282,44 @@ it('does not invent a weekly batch for a Tuesday the window never reached', func
     expect($result['engines']['gsb:weekly-payout'] ?? 0)->toBe(0);
     expect(DB::table('payout_batches')->where('batch_type', 'weekly')->count())->toBe(0);
 });
+
+it('replays into a window an order paid before it whose BV landed inside it', function (): void {
+    $root = Distributor::factory()->create(['depth' => 0]);
+    $child = Distributor::factory()->create(['placement_parent_id' => $root->id, 'placement_side' => 'L', 'depth' => 1]);
+    DB::table('genealogy_closure')->insert([
+        ['ancestor_id' => $root->id, 'descendant_id' => $root->id, 'depth' => 0],
+        ['ancestor_id' => $child->id, 'descendant_id' => $child->id, 'depth' => 0],
+        ['ancestor_id' => $root->id, 'descendant_id' => $child->id, 'depth' => 1],
+    ]);
+    $rightChild = Distributor::factory()->create(['placement_parent_id' => $root->id, 'placement_side' => 'R', 'depth' => 1]);
+    DB::table('genealogy_closure')->insert([
+        ['ancestor_id' => $rightChild->id, 'descendant_id' => $rightChild->id, 'depth' => 0],
+        ['ancestor_id' => $root->id, 'descendant_id' => $rightChild->id, 'depth' => 1],
+    ]);
+
+    // Paid 4 June; its BV reached the worker after the 4 June cut-off, landed
+    // on 5 June, and the windowed wipe from 5 June took its marker with it.
+    $late = recomputeSeedPaidOrder($child->id, '2026-06-04 23:58:00', 100_000);
+    // Paid 3 June and propagated on time: its marker survives, it stays out.
+    $onTime = recomputeSeedPaidOrder($rightChild->id, '2026-06-03 10:00:00', 50_000);
+    DB::table('bv_propagation_log')->insert([
+        'order_id' => $onTime, 'distributor_id' => $rightChild->id, 'bv_paise' => 50_000, 'date' => '2026-06-03',
+    ]);
+    DB::table('gsb_cutoff_results')->insert([
+        'distributor_id' => $root->id, 'cutoff_date' => '2026-06-04',
+        'left_bv_paise' => 0, 'right_bv_paise' => 0, 'weaker_bv_paise' => 0,
+        'gross_gsb_paise' => 0, 'admin_charge_paise' => 0, 'tds_paise' => 0, 'net_gsb_paise' => 0,
+        'power_cf_before_paise' => 0, 'power_cf_after_paise' => 0,
+        'slab1_weaker_cf_before_paise' => 0, 'slab1_weaker_cf_after_paise' => 0,
+        'status' => 'no_match', 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    Carbon::setTestNow('2026-06-07 09:00:00');
+    $replayed = app(GroupBvReplayService::class)->replay(null, Carbon::parse('2026-06-05'));
+    Carbon::setTestNow();
+
+    expect($replayed)->toBe(1)
+        ->and((int) DB::table('group_bv_daily')->where('distributor_id', $root->id)->where('date', '2026-06-05')->value('left_bv_paise'))->toBe(100_000)
+        ->and(DB::table('group_bv_credits')->where('order_id', $onTime)->exists())->toBeFalse()
+        ->and(DB::table('bv_propagation_log')->where('order_id', $late)->value('date'))->toStartWith('2026-06-05');
+});

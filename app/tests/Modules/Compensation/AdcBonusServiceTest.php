@@ -504,3 +504,53 @@ it('does not pay for an order that named the centre but was never handed over', 
     // work the system itself records as not done.
     expect(AdcBonusResult::where('center_id', $center->id)->exists())->toBeFalse();
 });
+
+it('pays an order paid at the end of one month in the month it was handed over', function (): void {
+    $assignee = Distributor::factory()->create();
+    $buyer = Distributor::factory()->create();
+    $center = makeActiveCenter($assignee->id);
+
+    // Paid 29 June, collected at the centre 2 July.
+    $orderId = seedCenterOrderBv($buyer->id, $center->id, 1_000_000, '2026-06-29');
+    Shipment::where('order_id', $orderId)->update(['collected_at' => '2026-07-02 11:00:00']);
+
+    $svc = app(AreteDevelopmentCenterBonusService::class);
+
+    expect($svc->runForMonth(Carbon::parse('2026-06-01'))['credited'])->toBe(0);
+
+    $july = $svc->runForMonth(Carbon::parse('2026-07-01'));
+    expect($july['credited'])->toBe(1);
+
+    $bonus = AdcBonusResult::where('center_id', $center->id)->first();
+    expect(substr((string) $bonus->month_start, 0, 10))->toBe('2026-07-01');
+    expect($bonus->total_attributed_bv_paise)->toBe(1_000_000);
+    expect($bonus->order_count)->toBe(1);
+    expect($bonus->gross_paise)->toBe(30_000);
+});
+
+it('nets a refund recorded before the handover against the handover month', function (): void {
+    $assignee = Distributor::factory()->create();
+    $buyer = Distributor::factory()->create();
+    $center = makeActiveCenter($assignee->id);
+
+    $orderId = seedCenterOrderBv($buyer->id, $center->id, 1_000_000, '2026-06-28');
+    seedAdcOrderBvReversal($buyer->id, $orderId, 400_000, '2026-06-30');
+    Shipment::where('order_id', $orderId)->update(['collected_at' => '2026-07-03 11:00:00']);
+
+    app(AreteDevelopmentCenterBonusService::class)->runForMonth(Carbon::parse('2026-07-01'));
+
+    expect(AdcBonusResult::where('center_id', $center->id)->value('total_attributed_bv_paise'))->toBe(600_000);
+});
+
+it('previews the same BV the engine pays on — never an order not yet handed over', function (): void {
+    $assignee = Distributor::factory()->create();
+    $buyer = Distributor::factory()->create();
+    $center = makeActiveCenter($assignee->id);
+
+    seedCenterOrderBv($buyer->id, $center->id, 500_000, '2026-06-10');
+    $waiting = seedCenterOrderBv($buyer->id, $center->id, 300_000, '2026-06-12');
+    Shipment::where('order_id', $waiting)->update(['collected_at' => null]);
+
+    expect(app(AreteDevelopmentCenterBonusService::class)->attributedBvPaise($center->id, Carbon::parse('2026-06-01')))
+        ->toBe(500_000);
+});

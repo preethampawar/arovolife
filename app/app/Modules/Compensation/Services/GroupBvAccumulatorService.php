@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Compensation\Models\EngineRun;
+use App\Modules\Compensation\Models\GsbCutoffResult;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Propagates one distributor's BV purchase to all their ancestors' group_bv_daily
@@ -46,15 +49,39 @@ final class GroupBvAccumulatorService
         }
 
         $dateStr = $date->toDateString();
+        $targetDates = $this->targetDates($pairs->pluck('ancestor_id')->map(fn ($id): int => (int) $id)->all(), $dateStr);
+
+        $redirected = array_filter($targetDates, fn (string $target): bool => $target !== $dateStr);
+        if ($redirected !== []) {
+            Log::warning('gsb.bv_propagation.landed_after_cutoff', [
+                'order_id' => $orderId,
+                'distributor_id' => $distributorId,
+                'bv_paise' => $bvPaise,
+                'paid_on' => $dateStr,
+                'moved_to' => Carbon::today()->toDateString(),
+                'ancestors_moved' => count($redirected),
+            ]);
+        }
 
         // Wrap the entire ancestor loop in a single outer transaction so that if the
         // worker dies mid-loop the DB server rolls back the whole batch. On retry all
         // ancestors are processed from scratch with no double-counting.
         // Inner upsertAccumulator() calls use DB::transaction() too; on MySQL those
         // become savepoints within this outer transaction automatically.
-        DB::transaction(function () use ($pairs, $bvPaise, $dateStr, $orderId): void {
+        DB::transaction(function () use ($pairs, $bvPaise, $targetDates, $orderId, $redirected): void {
+            // The marker carries the day the BV landed, not the day it was
+            // paid: a windowed recompute deletes markers by that date together
+            // with the credits, and replays an order whose marker it deleted
+            // ({@see GroupBvReplayService}). Left on the paid day, the marker
+            // would survive the wipe that took the credits, and the order's
+            // group BV would vanish from the rebuilt window.
+            if ($redirected !== [] && $orderId !== null) {
+                DB::table('bv_propagation_log')->where('order_id', $orderId)->update(['date' => Carbon::today()->toDateString()]);
+            }
+
             foreach ($pairs as $pair) {
                 $ancestorId = (int) $pair->ancestor_id;
+                $dateStr = $targetDates[$ancestorId];
 
                 // Outstanding reversal debt on this side eats the BV first;
                 // only the remainder reaches the accumulator (KP Q8: cancelled
@@ -82,6 +109,72 @@ final class GroupBvAccumulatorService
                 }
             }
         });
+    }
+
+    /**
+     * The day each ancestor's share of this BV lands on.
+     *
+     * Normally the day the order was paid. But the compensation worker can
+     * reach a job after that day's cut-off has read the ancestor's row — a
+     * backed-up or restarted worker, or a failed job retried next morning —
+     * and the cut-off never reads a day twice: the out-of-order guard forbids
+     * it. BV written there would never match and never carry forward, so the
+     * distributor would be under-paid with nothing to show it. Once the
+     * cut-off for the paid day has begun, the share lands on today's open
+     * accumulator instead, the way a reversal on a settled day absorbs from
+     * today ({@see GroupBvReversalService}).
+     *
+     * Three outcomes keep the paid day. A below-600-BV day and a
+     * repurchase-forfeited day discard that day's group BV outright, and BV
+     * that arrived on time would have been discarded with it — moving it to
+     * today would hand the ancestor BV the plan forfeits (and should the
+     * forfeited day be re-run as eligible, it reads the BV there). A failed
+     * run will be re-run, and reads the paid day.
+     *
+     * @param  array<int, int>  $ancestorIds
+     * @return array<int, string> ancestor id => Y-m-d
+     */
+    private function targetDates(array $ancestorIds, string $paidOn): array
+    {
+        $today = Carbon::today()->toDateString();
+
+        if ($paidOn >= $today) {
+            return array_fill_keys($ancestorIds, $paidOn);
+        }
+
+        /** @var array<int, string> $statuses */
+        $statuses = DB::table('gsb_cutoff_results')
+            ->where('cutoff_date', $paidOn)
+            ->whereIn('distributor_id', $ancestorIds)
+            ->pluck('status', 'distributor_id')
+            ->mapWithKeys(fn ($status, $id): array => [(int) $id => (string) $status])
+            ->all();
+
+        $cutoffBegun = $statuses !== []
+            || DB::table('gsb_cutoff_results')->where('cutoff_date', $paidOn)->exists()
+            || EngineRun::query()
+                ->where('engine_key', 'gsb.daily-cutoff')
+                ->where('status', EngineRun::STATUS_RUNNING)
+                ->whereDate('period_start', $paidOn)
+                ->where('started_at', '>=', Carbon::now()->subMinutes(EngineRun::STALE_AFTER_MINUTES))
+                ->exists();
+
+        $targets = [];
+        foreach ($ancestorIds as $ancestorId) {
+            $status = $statuses[$ancestorId] ?? null;
+
+            $targets[$ancestorId] = match (true) {
+                in_array($status, [GsbCutoffResult::STATUS_BELOW_600BV, GsbCutoffResult::STATUS_REPURCHASE_FORFEITED], true) => $paidOn,
+                // A failed run is re-run for this ancestor (the retry deletes
+                // the row first), and reads the paid day when it does.
+                $status === GsbCutoffResult::STATUS_FAILED => $paidOn,
+                $status !== null => $today,
+                $cutoffBegun => $today,
+                default => $paidOn,
+            };
+        }
+
+        return $targets;
     }
 
     /**
