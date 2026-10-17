@@ -48,6 +48,9 @@
     $canActOnLines = $canExportNeft && auth()->user()?->can('finance.record');
     $pendingAlreadySent = (int) ($bankFiles['pending_already_sent'] ?? 0);
     $routeBase = 'admin.compensation.weekly-payouts';
+    $skippedConfirm = $skipped['count'] > 0
+        ? ' '.$skipped['count'].' distributor(s) could not be built ('.$rupees($skipped['gross_paise']).') and are NOT part of this approval: next week’s batch pays them.'
+        : '';
 @endphp
 
 <div class="mb-4 flex items-start justify-between gap-3 flex-wrap">
@@ -100,9 +103,10 @@
             @if($isRazorpay)
             <form method="POST" action="{{ route('admin.compensation.weekly-payouts.approve', $batch) }}"
                   data-confirm-title="Approve and dispatch to the bank"
-                  data-confirm="Dispatch {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s) through Razorpay Payouts?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this dispatch.' : '' }}"
+                  data-confirm="Dispatch {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s) through Razorpay Payouts?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this dispatch.' : '' }}{{ $skippedConfirm }}"
                   data-confirm-impact="Impact: this initiates REAL BANK TRANSFERS immediately. Each transfer is confirmed by Razorpay's webhook and cannot be recalled from this screen.">
                 @csrf
+                @include('admin.compensation.payout-build-failures._approve-fields')
                 <x-ui.button :disabled="! $gatewayReady">
                     <x-lucide-zap class="w-4 h-4" /> Approve &amp; dispatch to bank
                 </x-ui.button>
@@ -110,9 +114,10 @@
             @else
             <form method="POST" action="{{ route('admin.compensation.weekly-payouts.approve', $batch) }}"
                   data-confirm-title="Approve payout batch"
-                  data-confirm="Approve this payout batch of {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s)?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this approval.' : '' }}"
+                  data-confirm="Approve this payout batch of {{ $rupees($batch->total_net_paise) }} to {{ $batch->distributor_count }} distributor(s)?{{ $held['count'] > 0 ? ' A further '.$rupees($held['gross']).' of income for '.$held['count'].' distributor(s) is held in their wallets and is NOT part of this approval.' : '' }}{{ $skippedConfirm }}"
                   data-confirm-impact="Impact: the batch is signed off for payment. Holds are re-checked first — anyone whose KYC or bank details arrived since the batch was built is released into it. No money moves until you upload the bank file (NEFT) to the bank and import the bank's response file here.">
                 @csrf
+                @include('admin.compensation.payout-build-failures._approve-fields')
                 <x-ui.button >
                     <x-lucide-check class="w-4 h-4" /> Approve batch
                 </x-ui.button>
@@ -147,13 +152,14 @@
 
 @if($batch->status === 'partially_failed' && $batch->approved_at === null)
 <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-    The build stopped for some distributors, so this batch cannot be approved yet. Their credits are untouched — nothing
-    was taken from their wallets. The next Weekly Run (03:00 IST) retries them automatically. To retry now, run on the server:
-    <code class="block mt-1 font-mono text-xs">php artisan gsb:weekly-payout --date={{ $batch->batch_date->toDateString() }}</code>
-    Only the distributors that failed are retried; the batch moves to Pending approval once every one of them is built.
-    The log names the error for each.
+    Too many distributors failed to build — more than one in a hundred, or ten or more with the same error. That points
+    at a fault in the run itself rather than in a few records, so this batch cannot be approved. Nothing was taken from
+    anyone's wallet. Fix the cause, then retry the failed distributors on Build failures (or let the next Weekly Run (03:00 IST) re-run
+    the batch); it moves to Pending approval once the failures are back under the limit.
 </div>
 @endif
+
+@include('admin.compensation.payout-build-failures._batch-banner')
 
 @if($canApprove && $isOwnBatch)
 <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

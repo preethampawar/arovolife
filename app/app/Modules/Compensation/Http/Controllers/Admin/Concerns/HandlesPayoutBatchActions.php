@@ -9,6 +9,7 @@ use App\Modules\Compensation\Exceptions\PayoutLineActionRefused;
 use App\Modules\Compensation\Models\PayoutBankFile;
 use App\Modules\Compensation\Models\PayoutBankFileRow;
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutBuildFailure;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\PayoutBankFileDiffService;
 use App\Modules\Compensation\Services\PayoutBankFileVault;
@@ -283,7 +284,16 @@ trait HandlesPayoutBatchActions
         // no maker (`created_by` NULL) and any approver may check it.
         $actorId = (int) $request->user()->id;
 
-        if ($batch->created_by !== null && (int) $batch->created_by === $actorId) {
+        // A retry from Build failures that built a distributor into this batch
+        // is making too, even when the batch already had a maker: whoever did
+        // it may not sign the batch off either.
+        $retriedIntoBatch = PayoutBuildFailure::query()
+            ->where('payout_batch_id', $batch->id)
+            ->where('resolution', PayoutBuildFailure::RESOLUTION_BUILT)
+            ->where('retry_requested_by', $actorId)
+            ->exists();
+
+        if (($batch->created_by !== null && (int) $batch->created_by === $actorId) || $retriedIntoBatch) {
             AuditLog::create([
                 'actor_id' => $actorId,
                 'action' => 'payout.batch.self_approval_refused',
@@ -296,13 +306,16 @@ trait HandlesPayoutBatchActions
                 'details' => [
                     'batch_type' => $batch->batch_type,
                     'batch_date' => $batch->batch_date->toDateString(),
-                    'created_by' => (int) $batch->created_by,
+                    'created_by' => $batch->created_by === null ? null : (int) $batch->created_by,
+                    'retried_distributors_into_batch' => $retriedIntoBatch,
                     'total_net_paise' => $batch->total_net_paise,
                 ],
                 'ip' => $request->ip(),
             ]);
 
-            return back()->with('error', 'You created this batch, so you cannot also approve it. Separation of duties requires a second person to sign a payout batch off.');
+            return back()->with('error', $retriedIntoBatch
+                ? 'You retried a distributor into this batch, so you cannot also approve it. Separation of duties requires a second person to sign a payout batch off.'
+                : 'You created this batch, so you cannot also approve it. Separation of duties requires a second person to sign a payout batch off.');
         }
 
         // Approving in Razorpay mode initiates real bank transfers. Refusing
@@ -313,9 +326,30 @@ trait HandlesPayoutBatchActions
             return back()->with('error', 'Razorpay Payouts is selected but its credentials are not configured. Set the RAZORPAYX_* environment variables, or switch the payout gateway to Manual NEFT.');
         }
 
-        $payoutService->approve($batch, (int) $request->user()->id);
+        // Distributors the build skipped are paid by the next batch of this type
+        // if this one is approved without them — a week later, or a month for a
+        // monthly batch (user 2026-10-17). That must be a decision the approver
+        // ticked, not something they learn afterwards.
+        // `skipped_count` is the number the approver saw on the page; a skip
+        // recorded since then is refused under the lock, not signed off unseen.
+        $skipped = $payoutService->unresolvedFailureSummary($batch);
+        $acceptedSkipped = $request->boolean('approve_without_skipped')
+            ? min($skipped['count'], max(0, (int) $request->integer('skipped_count')))
+            : 0;
+
+        if ($skipped['count'] > $acceptedSkipped) {
+            return back()->with('error', $skipped['count'].' distributor(s) in this batch could not be built. Retry them on Payouts → Build failures first, or tick "Approve without them" to pay them in the next '.$batch->batch_type.' batch.');
+        }
+
+        $payoutService->approve($batch, (int) $request->user()->id, $acceptedSkipped);
 
         $batch->refresh();
+
+        if ($batch->status === PayoutBatch::STATUS_PENDING) {
+            // Re-checked under the sweep lock: a sweep or a retry recorded a new
+            // skip after this page was drawn.
+            return back()->with('error', 'More distributors were skipped since this page loaded. Review Build failures and approve again.');
+        }
 
         return redirect()
             ->route($this->payoutRouteName('show'), $batch)

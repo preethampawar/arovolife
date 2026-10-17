@@ -119,6 +119,18 @@ final class WindowedStateWiper
                 'batch_date',
                 $dayStart,
             );
+            // Skipped-distributor records follow their batch. A record on a
+            // SURVIVING batch that a wiped batch had resolved is owed again —
+            // the wipe just unswept its credits — so it is re-opened, not left
+            // "resolved" by a batch that no longer exists.
+            $this->reopenBuildFailuresResolvedBy($dayStart);
+            $removed['payout_build_failures'] = $this->deleteByParent(
+                'payout_build_failures',
+                'payout_batch_id',
+                'payout_batches',
+                'batch_date',
+                $dayStart,
+            );
             $removed['fortune_monthly_pool_levels'] = $this->deleteByParent(
                 'fortune_monthly_pool_levels',
                 'fortune_monthly_pool_id',
@@ -514,6 +526,32 @@ final class WindowedStateWiper
         }
 
         return $deleted;
+    }
+
+    private function reopenBuildFailuresResolvedBy(Carbon $dayStart): void
+    {
+        if (! $this->db->getSchemaBuilder()->hasTable('payout_build_failures')) {
+            return;
+        }
+
+        $batchIds = $this->db->table('payout_batches')
+            ->whereDate('batch_date', '>=', $dayStart->toDateString())
+            ->pluck('id');
+
+        if ($batchIds->isEmpty()) {
+            return;
+        }
+
+        $this->db->table('payout_build_failures')
+            ->whereIn('resolved_by_batch_id', $batchIds)
+            ->whereNotIn('payout_batch_id', $batchIds)
+            ->update([
+                'status' => 'open',
+                'resolution' => null,
+                'resolved_line_item_id' => null,
+                'resolved_by_batch_id' => null,
+                'resolved_at' => null,
+            ]);
     }
 
     /**

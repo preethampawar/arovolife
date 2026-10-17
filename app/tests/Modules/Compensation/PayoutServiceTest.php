@@ -855,7 +855,7 @@ it('monthly batch: each income stream\'s repurchase_transfer is swept by its own
     Carbon::setTestNow(null);
 });
 
-it('isolates a per-distributor failure: the rest are still paid and the batch lands partially_failed', function () {
+it('isolates a per-distributor failure: the rest are still paid and the batch stays approvable', function () {
     $ok = makePayoutEligibleDistributor();
     $bad = makePayoutEligibleDistributor();
 
@@ -864,34 +864,21 @@ it('isolates a per-distributor failure: the rest are still paid and the batch la
     $wallet->credit($bad->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', earnedOn: earnedForBatch());
 
     // Force exactly one distributor to throw inside the loop body.
-    $state = new stdClass;
-    $state->failing = true;
-    PayoutLineItem::creating(function (PayoutLineItem $line) use ($state, $bad): void {
-        if ($state->failing === true && $line->distributor_id === $bad->id) {
+    PayoutLineItem::creating(function (PayoutLineItem $line) use ($bad): void {
+        if ($line->distributor_id === $bad->id) {
             throw new RuntimeException('simulated per-distributor failure');
         }
     });
 
-    $svc = app(PayoutService::class);
-    $batch = $svc->runWeeklyBatch(Carbon::today());
+    $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::today());
 
-    // The healthy distributor was paid; the failing one wrote nothing.
-    expect($batch->status)->toBe(PayoutBatch::STATUS_PARTIALLY_FAILED);
+    // The healthy distributor was paid; the failing one wrote nothing and was
+    // skipped (user 2026-10-17) — the batch is not held hostage by them.
+    // Retrying them is covered in PayoutBuildFailureTest.
+    expect($batch->status)->toBe(PayoutBatch::STATUS_PENDING);
     expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $ok->id)->exists())->toBeTrue();
     expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $bad->id)->exists())->toBeFalse();
     expect($wallet->balancePaise($bad->id))->toBe(100_000);
-
-    // Re-running the same batch date retries only the failed distributor and
-    // promotes the batch back to pending.
-    $state->failing = false;
-    $rerun = $svc->runWeeklyBatch(Carbon::today());
-
-    expect($rerun->id)->toBe($batch->id);
-    expect($rerun->status)->toBe(PayoutBatch::STATUS_PENDING);
-    expect($rerun->distributor_count)->toBe(2);
-    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $ok->id)->count())->toBe(1);
-    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $bad->id)->count())->toBe(1);
-    expect($wallet->balancePaise($bad->id))->toBe(0);
 });
 
 it('LOG-3/5: writes audit_log rows when a payout batch is created and finalised, once each', function () {

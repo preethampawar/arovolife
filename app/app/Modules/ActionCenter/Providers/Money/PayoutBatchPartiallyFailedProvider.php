@@ -18,9 +18,12 @@ use Illuminate\Support\Collection;
  * paid; this is the batch's own status, not a re-derived count of its lines.
  *
  * Two different situations share the status. Before approval it means the
- * BUILD failed for some distributors: nothing can be approved, and the next
- * Weekly/Monthly Run (or the CLI) retries only them. After approval it means
- * some transfers failed at the bank: retry those lines from the batch screen.
+ * build failed for so many distributors that it looks like a fault in the run
+ * itself (PayoutService::isSystemicFailure()): nothing can be approved until
+ * the failures are retried back under the limit. A handful of skipped
+ * distributors no longer lands here — the batch stays pending and they are
+ * listed by {@see PayoutBuildFailuresProvider}. After approval it means some
+ * transfers failed at the bank: retry those lines from the batch screen.
  */
 final class PayoutBatchPartiallyFailedProvider extends AbstractProvider
 {
@@ -41,7 +44,7 @@ final class PayoutBatchPartiallyFailedProvider extends AbstractProvider
 
     public function description(): string
     {
-        return 'Payout batches with at least one distributor still unpaid. Not yet approved: the build failed for some distributors — the next Weekly/Monthly Run retries them, or re-run the batch from the command line (the batch screen shows the command). Approved: retry the failed lines from the batch screen.';
+        return 'Payout batches with distributors still unpaid. Not yet approved: the build failed for too many distributors (a fault in the run, not in a few records) — fix the cause and retry them on Payouts → Build failures. Approved: retry the failed lines from the batch screen.';
     }
 
     public function permission(): string
@@ -79,7 +82,7 @@ final class PayoutBatchPartiallyFailedProvider extends AbstractProvider
                     subjectId: (int) $batch->id,
                     title: ucfirst($batch->batch_type).' batch '.$batch->batch_date->toDateString(),
                     subtitle: $batch->approved_at === null
-                        ? 'Build failed for some distributors '.$this->ageLabel($occurredAt).' ago — retried by the next run, cannot be approved yet'
+                        ? 'Build failed for too many distributors '.$this->ageLabel($occurredAt).' ago — cannot be approved until they are retried'
                         : 'Processed '.$this->ageLabel($occurredAt).' ago, some distributors not paid',
                     occurredAt: $occurredAt,
                     dueAt: null,

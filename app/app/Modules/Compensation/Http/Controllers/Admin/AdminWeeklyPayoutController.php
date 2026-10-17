@@ -96,6 +96,7 @@ final class AdminWeeklyPayoutController extends Controller
             'lines' => $lines,
             'statusCounts' => $statusCounts,
             'held' => $this->heldTotals($batch),
+            'skipped' => $payoutService->unresolvedFailureSummary($batch),
             'deductions' => $this->deductionTotals($batch),
             'bank' => $this->bankAccountColumn($request, $batch, $lines, $payoutService),
             'isRazorpay' => $settings->isRazorpay(),

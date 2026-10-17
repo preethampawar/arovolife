@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Compensation\Console\Commands;
 
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutBuildFailure;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\MonthlyEngineCompletionGate;
@@ -118,6 +119,17 @@ final class MonthlyPayoutCommand extends Command
         }
 
         $this->info("Batch #{$batch->id} {$batch->status} — {$batch->distributor_count} distributors, net ₹".Number::format($batch->total_net_paise / 100, 2));
+
+        $skipped = PayoutBuildFailure::query()
+            ->where('payout_batch_id', $batch->id)
+            ->whereIn('status', PayoutBuildFailure::UNRESOLVED_STATUSES)
+            ->count();
+
+        if ($skipped > 0) {
+            // A handful of skipped distributors leaves the batch pending and the
+            // run a success; too many is a fault in the run (partially_failed).
+            $this->warn("{$skipped} distributor(s) could not be built and were skipped — see Compensation → Payouts → Build failures.");
+        }
 
         return $batch->status === PayoutBatch::STATUS_PENDING && $batch->processed_at !== null
             ? self::SUCCESS

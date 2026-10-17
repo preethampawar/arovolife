@@ -6,6 +6,8 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\GsbCutoffDeferral;
+use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutBuildFailure;
 use App\Modules\Compensation\Services\DTOs\EngineHealthReport;
 use App\Modules\Compensation\Support\EngineDefinition;
 use App\Modules\Compensation\Support\EnginePeriodType;
@@ -68,7 +70,7 @@ final class EngineHealthService
             missing: $this->missing($now, $failures),
             stuck: $this->stuck(),
             prematureFreezes: $this->prematureFreezes($now),
-            chainAlerts: $this->chainAlerts($now),
+            chainAlerts: [...$this->chainAlerts($now), ...$this->payoutBuildFailures()],
             deferredCutoffs: $this->deferredCutoffs($now),
         );
     }
@@ -222,6 +224,62 @@ final class EngineHealthService
                 'date' => Carbon::parse($date)->format('d M Y'),
                 'recorded_at' => $row->created_at->format('d M Y H:i'),
                 'steps' => $this->chainAlertSteps($row->action, $details),
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * Payout batches that went ahead without some distributors because their
+     * line could not be built (user 2026-10-17) — one item per batch, read
+     * straight from `payout_build_failures`, listed until every row resolves.
+     *
+     * @return list<array{kind: string, headline: string, date: string, recorded_at: string, steps: list<string>}>
+     */
+    private function payoutBuildFailures(): array
+    {
+        $rows = PayoutBuildFailure::query()
+            ->whereIn('status', PayoutBuildFailure::UNRESOLVED_STATUSES)
+            ->selectRaw('payout_batch_id, COUNT(*) AS cnt, MIN(first_failed_at) AS oldest')
+            ->groupBy('payout_batch_id')
+            ->orderBy('payout_batch_id')
+            ->limit(20)
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $batches = PayoutBatch::query()->whereIn('id', $rows->pluck('payout_batch_id'))->get()->keyBy('id');
+        $items = [];
+
+        foreach ($rows as $row) {
+            $batch = $batches->get((int) $row->getAttribute('payout_batch_id'));
+
+            if ($batch === null) {
+                continue;
+            }
+
+            $count = (int) $row->getAttribute('cnt');
+            $approved = $batch->approved_at !== null;
+            $next = $batch->batch_type === PayoutBatch::TYPE_MONTHLY ? "next month's batch" : "next week's batch";
+
+            $items[] = [
+                'kind' => 'payout.build_failures',
+                'headline' => "{$count} distributor(s) skipped by the {$batch->batch_type} payout batch",
+                'date' => $batch->batch_date->format('d M Y'),
+                'recorded_at' => Carbon::parse((string) $row->getAttribute('oldest'))->format('d M Y H:i'),
+                'steps' => $approved
+                    ? [
+                        "The batch was approved without them; {$next} pays them. Nothing was taken from their wallets.",
+                        'If the cause is not fixed, they will fail again in that batch — open Compensation → Payouts → Build failures to read the error.',
+                    ]
+                    : [
+                        'Everyone else in the batch can be paid; these distributors are not in it yet. Nothing was taken from their wallets.',
+                        'Open Compensation → Payouts → Build failures, read the full error, fix the cause, then press Retry — they are built into this same batch.',
+                        "If the batch is approved before they are fixed, {$next} pays them instead.",
+                    ],
             ];
         }
 

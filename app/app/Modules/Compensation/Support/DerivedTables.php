@@ -55,6 +55,8 @@ final class DerivedTables
         // wallet_ledger_entries (swept_by_payout_batch_id) reference
         // payout_batches.
         'payout_line_items',
+        // Skipped-distributor records hang off their batch the same way.
+        'payout_build_failures',
         'wallet_ledger_entries',
         'payout_batches',
 
@@ -123,6 +125,7 @@ final class DerivedTables
      *     `*_before` columns already stored on gsb_cutoff_results;
      *   • group_bv_debts — rolling reversal debt, rewound arithmetically;
      *   • payout_line_items — deleted by parent payout_batches id.
+     *   • payout_build_failures — the same, by parent payout_batches id.
      *
      * @var array<string, array{column: string, granularity: 'day'|'month'}>
      */

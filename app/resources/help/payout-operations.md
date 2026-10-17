@@ -80,16 +80,45 @@ Nobody creates a payout batch by hand.
    anything.
 4. The batch lands in **Pending approval**.
 
-A batch that hit an error for some distributors lands in **Partially failed**
-instead and cannot be approved. Their credits are untouched. **The next Weekly
-Run (03:00 IST) — or Monthly Run, for a monthly batch — retries it on its own
-(2026-10-17)**: only the distributors who failed are retried, and the batch
-returns to Pending. A distributor that fails every time keeps failing the run
-— and holds up the batches after it — until the cause is fixed: the log names
-the error. To retry sooner, re-run the batch date on the server — the
-batch page shows the exact command (`php artisan gsb:weekly-payout --date=…` or
-`php artisan payout:monthly-run --month=… --in-flight`). There is no button for
-it: a build is never started from a web request.
+### When a distributor's line cannot be built (skip and carry on)
+
+One distributor's error never holds up the batch (2026-10-17). If their line
+throws while it is being built, the batch **skips them** and carries on for
+everyone else: their transaction is rolled back, so nothing is debited and
+their income stays in their wallet. The batch still lands in **Pending
+approval**, and its page shows a red banner: *"N distributor(s) could not be
+built into this batch"*, with the amount.
+
+**Compensation → Payouts → Build failures** (finance roles) lists every skipped
+distributor with the batch, the number of attempts, and the **full error log**
+(open *Full error log* on the row). PAN, Aadhaar, IFSC and long numbers such as
+account numbers are removed before the error is stored.
+
+- **Fix the cause, then press Retry** (or *Retry all open* for a batch). The
+  retry runs on the compensation queue; refresh after a minute. If it builds,
+  the distributor is added to **the same batch** — same earning week or month,
+  so they are paid for that period — and the batch totals update. If it fails
+  again, the new error replaces the old one and the attempt count goes up.
+- **Approving with distributors still skipped** needs the approver to tick
+  *"Approve without the N distributor(s)"*. They are then paid by the **next
+  batch of the same type**: a week later for a weekly batch, **a month later
+  for a monthly batch**. Retry before approving a monthly batch wherever you
+  can. An approved batch is never added to, and its row on Build failures
+  closes by itself (*Resolved — settled by batch #…*) once a later batch pays them.
+  If the later batch only holds them (no bank account, KYC pending), the row
+  stays open until a batch actually pays.
+- A retry adds lines to the batch, which is making: the admin whose retry
+  built a distributor into the batch cannot also approve it.
+
+**Too many failures is a fault in the run, not in a few records.** More than
+one in a hundred distributors (never fewer than ten), or ten or more with the
+same error, puts the batch in **Partially failed**: it cannot be approved. Fix
+the cause (usually a deploy or a setting), then retry them on Build failures;
+the batch returns to Pending once the failures are back under the limit. The
+next Weekly Run (03:00 IST) or Monthly Run also re-runs such a batch on its own.
+
+Skipped distributors also appear in the Action Center (*Distributors skipped by
+a payout batch*) and in the morning engine health email until they are paid.
 
 ## Monthly close: crediting on the 1st, payment on the 8th
 

@@ -10,6 +10,7 @@ use App\Modules\Compensation\Exceptions\BankDecryptionException;
 use App\Modules\Compensation\Exceptions\BatchIsFrozen;
 use App\Modules\Compensation\Jobs\DispatchRazorpayPayoutsJob;
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutBuildFailure;
 use App\Modules\Compensation\Models\PayoutGatewayEvent;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
@@ -37,6 +38,7 @@ final class PayoutService
         private readonly CompensationPlanSettingsService $plan,
         private readonly PayoutGatewaySettings $payoutSettings,
         private readonly EngineRunContext $engineRunContext,
+        private readonly PayoutBuildFailureRecorder $buildFailures,
     ) {}
 
     /**
@@ -107,6 +109,9 @@ final class PayoutService
 
     /** How long a crashed sweep may hold every other payout before the lock expires. */
     private const SWEEP_LOCK_TTL_SECONDS = 3600;
+
+    /** {@see isSystemicFailure()} — E5's floor: ten skips are always allowed, ten of one kind never. */
+    private const SKIP_CAP_FLOOR = 10;
 
     /** How long a second sweep queues behind the first before giving up. */
     private const SWEEP_LOCK_WAIT_SECONDS = 120;
@@ -222,6 +227,7 @@ final class PayoutService
             $this->auditBatchCreated($batch, $dateStr, $distributorIds->count());
         }
 
+        $previouslyFailed = $this->unresolvedFailureIds($batch);
         $failedCount = 0;
 
         foreach ($distributorIds as $rawId) {
@@ -229,27 +235,28 @@ final class PayoutService
 
             try {
                 $this->processWeeklyDistributor($batch, $distributorId, $cycleEnd);
+
+                if (isset($previouslyFailed[$distributorId])) {
+                    $this->buildFailures->resolveBuilt($batch, $distributorId);
+                }
             } catch (Throwable $e) {
-                // One distributor's failure must not strand the whole batch in
-                // `processing` and block every other distributor's payout. The
-                // DB::transaction above rolled their partial writes back; a
-                // re-run of this batch date retries exactly these distributors
-                // (the line-item existence guard skips everyone already done).
-                Log::critical('Weekly payout batch: distributor failed — continuing with the rest', [
-                    'payout_batch_id' => $batch->id,
-                    'distributor_id' => $distributorId,
-                    'exception' => $e,
-                ]);
+                // One distributor's failure must not block every other
+                // distributor's payout (user 2026-10-17). The DB::transaction
+                // rolled their partial writes back — no line, no debit, credits
+                // still unswept — and the error is kept in full on
+                // payout_build_failures for the Build failures page.
+                $this->recordBuildFailure($batch, $distributorId, $e, 'Weekly');
                 $failedCount++;
             }
         }
 
-        $this->finalizeBatchTotals($batch, $failedCount);
+        $this->finalizeBatchTotals($batch);
 
         if ($failedCount > 0) {
-            Log::critical('Weekly payout batch finished partially failed', [
+            Log::critical('Weekly payout batch finished with skipped distributors', [
                 'payout_batch_id' => $batch->id,
                 'failed_distributor_count' => $failedCount,
+                'status' => $batch->status,
             ]);
         }
 
@@ -342,6 +349,7 @@ final class PayoutService
             $this->auditBatchCreated($batch, $dateStr, $distributorIds->count());
         }
 
+        $previouslyFailed = $this->unresolvedFailureIds($batch);
         $failedCount = 0;
 
         foreach ($distributorIds as $rawId) {
@@ -349,23 +357,24 @@ final class PayoutService
 
             try {
                 $this->processMonthlyDistributor($batch, $distributorId, $month);
+
+                if (isset($previouslyFailed[$distributorId])) {
+                    $this->buildFailures->resolveBuilt($batch, $distributorId);
+                }
             } catch (Throwable $e) {
-                // See runWeeklyBatch(): isolate the failure, keep paying the rest.
-                Log::critical('Monthly payout batch: distributor failed — continuing with the rest', [
-                    'payout_batch_id' => $batch->id,
-                    'distributor_id' => $distributorId,
-                    'exception' => $e,
-                ]);
+                // See runWeeklyBatch(): skip, record in full, keep paying the rest.
+                $this->recordBuildFailure($batch, $distributorId, $e, 'Monthly');
                 $failedCount++;
             }
         }
 
-        $this->finalizeBatchTotals($batch, $failedCount);
+        $this->finalizeBatchTotals($batch);
 
         if ($failedCount > 0) {
-            Log::critical('Monthly payout batch finished partially failed', [
+            Log::critical('Monthly payout batch finished with skipped distributors', [
                 'payout_batch_id' => $batch->id,
                 'failed_distributor_count' => $failedCount,
+                'status' => $batch->status,
             ]);
         }
 
@@ -1281,13 +1290,35 @@ final class PayoutService
      * confirms "₹X to N distributors" from them, so a batch of held lines
      * reads as ₹0 to 0 distributors while still showing its gross.
      *
-     * A batch with any per-distributor failure lands in `partially_failed`
-     * instead of `pending`: it cannot be approved (approve() only accepts
-     * pending) and the run command exits non-zero, but a re-run retries only
-     * the failed distributors and promotes the batch to pending on success.
+     * A distributor whose line threw is skipped and the batch still lands in
+     * `pending` — approvable for everyone else (user 2026-10-17). Only a fault
+     * in the run itself ({@see isSystemicFailure()}) lands it in
+     * `partially_failed`, which cannot be approved and makes the run command
+     * exit non-zero. Worked out from the persisted failure rows, not from the
+     * sweep's memory, so a retry or a re-run that clears them promotes the
+     * batch back to `pending` through this same method.
+     *
+     * Also closes failures on earlier batches of this type that this batch
+     * has now paid ({@see PayoutBuildFailureRecorder::resolveCarriedBy()}).
      */
-    private function finalizeBatchTotals(PayoutBatch $batch, int $failedCount = 0): void
+    private function finalizeBatchTotals(PayoutBatch $batch): void
     {
+        $this->buildFailures->resolveCarriedBy($batch);
+
+        $openFailures = PayoutBuildFailure::query()
+            ->where('payout_batch_id', $batch->id)
+            ->whereIn('status', PayoutBuildFailure::UNRESOLVED_STATUSES)
+            ->selectRaw('exception_class, COUNT(*) AS cnt')
+            ->groupBy('exception_class')
+            ->pluck('cnt', 'exception_class')
+            ->map(fn ($count): int => (int) $count)
+            ->all();
+        $failedCount = array_sum($openFailures);
+        $systemic = self::isSystemicFailure(
+            $openFailures,
+            PayoutLineItem::where('payout_batch_id', $batch->id)->count() + $failedCount,
+        );
+
         $all = PayoutLineItem::where('payout_batch_id', $batch->id)
             ->selectRaw('COALESCE(SUM(gross_paise),0) AS gross, COALESCE(SUM(repurchase_deduction_paise + admin_charge_paise + tds_paise),0) AS deductions')
             ->first();
@@ -1304,7 +1335,7 @@ final class PayoutService
         $before = AuditDigests::of($batch);
 
         $batch->update([
-            'status' => $failedCount > 0
+            'status' => $systemic
                 ? PayoutBatch::STATUS_PARTIALLY_FAILED
                 : PayoutBatch::STATUS_PENDING,
             'total_gross_paise' => $grossPaise,
@@ -1333,10 +1364,170 @@ final class PayoutService
                 'total_net_paise' => $netPaise,
                 'distributor_count' => $distributorCount,
                 'failed_distributor_count' => $failedCount,
+                'skipped_distributor_count' => $systemic ? 0 : $failedCount,
+                'systemic_failure' => $systemic,
                 'status' => $batch->status,
             ],
             'ip' => app()->runningInConsole() ? null : request()->ip(),
         ]);
+    }
+
+    /**
+     * The skip-and-continue cap, the client's E5 rule for the nightly engines
+     * applied to payouts: more failures than `max(10, 1% of the distributors
+     * the batch looked at)`, or ten or more of one exception class, is a fault
+     * in the run — a bad deploy, a missing setting, a schema drift — not ten
+     * bad records, and the batch must not be signed off around it.
+     *
+     * @param  array<string, int>  $failuresByClass
+     */
+    public static function isSystemicFailure(array $failuresByClass, int $lookedAt): bool
+    {
+        if ($failuresByClass === []) {
+            return false;
+        }
+
+        $cap = max(self::SKIP_CAP_FLOOR, intdiv(max(0, $lookedAt), 100));
+
+        return array_sum($failuresByClass) > $cap || max($failuresByClass) >= self::SKIP_CAP_FLOOR;
+    }
+
+    /**
+     * Distributors with an unresolved failure on this batch, keyed by id, so a
+     * sweep that now builds them closes the row without a query per distributor.
+     *
+     * @return array<int, bool>
+     */
+    private function unresolvedFailureIds(PayoutBatch $batch): array
+    {
+        return PayoutBuildFailure::query()
+            ->where('payout_batch_id', $batch->id)
+            ->whereIn('status', PayoutBuildFailure::UNRESOLVED_STATUSES)
+            ->pluck('distributor_id')
+            ->mapWithKeys(fn ($id): array => [(int) $id => true])
+            ->all();
+    }
+
+    private function recordBuildFailure(PayoutBatch $batch, int $distributorId, Throwable $e, string $label): void
+    {
+        Log::critical($label.' payout batch: distributor failed — skipped, continuing with the rest', [
+            'payout_batch_id' => $batch->id,
+            'distributor_id' => $distributorId,
+            'exception' => $e,
+        ]);
+
+        try {
+            $this->buildFailures->record($batch, $distributorId, $e);
+        } catch (Throwable $recordError) {
+            // Recording is not allowed to stop the sweep either; the critical
+            // log above still carries the error.
+            Log::critical('Payout build failure could not be recorded', [
+                'payout_batch_id' => $batch->id,
+                'distributor_id' => $distributorId,
+                'exception' => $recordError,
+            ]);
+        }
+    }
+
+    /**
+     * Retry one skipped distributor (Payouts → Build failures).
+     *
+     * Before approval the line is built into the SAME batch — the same earning
+     * window, so they are paid for that week or month — and the totals are
+     * re-derived. A batch finance has approved is never appended to: the row
+     * stays open with that reason, and the next batch of the same type pays the
+     * credits, which are still unswept in the wallet (user 2026-10-17).
+     *
+     * Runs under the sweep lock, so it is serialised against the sweeps,
+     * approval and un-build; everything is re-read under it.
+     *
+     * @return string one of built | failed | batch_closed | not_claimed | gone
+     */
+    public function retryBuildFailure(int $failureId, ?int $actorId): string
+    {
+        return $this->withSweepLock(function () use ($failureId, $actorId): string {
+            $failure = PayoutBuildFailure::query()->find($failureId);
+
+            // Un-built with its batch, or already settled by a re-sweep.
+            if ($failure === null) {
+                return 'gone';
+            }
+
+            if ($failure->status !== PayoutBuildFailure::STATUS_RETRYING) {
+                return 'not_claimed';
+            }
+
+            $batch = PayoutBatch::query()->find($failure->payout_batch_id);
+
+            if ($batch === null) {
+                return 'gone';
+            }
+
+            if (in_array($batch->status, self::CLOSED_BATCH_STATUSES, true)
+                || $batch->approved_at !== null
+                || ! in_array($batch->status, [PayoutBatch::STATUS_PENDING, PayoutBatch::STATUS_PARTIALLY_FAILED], true)) {
+                $this->buildFailures->reopen($failure, $batch->approved_at !== null
+                    ? 'Not retried: this batch was approved without this distributor. Their earnings stay in their wallet and are paid by the next '.$batch->batch_type.' batch.'
+                    : 'Not retried: the batch is '.$batch->status.' and cannot take new lines right now. Try again once it is pending.');
+
+                return 'batch_closed';
+            }
+
+            // A retry adds a line, which is making: the admin who asked may not
+            // then approve this batch (QA F94). An existing maker stays.
+            if ($batch->created_by === null && $actorId !== null) {
+                $batch->update(['created_by' => $actorId]);
+            }
+
+            try {
+                $batch->batch_type === PayoutBatch::TYPE_MONTHLY
+                    ? $this->processMonthlyDistributor($batch, (int) $failure->distributor_id, $batch->batch_date)
+                    : $this->processWeeklyDistributor($batch, (int) $failure->distributor_id, $batch->batch_date);
+            } catch (Throwable $e) {
+                $this->recordBuildFailure($batch, (int) $failure->distributor_id, $e, ucfirst($batch->batch_type).' retry:');
+                $this->finalizeBatchTotals($batch);
+
+                return 'failed';
+            }
+
+            $this->buildFailures->resolveBuilt($batch, (int) $failure->distributor_id);
+            $this->finalizeBatchTotals($batch);
+
+            return 'built';
+        });
+    }
+
+    /**
+     * Distributors this batch skipped and has not yet built, with the gross the
+     * sweep would have paid them — what the approve dialog warns about.
+     *
+     * @return array{count: int, gross_paise: int}
+     */
+    public function unresolvedFailureSummary(PayoutBatch $batch): array
+    {
+        $ids = array_keys($this->unresolvedFailureIds($batch));
+
+        if ($ids === []) {
+            return ['count' => 0, 'gross_paise' => 0];
+        }
+
+        $types = $batch->batch_type === PayoutBatch::TYPE_MONTHLY
+            ? self::monthlyCreditTypes()
+            : CompensationPlanSettingsService::GROUP_A_TYPES;
+
+        $gross = WalletLedgerEntry::whereIn('type', $types)
+            ->whereIn('distributor_id', $ids)
+            ->whereNull('swept_by_payout_batch_id')
+            ->where('amount_paise', '>', 0)
+            ->notReversed()
+            ->when(
+                $batch->batch_type === PayoutBatch::TYPE_MONTHLY,
+                fn (Builder $q) => $q->earnedForMonthOrBefore($batch->batch_date),
+                fn (Builder $q) => $q->earnedOnOrBefore(PayoutBatch::weeklyEarningWindow($batch->batch_date)['end']),
+            )
+            ->sum('amount_paise');
+
+        return ['count' => count($ids), 'gross_paise' => (int) $gross];
     }
 
     /**
@@ -1494,7 +1685,7 @@ final class PayoutService
      * events, throws {@see BatchIsFrozen} before anything is written — money, or
      * an instruction to move it, has left the company.
      *
-     * @return array{entries_unswept: int, debits_deleted: int, debits_paise: int, forfeits_deleted: int, forfeits_paise: int, line_items: int}
+     * @return array{entries_unswept: int, debits_deleted: int, debits_paise: int, forfeits_deleted: int, forfeits_paise: int, line_items: int, build_failures_reopened: int}
      */
     public function unbuildBatch(PayoutBatch $batch, int $actorId, string $reason): array
     {
@@ -1537,6 +1728,7 @@ final class PayoutService
                     'forfeits_deleted' => 0,
                     'forfeits_paise' => 0,
                     'line_items' => count($lineIds),
+                    'build_failures_reopened' => 0,
                 ];
 
                 $debitIds = [];
@@ -1560,6 +1752,16 @@ final class PayoutService
 
                 $summary['debits_deleted'] = count($debitIds);
                 $summary['forfeits_deleted'] = count($forfeitIds);
+
+                // Failures on earlier batches this one had paid are owed again:
+                // their credits were just unswept. Before the delete, whose
+                // nullOnDelete would otherwise leave them "resolved" by nothing.
+                $summary['build_failures_reopened'] = $this->buildFailures->reopenCarriedBy($batch);
+
+                // Its own skipped-distributor rows go with it — explicitly, not
+                // by the FK cascade, which a session with foreign-key checks
+                // off would skip. The re-sweep re-records whoever still fails.
+                PayoutBuildFailure::query()->where('payout_batch_id', $batch->id)->delete();
 
                 $batchId = (int) $batch->id;
                 $batchType = (string) $batch->batch_type;
@@ -1891,7 +2093,7 @@ final class PayoutService
      * to, which meant "an admin clicked a button" and "the distributor has
      * the money" were the same recorded fact — they are not.
      */
-    public function approve(PayoutBatch $batch, int $approvedByUserId): PayoutBatch
+    public function approve(PayoutBatch $batch, int $approvedByUserId, int $acceptedSkippedCount = 0): PayoutBatch
     {
         if ($batch->status !== PayoutBatch::STATUS_PENDING) {
             return $batch;
@@ -1901,11 +2103,11 @@ final class PayoutService
         // cleared is released into this batch. That makes it a third writer
         // against the shared monthly ceiling, so it queues behind the batch
         // runs on the same lock.
-        return $this->withSweepLock(fn (): PayoutBatch => $this->approveLocked($batch, $approvedByUserId));
+        return $this->withSweepLock(fn (): PayoutBatch => $this->approveLocked($batch, $approvedByUserId, $acceptedSkippedCount));
     }
 
     /** {@see approve()} — its body, run while the sweep lock is held. */
-    private function approveLocked(PayoutBatch $batch, int $approvedByUserId): PayoutBatch
+    private function approveLocked(PayoutBatch $batch, int $approvedByUserId, int $acceptedSkippedCount): PayoutBatch
     {
         // Re-read under the lock before anything else. The status check in
         // approve() runs OUTSIDE it, so an approval that queued behind a rebuild
@@ -1921,6 +2123,19 @@ final class PayoutService
         $batch->refresh();
 
         if ($batch->status !== PayoutBatch::STATUS_PENDING) {
+            return $batch;
+        }
+
+        // Skipped distributors are never built here: approving is checking,
+        // and a build is making — the approver may not hold finance.record at
+        // all. A batch with open build failures is signed off only when the
+        // approver has said, knowingly, that those distributors wait for the
+        // next batch of this type (user 2026-10-17) — and no more of them than
+        // the approver saw: a skip recorded after the page was drawn refuses.
+        // Left pending; the controller reads that as a refusal.
+        $skipped = count($this->unresolvedFailureIds($batch));
+
+        if ($skipped > $acceptedSkippedCount) {
             return $batch;
         }
 
@@ -1966,6 +2181,7 @@ final class PayoutService
                 'total_net_paise' => $batch->total_net_paise,
                 'holds_released_at_approval' => $reevaluated['released'],
                 'holds_restated_at_approval' => $reevaluated['restated'],
+                'approved_without_skipped_distributors' => $skipped,
             ],
             'ip' => app()->runningInConsole() ? null : request()->ip(),
         ]);

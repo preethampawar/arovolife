@@ -127,6 +127,17 @@ final class PiiScrubberProcessor implements ProcessorInterface
         ];
     }
 
+    /**
+     * The string rules on their own, for text that is stored rather than
+     * logged — a payout build failure keeps the whole exception on its row
+     * (`payout_build_failures.error_detail`), and that text must meet the same
+     * rule as a log line.
+     */
+    public static function scrubText(string $value): string
+    {
+        return (new self)->scrubString($value);
+    }
+
     private function scrubString(string $value): string
     {
         // Aadhaar first, then PAN — order matters because the PAN pattern

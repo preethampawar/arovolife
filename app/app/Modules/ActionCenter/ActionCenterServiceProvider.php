@@ -16,6 +16,7 @@ use App\Modules\ActionCenter\Providers\Money\PaymentsUnreconciledProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutBatchAwaitingApprovalProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutBatchPartiallyFailedProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutBatchStuckProcessingProvider;
+use App\Modules\ActionCenter\Providers\Money\PayoutBuildFailuresProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutsAwaitingBankConfirmationProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutsBankDetailsMissingProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutsBankUndecryptableProvider;
@@ -92,6 +93,7 @@ final class ActionCenterServiceProvider extends ServiceProvider
         GsbReversalAwaitingApprovalProvider::class,
         UnpayableManualCreditProvider::class,
         PayoutBatchPartiallyFailedProvider::class,
+        PayoutBuildFailuresProvider::class,
         PayoutsAwaitingBankConfirmationProvider::class,
         PayoutsUnsentInDispatchedBatchProvider::class,
         PayoutBatchStuckProcessingProvider::class,

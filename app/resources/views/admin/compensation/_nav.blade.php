@@ -76,10 +76,11 @@
             $adcOn ? ['label' => 'ADC Calculation', 'route' => 'admin.compensation.adc-calculation.index', 'match' => 'admin.compensation.adc-calculation'] : null,
         ]))],
 
-        ['label' => 'Payouts', 'items' => [
+        ['label' => 'Payouts', 'items' => array_values(array_filter([
             ['label' => 'Weekly Payouts', 'route' => 'admin.compensation.weekly-payouts.index', 'match' => 'admin.compensation.weekly-payouts'],
             ['label' => 'Monthly Payouts', 'route' => 'admin.compensation.monthly-payouts.index', 'match' => 'admin.compensation.monthly-payouts'],
-        ]],
+            auth()->user()?->can('finance.record') ? ['label' => 'Build failures', 'route' => 'admin.compensation.payout-failures.index', 'match' => 'admin.compensation.payout-failures'] : null,
+        ]))],
 
         ['label' => 'Plan & controls', 'items' => array_values(array_filter([
             $gsbOn ? ['label' => 'Manual Controls', 'route' => 'admin.compensation.manual-controls.index', 'match' => 'admin.compensation.manual-controls'] : null,

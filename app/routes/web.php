@@ -61,6 +61,7 @@ use App\Modules\Compensation\Http\Controllers\Admin\AdminManualControlsControlle
 use App\Modules\Compensation\Http\Controllers\Admin\AdminMonthlyPayoutController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminMsbCalculationController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminMsbInputOutputController;
+use App\Modules\Compensation\Http\Controllers\Admin\AdminPayoutBuildFailureController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminPayoutSettingsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminPlanSettingsController;
 use App\Modules\Compensation\Http\Controllers\Admin\AdminRankBonusCalculationController;
@@ -738,6 +739,15 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             Route::get('/{batch}/bank-files/{file}/download', [AdminMonthlyPayoutController::class, 'downloadBankFile'])
                 ->middleware('can:finance.record')->name('bank-files.download')
                 ->whereNumber('batch')->whereNumber('file');
+        });
+
+        // Distributors a payout batch skipped because their line could not be
+        // built, with the full error and a Retry (user 2026-10-17). finance.record:
+        // a retry builds a line, which is making — the approver role is not it.
+        Route::prefix('payout-failures')->name('payout-failures.')->middleware('can:finance.record')->group(function (): void {
+            Route::get('/', [AdminPayoutBuildFailureController::class, 'index'])->name('index');
+            Route::post('/{failure}/retry', [AdminPayoutBuildFailureController::class, 'retry'])->name('retry')->whereNumber('failure');
+            Route::post('/batch/{batch}/retry', [AdminPayoutBuildFailureController::class, 'retryBatch'])->name('retry-batch')->whereNumber('batch');
         });
 
         Route::prefix('weekly-payouts')->name('weekly-payouts.')->group(function (): void {
