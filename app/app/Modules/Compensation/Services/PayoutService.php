@@ -1453,7 +1453,12 @@ final class PayoutService
                 return 'gone';
             }
 
-            if ($failure->status !== PayoutBuildFailure::STATUS_RETRYING) {
+            // A stale claim taken over by another admin belongs to their job,
+            // not this one: building here would leave the row naming them as
+            // the maker of a line this actor built, and this actor free to
+            // approve the batch.
+            if ($failure->status !== PayoutBuildFailure::STATUS_RETRYING
+                || ($failure->retry_requested_by === null ? null : (int) $failure->retry_requested_by) !== $actorId) {
                 return 'not_claimed';
             }
 
@@ -2106,6 +2111,25 @@ final class PayoutService
         return $this->withSweepLock(fn (): PayoutBatch => $this->approveLocked($batch, $approvedByUserId, $acceptedSkippedCount));
     }
 
+    /**
+     * Whether this user made the batch: created it, or had a Build failures
+     * retry build a distributor into it (QA F94). A retry builds only for the
+     * admin whose claim the row still carries, so `retry_requested_by` on a
+     * built row names whoever built it.
+     */
+    public function approverIsMaker(PayoutBatch $batch, int $userId): bool
+    {
+        if ($batch->created_by !== null && (int) $batch->created_by === $userId) {
+            return true;
+        }
+
+        return PayoutBuildFailure::query()
+            ->where('payout_batch_id', $batch->id)
+            ->where('resolution', PayoutBuildFailure::RESOLUTION_BUILT)
+            ->where('retry_requested_by', $userId)
+            ->exists();
+    }
+
     /** {@see approve()} — its body, run while the sweep lock is held. */
     private function approveLocked(PayoutBatch $batch, int $approvedByUserId, int $acceptedSkippedCount): PayoutBatch
     {
@@ -2123,6 +2147,30 @@ final class PayoutService
         $batch->refresh();
 
         if ($batch->status !== PayoutBatch::STATUS_PENDING) {
+            return $batch;
+        }
+
+        // Maker-checker again, under the lock: the controller's check runs
+        // outside it, and a retry this approver queued may have built a line
+        // into the batch in between. Left pending; the controller reads that
+        // as a refusal.
+        if ($this->approverIsMaker($batch, $approvedByUserId)) {
+            AuditLog::create([
+                'actor_id' => $approvedByUserId,
+                'action' => 'payout.batch.self_approval_refused',
+                'subject_type' => 'payout_batch',
+                'subject_id' => (int) $batch->id,
+                'before_hash' => AuditDigests::of($batch),
+                'after_hash' => AuditDigests::of($batch),
+                'details' => [
+                    'batch_type' => $batch->batch_type,
+                    'batch_date' => $batch->batch_date->toDateString(),
+                    'created_by' => $batch->created_by === null ? null : (int) $batch->created_by,
+                    'retried_distributors_into_batch' => true,
+                    'checked_under_sweep_lock' => true,
+                ],
+            ]);
+
             return $batch;
         }
 

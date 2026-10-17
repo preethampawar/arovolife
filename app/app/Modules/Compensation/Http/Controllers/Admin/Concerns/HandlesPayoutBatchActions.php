@@ -346,9 +346,12 @@ trait HandlesPayoutBatchActions
         $batch->refresh();
 
         if ($batch->status === PayoutBatch::STATUS_PENDING) {
-            // Re-checked under the sweep lock: a sweep or a retry recorded a new
-            // skip after this page was drawn.
-            return back()->with('error', 'More distributors were skipped since this page loaded. Review Build failures and approve again.');
+            // Re-checked under the sweep lock: a retry of this approver's built
+            // a line in the meantime, or a sweep or retry recorded a new skip
+            // after this page was drawn.
+            return back()->with('error', $payoutService->approverIsMaker($batch, $actorId)
+                ? 'You retried a distributor into this batch, so you cannot also approve it. Separation of duties requires a second person to sign a payout batch off.'
+                : 'More distributors were skipped since this page loaded. Review Build failures and approve again.');
         }
 
         return redirect()

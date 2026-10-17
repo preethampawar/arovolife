@@ -397,3 +397,50 @@ it('the admin whose retry built a distributor into a batch cannot approve it, ev
     expect($batch->fresh()->status)->toBe(PayoutBatch::STATUS_PENDING)
         ->and(AuditLog::where('action', 'payout.batch.self_approval_refused')->sole()->details['retried_distributors_into_batch'])->toBeTrue();
 });
+
+it('a retry job whose stale claim another admin took over does not build the line', function (): void {
+    skipTestDistributor();
+    $bad = skipTestDistributor();
+    $this->failing->ids = [$bad->id];
+    $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::today());
+    $this->failing->ids = [];
+
+    $first = User::factory()->create();
+    $second = User::factory()->create();
+    $failure = PayoutBuildFailure::sole();
+    $recorder = app(PayoutBuildFailureRecorder::class);
+
+    expect($recorder->claimForRetry($failure, $first->id))->toBeTrue();
+    $failure->update(['retry_requested_at' => now()->subMinutes(PayoutBuildFailureRecorder::STALE_RETRY_MINUTES + 1)]);
+    expect($recorder->claimForRetry($failure->fresh(), $second->id))->toBeTrue();
+
+    // The first admin's job finally runs: the claim is no longer theirs.
+    expect(app(PayoutService::class)->retryBuildFailure((int) $failure->id, $first->id))->toBe('not_claimed')
+        ->and(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $bad->id)->exists())->toBeFalse()
+        ->and($failure->fresh()->status)->toBe(PayoutBuildFailure::STATUS_RETRYING);
+
+    // The second admin's job builds it, and the row names them.
+    expect(app(PayoutService::class)->retryBuildFailure((int) $failure->id, $second->id))->toBe('built')
+        ->and((int) $failure->fresh()->retry_requested_by)->toBe($second->id);
+});
+
+it('approval re-checks maker-checker under the sweep lock, after a retry that finished since the page loaded', function (): void {
+    skipTestDistributor();
+    $bad = skipTestDistributor();
+    $other = skipTestDistributor();
+    $this->failing->ids = [$bad->id, $other->id];
+    $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::today());
+    $batch->update(['created_by' => User::factory()->create()->id]);
+    $this->failing->ids = [$other->id];
+
+    // The controller's check passed while the retry was still queued; the
+    // retry built the line before the approval took the lock.
+    $approver = User::factory()->create();
+    retryFailure(PayoutBuildFailure::where('distributor_id', $bad->id)->sole(), $approver->id);
+
+    $result = app(PayoutService::class)->approve($batch->fresh(), $approver->id, 1);
+
+    expect($result->status)->toBe(PayoutBatch::STATUS_PENDING)
+        ->and($batch->fresh()->approved_at)->toBeNull()
+        ->and(AuditLog::where('action', 'payout.batch.self_approval_refused')->sole()->details['checked_under_sweep_lock'])->toBeTrue();
+});
