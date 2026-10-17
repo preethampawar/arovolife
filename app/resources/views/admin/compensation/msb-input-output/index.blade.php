@@ -61,6 +61,7 @@
         $totalCredited = (int) $rows->sum('credited_paise');
         $totalRoyaltyWithheld = (int) $rows->sum('royalty_withheld_paise');
         $gatedDay = $gated[$dateStr] ?? null;
+        $reversedDay = $reversed[$dateStr] ?? null;
     @endphp
     <x-ui.card flush>
         <div class="px-4 py-3 bg-gray-50 border-b border-gray-200 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
@@ -91,6 +92,15 @@
             {{ $gatedDay['sponsors'] === 1 ? 'sponsor below the royalty rank was' : 'sponsors below the royalty rank were' }} failed on their
             repurchase condition: {{ \App\Modules\Shared\Support\IndianNumber::format($gatedDay['msb_points']) }}
             Mentorship points not awarded and excluded from the day's points.
+        </div>
+        @endif
+
+        @if($reversedDay !== null && $reversedDay['rows'] > 0)
+        <div class="px-4 py-2 bg-red-50 border-b border-red-100 text-[11px] text-red-800">
+            {{ \App\Modules\Shared\Support\IndianNumber::format($reversedDay['rows']) }}
+            Mentorship {{ $reversedDay['rows'] === 1 ? 'row was' : 'rows were' }} reversed with the GSB credit {{ $reversedDay['rows'] === 1 ? 'it was' : 'they were' }} earned on:
+            {{ \App\Modules\Shared\Support\IndianNumber::format($reversedDay['msb_points']) }} points (still in the day's frozen points) and
+            ₹{{ \App\Modules\Shared\Support\IndianNumber::format($reversedDay['net_paise'] / 100, 2) }} taken back. They are not in the table below.
         </div>
         @endif
 

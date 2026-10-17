@@ -10,6 +10,7 @@ use App\Modules\Compensation\Exceptions\ReversalRequestStale;
 use App\Modules\Compensation\Models\GsbCutoffDeferral;
 use App\Modules\Compensation\Models\GsbCutoffResult;
 use App\Modules\Compensation\Models\GsbReversalRequest;
+use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\EngineStatusService;
 use App\Modules\Compensation\Services\GsbCutoffService;
@@ -65,13 +66,26 @@ final class AdminManualControlsController extends Controller
             ->orderBy('created_at')
             ->get();
 
+        // The Mentorship Bonus that goes with each pending reversal (M5), so the
+        // approver sees every debit they are signing, not only the GSB one.
+        /** @var array<int, array{count: int, net_paise: int}> $mentorshipByRequest */
+        $mentorshipByRequest = [];
+        foreach ($pendingReversals as $pendingReversal) {
+            $rows = MentorshipBonusResult::where('sponsee_id', $pendingReversal->distributor_id)
+                ->where('cutoff_date', $pendingReversal->cutoff_date->toDateString())
+                ->where('status', MentorshipBonusResult::STATUS_CREDITED)
+                ->get(['mb_net_paise']);
+
+            $mentorshipByRequest[$pendingReversal->id] = ['count' => $rows->count(), 'net_paise' => (int) $rows->sum('mb_net_paise')];
+        }
+
         // Retry is only open until the Nightly Run moves past the date, so the
         // page states both instants — the one that has been and the one coming.
         $nightlyClock = $this->clocks->for(EngineStatusService::CHAIN_KEY);
 
         return view('admin.compensation.manual-controls.index', compact(
             'distributor', 'adn', 'action', 'date', 'recentActions', 'pendingReversals',
-            'nightlyClock',
+            'nightlyClock', 'mentorshipByRequest',
         ));
     }
 
@@ -464,6 +478,33 @@ final class AdminManualControlsController extends Controller
                     throw new ReversalRequestStale($pending->id);
                 }
 
+                // Client decision M5 (2026-09-27): the Mentorship Bonus a sponsor
+                // earned on this GSB credit goes with it. Same refusal as the
+                // GSB credit: a bonus already swept to the bank is not taken
+                // back by a wallet debit, so nothing moves.
+                // Plain equality, not whereDate(): a wrapped column cannot use
+                // an index, and FOR UPDATE on a scan locks every row it reads.
+                $mentorship = MentorshipBonusResult::where('sponsee_id', $result->distributor_id)
+                    ->where('cutoff_date', $result->cutoff_date->toDateString())
+                    ->where('status', MentorshipBonusResult::STATUS_CREDITED)
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($mentorship as $mb) {
+                    $mbSweptBatchId = WalletLedgerEntry::where('type', 'mb_credit')
+                        ->where('reference_type', 'mentorship_bonus_result')
+                        ->where('reference_id', $mb->id)
+                        ->value('swept_by_payout_batch_id');
+
+                    if ($mbSweptBatchId !== null) {
+                        throw ReversalCreditAlreadyPaid::forMentorshipBatch(
+                            $pending->id,
+                            (string) Distributor::whereKey($mb->sponsor_id)->value('adn'),
+                            (int) $mbSweptBatchId,
+                        );
+                    }
+                }
+
                 $distributor = $result->distributor;
                 $before = $this->wallet->balancePaise($result->distributor_id);
                 $repurchaseBefore = $this->wallet->repurchaseWalletBalancePaise($result->distributor_id);
@@ -483,6 +524,33 @@ final class AdminManualControlsController extends Controller
                 );
 
                 $result->update(['status' => GsbCutoffResult::STATUS_REVERSED]);
+
+                $mentorshipReversed = [];
+                foreach ($mentorship as $mb) {
+                    // A row the royalty cap withheld in full credited nothing,
+                    // so there is nothing to debit — it is still marked reversed.
+                    $mbOutcome = $mb->mb_net_paise === 0 && $mb->repurchase_deduction_paise === 0 ? null : $this->wallet->reverseBonusCredit(
+                        distributorId: $mb->sponsor_id,
+                        netPaise: $mb->mb_net_paise,
+                        repurchaseDeductionPaise: $mb->repurchase_deduction_paise,
+                        referenceId: $mb->id,
+                        referenceType: 'mentorship_bonus_result',
+                        bonusMonth: $mb->cutoff_date->copy()->startOfMonth(),
+                        memo: 'Admin reversal of the GSB credit it was earned on — '.$pending->reason,
+                    );
+
+                    $mb->update(['status' => MentorshipBonusResult::STATUS_REVERSED]);
+
+                    $mentorshipReversed[] = [
+                        'mentorship_bonus_result_id' => $mb->id,
+                        'sponsor_id' => $mb->sponsor_id,
+                        'net_paise' => $mb->mb_net_paise,
+                        'repurchase_deduction_paise' => $mb->repurchase_deduction_paise,
+                        'net_reversed_paise' => $mbOutcome !== null ? $mbOutcome->netReversedPaise : 0,
+                        'repurchase_reversed_paise' => $mbOutcome !== null ? $mbOutcome->repurchaseReversedPaise : 0,
+                        'repurchase_shortfall_paise' => $mbOutcome !== null ? $mbOutcome->repurchaseShortfallPaise : 0,
+                    ];
+                }
 
                 $pending->update([
                     'status' => GsbReversalRequest::STATUS_APPROVED,
@@ -527,6 +595,7 @@ final class AdminManualControlsController extends Controller
                         'approved_by' => $actorId,
                         'reason' => $pending->reason,
                         'decision_note' => $note,
+                        'mentorship_reversed' => $mentorshipReversed,
                     ],
                     'ip' => $ip,
                 ]);

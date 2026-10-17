@@ -158,7 +158,7 @@ A Distributor is entered into a month's matrix only if they meet all of the cond
 
 Distributors at Ranks 6 to 9 do not participate in the Fortune Bonus.
 
-The slab figures are a count of slabs earned in the month, counting repeats; there are seven slabs in total, and the same slab earned more than once counts each time.
+The slab figures are a count of slabs earned in the month, counting repeats; there are seven slabs in total, and the same slab earned more than once counts each time. Personal BV in the month is the BV of the Distributor's purchases made in that month less any refund or cancellation of those purchases: a refund reduces the month the returned purchase belongs to, not the month of the refund, and lifetime personal BV is likewise net of refunds.
 
 ### 7.3 Points
 
@@ -259,6 +259,8 @@ For Ranks 1 and 2, the Genos BV counted excludes every day on which the Distribu
 **Qualifying again.** The first qualification for a rank carries no further condition. From the second qualification for the same rank onwards, the Rank Bonus for that rank is credited only if the Distributor's own purchases for their own use in that month reach at least the monthly BV of that rank: 1,000 BV (Rank 1), 1,100 (Rank 2), 1,200 (Rank 3), 1,300 (Rank 4), 1,400 (Rank 5), 1,600 (Rank 6), 1,800 (Rank 7), 2,000 (Rank 8) or 2,300 (Rank 9). A month that misses this condition earns no Rank Bonus for that rank, then or later. The balance of the repurchase wallet is not a condition.
 
 **AO-GO offer (Achieve Once – Get Once).** A Distributor who qualified for a rank in one month and holds no rank in the next month receives **36 Rank Achievement Points** in that next month if their own purchases for their own use in that month reach at least the monthly BV of the rank they qualified for (the figures above). The offer applies to that one month only: if it is missed it is not carried to any later month, and it becomes available again only after a new rank qualification. It can be received at most three times in a Distributor's lifetime. The balance of the repurchase wallet is not a condition.
+
+In this section, a Distributor's own purchases in a month, and their lifetime personal BV, are counted net of refunds and cancellations: a refund reduces the month the returned purchase belongs to, not the month of the refund. A purchase that was returned does not keep a month qualifying.
 
 No Distributor is required to buy anything. These conditions concern products bought for one's own use; a month in which they are not met simply carries no Rank Bonus or offer. Purchases made only to meet a condition are discouraged, and every purchase remains subject to the refund and buy-back terms of the Direct Seller Agreement.
 

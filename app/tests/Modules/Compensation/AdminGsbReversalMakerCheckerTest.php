@@ -328,3 +328,90 @@ it('closes a request on rejection without touching the credit', function () {
         ->and($wallet->balancePaise($distributor->id))->toBe($before)
         ->and(AuditLog::where('action', 'compensation.gsb.reversal_rejected')->exists())->toBeTrue();
 });
+
+/** A credited Mentorship Bonus the sponsor earned on the sponsee's GSB day (M5). */
+function creditedMentorshipOn(Distributor $sponsee, int $netPaise = 30_000, string $date = '2026-08-14'): array
+{
+    $sponsor = Distributor::factory()->create();
+
+    $mbId = DB::table('mentorship_bonus_results')->insertGetId([
+        'sponsor_id' => $sponsor->id,
+        'sponsee_id' => $sponsee->id,
+        'cutoff_date' => $date,
+        'sponsee_gsb_paise' => 250_000,
+        'mb_gross_paise' => $netPaise,
+        'repurchase_deduction_paise' => 0,
+        'mb_admin_charge_paise' => 0,
+        'mb_tds_paise' => 0,
+        'mb_net_paise' => $netPaise,
+        'status' => 'credited',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    app(WalletService::class)->credit(
+        distributorId: $sponsor->id,
+        amountPaise: $netPaise,
+        type: 'mb_credit',
+        referenceId: $mbId,
+        referenceType: 'mentorship_bonus_result',
+        bonusMonth: Carbon::parse($date)->startOfMonth(),
+        earnedOn: Carbon::parse($date),
+    );
+
+    return [$sponsor, $mbId];
+}
+
+function requestReversalOf(Distributor $distributor, int $resultId): GsbReversalRequest
+{
+    test()->actingAs(reversalStaff('admin-compliance'))->post(route('admin.compensation.manual-controls.reverse'), [
+        'adn' => $distributor->adn,
+        'date' => '2026-08-14',
+        'reason' => 'Credited against an order that was later cancelled.',
+    ]);
+
+    return GsbReversalRequest::where('gsb_cutoff_result_id', $resultId)->firstOrFail();
+}
+
+it('reverses the Mentorship Bonus earned on the GSB credit together with it (client decision M5)', function () {
+    [$distributor, $resultId] = creditedGsbDay();
+    [$sponsor, $mbId] = creditedMentorshipOn($distributor);
+    $wallet = app(WalletService::class);
+    $sponsorBefore = $wallet->balancePaise($sponsor->id);
+
+    $pending = requestReversalOf($distributor, $resultId);
+
+    $this->actingAs(reversalStaff())
+        ->post(route('admin.compensation.manual-controls.reversals.approve', $pending->id))
+        ->assertRedirect(route('admin.compensation.distributors.show', $distributor->id));
+
+    $audit = AuditLog::where('action', 'compensation.gsb.reversed')->firstOrFail();
+
+    expect(DB::table('mentorship_bonus_results')->where('id', $mbId)->value('status'))->toBe('reversed')
+        ->and($wallet->balancePaise($sponsor->id))->toBe($sponsorBefore - 30_000)
+        ->and($audit->details['mentorship_reversed'][0]['mentorship_bonus_result_id'])->toBe($mbId)
+        ->and($audit->details['mentorship_reversed'][0]['net_reversed_paise'])->toBe(30_000);
+});
+
+it('refuses the whole reversal when the Mentorship Bonus on the credit was already swept', function () {
+    [$distributor, $resultId] = creditedGsbDay();
+    [$sponsor, $mbId] = creditedMentorshipOn($distributor);
+    $wallet = app(WalletService::class);
+    $before = $wallet->balancePaise($distributor->id);
+
+    $pending = requestReversalOf($distributor, $resultId);
+
+    DB::table('wallet_ledger_entries')->where('type', 'mb_credit')->where('reference_id', $mbId)
+        ->update(['swept_by_payout_batch_id' => 88]);
+
+    $this->from(route('admin.compensation.manual-controls.index'))
+        ->actingAs(reversalStaff())
+        ->post(route('admin.compensation.manual-controls.reversals.approve', $pending->id))
+        ->assertRedirect(route('admin.compensation.manual-controls.index'));
+
+    expect(session('error'))->toContain('Mentorship Bonus')
+        ->and(session('error'))->toContain('#88')
+        ->and(GsbCutoffResult::find($resultId)->status)->toBe(GsbCutoffResult::STATUS_CREDITED)
+        ->and(DB::table('mentorship_bonus_results')->where('id', $mbId)->value('status'))->toBe('credited')
+        ->and($wallet->balancePaise($distributor->id))->toBe($before);
+});

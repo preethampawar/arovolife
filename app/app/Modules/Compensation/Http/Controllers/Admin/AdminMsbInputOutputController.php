@@ -59,6 +59,7 @@ final class AdminMsbInputOutputController extends Controller
             'pools' => $pools,
             'earners' => $this->earners($dates),
             'gated' => $this->gatedByDate($dates),
+            'reversed' => $this->reversedByDate($dates),
             'anchor' => $anchor,
             'day' => $day,
             'week' => $week,
@@ -250,6 +251,40 @@ final class AdminMsbInputOutputController extends Controller
             ->get()
             ->groupBy(fn (\stdClass $row) => Carbon::parse($row->cutoff_date)->toDateString())
             ->map(fn ($rows) => array_values($rows->all()))
+            ->all();
+    }
+
+    /**
+     * Per-day Mentorship rows reversed with their GSB credit (client decision
+     * M5). They were priced into the day's frozen points and credited, then
+     * taken back by an approved reversal — listed apart so the day still foots
+     * against the frozen total.
+     *
+     * @param  list<string>  $dates
+     * @return array<string, array{rows: int, msb_points: int, net_paise: int}> date → counts
+     */
+    private function reversedByDate(array $dates): array
+    {
+        if ($dates === []) {
+            return [];
+        }
+
+        return DB::table('mentorship_bonus_results')
+            ->where('status', MentorshipBonusResult::STATUS_REVERSED)
+            ->whereIn(DB::raw('DATE(cutoff_date)'), $dates)
+            ->groupBy('cutoff_date')
+            ->select('cutoff_date')
+            ->selectRaw('COUNT(*) as row_count')
+            ->selectRaw('COALESCE(SUM(msb_points), 0) as msb_points')
+            ->selectRaw('COALESCE(SUM(mb_net_paise), 0) as net_paise')
+            ->get()
+            ->mapWithKeys(fn (\stdClass $row): array => [
+                Carbon::parse($row->cutoff_date)->toDateString() => [
+                    'rows' => (int) $row->row_count,
+                    'msb_points' => (int) $row->msb_points,
+                    'net_paise' => (int) $row->net_paise,
+                ],
+            ])
             ->all();
     }
 

@@ -32,6 +32,7 @@
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="failed" {{ $status === 'failed' ? 'selected' : '' }}>Failed</option>
         <option value="repurchase_gated" {{ $status === 'repurchase_gated' ? 'selected' : '' }}>Repurchase gated</option>
+        <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed with its GSB credit</option>
     </select>
     <x-ui.button >Apply</x-ui.button>
     @if($q || $from || $to || $status || $slab)
@@ -143,7 +144,7 @@
                     </td>
                     <td class="px-3 py-2 text-center">
                         <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $row->status === 'credited' ? 'bg-green-100 text-green-700' : ($row->status === 'repurchase_gated' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700') }}">
-                            {{ $row->status === 'repurchase_gated' ? 'Repurchase gated' : $row->status }}
+                            {{ match ($row->status) { 'repurchase_gated' => 'Repurchase gated', 'reversed' => 'Reversed with GSB', default => $row->status } }}
                         </span>
                     </td>
                 </tr>

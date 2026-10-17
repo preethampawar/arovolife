@@ -217,6 +217,12 @@ it('refuses a second bank file for a line already sent, unless the earlier file 
     $this->actingAs($finance)->get(route('admin.compensation.weekly-payouts.neft', $batch))->assertOk();
     $first = PayoutBankFile::where('direction', 'export')->sole();
 
+    // The batch page now offers only the explicit replace for that line.
+    $this->actingAs($finance)->get(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertOk()
+        ->assertSee('Replace earlier bank file')
+        ->assertDontSee('Download bank file (NEFT)');
+
     // A plain second download is refused: two files for one attempt pay twice.
     $this->actingAs($finance)
         ->from(route('admin.compensation.weekly-payouts.show', $batch))

@@ -411,7 +411,7 @@ R.S.P. bonuses depend on the BV built up on counted (non-failed) days and on the
 
 Retired with it: `RepurchaseWalletGateService`, `RepurchaseWalletVerdictNotAvailable`, the `repurchase_wallet_blocked` status on `gbb_monthly_results`, `rank_bonus_results` and `fortune_bonus_results` (migration `2026_10_17_100000_narrow_repurchase_wallet_blocked_statuses`, which refuses while any row still carries the status — replay or wipe first), and every "wallet ₹0 at month end" line on the dashboard, income pages, admin reports and help. The repurchase alert now counts down to the cycle's due date only.
 
-Unchanged: the cycle verdict (wallet ₹0 + BV at the due date), the failed-day forfeit of Genos BV, Mentorship gating for a failed sponsor below Rank 6, the Royalty cap of ₹3,600/day, the 10% repurchase deduction at credit time, the `RepurchaseVerdictsPending` freeze refusals and the GSB daily outcome `repurchase_wallet_blocked` (a cycle-end wallet failure on the daily path).
+Unchanged: the cycle verdict (wallet ₹0 + BV at the due date), the failed-day forfeit of Genos BV, Mentorship gating for a failed sponsor below Rank 6, the Royalty cap of ₹3,600/day, the 10% repurchase deduction at credit time, the `RepurchaseVerdictsPending` freeze refusals, and the daily path's handling of a cycle-end wallet failure — a `repurchase_forfeited` GSB day with `failure_reason = wallet_nonzero` (the unused `OUTCOME_REPURCHASE_WALLET_BLOCKED` constant was removed 2026-10-17; no code ever wrote it).
 
 Also retired: the plan setting `comp.fortune.require_repurchase_wallet_zero` (registry, defaults, seeder; the row is removed by `2026_10_17_100100_remove_fortune_require_repurchase_wallet_zero_setting`, which keeps its last value on the audit row).
 

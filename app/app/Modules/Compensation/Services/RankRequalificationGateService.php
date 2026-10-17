@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Commerce\Services\BvLedgerService;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * The §8 requalification condition: a distributor being credited a rank for
@@ -27,6 +27,7 @@ final class RankRequalificationGateService
 {
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
+        private readonly BvLedgerService $bvLedger,
     ) {}
 
     /**
@@ -83,30 +84,18 @@ final class RankRequalificationGateService
     }
 
     /**
-     * This-month personal purchase BV per distributor (same query shape as
-     * RankQualificationService::buildMonthlyPersonalBvMap()).
+     * This-month personal purchase BV per distributor, net of any refund of a
+     * purchase made in the month ({@see BvLedgerService::netPersonalBvByPurchaseDate()}).
      *
      * @param  int[]  $distributorIds
      * @return array<int, int>
      */
     private function monthlyPersonalBvMap(array $distributorIds, Carbon $month): array
     {
-        $rows = DB::table('bv_ledger_entries')
-            ->whereIn('distributor_id', $distributorIds)
-            ->where('type', 'accrual')
-            ->whereBetween('effective_at', [
-                $month->copy()->startOfMonth()->startOfDay(),
-                $month->copy()->endOfMonth()->endOfDay(),
-            ])
-            ->select('distributor_id', DB::raw('SUM(bv_paise) as total_bv'))
-            ->groupBy('distributor_id')
-            ->get();
-
-        $map = [];
-        foreach ($rows as $row) {
-            $map[(int) $row->distributor_id] = (int) $row->total_bv;
-        }
-
-        return $map;
+        return $this->bvLedger->netPersonalBvByPurchaseDate(
+            array_values($distributorIds),
+            $month->copy()->startOfMonth(),
+            $month->copy()->endOfMonth(),
+        );
     }
 }

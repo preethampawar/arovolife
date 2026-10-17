@@ -36,14 +36,6 @@ final class GsbCutoffComputation
      */
     public const OUTCOME_REPURCHASE_FORFEITED = 'repurchase_forfeited';
 
-    /**
-     * LEGACY — no longer produced. The wallet = ₹0 test used to be a second gate
-     * against the previous calendar month's frozen snapshot before the client's
-     * cycle rules folded it into the distributor's own repurchase cycle.
-     * Retained for result rows written before that change.
-     */
-    public const OUTCOME_REPURCHASE_WALLET_BLOCKED = 'repurchase_wallet_blocked';
-
     /** Rupee-per-score value actually used to price grossPaise (set by price()). */
     public ?int $pricedScoreValuePaise = null;
 

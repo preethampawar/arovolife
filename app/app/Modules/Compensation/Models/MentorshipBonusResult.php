@@ -23,7 +23,7 @@ use Illuminate\Support\Carbon;
  * @property int $mb_admin_charge_paise
  * @property int $mb_tds_paise
  * @property int $mb_net_paise gross − repurchase deduction; what landed in the main wallet
- * @property string $status credited | failed | repurchase_gated
+ * @property string $status credited | failed | repurchase_gated | reversed
  * @property bool $sponsor_repurchase_failed the repurchase verdict the sponsor was judged with for the cut-off day (F-3)
  * @property bool $sponsor_verdict_stale the sponsor's own evaluation was deferred that night, so the verdict was the one known at the time (F-4)
  * @property int|null $royalty_cap_paise the daily Mentorship Royalty cap this row was priced with; null when the cap did not apply (F-5)
@@ -43,6 +43,13 @@ final class MentorshipBonusResult extends Model
      * the points were kept out of the day's denominator.
      */
     public const STATUS_REPURCHASE_GATED = 'repurchase_gated';
+
+    /**
+     * The GSB credit this bonus was earned on was reversed by an approved
+     * reversal request, and this bonus went with it (client decision M5,
+     * 2026-09-27). The wallet debit is a `reversal` entry on this row.
+     */
+    public const STATUS_REVERSED = 'reversed';
 
     protected $table = 'mentorship_bonus_results';
 

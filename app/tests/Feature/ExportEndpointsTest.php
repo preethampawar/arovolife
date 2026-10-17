@@ -307,7 +307,10 @@ it('keeps the NEFT bank file as CSV, whatever format is asked for', function (st
     // `can:finance.record` — the gate the matrix says must survive.
     $finance = eetActor('admin-finance');
 
-    foreach (['', 'format=xlsx', 'format=csv'] as $query) {
+    // The same line three times: each later download replaces the earlier
+    // file explicitly (a plain one is refused — two files for one attempt
+    // pay twice).
+    foreach (['supersede=1', 'format=xlsx&supersede=1', 'format=csv&supersede=1'] as $query) {
         $response = eetGet($finance, eetUrl($route, ['batch' => $batch->id], $query));
 
         $response->assertOk();

@@ -112,6 +112,20 @@
                                 Awaiting {{ $threshold - $milestone->qualification_count }} more re-qual{{ $threshold - $milestone->qualification_count > 1 ? 's' : '' }}
                             </span>
                             @endif
+                            @can('compliance.discipline')
+                            <form method="POST" action="{{ route('admin.lifetime-awards.withdraw', $milestone->id) }}" class="mt-1 flex items-center gap-1"
+                                  data-confirm-title="Withdraw award part"
+                                  data-confirm="Withdraw part {{ $milestone->trancheLetter() }} of this lifetime award? It will not be handed over."
+                                  data-confirm-impact="Impact: the part is recorded as withdrawn and the distributor sees it as Withdrawn, with the route to Grievance Redressal. Use it only for a termination, a proven breach or a correction — the reason is kept on the audit log.">
+                                @csrf
+                                <input type="text" name="reason" required maxlength="500" placeholder="Reason"
+                                       class="w-28 rounded border border-gray-300 px-1.5 py-0.5 text-[10px]">
+                                <button type="submit"
+                                        class="px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 text-[10px] font-medium">
+                                    Withdraw
+                                </button>
+                            </form>
+                            @endcan
                         @endif
                     </td>
                 </tr>

@@ -65,7 +65,9 @@
              bank file handed over as well could pay a distributor twice (R-112). --}}
         {{-- Holds only the lines still to pay. Every download is kept (see
              Bank files below). --}}
-        @php($notYetInFile = max(0, $countOf('pending') - $pendingAlreadySent))
+        @php
+            $notYetInFile = max(0, $countOf('pending') - $pendingAlreadySent);
+        @endphp
         @if($pendingAlreadySent === 0 || $notYetInFile > 0)
         <form method="GET" action="{{ route('admin.compensation.weekly-payouts.neft', $batch) }}"
               data-confirm-title="Download bank file"

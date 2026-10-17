@@ -78,6 +78,16 @@
             </p>
             @endif
 
+            @php
+                $mb = $mentorshipByRequest[$pending->id] ?? ['count' => 0, 'net_paise' => 0];
+            @endphp
+            @if($mb['count'] > 0)
+            <p class="text-xs text-gray-500 mb-3">
+                The Mentorship Bonus earned on this credit goes with it: ₹{{ \App\Modules\Shared\Support\IndianNumber::format($mb['net_paise'] / 100, 2) }}
+                comes back out of the sponsor's wallet too (and its repurchase withholding out of their repurchase wallet).
+            </p>
+            @endif
+
             @if($pending->gsb_cutoff_result_id === null)
             <p class="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
                 The credit this request names no longer exists &mdash; it was removed by a platform-team rebuild. It can
@@ -94,7 +104,7 @@
                     </span>
                     @else
                     <form method="POST" action="{{ route('admin.compensation.manual-controls.reversals.approve', $pending->id) }}"
-                          data-confirm="This debits ₹{{ \App\Modules\Shared\Support\IndianNumber::format($pending->net_gsb_paise / 100, 2) }} back out of {{ $pending->distributor?->adn }}'s wallet."
+                          data-confirm="This debits ₹{{ \App\Modules\Shared\Support\IndianNumber::format($pending->net_gsb_paise / 100, 2) }} back out of {{ $pending->distributor?->adn }}'s wallet{{ $mb['count'] > 0 ? ', and ₹'.\App\Modules\Shared\Support\IndianNumber::format($mb['net_paise'] / 100, 2).' of Mentorship Bonus out of their sponsor\'s' : '' }}."
                           data-confirm-title="Confirm: Approve GSB Reversal"
                           data-confirm-impact="The credit is permanently settled as reversed. Nothing in the admin panel can restore it — not Retry, not a re-run. If the weekly payout batch has already swept this credit towards a bank, the platform refuses this approval rather than debiting a wallet for money that has gone — recovering a paid credit is a finance decision, not this button.">
                         @csrf

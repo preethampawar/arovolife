@@ -363,17 +363,17 @@ final class RankStatusService
         return $counted === null ? [0, 0] : [$counted['left'], $counted['right']];
     }
 
-    /** This month's personal purchase BV (paise) — feeds the weaker-leg top-up. */
+    /**
+     * This month's personal purchase BV (paise), net of refunds of those
+     * purchases — feeds the weaker-leg top-up, read the way the rank run reads it.
+     */
     private function monthPersonalBv(int $distributorId, Carbon $monthStart): int
     {
-        return (int) DB::table('bv_ledger_entries')
-            ->where('distributor_id', $distributorId)
-            ->where('type', 'accrual')
-            ->whereBetween('effective_at', [
-                $monthStart->copy()->startOfDay(),
-                $monthStart->copy()->endOfMonth()->endOfDay(),
-            ])
-            ->sum('bv_paise');
+        return $this->bvLedger->netPersonalBvByPurchaseDate(
+            [$distributorId],
+            $monthStart->copy()->startOfMonth(),
+            $monthStart->copy()->endOfMonth(),
+        )[$distributorId] ?? 0;
     }
 
     /**

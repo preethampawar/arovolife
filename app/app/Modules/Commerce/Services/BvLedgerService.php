@@ -170,6 +170,51 @@ final class BvLedgerService
     }
 
     /**
+     * Net personal BV per distributor, each purchase counted in the window it
+     * was made in: the accruals effective inside the window, less every
+     * reversal of those same orders, whenever the reversal was recorded.
+     *
+     * The single reading of "own purchases in the month" for every monthly
+     * condition — rank re-qualification, AO-GO, the Fortune tier gate and the
+     * rank lifetime title (user decision 2026-10-17, the same rule plan §11.1
+     * states: "A refund reduces the month the returned purchase belongs to,
+     * not the month of the refund"). An accrual-only sum let a purchase
+     * cancelled the same week keep a month qualifying.
+     *
+     * A reversal recorded after a month was judged changes the figure only
+     * for later readers; nothing already credited is clawed back.
+     *
+     * @param  list<int>|null  $distributorIds  null = every distributor
+     * @return array<int, int> distributor id => net BV in paise, never below 0
+     */
+    public function netPersonalBvByPurchaseDate(?array $distributorIds, ?Carbon $from, ?Carbon $to): array
+    {
+        if ($distributorIds === []) {
+            return [];
+        }
+
+        $rows = DB::table('bv_ledger_entries as entry')
+            ->join('bv_ledger_entries as purchase', function ($join): void {
+                $join->on('purchase.order_id', '=', 'entry.order_id')
+                    ->on('purchase.distributor_id', '=', 'entry.distributor_id')
+                    ->where('purchase.type', '=', BvLedgerEntry::TYPE_ACCRUAL);
+            })
+            ->when($distributorIds !== null, fn ($q) => $q->whereIn('entry.distributor_id', $distributorIds))
+            ->when($from !== null, fn ($q) => $q->where('purchase.effective_at', '>=', $from->copy()->startOfDay()))
+            ->when($to !== null, fn ($q) => $q->where('purchase.effective_at', '<=', $to->copy()->endOfDay()))
+            ->select('entry.distributor_id', DB::raw('SUM(entry.bv_paise) as net_bv'))
+            ->groupBy('entry.distributor_id')
+            ->get();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[(int) $row->distributor_id] = max(0, (int) $row->net_bv);
+        }
+
+        return $map;
+    }
+
+    /**
      * A distributor's accrued / reversed / net personal BV over an optional
      * date window (in paise). The single source of the accrued/reversed/net
      * definition for the admin BV-ledger report.

@@ -35,4 +35,20 @@ final class ReversalCreditAlreadyPaid extends RuntimeException
             .'credit is a finance decision with its own authorisation — reject this request and raise it there.'
         );
     }
+
+    /**
+     * The GSB credit itself is unpaid, but the sponsor's Mentorship Bonus that
+     * rode on it was already swept. The two are reversed together (client
+     * decision M5, 2026-09-27) or not at all.
+     */
+    public static function forMentorshipBatch(int $reversalRequestId, string $sponsorAdn, int $payoutBatchId): self
+    {
+        return new self(
+            "Reversal request #{$reversalRequestId} cannot be approved here: the Mentorship Bonus sponsor {$sponsorAdn} "
+            ."earned on this GSB credit was already swept into payout batch #{$payoutBatchId} and may have reached "
+            .'their bank. The GSB credit and the Mentorship Bonus built on it are reversed together or not at all, '
+            .'and a wallet debit does not recall a transfer. Nothing was moved. Reject this request and raise the '
+            .'recovery with finance.'
+        );
+    }
 }

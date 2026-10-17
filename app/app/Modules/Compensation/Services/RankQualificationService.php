@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Services\DTOs\RankEvaluation;
 use Illuminate\Support\Carbon;
@@ -37,6 +38,7 @@ final class RankQualificationService
     public function __construct(
         private readonly CompensationPlanSettingsService $plan,
         private readonly IncomeEligibilityService $eligibility,
+        private readonly BvLedgerService $bvLedger,
     ) {}
 
     /**
@@ -251,31 +253,21 @@ final class RankQualificationService
     }
 
     /**
-     * Build lifetime personal BV map: distributor_id => sum(bv_paise) for type='accrual'.
+     * Build lifetime personal BV map: distributor_id => net personal BV, each
+     * refund taken off the purchase it returns (user decision 2026-10-17).
      *
      * @param  Carbon|null  $upTo  only accruals effective on or before this day (null = all)
      * @return array<int, int>
      */
     private function buildPersonalBvMap(?Carbon $upTo = null): array
     {
-        $rows = DB::table('bv_ledger_entries')
-            ->where('type', 'accrual')
-            ->when($upTo !== null, fn ($q) => $q->where('effective_at', '<=', $upTo->copy()->endOfDay()))
-            ->select('distributor_id', DB::raw('SUM(bv_paise) as total_bv'))
-            ->groupBy('distributor_id')
-            ->get();
-
-        $map = [];
-        foreach ($rows as $row) {
-            $map[(int) $row->distributor_id] = (int) $row->total_bv;
-        }
-
-        return $map;
+        return $this->bvLedger->netPersonalBvByPurchaseDate(null, null, $upTo);
     }
 
     /**
-     * Build this-month personal BV map: distributor_id => sum(bv_paise) for
-     * type='accrual' entries with effective_at inside the calendar month. Feeds
+     * Build this-month personal BV map: distributor_id => net BV of the
+     * purchases made inside the calendar month, less their refunds whenever
+     * recorded (user decision 2026-10-17). Feeds
      * the Ranks 1 & 2 weaker-leg top-up (the top-up uses personal purchases made
      * "during that month", per KP's 2026-06-28 example).
      *
@@ -283,22 +275,7 @@ final class RankQualificationService
      */
     private function buildMonthlyPersonalBvMap(string $monthStart, string $monthEnd): array
     {
-        $rows = DB::table('bv_ledger_entries')
-            ->where('type', 'accrual')
-            ->whereBetween('effective_at', [
-                Carbon::parse($monthStart)->startOfDay(),
-                Carbon::parse($monthEnd)->endOfDay(),
-            ])
-            ->select('distributor_id', DB::raw('SUM(bv_paise) as total_bv'))
-            ->groupBy('distributor_id')
-            ->get();
-
-        $map = [];
-        foreach ($rows as $row) {
-            $map[(int) $row->distributor_id] = (int) $row->total_bv;
-        }
-
-        return $map;
+        return $this->bvLedger->netPersonalBvByPurchaseDate(null, Carbon::parse($monthStart), Carbon::parse($monthEnd));
     }
 
     /**

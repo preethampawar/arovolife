@@ -591,12 +591,16 @@ final class MentorshipBonusService
         return $alreadyCredited;
     }
 
-    /** The credited or repurchase-gated MB row for this sponsee/date, if one exists. */
+    /**
+     * The credited, repurchase-gated or reversed MB row for this sponsee/date,
+     * if one exists. A reversed row is settled: it went with its GSB credit and
+     * must never be credited again.
+     */
     private function recordedRowFor(int $sponseeId, GsbCutoffResult $cutoffResult): ?MentorshipBonusResult
     {
         return MentorshipBonusResult::where('sponsee_id', $sponseeId)
             ->where('cutoff_date', $cutoffResult->cutoff_date->toDateString())
-            ->whereIn('status', [MentorshipBonusResult::STATUS_CREDITED, MentorshipBonusResult::STATUS_REPURCHASE_GATED])
+            ->whereIn('status', [MentorshipBonusResult::STATUS_CREDITED, MentorshipBonusResult::STATUS_REPURCHASE_GATED, MentorshipBonusResult::STATUS_REVERSED])
             ->first();
     }
 }

@@ -11,11 +11,10 @@ use App\Modules\Compensation\Services\IncomeEligibilityService;
  * One distributor's repurchase standing on one date: whether the day counts,
  * and — when it does not — which of the client's two cycle conditions failed.
  *
- * The reason is what keeps the shipped result statuses meaningful. A wallet
- * failure reports as `repurchase_wallet_blocked` on the result rows; a BV
- * shortfall reports as a plain repurchase forfeit. Both lose the same money —
- * the split exists so an admin can see WHY a day was forfeited without opening
- * the cycle table.
+ * The reason is what keeps the result rows meaningful. Both conditions lose
+ * the same money — a `repurchase_forfeited` day — and the row's
+ * `failure_reason` (wallet_nonzero, bv_short, both) says WHY, so an admin can
+ * see it without opening the cycle table.
  */
 final readonly class RepurchaseVerdict
 {

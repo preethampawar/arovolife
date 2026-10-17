@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Services;
 
+use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Models\FortuneBonusParticipant;
 use App\Modules\Compensation\Models\FortuneBonusResult;
 use App\Modules\Compensation\Models\FortuneMonthlyPool;
@@ -89,6 +90,7 @@ final class FortuneBonusService
         private readonly GsbDailyPoolService $gsbPool,
         private readonly PersonalBvTitleService $titleService,
         private readonly FortuneDistributionCalculator $calculator,
+        private readonly BvLedgerService $bvLedger,
     ) {}
 
     /**
@@ -878,27 +880,18 @@ final class FortuneBonusService
     }
 
     /**
-     * Map distributor_id → total personal BV accrued in the month (paise).
+     * Map distributor_id → net personal BV of the purchases made in the month
+     * (paise), less their refunds whenever recorded (user decision 2026-10-17).
      *
      * @return array<int, int>
      */
     private function buildPersonalBvMap(string $monthStart, string $monthEnd, ?int $distributorId = null): array
     {
-        $rows = DB::table('bv_ledger_entries')
-            ->where('type', 'accrual')
-            ->whereBetween('effective_at', [$monthStart, $monthEnd.' 23:59:59'])
-            ->when($distributorId !== null, fn ($query) => $query->where('distributor_id', $distributorId))
-            ->select('distributor_id', DB::raw('SUM(bv_paise) as total_bv'))
-            ->groupBy('distributor_id')
-            ->get();
-
-        $map = [];
-
-        foreach ($rows as $row) {
-            $map[(int) $row->distributor_id] = (int) $row->total_bv;
-        }
-
-        return $map;
+        return $this->bvLedger->netPersonalBvByPurchaseDate(
+            $distributorId === null ? null : [$distributorId],
+            Carbon::parse($monthStart),
+            Carbon::parse($monthEnd),
+        );
     }
 
     /**

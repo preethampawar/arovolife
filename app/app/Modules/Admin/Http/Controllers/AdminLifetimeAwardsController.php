@@ -7,9 +7,11 @@ namespace App\Modules\Admin\Http\Controllers;
 use App\Modules\Compensation\Events\LifetimeAwardReleased;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\LifetimeAwardReward;
+use App\Modules\Compensation\Notifications\LifetimeAwardWithdrawnNotification;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
@@ -19,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Laravel\Pennant\Feature;
 
 final class AdminLifetimeAwardsController extends Controller
@@ -191,5 +194,67 @@ final class AdminLifetimeAwardsController extends Controller
         return redirect()
             ->route('admin.lifetime-awards.index')
             ->with('success', 'Lifetime award marked as delivered.');
+    }
+
+    /**
+     * Withhold a pending award part — a termination, a proven breach, or a
+     * correction the rank run cannot make on its own (it only removes a part a
+     * rebuilt month no longer earns). The distributor then sees the part as
+     * Withdrawn, with the route to Grievance Redressal. A compliance decision,
+     * not a finance one: `compliance.discipline`, the permission that freezes
+     * and terminates. A delivered part is never withdrawn — the merchandise has
+     * been handed over.
+     */
+    public function withdraw(int $id, Request $request): RedirectResponse
+    {
+        abort_unless(Feature::for(null)->active(LifetimeAwardsFeature::class), 404);
+        Gate::authorize('compliance.discipline');
+
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        $milestone = LifetimeAwardMilestone::findOrFail($id);
+
+        if ($milestone->status !== LifetimeAwardMilestone::STATUS_PENDING) {
+            return redirect()
+                ->route('admin.lifetime-awards.index')
+                ->with('error', 'Only an award part still awaiting hand-over can be withdrawn.');
+        }
+
+        $before = AuditDigests::of($milestone);
+
+        $milestone->update([
+            'status' => LifetimeAwardMilestone::STATUS_CANCELLED,
+            'notes' => $data['reason'],
+        ]);
+
+        AuditLog::create([
+            'actor_id' => Auth::id(),
+            'action' => 'admin.lifetime_award.withdrawn',
+            'subject_type' => 'lifetime_award_milestone',
+            'subject_id' => $milestone->id,
+            'before_hash' => $before,
+            'after_hash' => AuditDigests::of($milestone),
+            'details' => [
+                'distributor_id' => $milestone->distributor_id,
+                'rank_number' => $milestone->rank_number,
+                'tranche' => $milestone->tranche,
+                'amount_paise' => $milestone->amount_paise,
+                'reason' => $data['reason'],
+            ],
+            'ip' => $request->ip(),
+        ]);
+
+        $user = Distributor::find($milestone->distributor_id)?->user;
+        $user?->notify(new LifetimeAwardWithdrawnNotification(
+            rankName: app(CompensationPlanSettingsService::class)->rankNames()[$milestone->rank_number] ?? 'Rank '.$milestone->rank_number,
+            part: $milestone->trancheLetter(),
+            reason: $data['reason'],
+        ));
+
+        return redirect()
+            ->route('admin.lifetime-awards.index')
+            ->with('success', 'Award part withdrawn. The distributor has been emailed the reason and the grievance route.');
     }
 }

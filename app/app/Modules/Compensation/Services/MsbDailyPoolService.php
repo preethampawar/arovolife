@@ -168,8 +168,10 @@ final class MsbDailyPoolService
             'point_value_cap_paise' => $existing->point_value_cap_paise,
         ];
 
+        // A reversed row was credited at this point value too, before an
+        // approved reversal took it back (M5) — the day's economics moved.
         if (MentorshipBonusResult::whereDate('cutoff_date', $existing->cutoff_date->toDateString())
-            ->where('status', MentorshipBonusResult::STATUS_CREDITED)
+            ->whereIn('status', [MentorshipBonusResult::STATUS_CREDITED, MentorshipBonusResult::STATUS_REVERSED])
             ->exists()) {
             $reason = 'mentors were already credited at this point value; re-freezing would change economics money moved on';
 

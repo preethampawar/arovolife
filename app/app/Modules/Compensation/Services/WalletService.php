@@ -462,10 +462,10 @@ class WalletService
      * into the month's deduction ceiling.
      *
      * Rows written before `bonus_month` existed have nothing to window on, so
-     * they fall back to the month they were created in — the answer they have
-     * always given. The fallback window is the IST month expressed in UTC,
-     * because created_at is stored in UTC; whereMonth() would cut the month at
-     * the wrong instant and mis-bill 5½ hours at each boundary.
+     * they fall back to the month they were created in. created_at is written
+     * in the app timezone (Asia/Kolkata) on an IST database session
+     * (DB_TIMEZONE +05:30), so the window is the IST month as stored —
+     * converting it to UTC cut it at 18:30 on the previous month's last day.
      */
     public function repurchaseDeductionForMonthPaise(int $distributorId, Carbon $bonusMonth): int
     {
@@ -484,8 +484,8 @@ class WalletService
                     ->orWhere(function ($legacy) use ($monthIst): void {
                         $legacy->whereNull('bonus_month')
                             ->whereBetween('created_at', [
-                                $monthIst->copy()->startOfMonth()->setTimezone('UTC'),
-                                $monthIst->copy()->endOfMonth()->setTimezone('UTC'),
+                                $monthIst->copy()->startOfMonth()->format('Y-m-d H:i:s'),
+                                $monthIst->copy()->endOfMonth()->format('Y-m-d H:i:s'),
                             ]);
                     });
             })

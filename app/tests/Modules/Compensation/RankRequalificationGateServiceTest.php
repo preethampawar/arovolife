@@ -126,3 +126,47 @@ it('shows the month a distributor is still living in as it stands, wallet balanc
     expect(app(RankRequalificationGateService::class)->passesSoFar($dist->id, $thisMonth, 1))
         ->toBeTrue();
 });
+
+/** A refund of an earlier purchase, recorded on $date — what BvLedgerService::reverse() writes. */
+function requalSeedReversal(int $distributorId, int $orderId, int $bvPaise, string $date): void
+{
+    DB::table('bv_ledger_entries')->insert([
+        'distributor_id' => $distributorId,
+        'order_id' => $orderId,
+        'bv_paise' => -abs($bvPaise),
+        'type' => 'reversal',
+        'effective_at' => $date.' 10:00:00',
+        'created_at' => $date.' 10:00:00',
+        'updated_at' => $date.' 10:00:00',
+    ]);
+}
+
+it('fails the gate when the month\'s qualifying purchase was cancelled (user decision 2026-10-17)', function (): void {
+    $dist = Distributor::factory()->create();
+    $obligation = app(CompensationPlanSettingsService::class)->rankRepurchaseBvPaise(1);
+
+    requalSeedMonthlyBv($dist->id, $obligation, '2026-06-02');
+    $orderId = (int) DB::table('bv_ledger_entries')->where('distributor_id', $dist->id)->value('order_id');
+    requalSeedReversal($dist->id, $orderId, $obligation, '2026-06-05');
+
+    $gate = app(RankRequalificationGateService::class);
+
+    expect($gate->monthlyPersonalBvSoFarPaise($dist->id, Carbon::parse('2026-06-01')))->toBe(0)
+        ->and($gate->passMap([$dist->id], Carbon::parse('2026-06-01'), 1)[$dist->id])->toBeFalse();
+});
+
+it('takes a refund off the month of the purchase it returns, not the month it is recorded in', function (): void {
+    $dist = Distributor::factory()->create();
+    $obligation = app(CompensationPlanSettingsService::class)->rankRepurchaseBvPaise(1);
+
+    // A May purchase refunded in June leaves June untouched and takes May down.
+    requalSeedMonthlyBv($dist->id, $obligation, '2026-05-20');
+    $mayOrder = (int) DB::table('bv_ledger_entries')->where('distributor_id', $dist->id)->value('order_id');
+    requalSeedReversal($dist->id, $mayOrder, $obligation, '2026-06-03');
+    requalSeedMonthlyBv($dist->id, $obligation, '2026-06-10');
+
+    $gate = app(RankRequalificationGateService::class);
+
+    expect($gate->monthlyPersonalBvSoFarPaise($dist->id, Carbon::parse('2026-06-01')))->toBe($obligation)
+        ->and($gate->monthlyPersonalBvSoFarPaise($dist->id, Carbon::parse('2026-05-01')))->toBe(0);
+});

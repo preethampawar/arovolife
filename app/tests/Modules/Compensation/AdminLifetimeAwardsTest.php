@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Notifications\LifetimeAwardWithdrawnNotification;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
@@ -11,6 +12,7 @@ use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Pennant\Feature;
 
@@ -97,4 +99,58 @@ it('lists the tranche, its amount and the release-rule-changed flag, with no cas
         ->assertSee('₹9,32,400')
         ->assertSee('Release rule changed on 09 Oct 2026')
         ->assertDontSee('<option value="cash">', false);
+});
+
+it('withdraws a pending award part with a reason, audited, so the distributor sees it Withdrawn', function (): void {
+    Notification::fake();
+    $milestone = lifetimeAwardMilestone();
+
+    $this->actingAs(lifetimeAwardsAdmin())->get(route('admin.lifetime-awards.index'))->assertOk()->assertSee('Withdraw');
+
+    $this->actingAs(lifetimeAwardsAdmin())
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.lifetime-awards.withdraw', $milestone->id), ['reason' => 'Terminated for breach of the Code of Ethics.'])
+        ->assertRedirect(route('admin.lifetime-awards.index'));
+
+    $milestone->refresh();
+    expect($milestone->status)->toBe(LifetimeAwardMilestone::STATUS_CANCELLED)
+        ->and($milestone->notes)->toBe('Terminated for breach of the Code of Ethics.');
+
+    $audit = AuditLog::query()->where('action', 'admin.lifetime_award.withdrawn')->where('subject_id', $milestone->id)->firstOrFail();
+    expect($audit->details['reason'])->toBe('Terminated for breach of the Code of Ethics.');
+
+    // An adverse decision is told, never left to be found: reason + grievance route.
+    $user = $milestone->distributor->user;
+    if ($user !== null) {
+        Notification::assertSentTo($user, LifetimeAwardWithdrawnNotification::class,
+            fn (LifetimeAwardWithdrawnNotification $n): bool => $n->reason === 'Terminated for breach of the Code of Ethics.' && $n->part === 'B');
+    }
+});
+
+it('never withdraws a part already handed over, and needs a reason', function (): void {
+    $delivered = lifetimeAwardMilestone(['status' => LifetimeAwardMilestone::STATUS_DELIVERED, 'delivered_at' => now()]);
+    $pending = lifetimeAwardMilestone();
+    $admin = lifetimeAwardsAdmin();
+
+    $this->actingAs($admin)->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.lifetime-awards.withdraw', $delivered->id), ['reason' => 'x'])
+        ->assertSessionHas('error');
+    $this->actingAs($admin)->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.lifetime-awards.withdraw', $pending->id), [])
+        ->assertSessionHasErrors('reason');
+
+    expect($delivered->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_DELIVERED)
+        ->and($pending->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_PENDING);
+});
+
+it('keeps withdrawing an award out of the finance role', function (): void {
+    $milestone = lifetimeAwardMilestone();
+    $finance = lifetimeAwardsAdmin();
+    $finance->syncRoles(['admin-finance']);
+
+    $this->actingAs($finance)->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.lifetime-awards.withdraw', $milestone->id), ['reason' => 'x'])
+        ->assertForbidden();
+
+    expect($milestone->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_PENDING);
 });
