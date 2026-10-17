@@ -7,6 +7,7 @@ namespace App\Modules\Compensation\Support;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Laravel\Pennant\Feature;
@@ -38,6 +39,7 @@ final class IncomeNavLinks
             ['route' => 'income.rank-bonus', 'label' => 'Rank Bonus', 'visible' => Feature::for(null)->active(RankBonusFeature::class)],
             ['route' => 'income.fortune-bonus', 'label' => 'Fortune Bonus', 'visible' => Feature::for(null)->active(FortuneBonusFeature::class)],
             ['route' => 'income.adc-bonus', 'label' => 'ADC Bonus', 'visible' => AdcBonusVisibility::forCurrentUser()],
+            ['route' => 'income.awards', 'label' => 'Awards & Rewards', 'visible' => Feature::for(null)->active(LifetimeAwardsFeature::class)],
             ['route' => 'income.wallet', 'label' => 'Wallet & Payouts', 'visible' => true],
         ];
 

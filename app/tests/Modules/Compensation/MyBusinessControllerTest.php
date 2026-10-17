@@ -142,9 +142,9 @@ it('renders all four my business groups with the flag-gated menu tiles hidden', 
         ->assertSee('Wallet &amp; Payouts', false)
         ->assertDontSee('Mentorship')
         ->assertDontSee('Fortune Bonus')
-        // Lifetime Awards & Rewards has no page until Phase 5 — disabled tile, not a link.
-        ->assertSee('Awards &amp; Rewards', false)
-        ->assertSee('Coming soon')
+        // Awards & Rewards is a flag-gated page like the bonuses (2026-10-17):
+        // with Lifetime Awards off it leaves no trace.
+        ->assertDontSee('Awards &amp; Rewards', false)
         // The distributor sidenav (layouts.app, lg+) carries a "My Income" link
         // to the income dashboard; the topnav account menu links here instead.
         ->assertSee('My Income')

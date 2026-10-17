@@ -11,6 +11,7 @@ use App\Modules\Compensation\Models\GbbMonthlyResult;
 use App\Modules\Compensation\Models\GroupBvDaily;
 use App\Modules\Compensation\Models\GsbCarryforward;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\MentorshipBonusResult;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\RankBonusResult;
@@ -31,6 +32,7 @@ use App\Modules\Compensation\Support\RepurchaseWalletStatus;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
@@ -457,6 +459,41 @@ final class IncomeController extends Controller
         }
 
         return view('income.adc-bonus', compact('distributor', 'rows', 'totalNet'));
+    }
+
+    /**
+     * The distributor's own Lifetime Award parts — merchandise, never cash.
+     * Historical facts only: parts already earned and their hand-over state,
+     * never a part still to come (hard rule 3).
+     */
+    public function awards(Request $request): View
+    {
+        abort_unless(Feature::for(null)->active(LifetimeAwardsFeature::class), 404);
+
+        $distributor = $request->user()?->distributor;
+        abort_unless($distributor !== null, 403);
+
+        try {
+            $rows = LifetimeAwardMilestone::where('distributor_id', $distributor->id)
+                ->orderByDesc('triggered_month')
+                ->orderByDesc('rank_number')
+                ->orderBy('tranche')
+                ->paginate(self::PER_PAGE)
+                ->withQueryString();
+
+            $counts = LifetimeAwardMilestone::where('distributor_id', $distributor->id)
+                ->selectRaw('status, COUNT(*) as n')
+                ->groupBy('status')
+                ->pluck('n', 'status');
+
+            $rankNames = collect(app(CompensationPlanSettingsService::class)->rankNames());
+        } catch (QueryException) {
+            $rows = collect();
+            $counts = collect();
+            $rankNames = collect();
+        }
+
+        return view('income.awards', compact('distributor', 'rows', 'counts', 'rankNames'));
     }
 
     public function wallet(Request $request): View

@@ -1303,6 +1303,7 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
     Route::get('/income/rank-bonus', [IncomeController::class, 'rankBonus'])->name('income.rank-bonus');
     Route::get('/income/fortune-bonus', [IncomeController::class, 'fortuneBonus'])->name('income.fortune-bonus');
     Route::get('/income/adc-bonus', [IncomeController::class, 'adcBonus'])->name('income.adc-bonus');
+    Route::get('/income/awards', [IncomeController::class, 'awards'])->name('income.awards');
     Route::get('/income/wallet', [IncomeController::class, 'wallet'])->name('income.wallet');
     Route::get('/income/wallet/export', [IncomeController::class, 'exportWallet'])->name('income.wallet.export');
 

@@ -16,13 +16,5 @@
                 {{ $tab['label'] }}
             </a>
         @endforeach
-        {{-- Lifetime Awards & Rewards has no page until Phase 5 — shown disabled per the partner's design. --}}
-        {{-- `aria-disabled` is prohibited on a plain span — it has no implicit
-             role for the state to apply to, so a screen reader announces the
-             text and drops the "unavailable" entirely. The suffix below is
-             what actually carries that meaning, in text, for everybody. --}}
-        <span class="px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px border-transparent text-gray-600 cursor-not-allowed select-none">
-            Awards &amp; Rewards <span class="text-xs font-normal">(Coming soon)</span>
-        </span>
     </div>
 </nav>

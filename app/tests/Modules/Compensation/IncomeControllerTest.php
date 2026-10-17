@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\AreteCenter;
+use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
@@ -11,6 +12,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RankProgressSnapshotFeature;
@@ -1385,4 +1387,59 @@ it('shows the ADC Bonus tab, card and page to the owner of a centre', function (
 
     $this->actingAs($user)->get(route('income.dashboard'))->assertOk()->assertSee('ADC Bonus');
     $this->actingAs($user)->get(route('income.adc-bonus'))->assertOk();
+});
+
+function incomeAwardPart(int $distributorId, int $rank, int $tranche, string $description, string $status = LifetimeAwardMilestone::STATUS_PENDING): LifetimeAwardMilestone
+{
+    return LifetimeAwardMilestone::create([
+        'distributor_id' => $distributorId,
+        'rank_number' => $rank,
+        'tranche' => $tranche,
+        'amount_paise' => 1_540_000,
+        'triggered_month' => '2026-09-01',
+        'qualification_count' => $tranche,
+        'award_description' => $description,
+        'status' => $status,
+        'delivered_at' => $status === LifetimeAwardMilestone::STATUS_DELIVERED ? '2026-10-05 11:00:00' : null,
+    ]);
+}
+
+it('hides the Awards & Rewards tab and page while the Lifetime Awards flag is off', function (): void {
+    Feature::for(null)->deactivate(LifetimeAwardsFeature::class);
+    ['user' => $user] = incomeDistributor();
+
+    $this->actingAs($user)->get(route('income.dashboard'))->assertOk()->assertDontSee('Awards & Rewards');
+    $this->actingAs($user)->get(route('income.awards'))->assertNotFound();
+});
+
+it('shows a distributor their own award parts and nobody else\'s', function (): void {
+    Feature::for(null)->activate(LifetimeAwardsFeature::class);
+    ['user' => $user, 'distributorId' => $id] = incomeDistributor();
+    ['distributorId' => $otherId] = incomeDistributor();
+
+    incomeAwardPart($id, 1, 1, 'Silver gift hamper');
+    incomeAwardPart($id, 3, 1, 'Emerald kitchen set', LifetimeAwardMilestone::STATUS_DELIVERED);
+    incomeAwardPart($otherId, 2, 1, 'Someone else\'s Pearl award');
+
+    $this->actingAs($user)->get(route('income.dashboard'))->assertOk()->assertSee('Awards & Rewards')->assertDontSee('Coming soon');
+
+    $this->actingAs($user)->get(route('income.awards'))
+        ->assertOk()
+        ->assertSee('Silver gift hamper')
+        ->assertSee('Part A')
+        ->assertSee('Awaiting hand-over')
+        ->assertSee('Emerald kitchen set')
+        ->assertSee('Handed over on 5 Oct 2026')
+        ->assertSee('September 2026')
+        ->assertSee('merchandise only — never cash')
+        ->assertDontSee('Someone else\'s Pearl award');
+});
+
+it('says plainly when a distributor has no award parts recorded', function (): void {
+    Feature::for(null)->activate(LifetimeAwardsFeature::class);
+    ['user' => $user] = incomeDistributor();
+
+    $this->actingAs($user)->get(route('income.awards'))
+        ->assertOk()
+        ->assertSee('No award parts recorded.');
 });
