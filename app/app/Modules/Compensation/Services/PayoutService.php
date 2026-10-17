@@ -1495,7 +1495,7 @@ final class PayoutService
                 return 'failed';
             }
 
-            $this->buildFailures->resolveBuilt($batch, (int) $failure->distributor_id);
+            $this->buildFailures->resolveBuilt($batch, (int) $failure->distributor_id, $actorId);
             $this->finalizeBatchTotals($batch);
 
             return 'built';

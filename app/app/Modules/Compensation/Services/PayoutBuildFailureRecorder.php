@@ -104,7 +104,7 @@ final class PayoutBuildFailureRecorder
      * retry built it: close their failure on that batch as built, whatever the
      * line's status (a held line is still a line the batch page explains).
      */
-    public function resolveBuilt(PayoutBatch $batch, int $distributorId): void
+    public function resolveBuilt(PayoutBatch $batch, int $distributorId, ?int $builtBy = null): void
     {
         $failure = PayoutBuildFailure::query()
             ->where('payout_batch_id', $batch->id)
@@ -121,7 +121,12 @@ final class PayoutBuildFailureRecorder
             ->where('distributor_id', $distributorId)
             ->value('id');
 
-        $this->resolve($failure, PayoutBuildFailure::RESOLUTION_BUILT, $batch, $lineId === null ? null : (int) $lineId);
+        // A retry stamps its own actor as it resolves, under the sweep lock:
+        // a stale claim taken over while this build ran must not leave the row
+        // naming the admin who did not build it — approval reads this column
+        // to refuse the maker ({@see PayoutService::approverIsMaker()}).
+        $this->resolve($failure, PayoutBuildFailure::RESOLUTION_BUILT, $batch, $lineId === null ? null : (int) $lineId,
+            $builtBy === null ? [] : ['retry_requested_by' => $builtBy]);
     }
 
     /**
@@ -247,11 +252,12 @@ final class PayoutBuildFailureRecorder
         }
     }
 
-    private function resolve(PayoutBuildFailure $failure, string $resolution, PayoutBatch $byBatch, ?int $lineId): void
+    /** @param  array<string, int>  $stamp */
+    private function resolve(PayoutBuildFailure $failure, string $resolution, PayoutBatch $byBatch, ?int $lineId, array $stamp = []): void
     {
         $before = AuditDigests::of($failure);
 
-        $failure->update([
+        $failure->update($stamp + [
             'status' => PayoutBuildFailure::STATUS_RESOLVED,
             'resolution' => $resolution,
             'resolved_line_item_id' => $lineId,

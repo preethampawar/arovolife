@@ -444,3 +444,30 @@ it('approval re-checks maker-checker under the sweep lock, after a retry that fi
         ->and($batch->fresh()->approved_at)->toBeNull()
         ->and(AuditLog::where('action', 'payout.batch.self_approval_refused')->sole()->details['checked_under_sweep_lock'])->toBeTrue();
 });
+
+it('a stale claim taken over while the build runs still names the admin whose job built the line', function (): void {
+    skipTestDistributor();
+    $bad = skipTestDistributor();
+    $this->failing->ids = [$bad->id];
+    $batch = app(PayoutService::class)->runWeeklyBatch(Carbon::today());
+    $batch->update(['created_by' => User::factory()->create()->id]);
+    $this->failing->ids = [];
+
+    $builder = User::factory()->create();
+    $takeover = User::factory()->create();
+    $failure = PayoutBuildFailure::sole();
+    expect(app(PayoutBuildFailureRecorder::class)->claimForRetry($failure, $builder->id))->toBeTrue();
+
+    // Another admin re-claims the (stale) row while the builder's job is
+    // writing the line — outside the sweep lock the build holds.
+    PayoutLineItem::creating(function (PayoutLineItem $line) use ($bad, $failure, $takeover): void {
+        if ((int) $line->distributor_id === $bad->id) {
+            PayoutBuildFailure::whereKey($failure->id)->update(['retry_requested_by' => $takeover->id]);
+        }
+    });
+
+    expect(app(PayoutService::class)->retryBuildFailure((int) $failure->id, $builder->id))->toBe('built')
+        ->and((int) $failure->fresh()->retry_requested_by)->toBe($builder->id)
+        ->and(app(PayoutService::class)->approverIsMaker($batch->fresh(), $builder->id))->toBeTrue()
+        ->and(app(PayoutService::class)->approverIsMaker($batch->fresh(), $takeover->id))->toBeFalse();
+});
