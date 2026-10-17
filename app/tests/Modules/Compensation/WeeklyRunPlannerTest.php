@@ -110,3 +110,39 @@ it('does not re-owe an approved batch whose every line failed', function (): voi
 
     expect(owedTuesdayStrings('2026-09-15'))->toBe([]);
 });
+
+it('owes tonight\'s Tuesday again while its batch is partially failed and unapproved', function (): void {
+    seedPlannerWeeklyBatch('2026-09-08');
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => '2026-09-15',
+        'status' => PayoutBatch::STATUS_PARTIALLY_FAILED,
+    ]);
+
+    expect(owedTuesdayStrings('2026-09-16'))->toBe(['2026-09-15']);
+});
+
+it('re-runs an unfinished batch even after a later Tuesday was built past it', function (): void {
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => '2026-09-01',
+        'status' => PayoutBatch::STATUS_PARTIALLY_FAILED,
+    ]);
+    seedPlannerWeeklyBatch('2026-09-08');
+    seedPlannerWeeklyBatch('2026-09-15');
+
+    expect(owedTuesdayStrings('2026-09-16'))->toBe(['2026-09-01']);
+});
+
+it('never re-runs a signed-off batch whose lines later failed', function (): void {
+    PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => '2026-09-01',
+        'status' => PayoutBatch::STATUS_PARTIALLY_FAILED,
+        'approved_at' => '2026-09-02 10:00:00',
+    ]);
+    seedPlannerWeeklyBatch('2026-09-08');
+    seedPlannerWeeklyBatch('2026-09-15');
+
+    expect(owedTuesdayStrings('2026-09-16'))->toBe([]);
+});

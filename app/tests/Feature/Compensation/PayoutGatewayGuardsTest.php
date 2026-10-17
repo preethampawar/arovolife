@@ -204,7 +204,7 @@ it('re-importing the same response file changes nothing', function (): void {
     $second = $service->import($batch->fresh(), uploadCsv($csv), 1);
 
     expect($second['transferred'])->toBe(0)
-        ->and($second['skipped'])->toHaveCount(1)
+        ->and($second['errors'][0])->toContain('already imported')
         ->and($line->fresh()->utr_number)->toBe('HDFCN52026090400001');
 });
 
@@ -397,6 +397,18 @@ it('never walks a settled transfer backwards on a late failure event', function 
     postPayoutWebhook(payoutEvent('payout.failed', 'pout_test0000000003'))->assertOk();
 
     expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_TRANSFERRED);
+});
+
+it('never lets a late payout.processed overturn a reversal that followed it', function (): void {
+    [, $line] = dispatchedFixture('pout_test0000000014');
+
+    postPayoutWebhook(payoutEvent('payout.processed', 'pout_test0000000014', ['utr' => 'UTR000000000014']), 'evt_proc_14')->assertOk();
+    postPayoutWebhook(payoutEvent('payout.reversed', 'pout_test0000000014'), 'evt_rev_14')->assertOk();
+    // Razorpay delivers the processed event again, late, under a new event id.
+    postPayoutWebhook(payoutEvent('payout.processed', 'pout_test0000000014', ['utr' => 'UTR000000000014']), 'evt_proc_14_late')->assertOk();
+
+    expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_FAILED)
+        ->and($line->fresh()->failure_reason)->toBe('Payment reversed by bank.');
 });
 
 it('lets a genuine reversal overturn a settled transfer', function (): void {

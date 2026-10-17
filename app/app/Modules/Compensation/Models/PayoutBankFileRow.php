@@ -31,6 +31,12 @@ final class PayoutBankFileRow extends Model
     /** Export: the line was in the file handed to the bank. */
     public const RESULT_SENT = 'sent';
 
+    /**
+     * Export: the line was in this file, but a later file replaced it for the
+     * same attempt — this one must not be uploaded.
+     */
+    public const RESULT_SUPERSEDED = 'superseded';
+
     public const RESULT_MARKED_PAID = 'marked_paid';
 
     public const RESULT_MARKED_FAILED = 'marked_failed';
@@ -44,6 +50,9 @@ final class PayoutBankFileRow extends Model
     public const RESULT_REJECTED_AMOUNT = 'rejected_amount';
 
     public const RESULT_REJECTED_UTR = 'rejected_utr';
+
+    /** A line the bank was sent more than once, marked paid by a row with no bank reference. */
+    public const RESULT_REJECTED_NO_UTR = 'rejected_no_utr';
 
     public const RESULT_UNRECOGNISED_STATUS = 'unrecognised_status';
 

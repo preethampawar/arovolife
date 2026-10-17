@@ -171,3 +171,18 @@ it('payout:monthly-run defaults to the month that has just ended, never the live
 
     expect(PayoutBatch::count())->toBe(0);
 });
+
+it('keeps a partially failed batch nobody approved owed, so the next run retries it — but never a signed-off one', function () {
+    $batch = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_WEEKLY,
+        'batch_date' => '2026-08-25',
+        'status' => PayoutBatch::STATUS_PARTIALLY_FAILED,
+    ]);
+    $status = app(EngineStatusService::class);
+
+    expect($status->payoutBatchExists(PayoutBatch::TYPE_WEEKLY, Carbon::parse('2026-08-25')))->toBeFalse();
+
+    $batch->forceFill(['approved_at' => now()])->save();
+
+    expect($status->payoutBatchExists(PayoutBatch::TYPE_WEEKLY, Carbon::parse('2026-08-25')))->toBeTrue();
+});

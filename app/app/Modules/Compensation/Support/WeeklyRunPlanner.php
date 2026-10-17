@@ -125,6 +125,16 @@ final class WeeklyRunPlanner
 
         $days = [];
 
+        // Behind the frontier is history the run does not reopen — except a
+        // batch row that was started and never finished: a sweep that threw, or
+        // a build that failed for some distributors. Nobody approved it, nothing
+        // can, and a later Tuesday built by hand must not strand it there.
+        for ($tuesday = $latest->copy()->subWeeks(self::MAX_BACKFILL_WEEKS); $tuesday->lessThan($frontier); $tuesday->addWeek()) {
+            if ($this->status->unfinishedPayoutBatchExists(PayoutBatch::TYPE_WEEKLY, $tuesday)) {
+                $days[] = $tuesday->copy();
+            }
+        }
+
         for ($tuesday = $frontier->copy()->addWeek(); $tuesday->lessThanOrEqualTo($latest); $tuesday->addWeek()) {
             if (! $this->status->payoutBatchExists(PayoutBatch::TYPE_WEEKLY, $tuesday)) {
                 $days[] = $tuesday->copy();

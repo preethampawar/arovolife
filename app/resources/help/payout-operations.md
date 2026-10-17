@@ -81,8 +81,15 @@ Nobody creates a payout batch by hand.
 4. The batch lands in **Pending approval**.
 
 A batch that hit an error for some distributors lands in **Partially failed**
-instead and cannot be approved. Re-run the same batch date: only the
-distributors who failed are retried, and the batch returns to Pending.
+instead and cannot be approved. Their credits are untouched. **The next Weekly
+Run (03:00 IST) — or Monthly Run, for a monthly batch — retries it on its own
+(2026-10-17)**: only the distributors who failed are retried, and the batch
+returns to Pending. A distributor that fails every time keeps failing the run
+— and holds up the batches after it — until the cause is fixed: the log names
+the error. To retry sooner, re-run the batch date on the server — the
+batch page shows the exact command (`php artisan gsb:weekly-payout --date=…` or
+`php artisan payout:monthly-run --month=… --in-flight`). There is no button for
+it: a build is never started from a web request.
 
 ## Monthly close: crediting on the 1st, payment on the 8th
 
@@ -254,7 +261,9 @@ transfers really happen, but every line item stays `pending` forever.
 - `payout.processed` → `transferred`, UTR recorded.
 - `payout.failed` / `payout.rejected` → `failed`, with Razorpay's reason.
 - `payout.reversed` → `failed`, "Payment reversed by bank" — the only event
-  that can overturn a line already marked transferred.
+  that can overturn a line already marked transferred. A reversal is final: a
+  `payout.processed` for the same payout delivered after it (Razorpay re-orders
+  deliveries) is ignored, so a reversed transfer is never recorded as paid.
 - `payout.queued` / `payout.pending` / `payout.initiated` → noted in the event
   trail, no status change. The transfer is in flight.
 
@@ -292,8 +301,13 @@ download is refused.
 
 **Downloading the same lines twice is the one way to pay someone twice.** If a
 waiting line is already in a bank file you downloaded earlier (for the same
-attempt), the download button warns you before you take the new file. Upload
-it only if the bank did **not** process the earlier one.
+attempt), **Download bank file** leaves it out (2026-10-17): the file holds only
+the lines in no earlier file — after a bounced line is sent again, you download
+just that line. **Replace earlier bank file** re-issues every line still to pay:
+use it only when the earlier file was never uploaded to the bank. The earlier
+file's rows for those lines are then marked **superseded** in the bank-file
+history (the audit row names the file) — never upload a superseded file. If the
+earlier file was uploaded, wait for the bank's response instead.
 
 **Every download is kept and audited.** The file is stored encrypted (see
 *Bank files* below) and a `payout.batch.bank_file_exported` row records who
@@ -330,9 +344,12 @@ loosely — `SUCCESS`, `Successful`, `PROCESSED`, `PAID` all read as success;
 `FAILED`, `REJECTED`, `RETURNED`, `BOUNCED` as failure. Anything else is
 skipped and reported rather than guessed at.
 
-Two things the import will not do: change a line that has already settled
-(re-importing the same file is safe), and settle a line for an ADN that is not
-in this batch (those are reported as unmatched).
+Two things the import will not do: change a line that has already settled, and
+settle a line for an ADN that is not in this batch (those are reported as
+unmatched). **A file identical to one already imported is refused outright
+(2026-10-17)** — after a line is returned and sent again, the old file would
+otherwise settle the new attempt on the old attempt's outcome. A copy of a file
+whose import never finished may still be imported.
 
 Two more it will **reject** — count them and read the reasons before you treat a
 batch as settled:
@@ -345,8 +362,15 @@ batch as settled:
   unverified.
 - **The bank reference is already in use.** One UTR settles one line. A
   reference repeated inside the file, or already recorded on any earlier line
-  item, is refused: two distributors cannot be paid by one transfer. The
-  database enforces the same rule, so it holds even if two imports run at once.
+  item, is refused: two distributors cannot be paid by one transfer. That
+  includes a reference a line gave up when it was **marked returned**, or one an
+  earlier import recorded — the transfer the bank sent back cannot settle the
+  re-sent line. The database enforces the same rule, so it holds even if two
+  imports run at once; each row is applied under the line's lock, so an import
+  and a **Mark paid** on the same line never overwrite each other.
+- **A re-sent line without a bank reference.** A line sent to the bank more than
+  once is marked paid from a file only when the row carries its UTR — otherwise
+  record it with **Mark paid**.
 
 ## Finishing a payment that failed or is still waiting
 

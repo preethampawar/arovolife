@@ -210,15 +210,33 @@ it('runs the whole manual loop: bounce, send again, re-export only that line, se
         ->and(walletLedgerFingerprint())->toBe($before);
 });
 
-it('warns when a waiting line is already in a bank file downloaded since it became payable', function (): void {
+it('refuses a second bank file for a line already sent, unless the earlier file is explicitly replaced', function (): void {
     [$batch, $line] = reconcileFixture('ADN2011');
     $finance = financeUser();
 
     $this->actingAs($finance)->get(route('admin.compensation.weekly-payouts.neft', $batch))->assertOk();
-    $this->actingAs($finance)->get(route('admin.compensation.weekly-payouts.neft', $batch))->assertOk();
+    $first = PayoutBankFile::where('direction', 'export')->sole();
+
+    // A plain second download is refused: two files for one attempt pay twice.
+    $this->actingAs($finance)
+        ->from(route('admin.compensation.weekly-payouts.show', $batch))
+        ->get(route('admin.compensation.weekly-payouts.neft', $batch))
+        ->assertRedirect(route('admin.compensation.weekly-payouts.show', $batch))
+        ->assertSessionHas('error');
+    expect(PayoutBankFile::where('direction', 'export')->count())->toBe(1);
+
+    // Replacing it produces the new file and marks the earlier one superseded.
+    $this->actingAs($finance)->get(route('admin.compensation.weekly-payouts.neft', ['batch' => $batch, 'supersede' => 1]))->assertOk();
 
     $latest = PayoutBankFile::where('direction', 'export')->orderByDesc('id')->first();
-    expect($latest->summary['already_in_earlier_file'])->toBe(1);
+    expect($latest->id)->not->toBe($first->id)
+        ->and($latest->summary['already_in_earlier_file'])->toBe(1)
+        ->and(DB::table('payout_bank_file_rows')->where('payout_bank_file_id', $first->id)->value('result'))->toBe('superseded')
+        ->and(DB::table('payout_bank_file_rows')->where('payout_bank_file_id', $latest->id)->value('result'))->toBe('sent');
+
+    $audit = json_decode((string) DB::table('audit_log')->where('action', 'payout.batch.bank_file_exported')->orderByDesc('id')->value('details'), true);
+    expect($audit['earlier_rows_superseded'])->toBe(1)
+        ->and($audit['superseded_file_ids'])->toBe([$first->id]);
 });
 
 it('leaves paid lines out of the bank file and refuses a file with nothing to pay', function (): void {
@@ -453,4 +471,72 @@ it('never puts a line Razorpay already holds in a bank file after switching to M
 
     expect($csv)->toContain('ADN2902')
         ->and($csv)->not->toContain('ADN2903');
+});
+
+// ── Stale response files (audit 2026-10-17) ────────────────────────────
+
+it('never settles a re-sent line with the reference of the transfer the bank returned', function (): void {
+    [$batch, $line] = reconcileFixture('ADN2101');
+    $finance = financeUser();
+
+    app(PayoutReconciliationService::class)->import($batch, uploadCsv("ADN,Status,UTR\nADN2101,Success,UTR2101\n"), $finance->id);
+    settlement()->markReturned($line->fresh(), 'Account closed', $finance->id);
+    settlement()->sendAgain($line->fresh(), $finance->id);
+    expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING);
+
+    // The bank re-sends its old response (a different copy of the same news).
+    $summary = app(PayoutReconciliationService::class)->import($batch, uploadCsv("ADN,Status,UTR,Reason\nADN2101,Success,UTR2101,\n"), $finance->id);
+
+    expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING)
+        ->and($line->fresh()->utr_number)->toBeNull()
+        ->and($summary['transferred'])->toBe(0)
+        ->and($summary['rejected'])->toHaveCount(1);
+});
+
+it('refuses a response file identical to one already imported, and applies nothing from it', function (): void {
+    [$batch, $line] = reconcileFixture('ADN2102');
+    $finance = financeUser();
+    $csv = "ADN,Status,UTR,Reason\nADN2102,Failed,,Invalid account\n";
+
+    app(PayoutReconciliationService::class)->import($batch, uploadCsv($csv), $finance->id);
+    settlement()->sendAgain($line->fresh(), $finance->id);
+
+    $summary = app(PayoutReconciliationService::class)->import($batch, uploadCsv($csv), $finance->id);
+
+    expect($summary['errors'])->toHaveCount(1)
+        ->and($summary['errors'][0])->toContain('already imported')
+        ->and($line->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING);
+});
+
+it('marks a re-sent line paid from a response file only with its bank reference', function (): void {
+    [$batch, $line] = reconcileFixture('ADN2103');
+    $finance = financeUser();
+
+    app(PayoutReconciliationService::class)->import($batch, uploadCsv("ADN,Status,Reason\nADN2103,Failed,Invalid account\n"), $finance->id);
+    settlement()->sendAgain($line->fresh(), $finance->id);
+
+    $withoutUtr = app(PayoutReconciliationService::class)->import($batch, uploadCsv("ADN,Status\nADN2103,Success\n"), $finance->id);
+    expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_PENDING)
+        ->and($withoutUtr['rejected'][0])->toContain('bank reference');
+    expect(DB::table('payout_bank_file_rows')->where('result', 'rejected_no_utr')->count())->toBe(1);
+
+    app(PayoutReconciliationService::class)->import($batch, uploadCsv("ADN,Status,UTR\nADN2103,Success,UTR2103B\n"), $finance->id);
+    expect($line->fresh()->status)->toBe(PayoutLineItem::STATUS_TRANSFERRED)
+        ->and($line->fresh()->utr_number)->toBe('UTR2103B');
+});
+
+it('downloads only the lines in no earlier bank file, leaving the earlier file current', function (): void {
+    [$batch, $line] = reconcileFixture('ADN2104');
+    $finance = financeUser();
+
+    $this->actingAs($finance)->get(route('admin.compensation.weekly-payouts.neft', $batch))->assertOk();
+    $first = PayoutBankFile::where('direction', 'export')->sole();
+
+    // A line becomes payable after the first file went out.
+    extraLine($batch, 'ADN2105');
+
+    $second = $this->actingAs($finance)->get(route('admin.compensation.weekly-payouts.neft', $batch))->assertOk()->streamedContent();
+
+    expect($second)->toContain('ADN2105')->not->toContain('ADN2104')
+        ->and(DB::table('payout_bank_file_rows')->where('payout_bank_file_id', $first->id)->value('result'))->toBe('sent');
 });

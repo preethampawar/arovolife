@@ -22,11 +22,13 @@
     ];
     $resultLabels = [
         'marked_paid' => 'marked paid',
+        'superseded' => 'superseded by a later file — do not upload',
         'marked_failed' => 'marked failed',
         'already_settled' => 'skipped — already settled',
         'unmatched' => 'not in this batch',
         'rejected_amount' => 'rejected — amount mismatch',
         'rejected_utr' => 'rejected — UTR already used',
+        'rejected_no_utr' => 'rejected — no UTR for a re-sent line',
         'unrecognised_status' => 'skipped — unrecognised status',
     ];
     $tabCls = fn (bool $active) => $active

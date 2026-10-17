@@ -26,7 +26,8 @@ use Throwable;
  * `payout.initiated` for a transfer whose `payout.processed` already landed
  * must not walk the line item backwards. Only `payout.reversed` may overturn
  * a settled transfer, because that is the bank genuinely taking the money
- * back.
+ * back — and a reversal is itself final: a `payout.processed` delivered after
+ * it is ignored.
  */
 final class ProcessRazorpayPayoutWebhookJob implements ShouldQueue
 {
@@ -126,6 +127,23 @@ final class ProcessRazorpayPayoutWebhookJob implements ShouldQueue
             }
 
             return 'skipped: already transferred';
+        }
+
+        // A reversal is the last word on a payout. Razorpay re-orders
+        // deliveries, so `payout.processed` can land after the
+        // `payout.reversed` that followed it; applying it would record as
+        // paid a transfer the bank took back, and nothing retries a
+        // transferred line. A stored reversal is enough, processed or not —
+        // with two workers the reversal's own job may still be running (the
+        // webhook stores each event, with its payout id, before dispatching).
+        $reversed = PayoutGatewayEvent::query()
+            ->where('gateway_payout_id', (string) $line->razorpay_payout_id)
+            ->where('event_type', 'payout.reversed')
+            ->whereKeyNot($event->id)
+            ->exists();
+
+        if ($reversed) {
+            return 'skipped: payout already reversed, late processed event ignored';
         }
 
         $before = $line->status;

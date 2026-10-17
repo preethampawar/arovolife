@@ -65,17 +65,32 @@
              bank file handed over as well could pay a distributor twice (R-112). --}}
         {{-- Holds only the lines still to pay. Every download is kept (see
              Bank files below). --}}
+        @php($notYetInFile = max(0, $countOf('pending') - $pendingAlreadySent))
+        @if($pendingAlreadySent === 0 || $notYetInFile > 0)
         <form method="GET" action="{{ route('admin.compensation.weekly-payouts.neft', $batch) }}"
               data-confirm-title="Download bank file"
-              data-confirm="Download the bank file for the {{ $countOf('pending') }} line(s) still to pay?"
-              data-confirm-impact="{{ $pendingAlreadySent > 0
-                  ? 'Warning: '.$pendingAlreadySent.' of these lines are already in a bank file you downloaded earlier. Upload this new file only if the bank did NOT process the earlier one, or those distributors are paid twice.'
-                  : 'Impact: the file is kept on record, and the download is logged. It holds full account numbers — hand it only to the bank.' }}">
+              data-confirm="{{ $pendingAlreadySent > 0
+                  ? 'Download a bank file for the line(s) still to pay that are in no earlier file? The '.$pendingAlreadySent.' line(s) already in an earlier file are left out.'
+                  : 'Download the bank file for the '.$countOf('pending').' line(s) still to pay?' }}"
+              data-confirm-impact="Impact: the file is kept on record, and the download is logged. It holds full account numbers — hand it only to the bank.">
             <button type="submit"
                     class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
                 <x-lucide-download class="w-4 h-4" /> Download bank file (NEFT)
             </button>
         </form>
+        @endif
+        @if($pendingAlreadySent > 0)
+        <form method="GET" action="{{ route('admin.compensation.weekly-payouts.neft', $batch) }}"
+              data-confirm-title="Replace earlier bank file"
+              data-confirm="{{ $pendingAlreadySent }} line(s) still to pay are already in a bank file downloaded earlier. Replace that file with a new one holding every line still to pay?"
+              data-confirm-impact="Impact: the earlier file is marked superseded and must NOT be uploaded. Replace it only if the bank never received it — if it was uploaded, uploading this one too pays those distributors twice.">
+            <input type="hidden" name="supersede" value="1">
+            <button type="submit"
+                    class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-300 bg-red-50 text-sm font-medium text-red-800 hover:bg-red-100 transition-colors">
+                <x-lucide-file-warning class="w-4 h-4" /> Replace earlier bank file
+            </button>
+        </form>
+        @endif
         @endif
         @endcan
 
@@ -127,6 +142,16 @@
         on {{ $batch->approved_at->format('d M Y H:i') }}.
     @endif
 </p>
+
+@if($batch->status === 'partially_failed' && $batch->approved_at === null)
+<div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+    The build stopped for some distributors, so this batch cannot be approved yet. Their credits are untouched — nothing
+    was taken from their wallets. The next Weekly Run (03:00 IST) retries them automatically. To retry now, run on the server:
+    <code class="block mt-1 font-mono text-xs">php artisan gsb:weekly-payout --date={{ $batch->batch_date->toDateString() }}</code>
+    Only the distributors that failed are retried; the batch moves to Pending approval once every one of them is built.
+    The log names the error for each.
+</div>
+@endif
 
 @if($canApprove && $isOwnBatch)
 <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

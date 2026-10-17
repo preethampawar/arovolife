@@ -59,7 +59,7 @@ it('keeps an exported bank file as ciphertext with one sent row per line', funct
     $finance = bankFileFinance();
 
     $csv = $this->actingAs($finance)->get(route('admin.compensation.weekly-payouts.neft', $batch))->assertOk()->streamedContent();
-    $this->actingAs($finance)->get(route('admin.compensation.weekly-payouts.neft', $batch))->assertOk();
+    $this->actingAs($finance)->get(route('admin.compensation.weekly-payouts.neft', ['batch' => $batch, 'supersede' => 1]))->assertOk();
 
     $files = PayoutBankFile::where('direction', 'export')->orderBy('id')->get();
     $stored = Storage::disk(PayoutBankFile::DISK)->get($files[0]->storage_key);
@@ -69,7 +69,9 @@ it('keeps an exported bank file as ciphertext with one sent row per line', funct
         ->and($stored)->not->toContain('900055556666')
         ->and(app(PayoutBankFileVault::class)->read($files[0]))->toBe($csv)
         ->and($files[0]->actor_id)->toBe($finance->id)
-        ->and($files[0]->rows()->pluck('result')->all())->toBe([PayoutBankFileRow::RESULT_SENT])
+        // Replaced by the second download, which carries the line now.
+        ->and($files[0]->rows()->pluck('result')->all())->toBe([PayoutBankFileRow::RESULT_SUPERSEDED])
+        ->and($files[1]->rows()->pluck('result')->all())->toBe([PayoutBankFileRow::RESULT_SENT])
         ->and($files[0]->rows()->first()->payout_line_item_id)->toBe($line->id)
         ->and(app(PayoutBankFileDiffService::class)->ordinals($batch))->toBe([$files[0]->id => 1, $files[1]->id => 2]);
 });
@@ -113,19 +115,18 @@ it('keeps a file it could not read, applies nothing, and says why', function ():
         ->and($line->fresh()->status)->toBe('pending');
 });
 
-it('labels a re-upload of the same file identical, and the comparison finds nothing', function (): void {
+it('labels a re-upload of the same file identical, keeps it, and applies nothing from it', function (): void {
     [$batch] = reconcileFixture('ADN3006');
     $csv = "ADN,Status,UTR\nADN3006,Success,UTR3006\n";
 
     $first = importResponse($batch, $csv);
     $second = importResponse($batch, $csv);
 
-    $comparison = app(PayoutBankFileDiffService::class)->compare($first, $second);
-
     expect($second->identical_to_id)->toBe($first->id)
         ->and($second->storage_key)->not->toBe($first->storage_key)
-        ->and($comparison->hasDifferences())->toBeFalse()
-        ->and($comparison->unchanged)->toBe(1);
+        ->and($second->outcome)->toBe(PayoutBankFile::OUTCOME_REFUSED)
+        ->and($second->summary['errors'][0])->toContain('already imported')
+        ->and($second->rows()->count())->toBe(0);
 });
 
 it('compares two imports by ADN: status changed, new, missing, and duplicates flagged', function (): void {

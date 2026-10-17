@@ -514,7 +514,7 @@ it('holds one sweep lock for the whole batch, so two sweeps cannot share a ceili
     // Fired from inside the sweep. A second acquire of the same key fails while
     // the sweep is holding it, whoever the owner is.
     Event::listen('eloquent.creating: '.PayoutBatch::class, function () use (&$heldDuringSweep): void {
-        $heldDuringSweep[] = ! Cache::lock('compensation:payout-sweep', 5)->get();
+        $heldDuringSweep[] = ! Cache::store('database')->lock('compensation:payout-sweep', 5)->get();
     });
 
     $svc = app(PayoutService::class);
@@ -1852,7 +1852,7 @@ it('leaves no status change behind when the audit row cannot be written', functi
 it('refuses while a payout sweep holds the lock', function (): void {
     $batch = strandedBatch(minutes: 300);
 
-    $lock = Cache::lock('compensation:payout-sweep', 60);
+    $lock = Cache::store('database')->lock('compensation:payout-sweep', 60);
     expect($lock->get())->toBeTrue();
 
     try {

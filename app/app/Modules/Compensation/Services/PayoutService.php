@@ -18,6 +18,8 @@ use App\Modules\Compensation\Support\FrozenPayoutGuard;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Crypto\PiiCrypter;
+use Illuminate\Contracts\Cache\Lock;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
@@ -1448,8 +1450,22 @@ final class PayoutService
      */
     private function withSweepLock(callable $sweep): mixed
     {
-        return Cache::lock(self::SWEEP_LOCK_KEY, self::SWEEP_LOCK_TTL_SECONDS)
-            ->block(self::SWEEP_LOCK_WAIT_SECONDS, $sweep);
+        return $this->sweepLock()->block(self::SWEEP_LOCK_WAIT_SECONDS, $sweep);
+    }
+
+    /**
+     * The sweep lock lives in the database cache store, not the default one.
+     * The default store is the Cloudways Redis shared with other apps under
+     * `allkeys-lfu` (ADR-0011), which may evict a key at any moment — and an
+     * evicted sweep lock lets two writers build lines on one batch. MySQL's
+     * `cache_locks` row cannot be evicted.
+     */
+    private function sweepLock(): Lock
+    {
+        $store = Cache::store('database')->getStore();
+        assert($store instanceof LockProvider);
+
+        return $store->lock(self::SWEEP_LOCK_KEY, self::SWEEP_LOCK_TTL_SECONDS);
     }
 
     /**
@@ -1792,7 +1808,7 @@ final class PayoutService
             );
         }
 
-        $lock = Cache::lock(self::SWEEP_LOCK_KEY, self::SWEEP_LOCK_TTL_SECONDS);
+        $lock = $this->sweepLock();
 
         if (! $lock->get()) {
             return 'A payout sweep is running right now. Wait for it to finish and look at the batch again.';

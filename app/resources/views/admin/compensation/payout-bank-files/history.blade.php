@@ -8,20 +8,24 @@
     $imports = $history->imports;
     $resultCls = [
         'marked_paid' => 'text-green-700',
+        'superseded' => 'text-red-700',
         'marked_failed' => 'text-red-700',
         'already_settled' => 'text-gray-500',
         'unmatched' => 'text-amber-700',
         'rejected_amount' => 'text-red-700',
         'rejected_utr' => 'text-red-700',
+        'rejected_no_utr' => 'text-red-700',
         'unrecognised_status' => 'text-amber-700',
     ];
     $resultLabels = [
         'marked_paid' => 'marked paid',
+        'superseded' => 'superseded — do not upload',
         'marked_failed' => 'marked failed',
         'already_settled' => 'already settled',
         'unmatched' => 'not in batch',
         'rejected_amount' => 'amount mismatch',
         'rejected_utr' => 'UTR already used',
+        'rejected_no_utr' => 'no UTR for a re-sent line',
         'unrecognised_status' => 'unrecognised status',
     ];
 @endphp

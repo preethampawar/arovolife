@@ -11,7 +11,9 @@ use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Shared\Support\IndianNumber;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -139,6 +141,24 @@ final class PayoutReconciliationService
 
         $summary['bank_file_id'] = (int) $bankFile->id;
 
+        // The same response file twice is never news from the bank. Applying it
+        // again after a line was returned and sent again would settle the new
+        // attempt on the old attempt's outcome — paid with a transfer that was
+        // returned, or failed when the new transfer went through. A copy of a
+        // file whose import never finished (row_count 0) may still be applied.
+        $earlierImport = $bankFile->identical_to_id !== null
+            ? PayoutBankFile::query()->whereKey($bankFile->identical_to_id)->where('row_count', '>', 0)->first()
+            : null;
+
+        if ($earlierImport !== null) {
+            $summary['errors'][] = sprintf(
+                'This exact file was already imported on %s, so nothing was applied. Upload the bank\'s latest response file instead.',
+                $earlierImport->created_at->timezone('Asia/Kolkata')->format('j M Y, H:i'),
+            );
+
+            return $this->refuse($bankFile, $summary);
+        }
+
         $handle = fopen('php://temp', 'r+');
         if ($handle === false) {
             $summary['errors'][] = 'The uploaded file could not be read.';
@@ -237,64 +257,32 @@ final class PayoutReconciliationService
                 continue;
             }
 
-            // Only a line still waiting for the bank may be settled by a file.
-            // Re-importing the same response must not rewrite history.
-            if ($line->status !== PayoutLineItem::STATUS_PENDING) {
-                $summary['skipped'][] = $adn.' (already '.$line->status.')';
-                $record(PayoutBankFileRow::RESULT_ALREADY_SETTLED);
-
-                continue;
+            try {
+                [$result, $note] = DB::transaction(
+                    fn (): array => $this->applyRow((int) $line->id, $verdict, $utr, $claimedPaise, $reason, $usedUtrs),
+                );
+            } catch (UniqueConstraintViolationException) {
+                // Another import or a Mark paid recorded this reference on a
+                // line between our check and the write.
+                [$result, $note] = [PayoutBankFileRow::RESULT_REJECTED_UTR, 'bank reference already settles another payout line'];
             }
 
-            // The bank's amount has to be the amount this line owes. A response
-            // file whose amounts belong to another batch — or one column out of
-            // step — used to import silently and record the wrong people paid
-            // (QA F14). A blank cell is not a mismatch: banks routinely leave it
-            // empty on a returned transfer.
-            if ($claimedPaise !== null && $claimedPaise !== (int) $line->net_transferred_paise) {
-                $summary['rejected'][] = $adn.' (amount '.$this->rupees($claimedPaise).
-                    ' does not match the line’s '.$this->rupees((int) $line->net_transferred_paise).')';
-                $record(PayoutBankFileRow::RESULT_REJECTED_AMOUNT);
+            match ($result) {
+                PayoutBankFileRow::RESULT_MARKED_PAID => $summary['transferred']++,
+                PayoutBankFileRow::RESULT_MARKED_FAILED => $summary['failed']++,
+                PayoutBankFileRow::RESULT_ALREADY_SETTLED => $summary['skipped'][] = $adn.' ('.$note.')',
+                default => $summary['rejected'][] = $adn.' ('.$note.')',
+            };
 
-                continue;
+            if (in_array($result, [PayoutBankFileRow::RESULT_MARKED_PAID, PayoutBankFileRow::RESULT_MARKED_FAILED], true)) {
+                $summary['matched']++;
             }
 
-            // One UTR, one settled line — within this file and against every
-            // line item already recorded (QA F15). `uniq_payout_line_items_utr`
-            // is the database's half of the same rule.
-            if ($utr !== '' && isset($usedUtrs[strtoupper($utr)])) {
-                $summary['rejected'][] = $adn.' (bank reference already settles another payout line)';
-                $record(PayoutBankFileRow::RESULT_REJECTED_UTR);
-
-                continue;
+            if ($result === PayoutBankFileRow::RESULT_MARKED_PAID && $utr !== '') {
+                $usedUtrs[strtoupper($utr)] = true;
             }
 
-            $summary['matched']++;
-
-            if ($verdict === PayoutLineItem::STATUS_TRANSFERRED) {
-                $line->forceFill([
-                    'status' => PayoutLineItem::STATUS_TRANSFERRED,
-                    'utr_number' => $utr !== '' ? $utr : $line->utr_number,
-                    'failure_reason' => null,
-                ])->save();
-
-                if ($utr !== '') {
-                    $usedUtrs[strtoupper($utr)] = true;
-                }
-
-                $summary['transferred']++;
-                $record(PayoutBankFileRow::RESULT_MARKED_PAID);
-
-                continue;
-            }
-
-            $line->forceFill([
-                'status' => PayoutLineItem::STATUS_FAILED,
-                'failure_reason' => mb_substr($reason !== '' ? $reason : 'The bank reported this transfer as failed.', 0, 500),
-            ])->save();
-
-            $summary['failed']++;
-            $record(PayoutBankFileRow::RESULT_MARKED_FAILED);
+            $record($result);
         }
 
         fclose($handle);
@@ -332,6 +320,75 @@ final class PayoutReconciliationService
         $this->dispatcher->refreshBatchStatus($batch->refresh());
 
         return $summary;
+    }
+
+    /**
+     * Apply one row of a response file to its line, under the line's row lock
+     * — a Mark paid or a second import acting on the same line at the same
+     * moment sees the other's write instead of overwriting it. Callers hold
+     * the transaction.
+     *
+     * @param  array<string, true>  $usedUtrs
+     * @return array{0: string, 1: string} the row's result, and the note shown to the admin
+     */
+    private function applyRow(int $lineId, string $verdict, string $utr, ?int $claimedPaise, string $reason, array $usedUtrs): array
+    {
+        /** @var PayoutLineItem $line */
+        $line = PayoutLineItem::query()->lockForUpdate()->findOrFail($lineId);
+
+        // Only a line still waiting for the bank may be settled by a file.
+        // Re-importing the same response must not rewrite history.
+        if ($line->status !== PayoutLineItem::STATUS_PENDING) {
+            return [PayoutBankFileRow::RESULT_ALREADY_SETTLED, 'already '.$line->status];
+        }
+
+        // The bank's amount has to be the amount this line owes. A response
+        // file whose amounts belong to another batch — or one column out of
+        // step — used to import silently and record the wrong people paid
+        // (QA F14). A blank cell is not a mismatch: banks routinely leave it
+        // empty on a returned transfer.
+        if ($claimedPaise !== null && $claimedPaise !== (int) $line->net_transferred_paise) {
+            return [
+                PayoutBankFileRow::RESULT_REJECTED_AMOUNT,
+                'amount '.$this->rupees($claimedPaise).' does not match the line’s '.$this->rupees((int) $line->net_transferred_paise),
+            ];
+        }
+
+        // One UTR, one settled transfer — within this file, against every line
+        // item, and against every reference a line once carried and gave up
+        // when the bank returned it (QA F15). `uniq_payout_line_items_utr` is
+        // the database's half of the same rule.
+        if ($utr !== '' && isset($usedUtrs[strtoupper($utr)])) {
+            return [PayoutBankFileRow::RESULT_REJECTED_UTR, 'bank reference already settles another payout line'];
+        }
+
+        if ($verdict === PayoutLineItem::STATUS_TRANSFERRED) {
+            // A line sent to the bank more than once can only be marked paid
+            // with the reference of the transfer that paid it. Without one, a
+            // row from an earlier attempt's response — returned since —
+            // would read as this attempt's success.
+            if ($utr === '' && (int) $line->retry_count > 0) {
+                return [
+                    PayoutBankFileRow::RESULT_REJECTED_NO_UTR,
+                    'this line was sent to the bank again, so a paid row needs its bank reference (UTR) — record it with Mark paid',
+                ];
+            }
+
+            $line->forceFill([
+                'status' => PayoutLineItem::STATUS_TRANSFERRED,
+                'utr_number' => $utr !== '' ? $utr : $line->utr_number,
+                'failure_reason' => null,
+            ])->save();
+
+            return [PayoutBankFileRow::RESULT_MARKED_PAID, ''];
+        }
+
+        $line->forceFill([
+            'status' => PayoutLineItem::STATUS_FAILED,
+            'failure_reason' => mb_substr($reason !== '' ? $reason : 'The bank reported this transfer as failed.', 0, 500),
+        ])->save();
+
+        return [PayoutBankFileRow::RESULT_MARKED_FAILED, ''];
     }
 
     /**
@@ -444,13 +501,35 @@ final class PayoutReconciliationService
     private function utrsAlreadyRecorded(): array
     {
         $used = [];
+        $add = function (mixed $utr) use (&$used): void {
+            $utr = strtoupper(trim((string) $utr));
+            if ($utr !== '') {
+                $used[$utr] = true;
+            }
+        };
 
         PayoutLineItem::query()
             ->whereNotNull('utr_number')
             ->where('utr_number', '!=', '')
             ->pluck('utr_number')
-            ->each(function (string $utr) use (&$used): void {
-                $used[strtoupper(trim($utr))] = true;
+            ->each($add);
+
+        // A reference a line gave up when the bank returned the transfer. Mark
+        // returned clears it from the line so the re-sent transfer can carry
+        // its own — which also took it out of the check above, and let a stale
+        // response file settle the re-sent line with the returned transfer.
+        PayoutBankFileRow::query()
+            ->where('result', PayoutBankFileRow::RESULT_MARKED_PAID)
+            ->whereNotNull('utr')
+            ->pluck('utr')
+            ->each($add);
+
+        AuditLog::query()
+            ->where('action', 'payout.line_item.marked_returned')
+            ->pluck('details')
+            ->each(function (mixed $details) use ($add): void {
+                $details = is_string($details) ? json_decode($details, true) : $details;
+                $add(is_array($details) ? ($details['previous_utr'] ?? null) : null);
             });
 
         return $used;

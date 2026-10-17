@@ -682,9 +682,14 @@ final class EngineStatusService
      * A row that is `failed` and was never approved is a sweep that threw (or
      * was reopened after it stalled) before anyone could act on it: it was not
      * built, so it does not count and the date stays owed. The runner re-enters
-     * it cleanly, keeping the lines already written. A batch that was approved
-     * and then had every line fail keeps `approved_at` and still counts — the
-     * planners must never rebuild a signed-off batch.
+     * it cleanly, keeping the lines already written. The same holds for a
+     * `partially_failed` row nobody approved — the build threw for some
+     * distributors, approve() refuses it and no line action can reach it, so
+     * only a re-run (which retries just the failed distributors) moves it on;
+     * counting it as built left everyone else's money stuck until someone ran
+     * the command by hand. A batch that was approved and then had lines fail
+     * keeps `approved_at` and still counts — the planners must never rebuild a
+     * signed-off batch.
      */
     public function payoutBatchExists(string $batchType, Carbon $batchDate): bool
     {
@@ -692,9 +697,24 @@ final class EngineStatusService
             ->where('batch_type', $batchType)
             ->whereDate('batch_date', $batchDate->toDateString())
             ->where(function ($query): void {
-                $query->where('status', '!=', PayoutBatch::STATUS_FAILED)
+                $query->whereNotIn('status', [PayoutBatch::STATUS_FAILED, PayoutBatch::STATUS_PARTIALLY_FAILED])
                     ->orWhereNotNull('approved_at');
             })
+            ->exists();
+    }
+
+    /**
+     * Is there a batch row for this date that was started and never finished —
+     * `failed` or `partially_failed`, and never approved? The planners re-run
+     * such a date even behind their frontier ({@see payoutBatchExists()}).
+     */
+    public function unfinishedPayoutBatchExists(string $batchType, Carbon $batchDate): bool
+    {
+        return PayoutBatch::query()
+            ->where('batch_type', $batchType)
+            ->whereDate('batch_date', $batchDate->toDateString())
+            ->whereIn('status', [PayoutBatch::STATUS_FAILED, PayoutBatch::STATUS_PARTIALLY_FAILED])
+            ->whereNull('approved_at')
             ->exists();
     }
 

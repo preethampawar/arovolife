@@ -209,7 +209,7 @@ it('holds the sweep lock for the whole un-build', function (): void {
     $heldDuringUnbuild = [];
 
     Event::listen('eloquent.deleting: '.PayoutBatch::class, function () use (&$heldDuringUnbuild): void {
-        $heldDuringUnbuild[] = ! Cache::lock('compensation:payout-sweep', 5)->get();
+        $heldDuringUnbuild[] = ! Cache::store('database')->lock('compensation:payout-sweep', 5)->get();
     });
 
     app(PayoutService::class)->unbuildBatch($batch, 42, 'Rebuilding the week');

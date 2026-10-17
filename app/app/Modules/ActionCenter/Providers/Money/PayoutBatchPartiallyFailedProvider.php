@@ -16,7 +16,11 @@ use Illuminate\Support\Collection;
  * A payout batch where at least one distributor's line item failed during
  * processing (plan §4, Money) — every other line item still stands and was
  * paid; this is the batch's own status, not a re-derived count of its lines.
- * Retry from the batch screen re-runs only the failed distributors.
+ *
+ * Two different situations share the status. Before approval it means the
+ * BUILD failed for some distributors: nothing can be approved, and the next
+ * Weekly/Monthly Run (or the CLI) retries only them. After approval it means
+ * some transfers failed at the bank: retry those lines from the batch screen.
  */
 final class PayoutBatchPartiallyFailedProvider extends AbstractProvider
 {
@@ -37,7 +41,7 @@ final class PayoutBatchPartiallyFailedProvider extends AbstractProvider
 
     public function description(): string
     {
-        return 'Payout batches with at least one distributor still unpaid after processing. Retry the failed lines from the batch screen.';
+        return 'Payout batches with at least one distributor still unpaid. Not yet approved: the build failed for some distributors — the next Weekly/Monthly Run retries them, or re-run the batch from the command line (the batch screen shows the command). Approved: retry the failed lines from the batch screen.';
     }
 
     public function permission(): string
@@ -66,7 +70,7 @@ final class PayoutBatchPartiallyFailedProvider extends AbstractProvider
         return $this->baseQuery()
             ->orderBy('payout_batches.processed_at')
             ->limit($limit)
-            ->get(['payout_batches.id', 'payout_batches.batch_type', 'payout_batches.batch_date', 'payout_batches.processed_at', 'payout_batches.created_at'])
+            ->get(['payout_batches.id', 'payout_batches.batch_type', 'payout_batches.batch_date', 'payout_batches.processed_at', 'payout_batches.created_at', 'payout_batches.approved_at'])
             ->map(function (PayoutBatch $batch): ActionItem {
                 $occurredAt = $batch->processed_at ?? $batch->created_at;
 
@@ -74,7 +78,9 @@ final class PayoutBatchPartiallyFailedProvider extends AbstractProvider
                     subjectType: $this->subjectType(),
                     subjectId: (int) $batch->id,
                     title: ucfirst($batch->batch_type).' batch '.$batch->batch_date->toDateString(),
-                    subtitle: 'Processed '.$this->ageLabel($occurredAt).' ago, some distributors not paid',
+                    subtitle: $batch->approved_at === null
+                        ? 'Build failed for some distributors '.$this->ageLabel($occurredAt).' ago — retried by the next run, cannot be approved yet'
+                        : 'Processed '.$this->ageLabel($occurredAt).' ago, some distributors not paid',
                     occurredAt: $occurredAt,
                     dueAt: null,
                     severity: $this->severity(),

@@ -765,12 +765,35 @@ trait HandlesPayoutBatchActions
             return back()->with('error', 'Nothing left to pay in this batch — every line is paid, failed or held.');
         }
 
+        $alreadySent = $this->linesInEarlierBankFiles($lines);
+
+        // The same attempt of a line in two files is two instructions for one
+        // payment: upload both and the distributor is paid twice, and the
+        // stored evidence cannot say which file the bank ran. So a plain
+        // download carries only the lines whose current attempt is in no file
+        // yet — after a bounced line is sent again, finance downloads just
+        // that line. Re-issuing lines already in a file is an explicit
+        // "replace", which marks the earlier file's rows for them superseded,
+        // so the record names one current file and the batch page says not to
+        // upload the old one.
+        if (! $request->boolean('supersede') && $alreadySent !== []) {
+            $lines = $lines->reject(fn (PayoutLineItem $line): bool => in_array((int) $line->id, $alreadySent, true))->values();
+
+            if ($lines->isEmpty()) {
+                return back()->with('error', sprintf(
+                    'Every line still to pay (%d) is already in a bank file downloaded earlier. Upload that file if the bank has not received it yet. '
+                    .'If it was never uploaded and must be replaced, use "Replace earlier bank file" — the earlier file is then marked superseded and must not be uploaded.',
+                    count($alreadySent),
+                ));
+            }
+
+            $alreadySent = [];
+        }
+
         // Built in full before anything is sent: the audit row has to carry a
         // digest of the bytes the admin actually received, which cannot be
         // known while they are still being streamed.
         $csv = $this->buildBankFile($batch, $lines, $payoutService);
-
-        $alreadySent = $this->linesInEarlierBankFiles($lines);
 
         $filename = 'bank-upload-'.$batch->batch_type.'-'.$batch->batch_date->format('Y-m-d').'-'.now()->format('Hi').'.csv';
 
@@ -812,6 +835,10 @@ trait HandlesPayoutBatchActions
             return back()->with('error', 'The bank file could not be recorded, so it was not produced. Try again, and tell the developer if it keeps failing.');
         }
 
+        ['rows' => $superseded, 'file_ids' => $supersededFileIds] = $alreadySent === []
+            ? ['rows' => 0, 'file_ids' => []]
+            : $this->supersedeEarlierRows($lines, $alreadySent, (int) $bankFile->id);
+
         AuditLog::create([
             'actor_id' => $request->user()->id,
             'action' => 'payout.batch.bank_file_exported',
@@ -828,6 +855,8 @@ trait HandlesPayoutBatchActions
                 'total_net_paise' => $batch->total_net_paise,
                 'scope' => 'unpaid_only',
                 'already_in_earlier_file' => count($alreadySent),
+                'earlier_rows_superseded' => $superseded,
+                'superseded_file_ids' => $supersededFileIds,
                 'payout_bank_file_id' => (int) $bankFile->id,
                 // Deliberately no account numbers, no names, no file body —
                 // the file itself is the encrypted object the id points at.
@@ -935,6 +964,33 @@ trait HandlesPayoutBatchActions
         }
 
         return $already;
+    }
+
+    /**
+     * Mark the earlier files' `sent` rows for these lines' current attempts
+     * superseded by the file just produced.
+     *
+     * @param  EloquentCollection<int, PayoutLineItem>  $lines
+     * @param  list<int>  $lineIds
+     * @return array{rows: int, file_ids: list<int>} rows changed, and the files they belong to
+     */
+    private function supersedeEarlierRows(EloquentCollection $lines, array $lineIds, int $newFileId): array
+    {
+        $changed = 0;
+        $fileIds = [];
+
+        foreach ($lines->whereIn('id', $lineIds) as $line) {
+            $rows = PayoutBankFileRow::query()
+                ->where('payout_line_item_id', $line->id)
+                ->where('attempt', (int) $line->retry_count)
+                ->where('result', PayoutBankFileRow::RESULT_SENT)
+                ->where('payout_bank_file_id', '!=', $newFileId);
+
+            $fileIds = [...$fileIds, ...(clone $rows)->pluck('payout_bank_file_id')->map(fn ($id): int => (int) $id)->all()];
+            $changed += $rows->update(['result' => PayoutBankFileRow::RESULT_SUPERSEDED]);
+        }
+
+        return ['rows' => $changed, 'file_ids' => array_values(array_unique($fileIds))];
     }
 
     /**
