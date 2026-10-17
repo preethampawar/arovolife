@@ -81,6 +81,14 @@ final class AuditLog extends Model
     protected static function booted(): void
     {
         self::creating(function (self $entry): void {
+            // `migrate --pretend` (app:deploy's dry run) writes nothing and
+            // prints each query with its bindings — raw hash bytes cannot be
+            // printed, and every audited migration crashed the dry run. A row
+            // that is never written joins no chain, so leave it unlinked.
+            if ($entry->getConnection()->pretending()) {
+                return;
+            }
+
             // before/after are BINARY(32). A caller that hands over the hex
             // form of a SHA-256 (64 chars) meant the same digest; store the
             // bytes rather than let MySQL refuse the row — an audit insert

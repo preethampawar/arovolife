@@ -12,6 +12,7 @@ declare(strict_types=1);
  * ALC-05: rows written before the chain existed are skipped, not failed
  * ALC-06: a rewritten chain is caught by the recorded head
  * ALC-07: before/after digests are stored as 32 raw bytes, hex or not
+ * ALC-08: a row created under `migrate --pretend` stays printable and unwritten
  */
 
 use App\Modules\Compliance\Models\AuditLog;
@@ -147,4 +148,20 @@ it('ALC-07: stores before/after digests as 32 raw bytes whether given raw or hex
             ->and($stored->after_hash)->toBe(AuditLog::digest('paid'));
     }
 
+});
+
+it('ALC-08: a row created under migrate --pretend stays printable and unwritten', function () {
+    // app:deploy dry-runs migrations with --pretend, which prints every query
+    // with its bindings substituted. Raw hash bytes cannot be printed, so each
+    // audited plan migration crashed the dry run (staging deploy 2026-10-17).
+    alcEntry('kyc.approved');
+
+    $queries = DB::pretend(fn () => alcEntry('plan.migration.example'));
+
+    foreach ($queries as $query) {
+        DB::getQueryGrammar()->substituteBindingsIntoRawSql($query['query'], $query['bindings']);
+    }
+
+    expect($queries)->not->toBeEmpty()
+        ->and(AuditLog::query()->count())->toBe(1);
 });
