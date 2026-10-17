@@ -416,3 +416,7 @@ Unchanged: the cycle verdict (wallet ₹0 + BV at the due date), the failed-day 
 Also retired: the plan setting `comp.fortune.require_repurchase_wallet_zero` (registry, defaults, seeder; the row is removed by `2026_10_17_100100_remove_fortune_require_repurchase_wallet_zero_setting`, which keeps its last value on the audit row).
 
 **Deploy order (staging and the rsp dev stack).** Both carry `repurchase_wallet_blocked` rows from earlier runs, so `2026_10_17_100000` refuses on them. Rebuild the affected months with the compensation recompute first (dev/staging), or wipe them (production before launch), then migrate. Until then the new code is unaffected: it neither reads nor writes the status, and a legacy row is not `pending`, so it is never credited again.
+
+- **Local main dev DB (2026-10-17):** done. Snapshot taken, migrate stopped at `2026_10_17_100000` (34 GBB + 16 Fortune rows), `compensation:recompute-all --horizon=now` replaced 35,501 rows over 107 days with no failures, the rows went to 0, and both 2026-10-17 migrations ran.
+- **Staging (counted 2026-10-17):** 11 GBB rows, 0 Rank, 0 Fortune. After the deploy pulls the code: migrate refuses → `compensation:recompute-all --horizon=now --force` → migrate again. Staging holds test data only (user, 2026-10-17), so a wipe is the fallback.
+- **Production:** not counted (needs the user's own read: `~/Documents/arovolife-prod-details/scripts/count-wallet-blocked.sh`). Production has no recompute (`RecomputeGuard`); its test data is wiped before go-live anyway.
