@@ -149,7 +149,9 @@ final class AdminLifetimeAwardsController extends Controller
 
         $milestone = LifetimeAwardMilestone::findOrFail($id);
 
-        abort_if($milestone->status === LifetimeAwardMilestone::STATUS_DELIVERED, 409);
+        // Only a part still awaiting hand-over: a delivered one is done, and a
+        // withdrawn one was a compliance decision this button must not undo.
+        abort_unless($milestone->status === LifetimeAwardMilestone::STATUS_PENDING, 409);
 
         abort_unless($milestone->isReleasable(), 422, 'Award tranche is not yet releasable — the rank has not been qualified enough times.');
 
@@ -162,11 +164,17 @@ final class AdminLifetimeAwardsController extends Controller
 
         $before = AuditDigests::of($milestone);
 
-        $milestone->update([
-            'status' => LifetimeAwardMilestone::STATUS_DELIVERED,
-            'delivered_at' => now(),
-            'notes' => $data['notes'] ?? null,
-        ]);
+        // Conditional on the row still being pending, so a Withdraw landing
+        // between the check above and this write cannot be overwritten.
+        $changed = LifetimeAwardMilestone::whereKey($milestone->id)
+            ->where('status', LifetimeAwardMilestone::STATUS_PENDING)
+            ->update([
+                'status' => LifetimeAwardMilestone::STATUS_DELIVERED,
+                'delivered_at' => now(),
+                'notes' => $data['notes'] ?? null,
+            ]);
+        abort_if($changed === 0, 409);
+        $milestone->refresh();
 
         AuditLog::create([
             'actor_id' => Auth::id(),
@@ -224,10 +232,22 @@ final class AdminLifetimeAwardsController extends Controller
 
         $before = AuditDigests::of($milestone);
 
-        $milestone->update([
-            'status' => LifetimeAwardMilestone::STATUS_CANCELLED,
-            'notes' => $data['reason'],
-        ]);
+        // Conditional on the row still being pending: a Mark delivered landing
+        // first wins, and this refuses instead of withdrawing handed-over goods.
+        $changed = LifetimeAwardMilestone::whereKey($milestone->id)
+            ->where('status', LifetimeAwardMilestone::STATUS_PENDING)
+            ->update([
+                'status' => LifetimeAwardMilestone::STATUS_CANCELLED,
+                'notes' => $data['reason'],
+            ]);
+
+        if ($changed === 0) {
+            return redirect()
+                ->route('admin.lifetime-awards.index')
+                ->with('error', 'Only an award part still awaiting hand-over can be withdrawn.');
+        }
+
+        $milestone->refresh();
 
         AuditLog::create([
             'actor_id' => Auth::id(),

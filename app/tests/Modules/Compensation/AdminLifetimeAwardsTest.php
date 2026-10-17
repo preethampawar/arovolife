@@ -154,3 +154,15 @@ it('keeps withdrawing an award out of the finance role', function (): void {
 
     expect($milestone->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_PENDING);
 });
+
+it('never marks a withdrawn award part delivered', function (): void {
+    $milestone = lifetimeAwardMilestone(['status' => LifetimeAwardMilestone::STATUS_CANCELLED, 'notes' => 'Terminated']);
+
+    $this->actingAs(lifetimeAwardsAdmin())
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.lifetime-awards.deliver', $milestone->id), ['notes' => 'x'])
+        ->assertStatus(409);
+
+    expect($milestone->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_CANCELLED)
+        ->and($milestone->fresh()->delivered_at)->toBeNull();
+});
