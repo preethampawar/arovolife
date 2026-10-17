@@ -1,4 +1,4 @@
-<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-09-17 (removed §11.1 Franchise commission; previously v2026-09-03, which amended §7.2 repurchase-wallet condition and §7.4 per-level maximums; previous v2026-08-07). CONTAINS AN UNRESOLVED PLACEHOLDER: the §6.2 effective date in §5.4, §6.5 and §7.6 must be inserted before any of those pooled-pricing methods is switched on. -->
+<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-10-17 (removed the month-end repurchase-wallet condition from §7.2 and §8; previously v2026-09-17, which removed §11.1 Franchise commission; previously v2026-09-03, which amended §7.2 repurchase-wallet condition and §7.4 per-level maximums; previous v2026-08-07). CONTAINS AN UNRESOLVED PLACEHOLDER: the §6.2 effective date in §5.4, §6.5 and §7.6 must be inserted before any of those pooled-pricing methods is switched on. -->
 
 This page is the published Compensation Plan disclosure of Arovolife Private Limited (CIN U46909TS2026PTC210896) ("arovolife", "the Company"), required by §6.2 of the [Direct Seller Agreement](/p/terms) and by Rule 5 of the Consumer Protection (Direct Selling) Rules 2021 ("DSR 2021").
 
@@ -146,7 +146,7 @@ Positions are allocated **first-come, first-served**, in the order in which each
 
 ### 7.2 Participation conditions
 
-A Distributor is entered into a month's matrix only if they meet all of the conditions for their category in that month and, from the second month onward, the repurchase wallet described in §8 stood at zero on the last day of that month. The repurchase wallet is credited with the 10% deduction under §8 and is applied automatically against the Distributor's own product purchases at checkout; it is cleared only by purchasing products, and its balance is shown on the Distributor's Wallet page. A balance remaining on the last day of a month cannot be cured afterwards and excludes the Distributor from that month's matrix only. The calendar month in which the Distributor registers carries no wallet condition. Meeting these conditions does not guarantee entry: positions are limited and allocated first-come, first-served (§7.1). A Distributor who meets every condition but for whom no position remains receives no Fortune Bonus for that month, and cannot know in advance whether a position will remain.
+A Distributor is entered into a month's matrix only if they meet all of the conditions for their category in that month. The balance of the repurchase wallet described in §8 on the last day of a month is not a condition of the Fortune Bonus. Meeting these conditions does not guarantee entry: positions are limited and allocated first-come, first-served (§7.1). A Distributor who meets every condition but for whom no position remains receives no Fortune Bonus for that month, and cannot know in advance whether a position will remain.
 
 | Category | Personal BV required | Genos Sales Bonus slabs required in the month |
 |---|---|---|
@@ -201,7 +201,7 @@ The administrative charge and Tax Deducted at Source are applied to bonuses at t
 | Tax Deducted at Source | 5% | — | All monetary bonuses, as required by the Income-tax Act 1961 |
 | Repurchase wallet | 10% of each bonus, taken when that bonus is credited | ₹10,000 for a given earning month | GSB, Growth Booster, Rank Bonus and Fortune Bonus. The Mentorship Bonus carries no repurchase deduction |
 
-The repurchase-wallet amount is credited to your repurchase wallet and applied automatically against your own product purchases at checkout; it is not withdrawable as cash. The ₹10,000 ceiling is counted per month of income earned, not per payment: deductions taken from bonuses earned for the same month are added together and stop once that month's ₹10,000 has been reached. From the second month onward, a repurchase-wallet balance remaining on the last day of a month excludes you from that month's Fortune Bonus matrix (§7.2).
+The repurchase-wallet amount is credited to your repurchase wallet and applied automatically against your own product purchases at checkout; it is not withdrawable as cash. The ₹10,000 ceiling is counted per month of income earned, not per payment: deductions taken from bonuses earned for the same month are added together and stop once that month's ₹10,000 has been reached.
 
 Non-cash awards are not subject to the administrative charge. Applicable tax on non-cash awards is dealt with separately at the time of release. TDS rates are those in force on the date of payment.
 
@@ -246,4 +246,4 @@ The current version of this page is always available at `/p/compensation`. If yo
 
 ---
 
-*Compensation Plan disclosure version: v2026-09-17 (removed §11.1 Franchise commission — the programme was dropped before it was ever operative; the redeem-points offer moves to §11.1). Published under §6.2 of the Direct Seller Agreement. Read together with the [Direct Seller Agreement](/p/terms), the [Code of Ethics](/p/ethics) and the [Grievance Redressal Policy](/p/grievance).*
+*Compensation Plan disclosure version: v2026-10-17 (removed the month-end repurchase-wallet condition from §7.2 and §8). Published under §6.2 of the Direct Seller Agreement. Read together with the [Direct Seller Agreement](/p/terms), the [Code of Ethics](/p/ethics) and the [Grievance Redressal Policy](/p/grievance).*

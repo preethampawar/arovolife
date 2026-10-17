@@ -470,8 +470,8 @@ final class AdminManualControlsController extends Controller
 
                 // Both wallets in one call: the net comes out of the main wallet and
                 // the frozen repurchase deduction comes back out of the repurchase
-                // wallet, so a reversed bonus stops failing the wallet-zero gates on
-                // Fortune, Growth Booster and the Rank requalification.
+                // wallet, so a reversed bonus stops failing the wallet-zero check
+                // at the distributor's repurchase cycle due date.
                 $outcome = $this->wallet->reverseBonusCredit(
                     distributorId: $result->distributor_id,
                     netPaise: $result->net_gsb_paise,

@@ -10,18 +10,15 @@ use Illuminate\Support\Carbon;
  * Traffic-light urgency for clearing the repurchase wallet before the
  * distributor's own repurchase deadline.
  *
- * The wallet has to stand at ₹0 on TWO dates, and the reminder counts down to
- * whichever comes first:
+ * The wallet has to stand at ₹0 on ONE date: the last day of the
+ * distributor's own 30-day repurchase window (client 2026-09-07, condition B)
+ * — a distributor anchored on the 10th is judged on the 8th of the following
+ * month (start + 29), whatever the calendar month does. There is no month-end
+ * wallet date (user decision 2026-10-17 retired it).
  *
- *  - the last day of the distributor's own 30-day repurchase window (client
- *    2026-09-07, condition B) — a distributor anchored on the 10th is judged
- *    on the 9th of the following month, not on the 31st;
- *  - the last instant of every calendar month, which is what the monthly
- *    bonus engines (Growth Booster, Fortune, rank requalification, AO-GO)
- *    read through RepurchaseWalletGateService::clearedAtMonthEnd().
- *
- * Callers pass the cycle's due date; with no cycle yet only the month-end
- * condition exists, so the deadline is the end of the current month.
+ * Callers pass the cycle's due date. With no cycle (none started yet, or the
+ * repurchase engine off) there is no date to count down to, so the reminder
+ * shows the balance without a countdown.
  *
  * Once the window's last day has passed with a balance still standing, the
  * cycle has FAILED (forfeit model): every further day until the wallet is ₹0
@@ -51,28 +48,29 @@ final readonly class RepurchaseWalletStatus
      */
     private function __construct(
         public string $tone,
-        public int $daysRemaining,
-        public Carbon $deadline,
+        public ?int $daysRemaining,
+        public ?Carbon $deadline,
         public int $balancePaise,
     ) {}
 
     /**
-     * @param  Carbon|null  $deadline  the distributor's cycle due date; falls back
-     *                                 to the end of the current month when they
-     *                                 have no cycle yet
+     * @param  Carbon|null  $deadline  the distributor's cycle due date; null when
+     *                                 they have no cycle
      */
     public static function for(int $balancePaise, ?Carbon $today = null, ?Carbon $deadline = null): self
     {
         $today ??= Carbon::today('Asia/Kolkata');
-        $monthEnd = $today->copy()->endOfMonth()->startOfDay();
-        $deadline = $deadline?->copy()->startOfDay() ?? $monthEnd;
 
-        // A window still running past the month end is judged at the month end
-        // first; a window that has already closed keeps its own date so the
-        // reminder can say it was missed.
-        if ($deadline->greaterThan($monthEnd)) {
-            $deadline = $monthEnd;
+        if ($deadline === null) {
+            return new self(
+                tone: $balancePaise <= 0 ? 'cleared' : 'green',
+                daysRemaining: null,
+                deadline: null,
+                balancePaise: $balancePaise,
+            );
         }
+
+        $deadline = $deadline->copy()->startOfDay();
 
         // 0 = the deadline has passed: the window closed with a balance, so the
         // distributor is in a failed cycle until the wallet is ₹0.
@@ -113,6 +111,11 @@ final readonly class RepurchaseWalletStatus
     {
         if ($this->tone === 'cleared') {
             return 'Nothing to clear this cycle.';
+        }
+
+        if ($this->deadline === null) {
+            // No cycle: nothing judges the balance yet, so state no deadline.
+            return 'Spend this at checkout on your own purchases.';
         }
 
         if ($this->overdue()) {

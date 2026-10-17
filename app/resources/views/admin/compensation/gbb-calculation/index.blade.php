@@ -9,7 +9,6 @@
         'credited' => 'bg-green-100 text-green-700',
         'pending'  => 'bg-amber-100 text-amber-700',
         'reversed' => 'bg-red-100 text-red-700',
-        'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
     ];
 @endphp
 
@@ -17,7 +16,6 @@
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
     Global monthly Growth Booster Bonus (GBB) calculation table — one row per distributor per month.
     AGP Points = slab occurrences earned that month. Point Value = the month's frozen pool ÷ total payable AGP, floored to the rupee and capped at the point value cap.
-    "repurchase_wallet_blocked" = the distributor still held repurchase-wallet money at the last instant of the month, so the month is forfeited: gross ₹0, the AGP excluded from the denominator, never released.
     Search by ADN or name, filter by month and status.
 </div>
 @enddeveloper
@@ -34,7 +32,6 @@
         <option value="pending" {{ $status === 'pending' ? 'selected' : '' }}>Pending</option>
         <option value="credited" {{ $status === 'credited' ? 'selected' : '' }}>Credited</option>
         <option value="reversed" {{ $status === 'reversed' ? 'selected' : '' }}>Reversed</option>
-        <option value="repurchase_wallet_blocked" {{ $status === 'repurchase_wallet_blocked' ? 'selected' : '' }}>Repurchase wallet not cleared</option>
     </select>
     <x-ui.button >Apply</x-ui.button>
     @if($q || $month || $status)
@@ -127,7 +124,7 @@
                         ₹{{ \App\Modules\Shared\Support\IndianNumber::format($agpValuePerPoint, 2) }}
                     </td>
                     <td class="px-3 py-2 text-right">
-                        <span class="font-semibold {{ in_array($row->status, ['reversed', 'repurchase_wallet_blocked'], true) ? 'text-red-600' : 'text-green-700' }}">
+                        <span class="font-semibold {{ $row->status === 'reversed' ? 'text-red-600' : 'text-green-700' }}">
                             ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->gbb_net_paise / 100, 2) }}
                         </span>
                         @if($row->repurchase_deduction_paise > 0)

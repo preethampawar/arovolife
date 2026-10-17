@@ -30,12 +30,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * to the frozen payout and leftover.
  *
  * Driven FROM gbb_monthly_pools (the frozen economics row) so a month whose
- * pool went unspent still appears. Repurchase-wallet-blocked rows are listed
- * with ₹0 — the wallet was not cleared at the last instant of the month, so
- * their AGP was excluded from the denominator and is never paid — and so are
- * repurchase-failed rows (client 2026-10-09, A-G1: failed on the repurchase
- * condition on the month's last day), on the same terms. The report renders
- * the pool row verbatim; it never recomputes frozen economics.
+ * pool went unspent still appears. No month-end repurchase condition blocks
+ * GBB (user decision 2026-10-17), so every listed earner is credited. The
+ * report renders the pool row verbatim; it never recomputes frozen economics.
  */
 final class AdminGbbInputOutputController extends Controller
 {
@@ -44,7 +41,6 @@ final class AdminGbbInputOutputController extends Controller
     /** Statuses listed in the earner table (reversed rows are excluded). */
     private const EARNER_STATUSES = [
         GbbMonthlyResult::STATUS_CREDITED,
-        GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED,
     ];
 
     public function __construct(private readonly GrowthBoosterBonusService $gbb) {}
@@ -205,8 +201,7 @@ final class AdminGbbInputOutputController extends Controller
 
     /**
      * Per-month AGP earners: one row per distributor with the AGP they earned,
-     * the frozen point value and their gross. Includes the blocked rows (₹0,
-     * excluded from the denominator) so every earner of the month is visible.
+     * the frozen point value and their gross.
      *
      * @param  list<string>  $monthStarts  'Y-m-01' keys
      * @return array<string, list<\stdClass>> month_start → rows {distributor_id, adn, full_name, agp_earned, point_value_paise, income_paise, deduction_paise, credited_paise, status}

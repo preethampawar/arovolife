@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\DB;
  * A rebuild deletes a period's `repurchase_deduction` credits and writes them
  * again from the same orders, so for the distributor who cleared their wallet on
  * a repurchase order the balance dips and comes back. Refusing up front because
- * a spend exists at all refuses every month that ever paid a gated bonus:
- * reaching zero at month end — which is exactly what the GBB, Fortune, rank
- * requalification and AO-GO gates require — means having spent during the month.
+ * a spend exists at all refuses every month in which anyone cleared a wallet:
+ * reaching zero by a cycle's due date — which the repurchase condition
+ * requires — means having spent during the month.
  * An ordinary product order months later refused the rebuild just the same,
  * because that test had no upper bound in time.
  *

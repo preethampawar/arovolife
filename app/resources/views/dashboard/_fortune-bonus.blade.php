@@ -102,7 +102,7 @@
             @endif
 
             <p class="text-[11px] text-gray-500 mt-4">
-                Qualification is confirmed when the month closes. Positions are first come, first served by the date of your first GSB income, and your repurchase wallet must be at ₹0 at month end.
+                Qualification is confirmed when the month closes. Positions are first come, first served by the date of your first GSB income.
             </p>
         </div>
 
@@ -119,11 +119,6 @@
                         <span class="inline-flex items-center gap-1 rounded-full bg-green-50 border border-green-200 px-2 py-1 text-[11px] font-medium text-green-800">
                             <x-lucide-check class="w-3.5 h-3.5" />
                             Credited
-                        </span>
-                    @elseif($last->status === \App\Modules\Compensation\Models\FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED)
-                        <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-1 text-[11px] font-medium text-amber-800">
-                            <x-lucide-circle-alert class="w-3.5 h-3.5" />
-                            Blocked: repurchase wallet not cleared
                         </span>
                     @else
                         <span class="inline-flex items-center gap-1 rounded-full bg-gray-100 border border-gray-200 px-2 py-1 text-[11px] font-medium text-gray-700">

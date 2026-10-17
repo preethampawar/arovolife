@@ -364,53 +364,16 @@ it('carries the deduction and credited columns into the rank bonus I&O CSV', fun
     expect(XlsxReader::anyCellContains($rows, '12600'))->toBeTrue();
 });
 
-it('counts qualifiers blocked by the repurchase wallet gate so their unspent share is explained', function () {
-    $paid = Distributor::factory()->create();
-    $blocked = Distributor::factory()->create();
-
-    rbIoResult($paid->id, '2026-07-01', 2, 1_400_000, 2, 700_000);
-    rbIoResult($blocked->id, '2026-07-01', 2, 1_400_000, 2, 0, [
-        'status' => RankBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
-    ]);
-
-    $res = $this->actingAs(rbIoAdmin())
-        ->get(route('admin.compensation.rb-input-output.index', ['month' => '2026-07']))
-        ->assertOk();
-
-    $res->assertSee('Blocked');
-    $res->assertSee('Qualifiers whose repurchase wallet was not at ₹0 at month end', false);
-    // Half the pool went unpaid, and the Blocked count is the only thing on the
-    // page that says why.
-    $res->assertSee('7,000.00');
-});
-
-it('carries the blocked count into the rank bonus I&O CSV', function () {
-    $blocked = Distributor::factory()->create();
-    rbIoResult($blocked->id, '2026-07-01', 2, 1_400_000, 1, 0, [
-        'status' => RankBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
-    ]);
-
+it('no longer carries a repurchase-blocked column in the rank bonus I&O CSV', function () {
     $rows = XlsxReader::rows($this->actingAs(rbIoAdmin())
         ->get(route('admin.compensation.rb-input-output.export'))
         ->assertOk()
         ->streamedContent());
 
+    // The month-end wallet gate was retired (user decision 2026-10-17).
     expect($rows[0])->toContain('Qualifiers')
         ->and($rows[0])->toContain('Held')
-        ->and($rows[0])->toContain('Repurchase Blocked')
-        ->and($rows[0])->toContain('Total Points');
-
-    $qualifiersCol = array_search('Qualifiers', $rows[0], true);
-    $heldCol = array_search('Held', $rows[0], true);
-    $blockedCol = array_search('Repurchase Blocked', $rows[0], true);
-    $totalCol = array_search('Total Points', $rows[0], true);
-
-    // qualifiers, held, blocked — the rank-2 row.
-    $rank2Row = collect($rows)->first(fn (array $row): bool => ($row[$qualifiersCol] ?? null) === '1'
-        && ($row[$heldCol] ?? null) === '0'
-        && ($row[$blockedCol] ?? null) === '1');
-    expect($rank2Row)->not->toBeNull();
-    expect($totalCol)->not->toBeFalse();
+        ->and($rows[0])->not->toContain('Repurchase Blocked');
 });
 
 it('F91: rank-bonus tiles use the stored qualifier count and never truncate the pool/credited paise', function () {

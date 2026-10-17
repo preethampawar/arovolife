@@ -286,6 +286,18 @@ it('DSH-07: shows the repurchase alert tile with its traffic-light while the rep
         ['distributor_id' => $id, 'type' => 'repurchase_deduction', 'amount_paise' => 50_000, 'created_at' => now()],
     ]);
 
+    // The alert counts down to the cycle's own due date — the only ₹0 date
+    // (user decision 2026-10-17). Due 30 Sep, so on the 25th it is red.
+    DB::table('repurchase_cycles')->insert([
+        'distributor_id' => $id,
+        'cycle_start_date' => '2026-09-01',
+        'due_date' => '2026-09-30',
+        'required_bv_paise' => 60_000,
+        'status' => 'active',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
     Carbon::setTestNow(Carbon::parse('2026-09-25 10:00:00'));
 
     try {
@@ -293,7 +305,8 @@ it('DSH-07: shows the repurchase alert tile with its traffic-light while the rep
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSee('Repurchase alert')
-            ->assertSee('Clear now');
+            ->assertSee('Clear now')
+            ->assertSee('Bring this to ₹0 by 30 Sep');
     } finally {
         Carbon::setTestNow();
     }
@@ -311,16 +324,16 @@ it('DSH-08: shows the repurchase alert even with the repurchase engine flag off'
     ]);
 
     // The zero-trace rule applies to features the flag governs. This one does
-    // not: RepurchaseEngineFeature gates the GSB cut-off's repurchase
-    // suspension, while the 10% deduction and the month-end wallet = ₹0 gate
-    // run unconditionally. Hiding the warning here left the distributor's money
-    // genuinely held back with nothing on the dashboard saying so — and the
-    // same pill showing regardless on /income/wallet.
+    // not: the 10% deduction runs unconditionally, so the balance is real and
+    // the pill shows it — with no countdown, because with the engine off there
+    // is no cycle due date and no month-end date exists any more.
     $this->actingAs($user)
         ->get(route('dashboard'))
         ->assertOk()
         ->assertSee('Repurchase alert')
-        ->assertSee('Bring this to ₹0 by');
+        ->assertSee('Spend this at checkout on your own purchases.')
+        ->assertDontSee('Bring this to ₹0 by')
+        ->assertDontSee('last day of your repurchase cycle');
 });
 
 it('DOC-01: the dashboard hero renders the repurchase card for an unqualified distributor', function () {

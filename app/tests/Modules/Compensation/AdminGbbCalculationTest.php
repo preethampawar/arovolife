@@ -135,19 +135,6 @@ it('shows the frozen point value and renders a dash for legacy rows', function (
         ->assertSee('—');        // legacy row has no snapshot
 });
 
-it('filters by the repurchase wallet blocked status', function () {
-    $blocked = gbbReportDistributor('GBBBLK', 'Bhavana');
-    $credited = gbbReportDistributor('GBBOK1', 'Kiran');
-    makeGbbRow($blocked, 12, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED, '2026-07-01');
-    makeGbbRow($credited, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
-
-    $this->actingAs(gbbReportAdmin())
-        ->get(route('admin.compensation.gbb-calculation.index', ['status' => 'repurchase_wallet_blocked']))
-        ->assertOk()
-        ->assertSee('GBBBLK')
-        ->assertDontSee('GBBOK1');
-});
-
 it('rejects an unknown status filter', function () {
     $this->actingAs(gbbReportAdmin())
         ->get(route('admin.compensation.gbb-calculation.index', ['status' => 'nonsense']))
@@ -287,18 +274,6 @@ function gbbRenderIncomePage(int $distributorId): string
     ])->render();
 }
 
-it('presents a repurchase wallet forfeit without an income line', function () {
-    $distributorId = gbbReportDistributor('GBBBLK', 'Bhavana');
-    makeGbbRow($distributorId, 12, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED, '2026-07-01');
-
-    $html = gbbRenderIncomePage($distributorId);
-
-    expect($html)
-        // One badge, not a badge plus a footnote: the reason IS the status.
-        ->toContain('Repurchase wallet not cleared at month end — not paid');
-    expect(str_contains($html, '12 AGP × ₹'.Number::format(250, 2)))->toBeFalse();
-});
-
 it('degrades to a dash when a month has no frozen pool row', function () {
     $distributorId = gbbReportDistributor('GBBAAA', 'Alice');
     makeGbbRow($distributorId, 12, null, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-06-01');
@@ -321,8 +296,6 @@ it('lists credited GBB batches without tripping the reserved YEAR_MONTH keyword'
 
     makeGbbRow($alice, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-06-01');
     makeGbbRow($bob, 5, 25_000, 125_000, GbbMonthlyResult::STATUS_CREDITED, '2026-06-01');
-    // A blocked row must not be counted as a credited batch.
-    makeGbbRow($bob, 5, 25_000, 0, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED, '2026-07-01');
 
     $this->actingAs(gbbReportAdmin())
         ->get(route('admin.compensation.gbb.index'))

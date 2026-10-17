@@ -111,7 +111,7 @@
                 <li><strong>Ranks 1–2</strong> need the tier's Genos BV match on <strong>both sides within one calendar month</strong> (Rank 1: 2,50,000 per side; Rank 2: 6,00,000) plus the tier's lifetime personal BV (7,000 / 15,000).</li>
                 <li>Up to the tier's <strong>weaker-leg top-up</strong> (15,000 / 30,000 BV) of <strong>that month's</strong> personal purchase BV supplements the weaker side. Rank 1 may be skipped — Rank 2 is attainable directly.</li>
                 <li><strong>Ranks 3–9</strong> need the configured qualifiers of the previous rank on <strong>each</strong> Genos side, the tier's personal BV, and the candidate's own completed <strong>Q-Period</strong> of the rank below.</li>
-                <li>A <strong>2nd-or-later</strong> qualification of the same rank pays only if that month's repurchase BV is met and the repurchase wallet is clear — otherwise the row is held.</li>
+                <li>A <strong>2nd-or-later</strong> qualification of the same rank pays only if that month's repurchase BV is met from own purchases — otherwise the row is held.</li>
             </ol>
         </div>
 
@@ -157,7 +157,7 @@
             <li>Only distributors who have <strong>never held a rank</strong> are eligible (the month a first rank is reached still pays GBB; from the next month it stops for good).</li>
             <li><strong>AGP</strong> (arovolife Growth Points) accrue per GSB slab match during the month — <strong>12</strong> for slab 1, <strong>5</strong> for slab 2, <strong>2</strong> for slab 3, none above — no per-distributor cap, nothing carried over.</li>
             <li>The month's <strong>pool</strong> is the Growth Booster pool rate (currently {{ \App\Modules\Shared\Support\IndianNumber::percentFromBp($gbbPoolRateBp) }}) of the month's company-wide BV.</li>
-            <li><strong>Point value = pool ÷ the total AGP of all eligible distributors</strong>, floored to whole rupees and capped at the Growth Booster point value cap (@if($gbbPointValueCapPaise !== null)currently ₹{{ \App\Modules\Shared\Support\IndianNumber::format(intdiv($gbbPointValueCapPaise, 100)) }}@else currently a value the engine refuses — no month can be frozen until it is corrected in Settings @endif — the difference stays with the company); income = <strong>own AGP × that value</strong>. A distributor still holding repurchase-wallet money at the last instant of the month forfeits it — their AGP is left out of the denominator and nothing is ever paid back. A lapsed repurchase window on its own never withholds GBB (client 2026-10-09).</li>
+            <li><strong>Point value = pool ÷ the total AGP of all eligible distributors</strong>, floored to whole rupees and capped at the Growth Booster point value cap (@if($gbbPointValueCapPaise !== null)currently ₹{{ \App\Modules\Shared\Support\IndianNumber::format(intdiv($gbbPointValueCapPaise, 100)) }}@else currently a value the engine refuses — no month can be frozen until it is corrected in Settings @endif — the difference stays with the company); income = <strong>own AGP × that value</strong>. No month-end repurchase condition withholds GBB (user decision 2026-10-17): a failed repurchase day only produces no slab, and so no AGP, that day.</li>
         </ol>
     </div>
 
@@ -189,7 +189,7 @@
             <h3 class="text-xs font-semibold text-gray-700 mb-2">The monthly matrix &amp; points</h3>
             <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
                 <li>A <strong>3-wide, 9-level forced matrix</strong> is rebuilt from scratch every month; qualifiers enrol <strong>first-come first-served</strong> by the date of their first GSB credit.</li>
-                <li>Qualification is per tier (the Fortune Bonus tab below): the tier's personal BV plus its required count of GSB slab achievements in the month, with a clear repurchase wallet. Ranks 6–9 are not eligible.</li>
+                <li>Qualification is per tier (the Fortune Bonus tab below): the tier's personal BV plus its required count of GSB slab achievements in the month. Ranks 6–9 are not eligible.</li>
                 <li>Points come from members placed <strong>below</strong> you: 9 points per member one level down, 8 for two levels, … 1 for nine levels (editable on the matrix-levels table).</li>
             </ol>
         </div>

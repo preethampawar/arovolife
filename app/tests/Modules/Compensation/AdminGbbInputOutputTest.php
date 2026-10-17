@@ -66,10 +66,10 @@ function gbbIoRow(string $adn, string $name, int $agp, int $valuePaise, string $
         'pool_paise' => 500_000,
         'total_pool_agp' => 100,
         'point_value_paise' => $valuePaise,
-        'gbb_gross_paise' => in_array($status, GbbMonthlyResult::POOL_EXCLUDED_STATUSES, true) ? 0 : $agp * $valuePaise,
+        'gbb_gross_paise' => $agp * $valuePaise,
         'admin_charge_paise' => 0,
         'tds_paise' => 0,
-        'gbb_net_paise' => in_array($status, GbbMonthlyResult::POOL_EXCLUDED_STATUSES, true) ? 0 : $agp * $valuePaise,
+        'gbb_net_paise' => $agp * $valuePaise,
         'status' => $status,
     ]);
 
@@ -101,7 +101,7 @@ it('renders a month block with the frozen pool figures and per-earner rows', fun
     gbbIoPool($monthStart, 100, 5_000);
 
     gbbIoRow('200000030', 'Credited Earner', 60, 5_000, $monthStart, GbbMonthlyResult::STATUS_CREDITED);
-    gbbIoRow('200000031', 'Wallet Blocked Earner', 40, 5_000, $monthStart, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+    gbbIoRow('200000031', 'Second Earner', 40, 5_000, $monthStart, GbbMonthlyResult::STATUS_CREDITED);
 
     $res = $this->actingAs(gbbIoAdmin())
         ->get(route('admin.compensation.gbb-input-output.index'))
@@ -117,7 +117,9 @@ it('renders a month block with the frozen pool figures and per-earner rows', fun
     // Per-earner incomes and statuses.
     $res->assertSee('Credited Earner');
     $res->assertSee('3,000.00');   // 60 × ₹50
-    $res->assertSee('Blocked — repurchase wallet not ₹0');
+    $res->assertSee('2,000.00');   // 40 × ₹50
+    // No month-end wallet gate (user decision 2026-10-17): nothing is blocked.
+    $res->assertDontSee('Blocked — repurchase wallet not ₹0');
 
     // The retired held/suspended states leave no trace on the page.
     $res->assertDontSee('Held (legacy)');
@@ -334,18 +336,4 @@ it('carries the deduction and credited columns into the GBB per-month CSV', func
     $earnerRow = collect($rows)->first(fn (array $row): bool => ($row[7] ?? null) === '200000041');
     expect($earnerRow[11])->toBe('300')
         ->and($earnerRow[12])->toBe('2700');
-});
-
-it('lists a repurchase-wallet-blocked earner so the blocked AGP is visible on the month', function () {
-    $monthStart = '2026-07-01';
-    gbbIoPool($monthStart, 60, 5_000);
-    gbbIoRow('AD-IO-BLK1', 'Paid Earner', 60, 5_000, $monthStart, GbbMonthlyResult::STATUS_CREDITED);
-    gbbIoRow('AD-IO-BLK2', 'Blocked Earner', 15, 5_000, $monthStart, GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED);
-
-    $this->actingAs(gbbIoAdmin())
-        ->get(route('admin.compensation.gbb-input-output.index'))
-        ->assertOk()
-        ->assertSee('Blocked Earner')
-        ->assertSee('AD-IO-BLK2')
-        ->assertSee('Blocked — repurchase wallet not ₹0', false);
 });

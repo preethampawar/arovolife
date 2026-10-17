@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Compensation\Console\Commands;
 
-use App\Modules\Compensation\Exceptions\RepurchaseWalletVerdictNotAvailable;
 use App\Modules\Compensation\Services\GrowthBoosterBonusService;
 use App\Modules\Compensation\Support\EngineRunContext;
 use App\Modules\Compensation\Support\FrozenPayoutGuard;
@@ -94,23 +93,7 @@ final class GbbMonthlyRunCommand extends Command
 
         $this->info("Growth Booster Bonus — {$month->format('F Y')}");
 
-        // `--in-flight` freezes a partial month deliberately; it cannot conjure
-        // a month-end repurchase-wallet verdict for a month that has not ended,
-        // and the gate refuses rather than silently answering "as of now" —
-        // which is how one engine's own deductions came to be counted against
-        // the month it was judging (staging, 14 Sep 2026). Reported as a clean
-        // refusal rather than an uncaught exception; the message says what to
-        // do. With the repurchase engine off there is no verdict to want and
-        // this never fires.
-        try {
-            $result = $this->gbb->runForMonth($month);
-        } catch (RepurchaseWalletVerdictNotAvailable $e) {
-            $this->error($e->getMessage());
-
-            app(EngineRunContext::class)->noteSkipped($e->getMessage());
-
-            return self::FAILURE;
-        }
+        $result = $this->gbb->runForMonth($month);
 
         $this->table(
             ['Metric', 'Value'],
@@ -119,7 +102,6 @@ final class GbbMonthlyRunCommand extends Command
                 ['Total AGP', Number::format($result['total_agp'])],
                 ['Point value', '₹'.Number::format($result['point_value_paise'] / 100, 2)],
                 ['Distributors credited', $result['credited']],
-                ['Forfeited (repurchase wallet not cleared at month end)', $result['wallet_blocked']],
                 ['Skipped (no AGP)', $result['skipped_no_agp']],
                 ['Refused (AGP earned after the freeze)', $result['qualified_after_freeze']],
             ],

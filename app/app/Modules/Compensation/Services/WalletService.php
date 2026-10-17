@@ -359,9 +359,9 @@ class WalletService
      *
      * A reversal that only debits the net from the main wallet leaves the
      * repurchase wallet holding its share of a bonus that no longer exists. That
-     * phantom balance is not cosmetic — Fortune, Growth Booster and the Rank
-     * requalification all gate on the repurchase wallet being zero, so a bonus
-     * an admin reversed goes on excluding the distributor from later income.
+     * phantom balance is not cosmetic — the repurchase cycle is judged on the
+     * wallet being zero at its due date, so a bonus an admin reversed would go
+     * on failing the distributor's cycle and forfeiting their Genos BV.
      * Both sides therefore have to come back in one transaction.
      *
      * The repurchase side is written as a NEGATIVE `repurchase_deduction` entry
@@ -600,8 +600,8 @@ class WalletService
      * Same arithmetic as repurchaseWalletBalancePaise(); distributors with no
      * entries are simply absent from the result (balance 0).
      *
-     * Used by the Fortune enrolment gate, which runs on the 1st but has to
-     * judge the wallet as of the last day of the month being enrolled.
+     * Used by the repurchase cycle verdict, which has to judge the wallet as
+     * of the cycle's due date rather than as of now.
      *
      * Only the two repurchase entry types are counted: a repurchase deduction
      * must be undone by a negative `repurchase_deduction` entry, never by a

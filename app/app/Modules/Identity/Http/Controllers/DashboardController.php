@@ -129,20 +129,14 @@ final class DashboardController extends Controller
 
                 $walletBalancePaise = app(WalletService::class)->balancePaise($distributorId);
 
-                // Deliberately NOT gated on RepurchaseEngineFeature. That flag
-                // governs the GSB cut-off's day-level forfeit; it governs
-                // neither mechanism this pill describes — the 10% deduction
-                // (WalletService::creditWithRepurchaseDeduction) and the
-                // month-end wallet = ₹0 gate on Growth Booster / Fortune / rank
-                // requalification / AO-GO (GSB has no wallet gate at all)
-                // both run unconditionally. Gating it here withheld the warning
-                // on the surface most distributors use while the money was
-                // really being held back, and contradicted the same pill
-                // rendering ungated on /income/wallet.
+                // The pill itself is not gated on RepurchaseEngineFeature: the
+                // 10% deduction (WalletService::creditWithRepurchaseDeduction)
+                // runs unconditionally, so the balance is always real.
                 //
                 // The 30-day window's last day IS gated: the window verdict
-                // and the day-level forfeit only exist while the engine is on,
-                // so with it off the only ₹0 date is the month end.
+                // and the day-level forfeit only exist while the engine is on.
+                // With it off there is no ₹0 date at all — no month-end wallet
+                // date exists (user decision 2026-10-17) — so no countdown.
                 $repurchaseWalletStatus = RepurchaseWalletStatus::for(
                     app(WalletService::class)->repurchaseWalletBalancePaise($distributorId),
                     deadline: Feature::for(null)->active(RepurchaseEngineFeature::class)

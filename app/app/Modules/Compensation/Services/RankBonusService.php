@@ -53,8 +53,8 @@ use Illuminate\Support\Facades\Log;
  *
  * THREE PHASES (the GsbCutoffService shape):
  *  1. Roster — {@see resolveRoster()} decides the month's population: the
- *     qualifiers per rank, the §8 requalification gate (which carries its own
- *     repurchase-wallet condition), and the AO-GO grants.
+ *     qualifiers per rank, the §8 requalification gate (the month's own
+ *     purchase BV), and the AO-GO grants.
  *  2. Freeze — {@see freezeMonth()} writes, in ONE transaction, the two
  *     rank_monthly_passes rows, the nine rank_monthly_pools rows AND a
  *     rank_bonus_results row for every roster member carrying its decided
@@ -86,7 +86,9 @@ use Illuminate\Support\Facades\Log;
  *
  * §8 requalification gate: a 2nd-or-later lifetime qualification of the same
  * rank is credited only if the month's requalification conditions hold
- * (rank's repurchase BV + wallet cleared — RankRequalificationGateService);
+ * (the month's own purchase BV ≥ the rank's repurchase BV —
+ * RankRequalificationGateService; no wallet condition since the user's
+ * decision of 2026-10-17);
  * otherwise the result is recorded as `requalification_held`, excluded from
  * the pool denominator (MSB precedent: only paid participants dilute the
  * pool) and never back-paid.
@@ -707,7 +709,7 @@ final class RankBonusService
      * arriving → ₹8,000 out of a ₹6,000 pool.
      *
      * The divergence is likely, not rare: the now month-aware
-     * RankRequalificationGateService::walletClearedMap() can legitimately place
+     * RankRequalificationGateService can legitimately place
      * a distributor on the recomputed roster that the old code held back.
      *
      * Reconstructing the frozen pool from the credited rows is rejected: the
@@ -750,9 +752,8 @@ final class RankBonusService
     }
 
     /**
-     * Write one roster row. The status is decided ONCE, here — which is what
-     * stops a repurchase-wallet block from later overwriting a
-     * requalification-held row (and the reverse).
+     * Write one roster row. The status is decided ONCE, here — a later run
+     * never re-judges a requalification-held row.
      *
      * Returns null when the distributor is already credited for the month and
      * rank: legacy rows written before the freeze existed must never be

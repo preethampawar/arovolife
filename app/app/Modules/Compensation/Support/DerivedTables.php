@@ -160,8 +160,8 @@ final class DerivedTables
      * Wallet ledger entry types that are NOT derived and survive every wipe:
      * the repurchase-wallet debit recorded at checkout (`reference_type` =
      * `order`). It is written by the Commerce checkout, never by an engine, so
-     * no replay can rebuild it — and the repurchase cycle verdict and the
-     * month-end wallet gate both read the ledger for the balance it reduces.
+     * no replay can rebuild it — and the repurchase cycle verdict reads the
+     * ledger for the balance it reduces.
      *
      * @var list<string>
      */

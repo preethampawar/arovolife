@@ -13,7 +13,7 @@
         The Rank Bonus is paid monthly from one pool (a share of the company's business volume for that month), divided by points.
         Each rank's achievers earn that rank's Rank Achievement Points (RAP) and each AO-GO grantee the offer's points; the lower ranks and AO-GO are priced first, the higher ranks from what remains, and a point's value is capped.
         Your income is your points × the point value of your rank's pass.
-        Re-qualifying a rank you already achieved requires that month's repurchase BV and a cleared repurchase wallet.
+        Re-qualifying a rank you already achieved requires that month's repurchase BV for the rank from your own purchases.
         When credited, 10% of the bonus (up to ₹10,000 per calendar month) moves to your repurchase wallet. The admin charge (3%, capped) and 5% TDS are taken at payout. Credited on the 1st of the following month.
     </div>
     @enddeveloper
@@ -61,8 +61,7 @@
         @if($rankStatus->requalificationConditionsMet === false)
         <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 mb-4">
             <strong>Requalification conditions not met this month.</strong>
-            Achieving a rank you already hold pays only when the month's repurchase BV for that rank is completed and your repurchase wallet is cleared.
-            <a href="{{ route('income.wallet') }}" class="underline">Check my wallet →</a>
+            Achieving a rank you already hold pays only when the month's repurchase BV for that rank is completed from your own purchases.
         </div>
         @endif
 
@@ -102,9 +101,9 @@
         </div>
 
         <p class="text-sm text-gray-600 mb-4">
-            If you have achieved a rank in an earlier month and hold no rank in a later month, that month earns you
-            <strong>{{ $aogoStatus->pointsPerGrant }} points</strong> in the Rank Bonus pool — up to {{ $aogoStatus->usesMax }} times in your lifetime,
-            never in two months running, and only after achieving a rank again between uses.
+            In the month right after a month in which you achieved a rank, if you hold no rank and your own purchases reach that rank's monthly repurchase BV, that month earns you
+            <strong>{{ $aogoStatus->pointsPerGrant }} points</strong> in the Rank Bonus pool — up to {{ $aogoStatus->usesMax }} times in your lifetime.
+            If that month misses it, the offer is not carried to a later month; it opens again after your next rank achievement.
         </p>
 
         @if($aogoStatus->granted())
@@ -160,7 +159,7 @@
         <div class="bg-amber-100 rounded-2xl border border-amber-200 p-5 text-center">
             <p class="text-xs text-gray-600 mb-1 flex items-center justify-center gap-1">
                 AO-GO offer used
-                <x-help-tip text="Achieve Once – Get Once: if you lose your rank, you can earn the offer's points in the Rank Bonus pool up to {{ $aogoMax }} times in your lifetime — never in consecutive months, and only after re-achieving a rank between uses." />
+                <x-help-tip text="Achieve Once – Get Once: in the month right after a month in which you achieved a rank, if you hold no rank and your own purchases reach that rank's monthly repurchase BV, you earn the offer's points in the Rank Bonus pool — up to {{ $aogoMax }} times in your lifetime. A month that misses it is not carried forward." />
             </p>
             <p class="text-2xl font-bold text-gray-900">{{ $aogoUsed }} of {{ $aogoMax }}</p>
         </div>
@@ -214,11 +213,9 @@
                         'reversed' => 'bg-red-100 text-red-700',
                         'pending' => 'bg-gray-100 text-gray-600',
                         'requalification_held' => 'bg-amber-100 text-amber-800',
-                        'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
                     ];
                     $sl = [
                         'requalification_held' => 'Held',
-                        'repurchase_wallet_blocked' => 'Not payable',
                     ];
                     @endphp
                     <tr class="hover:bg-gray-50">

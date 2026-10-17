@@ -119,7 +119,6 @@ final class AdminRankBonusInputOutputController extends Controller
             ['key' => 'pool',         'label' => 'Pool (Rs)'],
             ['key' => 'qualifiers',   'label' => 'Qualifiers'],
             ['key' => 'held',         'label' => 'Held'],
-            ['key' => 'blocked',      'label' => 'Repurchase Blocked'],
             ['key' => 'total_points', 'label' => 'Total Points'],
             ['key' => 'point_value',  'label' => 'Point Value / Share (Rs)'],
             ['key' => 'income',       'label' => 'Income (Rs)'],
@@ -149,7 +148,6 @@ final class AdminRankBonusInputOutputController extends Controller
                     'pool' => $rank['pool_paise'] / 100,
                     'qualifiers' => $rank['qualifiers'],
                     'held' => $rank['held'],
-                    'blocked' => $rank['blocked'],
                     'total_points' => $rank['total_points'] ?? '',
                     'point_value' => $valuePaise !== null ? $valuePaise / 100 : '',
                     'income' => $rank['income_paise'] / 100,
@@ -170,7 +168,6 @@ final class AdminRankBonusInputOutputController extends Controller
                     'pool' => '',
                     'qualifiers' => $block['aogo']['grants'],
                     'held' => 0,
-                    'blocked' => 0,
                     'total_points' => $block['aogo']['points'],
                     'point_value' => $block['aogo']['point_value_paise'] !== null
                         ? $block['aogo']['point_value_paise'] / 100
@@ -193,7 +190,6 @@ final class AdminRankBonusInputOutputController extends Controller
                     'pool' => $pass['pool_paise'] / 100,
                     'qualifiers' => '',
                     'held' => '',
-                    'blocked' => '',
                     'total_points' => $pass['total_points'],
                     'point_value' => $pass['point_value_paise'] / 100,
                     'income' => $pass['payout_paise'] / 100,
@@ -213,7 +209,6 @@ final class AdminRankBonusInputOutputController extends Controller
                 'pool' => '',
                 'qualifiers' => '',
                 'held' => '',
-                'blocked' => '',
                 'total_points' => '',
                 'point_value' => '',
                 'income' => $block['total_income_paise'] / 100,
@@ -293,7 +288,7 @@ final class AdminRankBonusInputOutputController extends Controller
      *     envelope_bp: int,
      *     envelope_paise: ?int,
      *     passes: list<array{pass: int, pool_paise: int, total_points: int, raw_point_value_paise: int, point_value_cap_paise: int, point_value_paise: int, payout_paise: int, leftover_paise: int}>,
-     *     ranks: list<array{rank: int, name: string, pass: ?int, pool_paise: int, frozen: bool, qualifiers: int, held: int, blocked: int, total_points: ?int, point_value_paise: ?int, share_paise: ?int, income_paise: int, deduction_paise: int, credited_paise: int, leftover_paise: ?int}>,
+     *     ranks: list<array{rank: int, name: string, pass: ?int, pool_paise: int, frozen: bool, qualifiers: int, held: int, total_points: ?int, point_value_paise: ?int, share_paise: ?int, income_paise: int, deduction_paise: int, credited_paise: int, leftover_paise: ?int}>,
      *     aogo: ?array{grants: int, points: int, point_value_paise: ?int, income_paise: int, deduction_paise: int, credited_paise: int},
      *     total_income_paise: int,
      *     total_deduction_paise: int,
@@ -326,10 +321,6 @@ final class AdminRankBonusInputOutputController extends Controller
             ->selectRaw("SUM(CASE WHEN status = 'credited' AND aogo_points IS NOT NULL THEN COALESCE(net_paise, 0) ELSE 0 END) as aogo_credited_paise")
             ->selectRaw("MAX(CASE WHEN status = 'credited' AND aogo_points IS NULL THEN gross_paise ELSE NULL END) as share_paise")
             ->selectRaw("SUM(CASE WHEN status = 'requalification_held' THEN 1 ELSE 0 END) as held_count")
-            // Qualifiers who earned the rank but failed the repurchase-wallet =
-            // ₹0 gate. They pay nothing and their share falls to leftover, so
-            // without this count a rank reads as if it simply had fewer people.
-            ->selectRaw("SUM(CASE WHEN status = 'repurchase_wallet_blocked' THEN 1 ELSE 0 END) as blocked_count")
             ->selectRaw('MAX(created_at) as computed_at')
             ->get()
             ->groupBy(fn (\stdClass $row) => Carbon::parse($row->month_start)->toDateString());
@@ -473,7 +464,6 @@ final class AdminRankBonusInputOutputController extends Controller
                         'frozen' => true,
                         'qualifiers' => (int) ($agg->qualifier_count ?? 0),
                         'held' => (int) ($agg->held_count ?? 0),
-                        'blocked' => (int) ($agg->blocked_count ?? 0),
                         'total_points' => $pool !== null
                             ? ($pool->total_points !== null ? (int) $pool->total_points : null)
                             : ($agg->total_points !== null ? (int) $agg->total_points : null),
@@ -509,7 +499,6 @@ final class AdminRankBonusInputOutputController extends Controller
                     'frozen' => false,
                     'qualifiers' => 0,
                     'held' => 0,
-                    'blocked' => 0,
                     'total_points' => null,
                     'point_value_paise' => null,
                     'share_paise' => null,

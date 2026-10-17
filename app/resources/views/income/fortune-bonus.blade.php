@@ -74,21 +74,14 @@
                         'credited' => 'bg-green-100 text-green-700',
                         'skipped' => 'bg-gray-100 text-gray-600',
                         'pending' => 'bg-amber-100 text-amber-700',
-                        'repurchase_wallet_blocked' => 'bg-red-100 text-red-700',
                     ];
-                    $sl = [
-                        'repurchase_wallet_blocked' => 'Repurchase wallet not cleared at month end — not paid',
-                    ];
-                    // Statuses that will never be credited. The engine writes a
-                    // blocked row with its REAL points and point value (gross 0),
-                    // so the "points × value" line has to be suppressed by
-                    // status, not by a null — printing it would state an amount
-                    // as though it were owed.
-                    $unpayableStatuses = ['repurchase_wallet_blocked'];
+                    $sl = [];
+                    // Statuses that will never be credited would have to suppress
+                    // the "points × value" line by status. None exist since the
+                    // month-end wallet gate was retired (user decision 2026-10-17).
+                    $unpayableStatuses = [];
                     $isPayable = ! in_array($row->status, $unpayableStatuses, true);
-                    $st = [
-                        'repurchase_wallet_blocked' => 'Your repurchase wallet still held a balance at the last moment of this month, so the month\'s Fortune Bonus was not paid. Clearing the repurchase wallet before your cycle\'s last day is one of the published monthly conditions; your matrix position is kept, and a month recorded this way is final and is not released later.',
-                    ];
+                    $st = [];
                     @endphp
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $rows->firstItem() + $loop->index }}</td>

@@ -730,22 +730,14 @@ final class SeedPayingPeriodCommand extends Command
                 ->whereBetween('due_date', [$month->toDateString(), $month->copy()->endOfMonth()->toDateString()])
                 ->get(['distributor_id', 'due_date']);
 
-            // TWO instants matter, and settling only one is why the Growth
-            // Booster stayed blocked through a month that otherwise paid.
+            // The instant that matters is each repurchase CYCLE's own due date
+            // (start + 29): that verdict decides the daily Genos BV forfeit.
             //
-            //  - The repurchase CYCLE closes on its own due date, 30 days from
-            //    the distributor's first order. That verdict decides the daily
-            //    group-BV forfeit.
-            //  - The monthly GATES — Growth Booster, Fortune, rank
-            //    requalification, AO-GO — read
-            //    {@see RepurchaseWalletGateService::clearedAtMonthEnd()},
-            //    which asks about 23:59:59 on the last day of the CALENDAR
-            //    month. The client separated these on 2026-09-05 and confirmed
-            //    it on 2026-09-07.
-            //
-            // A cycle opened 02 Jul is judged on 01 Aug, so a spend that clears
-            // it lands a day AFTER the July month-end the gates read, and July's
-            // Growth Booster sees a full wallet. Both instants get a spend.
+            // The calendar month end is settled too. Since the user's decision
+            // of 2026-10-17 no engine reads the wallet there (the month-end
+            // gate on Growth Booster, Fortune, rank requalification and AO-GO
+            // was retired); the spend only keeps every fixture wallet, cycle or
+            // not, at ₹0 at a predictable instant.
             $byDueDate = [];
 
             foreach ($cycles as $cycle) {

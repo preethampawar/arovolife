@@ -982,11 +982,12 @@ it('divides pass 1 by points — 3 achievers × 72 + 2 AO-GO × 36 = 288 points,
         seedRankQualification($achiever->id, rank: 1, monthStart: '2026-06-01');
     }
 
-    // Two degraded ex-rank-holders: achieved Rank 1 in April, unranked in June,
-    // and meeting the AO-GO monthly conditions (1,000 BV in June).
+    // Two ex-rank-holders: achieved Rank 1 in May (the month right before —
+    // the AO-GO window, user decision 2026-10-17), unranked in June, and
+    // meeting Rank 1's monthly BV (1,000 BV in June).
     $exRankers = Distributor::factory()->count(2)->create();
     foreach ($exRankers as $exRanker) {
-        seedRankQualification($exRanker->id, rank: 1, monthStart: '2026-04-01');
+        seedRankQualification($exRanker->id, rank: 1, monthStart: '2026-05-01');
         seedRankMonthlyBv($exRanker->id, 100_000, '2026-06-10');
     }
 

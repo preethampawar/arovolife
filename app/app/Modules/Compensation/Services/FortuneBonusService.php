@@ -57,20 +57,12 @@ use Illuminate\Support\Facades\Log;
  * Point values floor to whole rupees (the same rule as the Rank, MSB and GBB
  * pools); flooring and cap remainders stay in leftover_paise.
  *
- * REPURCHASE — two independent things, and only one of them reaches Fortune.
- * The repurchase CYCLE never withholds it (client spec 2026-09-07 §2.3): a day
- * the distributor was failed produced no GSB slab achievement, so it never
- * counted toward enrolment in the first place, and a cycle still failed at
- * month end pays normally. The month-end repurchase WALLET gate does (client
- * 2026-09-05, re-confirmed 2026-09-07): a participant still holding
- * repurchase-wallet money at the last instant of the month is written
- * {@see FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED} with gross 0 and
- * credited nothing. They keep their matrix position and their points stayed in
- * the frozen denominator, so their unpaid share is simply never spent — it
- * stays as leftover and is NEVER redistributed. Never held, never released; the
- * month's verdict is written once and a re-run skips the row. The question is
- * asked in exactly one place,
- * {@see RepurchaseWalletGateService::clearedAtMonthEnd()}.
+ * REPURCHASE — no month-end condition reaches Fortune (user decision
+ * 2026-10-17, which retired the client's 2026-09-05 month-end wallet gate and
+ * with it the month-1 exemption). A day the distributor was failed produced no
+ * GSB slab achievement, so it never counted toward the tier's slab count in the
+ * first place (client spec 2026-09-07 §2.3); neither the repurchase wallet
+ * balance nor the cycle verdict at month end withholds a payment.
  *
  * Deductions (admin charge, TDS) are applied at payout time, not at credit time.
  * Per-level points, eligibility tiers, and ineligible ranks are all
@@ -94,7 +86,6 @@ final class FortuneBonusService
     public function __construct(
         private readonly WalletService $wallet,
         private readonly CompensationPlanSettingsService $plan,
-        private readonly RepurchaseWalletGateService $walletGate,
         private readonly GsbDailyPoolService $gsbPool,
         private readonly PersonalBvTitleService $titleService,
         private readonly FortuneDistributionCalculator $calculator,
@@ -225,10 +216,8 @@ final class FortuneBonusService
             // The repurchase condition is not an enrolment gate. Under the
             // forfeit model (client 2026-09-07) a failed repurchase day simply
             // produces no GSB slab match, so it never counts toward the
-            // qualification in the first place; and the month-end
-            // repurchase-wallet gate is judged at payout (runForMonth), where a
-            // blocked participant keeps their matrix position and is written
-            // repurchase_wallet_blocked at gross 0 — forfeited, never released.
+            // qualification in the first place. There is no month-end
+            // repurchase condition (user decision 2026-10-17).
 
             $eligibles[] = [
                 'distributor_id' => $distributorId,
@@ -304,7 +293,7 @@ final class FortuneBonusService
      * is left alone, and the month's frozen economics are reused rather than
      * recomputed: incomes are reconstructed from the per-level snapshot.
      *
-     * @return array{credited: int, repurchase_wallet_blocked: int, repurchase_wallet_blocked_paise: int, skipped_zero_income: int, total_net_paise: int, pool_paise: int, total_points: int, guaranteed_total_paise: int, leftover_paise: int, is_shortfall: bool}
+     * @return array{credited: int, skipped_zero_income: int, total_net_paise: int, pool_paise: int, total_points: int, guaranteed_total_paise: int, leftover_paise: int, is_shortfall: bool}
      */
     public function runForMonth(Carbon $month): array
     {
@@ -326,16 +315,6 @@ final class FortuneBonusService
             ];
         }
 
-        // The month-end repurchase wallet gate, asked once for the whole roster —
-        // and asked BEFORE the pool is frozen. It refuses outright for a month
-        // that has not ended, and a refusal must leave nothing behind: freezing
-        // first would have written the month's economics permanently and then
-        // thrown, so the month could never be priced properly afterwards.
-        $cleared = $this->walletGate->clearedAtMonthEnd(
-            $participants->map(fn ($p): int => (int) $p->distributor_id)->all(),
-            $monthStartDate,
-        );
-
         $pool = $this->freezePoolForMonth(
             $monthStartDate,
             $month->copy()->endOfMonth(),
@@ -346,13 +325,12 @@ final class FortuneBonusService
         $frozenLevels = $pool->levels()->get()->keyBy('matrix_level')->all();
 
         $credited = 0;
-        $walletBlocked = 0;
         $skippedZeroIncome = 0;
         $totalNet = 0;
 
         DB::transaction(function () use (
-            $participants, $monthStart, $monthStartDate, $cleared, $pointsByDistributor, $pool, $frozenLevels,
-            &$credited, &$walletBlocked, &$skippedZeroIncome, &$totalNet,
+            $participants, $monthStart, $monthStartDate, $pointsByDistributor, $pool, $frozenLevels,
+            &$credited, &$skippedZeroIncome, &$totalNet,
         ): void {
             foreach ($participants as $participant) {
                 $distributorId = (int) $participant->distributor_id;
@@ -362,7 +340,6 @@ final class FortuneBonusService
                     ->whereIn('status', [
                         FortuneBonusResult::STATUS_CREDITED,
                         FortuneBonusResult::STATUS_SKIPPED,
-                        FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
                     ])
                     ->exists();
 
@@ -377,33 +354,9 @@ final class FortuneBonusService
                 $minCommission = $pool->min_commission_paise;
                 $capPaise = $level?->cap_paise;
 
-                // Month-end repurchase wallet gate (client 2026-09-05,
-                // re-confirmed 2026-09-07). The month is forfeited outright: an
-                // audit row at gross 0, no wallet credit, the matrix position
-                // kept, and the share the cascade had allowed for stays with
-                // the company as leftover. Nothing releases it later.
-                //
-                // Month-1 joiners are the one published exemption: "the
-                // calendar month in which the Distributor registers carries no
-                // wallet condition" (plan page §Fortune Bonus; R-37). Their
-                // first repurchase cycle has not closed yet, so a balance in
-                // the repurchase wallet is expected, not a failure. The tier is
-                // the one frozen on the participant row at enrolment, so a
-                // re-run judges the month by what was true when it was entered.
-                $isNewJoiner = $participant->eligibility_tier === self::TIER_NEW_JOINER;
-
-                if (! $isNewJoiner && ! ($cleared[$distributorId] ?? true)) {
-                    $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, 0, FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED);
-                    $walletBlocked++;
-
-                    continue;
-                }
-
                 if ($gross === 0) {
                     // A ₹0-pool month (or a legacy zero-value month) — no
-                    // wallet entry, but the row records why. Judged AFTER the
-                    // wallet gate so a blocked participant in a ₹0 level is
-                    // reported blocked, not skipped.
+                    // wallet entry, but the row records why.
                     $this->writeResult($participant, $monthStart, $points, $valuePaise, $minCommission, $capPaise, 0, FortuneBonusResult::STATUS_SKIPPED);
                     $skippedZeroIncome++;
 
@@ -453,8 +406,6 @@ final class FortuneBonusService
         // actually paid.
         return [
             'credited' => $credited,
-            'repurchase_wallet_blocked' => $walletBlocked,
-            'repurchase_wallet_blocked_paise' => $this->forfeitedGrossPaiseForMonth($monthStartDate),
             'skipped_zero_income' => $skippedZeroIncome,
             'total_net_paise' => $totalNet,
             'pool_paise' => (int) $pool->pool_paise,
@@ -488,57 +439,6 @@ final class FortuneBonusService
                 && $slabCount >= $gates['slabs_required']
                 && $holdsTitle !== false,
         ];
-    }
-
-    /**
-     * Σ of what the frozen cascade allocated to the participants the month-end
-     * repurchase wallet gate forfeited.
-     *
-     * The cascade allocates a share to EVERY enrolled participant before the
-     * gate is applied, so `fortune_monthly_pools.payout_paise` already contains
-     * these shares — but they never leave the company. Without this figure the
-     * month does not reconcile: pool − payout − leftover leaves Σ forfeited
-     * unexplained on the admin page and in the run summary.
-     *
-     * Reconstructed from the frozen snapshot and the row's own stored level and
-     * points, through the SAME formula the credits used, so it is stable across
-     * re-runs and identical wherever it is displayed. Zero for a month with no
-     * blocked rows, and for a month that has not been frozen.
-     */
-    public function forfeitedGrossPaiseForMonth(Carbon $month): int
-    {
-        $monthStart = $month->copy()->startOfMonth()->toDateString();
-
-        $pool = FortuneMonthlyPool::where('month_start', $monthStart)->first();
-
-        if ($pool === null) {
-            return 0;
-        }
-
-        /** @var Collection<int, FortuneBonusResult> $blocked */
-        $blocked = FortuneBonusResult::query()
-            ->where('month_start', $monthStart)
-            ->where('status', FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED)
-            ->get();
-
-        if ($blocked->isEmpty()) {
-            return 0;
-        }
-
-        /** @var array<int, FortuneMonthlyPoolLevel> $frozenLevels */
-        $frozenLevels = $pool->levels()->get()->keyBy('matrix_level')->all();
-
-        $forfeited = 0;
-
-        foreach ($blocked as $row) {
-            $forfeited += $this->incomeFromFrozenEconomics(
-                $pool,
-                $frozenLevels[(int) $row->matrix_level] ?? null,
-                (int) $row->points,
-            );
-        }
-
-        return $forfeited;
     }
 
     /**
@@ -586,7 +486,6 @@ final class FortuneBonusService
             ->whereIn('status', [
                 FortuneBonusResult::STATUS_CREDITED,
                 FortuneBonusResult::STATUS_SKIPPED,
-                FortuneBonusResult::STATUS_REPURCHASE_WALLET_BLOCKED,
             ])
             ->first();
 

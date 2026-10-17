@@ -283,3 +283,58 @@ it('drops repurchase_failed_blocked from the gbb status enum when no row carries
             ->toThrow(QueryException::class);
     }
 });
+
+function narrowRepurchaseWalletBlockedStatusesMigration(): mixed
+{
+    return require base_path(
+        'app/Modules/Compensation/Database/Migrations/2026_10_17_100000_narrow_repurchase_wallet_blocked_statuses.php'
+    );
+}
+
+it('refuses to drop repurchase_wallet_blocked while any bonus row still carries it, and changes nothing', function (): void {
+    narrowRepurchaseWalletBlockedStatusesMigration()->down();
+    $before = staleEnumColumnType('fortune_bonus_results', 'status');
+    $auditBefore = AuditLog::where('action', 'plan.migration.narrow_repurchase_wallet_blocked_statuses')->count();
+
+    $id = DB::table('fortune_bonus_results')->insertGetId(staleEnumFortuneRow('repurchase_wallet_blocked'));
+
+    try {
+        expect(fn () => narrowRepurchaseWalletBlockedStatusesMigration()->up())
+            ->toThrow(RuntimeException::class, 'Refusing to narrow the bonus status enums: rows still carry repurchase_wallet_blocked (gbb_monthly_results: 0, rank_bonus_results: 0, fortune_bonus_results: 1). Replay or wipe history first.');
+
+        expect(staleEnumColumnType('fortune_bonus_results', 'status'))->toBe($before)
+            ->and(DB::table('fortune_bonus_results')->where('id', $id)->value('status'))->toBe('repurchase_wallet_blocked')
+            ->and(AuditLog::where('action', 'plan.migration.narrow_repurchase_wallet_blocked_statuses')->count())->toBe($auditBefore);
+    } finally {
+        DB::table('fortune_bonus_results')->where('id', $id)->delete();
+        narrowRepurchaseWalletBlockedStatusesMigration()->up();
+    }
+});
+
+it('drops repurchase_wallet_blocked from the three bonus status enums when no row carries it and records the run', function (): void {
+    narrowRepurchaseWalletBlockedStatusesMigration()->down();
+
+    narrowRepurchaseWalletBlockedStatusesMigration()->up();
+
+    $audit = (array) AuditLog::query()
+        ->where('action', 'plan.migration.narrow_repurchase_wallet_blocked_statuses')
+        ->orderByDesc('id')
+        ->firstOrFail()
+        ->details;
+
+    expect($audit)->toMatchArray([
+        'migration' => '2026_10_17_100000_narrow_repurchase_wallet_blocked_statuses',
+        'driver' => DB::getDriverName(),
+        'removed' => 'repurchase_wallet_blocked',
+        'rows_carrying' => ['gbb_monthly_results' => 0, 'rank_bonus_results' => 0, 'fortune_bonus_results' => 0],
+    ])->and($audit['reason'])->toContain('2026-10-17');
+
+    if (DB::getDriverName() === 'mysql') {
+        expect(staleEnumColumnType('gbb_monthly_results', 'status'))->toBe("enum('pending','credited','reversed')")
+            ->and(staleEnumColumnType('rank_bonus_results', 'status'))->toBe("enum('pending','credited','reversed','requalification_held')")
+            ->and(staleEnumColumnType('fortune_bonus_results', 'status'))->toBe("enum('pending','credited','skipped')");
+
+        expect(fn () => DB::table('gbb_monthly_results')->insert(staleEnumGbbRow('repurchase_wallet_blocked')))
+            ->toThrow(QueryException::class);
+    }
+});

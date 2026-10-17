@@ -9,7 +9,6 @@ use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\IncomeOverviewService;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
-use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
@@ -796,7 +795,9 @@ it('shows the AO-GO offer and its conditions once a rank has been achieved, and 
         ->assertSee('Achieve Once – Get Once', false)
         ->assertSee('Used 0 of 3')
         ->assertSee("This month's conditions", false)
-        ->assertSee('A rank achieved in an earlier month')
+        // Achieved two months ago: the AO-GO window (the month right after
+        // the achievement) has passed, and the checklist says which rule.
+        ->assertSee('A rank achieved last month')
         ->assertSee('No rank held this month')
         ->assertSee('Lifetime uses remaining');
 });
@@ -862,8 +863,11 @@ it('shows the repurchase alert traffic-light on the wallet page while a balance 
         $this->actingAs($user)
             ->get(route('income.wallet'))
             ->assertOk()
-            ->assertSee('Clear now')
-            ->assertSee('Bring this to ₹0 by');
+            // No cycle yet: no countdown, and no month-end date (user
+            // decision 2026-10-17) — the balance is shown with the one rule.
+            ->assertSee('On track')
+            ->assertSee('Spend this at checkout on your own purchases.')
+            ->assertDontSee('Bring this to ₹0 by');
     } finally {
         Carbon::setTestNow();
     }
@@ -963,156 +967,6 @@ it('keeps every other cut-off status out of the distributor gsb history', functi
 // published plan condition, so a distributor is entitled to see the month it
 // cost them. The row carries no money (gross 0, net 0), so page totals are
 // unchanged. Own data only, historical fact — never a projection (hard rule 3).
-
-it('shows a wallet-blocked month on the growth booster page without paying it', function (): void {
-    Feature::for(null)->activate(GrowthBoosterBonusFeature::class);
-
-    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
-    $this->actingAs($user);
-
-    DB::table('gbb_monthly_results')->insert([
-        [
-            'distributor_id' => $distributorId,
-            'year_month' => '2026-07-01',
-            'agp_earned' => 12,
-            'company_turnover_paise' => 100_000_000,
-            'pool_paise' => 5_000_000,
-            'total_pool_agp' => 100,
-            'point_value_paise' => 50_000,
-            'gbb_gross_paise' => 600_000,
-            'admin_charge_paise' => 0,
-            'tds_paise' => 0,
-            'repurchase_deduction_paise' => 60_000,
-            'gbb_net_paise' => 540_000,
-            'status' => 'credited',
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
-        ],
-        [
-            // Shaped the way the engine writes a blocked row: the AGP and the
-            // month's point value are real, only the money is zero. A fixture
-            // with a null point value would not exercise the suppression.
-            'distributor_id' => $distributorId,
-            'year_month' => '2026-08-01',
-            'agp_earned' => 17,
-            'company_turnover_paise' => 100_000_000,
-            'pool_paise' => 5_000_000,
-            'total_pool_agp' => 100,
-            'point_value_paise' => 50_000,
-            'gbb_gross_paise' => 0,
-            'admin_charge_paise' => 0,
-            'tds_paise' => 0,
-            'repurchase_deduction_paise' => 0,
-            'gbb_net_paise' => 0,
-            'status' => 'repurchase_wallet_blocked',
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
-        ],
-    ]);
-
-    $this->get(route('income.growth-booster', ['f' => 1]))
-        ->assertOk()
-        ->assertSee('August 2026')
-        ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
-        // Credited-only totals: the ₹5,400 credited July, nothing from August.
-        ->assertSee('₹5,400')
-        // The AGP is shown as the historical fact it is, but never multiplied
-        // out into an income line for a month that will never be paid.
-        ->assertSee('17 AGP')
-        ->assertDontSee('17 AGP × ', false);
-});
-
-it('shows a wallet-blocked month on the fortune bonus page without paying it', function (): void {
-    Feature::for(null)->activate(FortuneBonusFeature::class);
-
-    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
-    $this->actingAs($user);
-
-    DB::table('fortune_bonus_results')->insert([
-        [
-            'distributor_id' => $distributorId,
-            'month_start' => '2026-07-01',
-            'position' => 4,
-            'matrix_level' => 1,
-            'points' => 9,
-            'point_value_paise' => 10_000,
-            'gross_paise' => 90_000,
-            'admin_charge_paise' => 0,
-            'tds_paise' => 0,
-            'repurchase_deduction_paise' => 9_000,
-            'net_paise' => 81_000,
-            'status' => 'credited',
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
-        ],
-        [
-            // Shaped the way the engine writes a blocked row: the matrix
-            // position, points and the level's point value are all real, and
-            // only the money is zero.
-            'distributor_id' => $distributorId,
-            'month_start' => '2026-08-01',
-            'position' => 4,
-            'matrix_level' => 1,
-            'points' => 9,
-            'point_value_paise' => 10_000,
-            'gross_paise' => 0,
-            'admin_charge_paise' => 0,
-            'tds_paise' => 0,
-            'repurchase_deduction_paise' => 0,
-            'net_paise' => 0,
-            'status' => 'repurchase_wallet_blocked',
-            'created_at' => now()->toDateTimeString(),
-            'updated_at' => now()->toDateTimeString(),
-        ],
-    ]);
-
-    $html = $this->get(route('income.fortune-bonus', ['f' => 1]))
-        ->assertOk()
-        ->assertSee('August 2026')
-        ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
-        // Credited-only total: only July's ₹810 reaches the summary card.
-        ->assertSee('₹810')
-        ->getContent();
-
-    // Both months carry 9 points at ₹100, but only the credited one may show
-    // the arithmetic: an income line on a blocked month states an amount as
-    // though it were owed.
-    expect(substr_count($html, '9 × ₹100.00'))->toBe(1);
-});
-
-it('counts a wallet-blocked month out of the fortune page total', function (): void {
-    Feature::for(null)->activate(FortuneBonusFeature::class);
-
-    ['user' => $user, 'distributorId' => $distributorId] = incomeDistributor();
-    $this->actingAs($user);
-
-    // A blocked row that (defensively) still carries a gross must never be
-    // added to the "credited to wallet" card.
-    DB::table('fortune_bonus_results')->insert([
-        'distributor_id' => $distributorId,
-        'month_start' => '2026-08-01',
-        'position' => 4,
-        'matrix_level' => 1,
-        'points' => 9,
-        'point_value_paise' => 10_000,
-        'gross_paise' => 90_000,
-        'admin_charge_paise' => 0,
-        'tds_paise' => 0,
-        'repurchase_deduction_paise' => 0,
-        'net_paise' => 81_000,
-        'status' => 'repurchase_wallet_blocked',
-        'created_at' => now()->toDateTimeString(),
-        'updated_at' => now()->toDateTimeString(),
-    ]);
-
-    // f=1: the page otherwise opens on last month only (IncomeFilterDefaults).
-    $this->get(route('income.fortune-bonus', ['f' => 1]))
-        ->assertOk()
-        ->assertSee('Repurchase wallet not cleared at month end — not paid', false)
-        // Neither the net in the credited column nor the arithmetic behind it.
-        ->assertDontSee('₹810')
-        ->assertDontSee('9 × ₹100.00', false);
-});
 
 // ── Rank progress: the days this month that were not counted ──
 

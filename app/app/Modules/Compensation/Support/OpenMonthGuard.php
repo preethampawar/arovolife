@@ -89,14 +89,13 @@ final class OpenMonthGuard
      * In a closed month that refusal is a failure with a remedy — run
      * `repurchase:evaluate`, then re-run. In an open month there is no remedy:
      * a cycle due later in the month cannot be judged before its due date has
-     * passed, and the month-end repurchase-wallet verdict does not exist until
-     * the month has ended. So it is a `skipped` refusal that says to wait, not
+     * passed. So it is a `skipped` refusal that says to wait, not
      * a `failed` row pointing at a command that cannot help.
      */
     public static function verdictsPendingRefusal(Carbon $month, string $engineLabel): string
     {
         return sprintf(
-            '%s has not closed yet (it ends %s IST), so %s cannot be frozen for it even with --%s: repurchase cycles due later in the month have no verdict until their due date has passed, and the month-end repurchase-wallet verdict does not exist until the month ends — repurchase:evaluate cannot supply either before then. Nothing was written. Wait for the month to close; the 1st-of-month run prices it.',
+            '%s has not closed yet (it ends %s IST), so %s cannot be frozen for it even with --%s: repurchase cycles due later in the month have no verdict until their due date has passed — repurchase:evaluate cannot supply one before then. Nothing was written. Wait for the month to close; the 1st-of-month run prices it.',
             $month->format('F Y'),
             $month->copy()->endOfMonth()->format('d M Y 23:59'),
             $engineLabel,

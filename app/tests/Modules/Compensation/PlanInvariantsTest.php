@@ -514,16 +514,17 @@ function invGbbEarner(): int
     return $id;
 }
 
-it('Task 7: freezes gbb_monthly_pools.total_agp as the payable AGP only, and pays Σ gross = total_agp × point value ≤ pool', function (int $companyBvPaise, int $expectedPointValuePaise): void {
+it('Task 7: freezes gbb_monthly_pools.total_agp as the roster AGP, and pays Σ gross = total_agp × point value ≤ pool', function (int $companyBvPaise, int $expectedPointValuePaise): void {
     Feature::for(null)->activate(RepurchaseEngineFeature::class);
     invSeedCompanyBv($companyBvPaise, '2026-07-15');
 
-    $payable = [invGbbEarner(), invGbbEarner(), invGbbEarner()];
-    $walletBlocked = invGbbEarner();
+    $holding = invGbbEarner();
+    $payable = [invGbbEarner(), invGbbEarner(), invGbbEarner(), $holding];
 
-    // Unspent repurchase wallet at month end → wallet-blocked.
+    // Unspent repurchase wallet at month end — withholds nothing since the
+    // user's decision of 2026-10-17 (no month-end wallet gate).
     DB::table('wallet_ledger_entries')->insert([
-        'distributor_id' => $walletBlocked,
+        'distributor_id' => $holding,
         'type' => 'repurchase_deduction',
         'amount_paise' => 50_000,
         'reference_id' => null,
@@ -540,17 +541,16 @@ it('Task 7: freezes gbb_monthly_pools.total_agp as the payable AGP only, and pay
 
     // The roster is the mix the test set out to build.
     expect($rows)->toHaveCount(4)
-        ->and($credited->keys()->sort()->values()->all())->toBe(collect($payable)->sort()->values()->all())
-        ->and($rows->get($walletBlocked)?->status)->toBe(GbbMonthlyResult::STATUS_REPURCHASE_WALLET_BLOCKED);
+        ->and($credited->keys()->sort()->values()->all())->toBe(collect($payable)->sort()->values()->all());
 
-    // The denominator is the payable AGP — blocked AGP never dilutes it.
+    // The denominator is every roster member's AGP.
     expect((int) $pool->total_agp)->toBe((int) $credited->sum('agp_earned'))
-        ->and((int) $pool->total_agp)->toBeLessThan((int) $rows->sum('agp_earned'));
+        ->and((int) $pool->total_agp)->toBe((int) $rows->sum('agp_earned'));
 
     // Pool, value and payout: integer, capped, floored to the rupee, never over.
     expect((int) $pool->company_bv_paise)->toBe($companyBvPaise)
         ->and((int) $pool->pool_paise)->toBe(max(0, intdiv($companyBvPaise * (int) $pool->pool_rate_bp, 10_000)))
-        // min(₹240, ⌊pool ÷ 375 AGP⌋) — a cap clamped to 0 or a value priced on the whole roster fails here.
+        // min(₹240, ⌊pool ÷ 500 AGP⌋) — a cap clamped to 0 fails here.
         ->and((int) $pool->point_value_paise)->toBe($expectedPointValuePaise)
         ->and((int) $pool->point_value_paise)->toBeLessThanOrEqual((int) $pool->point_value_cap_paise)
         ->and((int) $pool->point_value_paise)->toBeLessThanOrEqual((int) $pool->raw_point_value_paise)
@@ -579,8 +579,8 @@ it('Task 7: freezes gbb_monthly_pools.total_agp as the payable AGP only, and pay
         ->toBe(collect($payable)->sort()->values()->all())
         ->and((int) WalletLedgerEntry::where('type', 'gbb_credit')->sum('amount_paise'))->toBe((int) $pool->payout_paise);
 })->with([
-    'raw value over the ₹240 cap' => [500_000_000, 24_000],   // 50L BV → ₹2,00,000 pool ÷ 375 AGP = ₹533 raw → ₹240
-    'raw value under the cap' => [2_000_000, 200],            // 20,000 BV → ₹800 pool ÷ 375 AGP = ₹2.13 → ₹2
+    'raw value over the ₹240 cap' => [500_000_000, 24_000],   // 50L BV → ₹2,00,000 pool ÷ 500 AGP = ₹400 raw → ₹240
+    'raw value under the cap' => [2_000_000, 100],            // 20,000 BV → ₹800 pool ÷ 500 AGP = ₹1.60 → ₹1
 ]);
 
 // ── Task 5: MSB daily freeze identity ───────────────────────────────────────
