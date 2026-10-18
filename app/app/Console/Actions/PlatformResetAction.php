@@ -158,34 +158,24 @@ final class PlatformResetAction
     private function wipeS3Files(Closure $log): void
     {
         try {
-            // Best-effort: enumerate every kyc_documents.object_storage_key
-            // BEFORE the table is dropped, derive distinct user_<id>/ prefixes,
-            // then deleteDirectory each.
-            if (! $this->db->getSchemaBuilder()->hasTable('kyc_documents')) {
-                return;
-            }
-            $keys = $this->db->table('kyc_documents')->pluck('object_storage_key');
-            $prefixes = $keys->map(static function ($key): ?string {
-                if (! is_string($key) || $key === '') {
-                    return null;
-                }
-                $slash = strpos($key, '/');
+            // Best-effort: every top-level folder on the `kyc` disk (where
+            // KycDocumentVault writes), not just those kyc_documents still
+            // names — an abandoned registration leaves a reg_ folder with no
+            // row. Session ids are mixed-case, so reg_ allows [A-Za-z0-9].
+            $disk = Storage::disk('kyc');
 
-                return $slash === false ? null : substr($key, 0, $slash);
-            })->filter()->unique()->values();
-
-            foreach ($prefixes as $prefix) {
+            foreach ($disk->directories() as $prefix) {
                 // Allowlist: the KYC uploader writes to `user_<id>/` or `reg_<sessionId>/`.
                 // Anything else is corrupt data or an injection attempt —
                 // skip rather than risk wiping unrelated bucket contents
-                // (the s3 disk targets real AWS in staging/prod).
-                if (! is_string($prefix) || ! preg_match('/^(user_\d+|reg_[a-f0-9]+)$/', $prefix)) {
-                    $log(sprintf('  s3: skipping non-allowlisted prefix %s', (string) $prefix));
+                // (the kyc disk targets real AWS in staging/prod).
+                if (! preg_match('/^(user_\d+|reg_[A-Za-z0-9]+)$/', $prefix)) {
+                    $log(sprintf('  kyc: skipping non-allowlisted prefix %s', $prefix));
 
                     continue;
                 }
-                $log(sprintf('  s3:deleteDirectory %s', $prefix));
-                Storage::disk('s3')->deleteDirectory($prefix);
+                $log(sprintf('  kyc:deleteDirectory %s', $prefix));
+                $disk->deleteDirectory($prefix);
             }
         } catch (Throwable $e) {
             $log('  s3 wipe skipped: '.$e->getMessage());

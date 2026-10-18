@@ -12,6 +12,7 @@ use App\Modules\Shared\Features\PurchaseOffersFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
@@ -83,6 +84,17 @@ it('wipes everything and rebuilds only the 63 reserved company distributors (lev
 
     // The reset is audit-logged (audit_log itself was truncated first).
     expect(DB::table('audit_log')->where('action', 'platform.reset')->count())->toBe(1);
+});
+
+it('deletes every user_ and reg_ KYC folder on the kyc disk, mixed-case session ids and orphans included', function () {
+    Storage::fake('kyc');
+    Storage::disk('kyc')->put('reg_0YSxMu8izzS0kvVx/aadhaar_front.enc', 'x');
+    Storage::disk('kyc')->put('user_42/pan.enc', 'x');
+    Storage::disk('kyc')->put('not-kyc/keep.txt', 'x');
+
+    $this->artisan('platform:reset', ['--force' => true])->assertExitCode(0);
+
+    expect(Storage::disk('kyc')->directories())->toBe(['not-kyc']);
 });
 
 it('refuses to run inside the nightly engine window', function () {
