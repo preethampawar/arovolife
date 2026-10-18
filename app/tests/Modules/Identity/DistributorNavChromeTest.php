@@ -26,6 +26,21 @@ it('guests get a Sign in link in the top strip before Register with us, and no m
     expect(strpos($guest, 'data-signin-link'))->toBeLessThan(strpos($guest, 'Register with us'));
 });
 
+it('guests on an upright phone keep Register with us: strip shown below sm, extras trimmed', function () {
+    $guest = $this->get(route('about'))->assertOk()->getContent();
+    expect($guest)->toContain('class=" bg-brand-600 text-white text-xs"')
+        ->toContain('data-strip-extras class="hidden sm:contents"')
+        ->not->toContain('Indian direct selling industry');
+    // Register sits before the trimmed extras, so it stays visible below sm.
+    expect(strpos($guest, 'Register with us'))->toBeLessThan(strpos($guest, 'data-strip-extras'));
+});
+
+it('signed-in users keep the utility strip hidden below sm', function () {
+    $d = uiDistributor();
+    $html = $this->actingAs($d['user'])->get(route('my-business'))->assertOk()->getContent();
+    expect($html)->toContain('class="hidden sm:block bg-brand-600');
+});
+
 it('distributor header chip shows the ADN beside the name, on desktop and in the mobile menu', function () {
     $d = uiDistributor();
     $html = $this->actingAs($d['user'])->get(route('my-business'))->assertOk()->getContent();

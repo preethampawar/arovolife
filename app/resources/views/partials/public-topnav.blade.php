@@ -30,15 +30,14 @@
 
 {{-- The whole header — utility strip + main nav — sticks to the top together. --}}
 <header class="sticky top-0 z-40">
-{{-- Utility strip: deep blue. Hidden below sm so the mobile header doesn't
-     stack two coloured strips. --}}
-<div class="hidden sm:block bg-brand-600 text-white text-xs">
+{{-- Utility strip: deep blue. Below sm, guests still get it — trimmed to
+     Sign in | Register with us — so Register shows on an upright phone
+     (client, 2026-10-18); signed-in users use the hamburger menu there. --}}
+<div class="{{ auth()->check() ? 'hidden sm:block' : '' }} bg-brand-600 text-white text-xs">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-center justify-end gap-3 sm:gap-4 flex-wrap">
         @guest
             {{-- Sign in sits in this strip, before Register (client, 2026-09-30);
-                 the main nav no longer carries a Sign In button. Phones keep
-                 the Sign in entry in the hamburger menu — this strip is hidden
-                 below sm. --}}
+                 the main nav no longer carries a Sign In button. --}}
             {{-- White box so Sign in stands out in the strip (client, 2026-10-10). --}}
             <a href="{{ route('login') }}" data-signin-link class="inline-flex items-center px-3 py-0.5 rounded-full bg-white text-brand-700 font-semibold hover:bg-brand-50 transition-colors">Sign in</a>
             <span class="text-brand-200">|</span>
@@ -160,6 +159,8 @@
                 </span>
             @endif
         @endguest
+        {{-- Below sm the strip carries only Sign in | Register (guests). --}}
+        <div data-strip-extras class="hidden sm:contents">
         <span class="text-brand-200">|</span>
 
         {{-- A11y: Font-size adjuster. Sets the root <html> font-size as a
@@ -213,6 +214,7 @@
         @endauth
         <span class="text-brand-200">|</span>
         <span>India 🇮🇳</span>
+        </div>
         {{-- Sign out: the far right of this strip. Guests sign in from the main nav. --}}
         @auth
             @if(auth()->user()->distributor && ! auth()->user()->isSuperStaff())

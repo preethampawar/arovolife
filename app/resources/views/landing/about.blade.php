@@ -46,7 +46,7 @@
             <div data-reveal>
                 <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">About arovolife</p>
                 <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.05] mb-6">
-                    A new chapter in <span class="text-brand-700">Indian direct selling industry</span>.
+                    A new chapter in the <span class="text-brand-700">direct selling industry</span>.
                 </h1>
                 <p class="text-lg text-gray-700 font-semibold mb-4">Wellness with Purpose. Opportunity with Possibility.</p>
                 <p class="text-base text-gray-600 mb-4 max-w-xl leading-relaxed">
