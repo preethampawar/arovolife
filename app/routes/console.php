@@ -20,6 +20,7 @@ use App\Modules\Grievance\Console\Commands\GrievanceSlaSweepCommand;
 use App\Modules\Identity\Console\Commands\ExpireMinorFamilyConsentsCommand;
 use App\Modules\Inventory\Console\Commands\InventoryAlertsCommand;
 use App\Modules\Inventory\Console\Commands\VerifyStockLedgerCommand;
+use App\Modules\Kyc\Console\Commands\PurgeAbandonedRegistrationUploadsCommand;
 use App\Modules\Kyc\Console\Commands\PurgeExpiredDocumentsCommand;
 use App\Modules\Payments\Console\Commands\ExpireUnpaidOrdersCommand;
 use App\Modules\Payments\Console\Commands\PaymentsReconcileCommand;
@@ -226,6 +227,14 @@ Schedule::command(AdcPurgeRejectedDocumentsCommand::class)
 // (DPDP §8(7), R-31; client decision 2026-09-11). Daily, quiet hour.
 Schedule::command(PurgeExpiredDocumentsCommand::class)
     ->dailyAt('03:25')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping();
+
+// KYC scans of registrations nobody finished — a reg_<session>/ folder no
+// kyc_documents row points at, untouched for 24 hours — are erased (DPDP
+// §8(7) storage limitation). Daily, quiet hour.
+Schedule::command(PurgeAbandonedRegistrationUploadsCommand::class)
+    ->dailyAt('03:20')
     ->timezone('Asia/Kolkata')
     ->withoutOverlapping();
 

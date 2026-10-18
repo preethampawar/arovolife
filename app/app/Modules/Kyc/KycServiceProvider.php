@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Kyc;
 
 use App\Modules\Kyc\Console\Commands\EncryptDocumentsCommand;
+use App\Modules\Kyc\Console\Commands\PurgeAbandonedRegistrationUploadsCommand;
 use App\Modules\Kyc\Console\Commands\PurgeExpiredDocumentsCommand;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,6 +22,7 @@ final class KycServiceProvider extends ServiceProvider
             // auto-discovers them.
             $this->commands([
                 PurgeExpiredDocumentsCommand::class,
+                PurgeAbandonedRegistrationUploadsCommand::class,
                 EncryptDocumentsCommand::class,
             ]);
         }
