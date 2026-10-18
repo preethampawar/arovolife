@@ -119,3 +119,10 @@ it('re-seeds through ProductionSeeder on production — no demo admin, plan and 
         ->and(Feature::for(null)->active(GenosSalesBonusFeature::class))->toBeTrue()
         ->and(Feature::for(null)->active(PurchaseOffersFeature::class))->toBeFalse();
 });
+
+it('never reaches a real bucket: every s3 disk is a local scratch disk under test', function () {
+    foreach ((array) config('filesystems.disks') as $name => $disk) {
+        expect($disk['driver'] ?? null)->not->toBe('s3', "disk {$name} still points at S3");
+    }
+    expect(Storage::disk('kyc')->path('probe'))->toContain('framework/testing/disks/kyc');
+});

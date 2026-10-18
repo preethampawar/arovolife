@@ -63,6 +63,21 @@ abstract class TestCase extends BaseTestCase
         // assertions for freeze/unfreeze/(de)activate/terminate mails fail.
         config(['queue.default' => 'sync']);
 
+        // No test may reach a real bucket. The container's AWS_* env points
+        // every s3 disk (kyc included) at the shared staging bucket, so a test
+        // that forgot Storage::fake() deleted real KYC scans there via
+        // platform:reset (2026-10-18). Each s3 disk becomes a local scratch
+        // disk; a test's own Storage::fake() still replaces it as before.
+        foreach ((array) config('filesystems.disks') as $name => $disk) {
+            if (($disk['driver'] ?? null) === 's3') {
+                config(["filesystems.disks.{$name}" => [
+                    'driver' => 'local',
+                    'root' => storage_path("framework/testing/disks/{$name}"),
+                    'throw' => $disk['throw'] ?? false,
+                ]]);
+            }
+        }
+
         // The recompute/reset tooling refuses unless the CONNECTED database is
         // named as destroyable. The guard above has just proven this one is an
         // isolated test database, so declaring it here is honest — and it keeps
