@@ -30,7 +30,7 @@ workers (`queue:restart`).
 ### Pre-launch exception (R-110)
 
 `RAZORPAY_ALLOW_TEST_MODE_IN_PRODUCTION=true` lets **production** use `rzp_test_` keys until
-`RazorpayClient::PRODUCTION_TEST_MODE_ENDS` (2026-11-10 00:00 IST). From then on it has no effect:
+`RazorpayClient::PRODUCTION_TEST_MODE_ENDS` (2026-11-05 00:00 IST; launch 2026-11-08). From then on it has no effect:
 production refuses test keys again and checkout closes until live keys are configured. While it is
 in force, checkout shows a red "no real money moves" notice, and every intent carries `mode = test`,
 which identifies test orders. Launch gates (R-110):

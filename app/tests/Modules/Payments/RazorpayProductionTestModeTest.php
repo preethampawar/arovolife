@@ -6,7 +6,7 @@ declare(strict_types=1);
  * R-110: pre-launch testing on the production host with Razorpay TEST keys.
  *
  * PTM-01: production + test key + override on + before launch day → accepted
- * PTM-02: from launch day (IST) the override has no effect, whatever the setting says
+ * PTM-02: from the test-mode cut-off (IST) the override has no effect, whatever the setting says
  * PTM-03: without the override production still refuses test keys
  * PTM-04: the override never lets a live key run outside production, nor changes non-production
  * PTM-05: checkout shows the "no real money" notice only while the override is in force
@@ -65,17 +65,17 @@ function ptmCustomerWithCart(): User
     return $user;
 }
 
-it('PTM-01: production accepts a test key while the override is on and launch day has not come', function (): void {
+it('PTM-01: production accepts a test key while the override is on and the test-mode cut-off has not come', function (): void {
     ptmConfig('rzp_test_ABCDEF123456', true);
     app()->detectEnvironment(fn () => 'production');
-    $this->travelTo(CarbonImmutable::parse('2026-11-09 23:59:59', 'Asia/Kolkata'));
+    $this->travelTo(CarbonImmutable::parse('2026-11-04 23:59:59', 'Asia/Kolkata'));
 
     $client = app(RazorpayClient::class);
     expect($client->productionTestModeActive())->toBeTrue()
         ->and($client->modeMatchesEnvironment())->toBeTrue();
 });
 
-it('PTM-02: from launch day (IST) production refuses test keys even with the override on', function (): void {
+it('PTM-02: from the test-mode cut-off (IST) production refuses test keys even with the override on', function (): void {
     ptmConfig('rzp_test_ABCDEF123456', true);
     app()->detectEnvironment(fn () => 'production');
     $this->travelTo(CarbonImmutable::parse(RazorpayClient::PRODUCTION_TEST_MODE_ENDS, 'Asia/Kolkata'));

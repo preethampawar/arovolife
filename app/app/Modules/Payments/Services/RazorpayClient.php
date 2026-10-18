@@ -36,8 +36,8 @@ final class RazorpayClient
 
     public const MODE_LIVE = 'live';
 
-    /** Launch day (IST): from this moment production refuses test keys whatever the setting says. */
-    public const PRODUCTION_TEST_MODE_ENDS = '2026-11-10 00:00:00';
+    /** End of pre-launch testing (IST; launch is 2026-11-08): from this moment production refuses test keys whatever the setting says. */
+    public const PRODUCTION_TEST_MODE_ENDS = '2026-11-05 00:00:00';
 
     private const KEY_PATTERN = '/^rzp_(test|live)_[A-Za-z0-9]{6,}$/';
 
