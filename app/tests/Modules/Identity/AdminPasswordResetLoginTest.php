@@ -241,3 +241,26 @@ it('tells a solo account with no password yet to contact support, not to look fo
 
     $this->assertGuest();
 });
+
+it('APR-05: a distributor whose session last wanted /admin lands on /dashboard, not a 403', function () {
+    $adn = '900500600';
+    [$user] = aprlMakeDistributor('intended-', 'CorrectPass!2026', $adn);
+
+    // Opening the back office as a guest stores it as the intended URL.
+    $this->get('/admin/distributors')->assertRedirect('/login');
+
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/login', ['login' => $adn, 'password' => 'CorrectPass!2026'])
+        ->assertRedirect('/dashboard');
+    expect(auth()->id())->toBe($user->id);
+});
+
+it('APR-06: staff still return to the admin page they were sent away from', function () {
+    $admin = aprlMakeAdmin();
+
+    $this->get('/admin/distributors')->assertRedirect('/login');
+
+    $this->withoutMiddleware(PreventRequestForgery::class)
+        ->post('/login', ['login' => $admin->email, 'password' => 'AdminCorrectPass!2026'])
+        ->assertRedirect('/admin/distributors');
+});

@@ -189,6 +189,15 @@ final class LoginController extends Controller
                 return redirect()->route('kyc.resubmit.show');
             }
 
+            // A guest who opened /admin first (or whose browser last held an
+            // admin session) carries it as the intended URL; following it
+            // would land a distributor on a 403. The back office is never a
+            // distributor's destination.
+            $intendedPath = (string) parse_url((string) $request->session()->get('url.intended', ''), PHP_URL_PATH);
+            if ($intendedPath === '/admin' || str_starts_with($intendedPath, '/admin/')) {
+                $request->session()->forget('url.intended');
+            }
+
             return redirect()->intended(route('dashboard'));
         }
 
