@@ -267,8 +267,9 @@ The Grievance Officer contact details for privacy matters are the same as those 
 1. **Customer Care** — first contact through `/contact-us` (reason: "Privacy").
 2. **Grievance Officer** — Shankar G, Marketing Head, +91 96405 61966, `support@arovolife.com`.
 3. **Data Protection Officer** — Rajendar L, Customer Service & Legal Head, +91 96405 61966, `support@arovolife.com`.
-4. **Nodal Officer** — `nodal@arovolife.com`.
-5. **Data Protection Board of India** — per DPDP Act §27.
+4. **Nodal Officer** — KP Naik, +91 96405 61966, `support@arovolife.com`.
+5. **Compliance Committee** — Shankar G, Marketing Head, +91 96405 61966, `support@arovolife.com`.
+6. **Data Protection Board of India** — per DPDP Act §27.
 
 SLA: acknowledgement in 48 hours; first substantive response in 5 working days; resolution within 30 days (extendable to 60 days for matters that require external verification).
 

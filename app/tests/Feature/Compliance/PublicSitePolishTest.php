@@ -52,10 +52,10 @@ it('names the Grievance Officer and DPO with their contact on the public pages',
 
     $this->get('/contact-us')
         ->assertOk()
-        ->assertSeeInOrder(['Grievance Officer', 'Shankar G, Marketing Head', '+91 96405 61966', 'Data Protection Officer', 'Rajendar L, Customer Service &amp; Legal Head', '+91 96405 61966'], escape: false);
+        ->assertSeeInOrder(['Grievance Officer', 'Shankar G, Marketing Head', '+91 96405 61966', 'Data Protection Officer', 'Rajendar L, Customer Service &amp; Legal Head', '+91 96405 61966', 'Nodal Officer', 'KP Naik', '+91 96405 61966', 'Compliance Committee', 'Shankar G, Marketing Head'], escape: false);
 
     $this->get('/p/grievance')->assertOk()->assertSee('Shankar G, Marketing Head')->assertSee('Rajendar L, Customer Service')->assertDontSee('Shanker');
-    $this->get('/p/privacy')->assertOk()->assertSee('Shankar G')->assertSee('Rajendar L')->assertDontSee('dpo@arovolife.com');
+    $this->get('/p/privacy')->assertOk()->assertSee('Shankar G')->assertSee('Rajendar L')->assertSee('KP Naik')->assertDontSee('dpo@arovolife.com')->assertDontSee('nodal@arovolife.com');
 });
 
 it('names the Grievance Officer on the support hub and routes the published officers to support@', function (): void {
@@ -63,6 +63,9 @@ it('names the Grievance Officer on the support hub and routes the published offi
         ->get(route('help.index'))
         ->assertOk()
         ->assertSee('Shankar G, Marketing Head')
+        ->assertSee('Nodal Officer — KP Naik')
         ->assertSee('support@arovolife.com')
-        ->assertDontSee('grievance@arovolife.com');
+        ->assertDontSee('grievance@arovolife.com')
+        ->assertDontSee('nodal@arovolife.com')
+        ->assertDontSee('compliance@arovolife.com');
 });

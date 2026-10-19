@@ -53,9 +53,9 @@ should not try.
 | Step | Owner | Moves up after |
 |---|---|---|
 | 1 | Customer care agent | 7 days |
-| 2 | Grievance Officer | 15 days |
-| 3 | Nodal Officer | — |
-| 4 | Compliance Committee | — |
+| 2 | Grievance Officer (Shankar G) | 15 days |
+| 3 | Nodal Officer (KP Naik) | — |
+| 4 | Compliance Committee (Shankar G) | — |
 
 The sweep escalates automatically when a step runs over. You can also escalate
 by hand from the ticket page. Each escalation emails the new owner.

@@ -116,7 +116,7 @@
                             <span class="shrink-0 w-10 h-10 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center"><x-lucide-user-round class="w-5 h-5" /></span>
                             <div>
                                 <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold mb-0.5">{{ $officer['role'] }}</p>
-                                <p class="text-sm font-semibold text-gray-900">{{ $officer['name'] }}, {{ $officer['designation'] }}</p>
+                                <p class="text-sm font-semibold text-gray-900">{{ $officer['name'] }}@if ($officer['designation']), {{ $officer['designation'] }}@endif</p>
                                 <p class="text-sm text-gray-700 leading-relaxed">
                                     <a href="tel:+919640561966" class="hover:text-brand-700">+91 96405 61966</a>
                                     &middot; <a href="mailto:support@arovolife.com" class="hover:text-brand-700">support@arovolife.com</a>

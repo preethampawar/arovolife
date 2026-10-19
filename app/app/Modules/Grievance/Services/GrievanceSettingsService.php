@@ -50,8 +50,8 @@ final class GrievanceSettingsService
         // launch gate replaces with provisioned addresses.
         'grievance.mailbox.customer_care' => 'care@arovolife.com',
         'grievance.mailbox.grievance_officer' => 'support@arovolife.com',
-        'grievance.mailbox.nodal_officer' => 'nodal@arovolife.com',
-        'grievance.mailbox.compliance_committee' => 'compliance@arovolife.com',
+        'grievance.mailbox.nodal_officer' => 'support@arovolife.com',
+        'grievance.mailbox.compliance_committee' => 'support@arovolife.com',
         // Policy §1 publishes a DPO and §4 step 8 presumes the DPO handled the
         // matter before the Data Protection Board hears it. DPDP §13(3) means
         // that published route has to actually go somewhere.
