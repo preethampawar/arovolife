@@ -648,7 +648,7 @@ outside the payout engine, so tell the platform team. Every export is audited
 | `failed` | The transfer was refused, reversed, or returned by the bank. | Debited, not paid. Send it again once the cause is fixed. |
 | `below_minimum` | Net fell under the minimum payout threshold. | Held in the wallet; rolls into a later batch. |
 | `web_only` | Personal BV below the NEFT eligibility threshold. | Held in the wallet. Income still accrues and is visible. |
-| `kyc_pending` | KYC not yet verified. | Held in the wallet. Released by the first batch after approval. |
+| `kyc_pending` | KYC not yet verified, or no PAN on file (the reserved company accounts carry none until assigned). | Held in the wallet. Released by the first batch after approval. |
 | `no_bank_account` | No bank account on file. The distributor can add one themselves from My profile → Bank details. | Held in the wallet. |
 | `bank_decrypt_failed` | Bank details on file cannot be decrypted. | Held in the wallet. Needs the details re-captured. |
 

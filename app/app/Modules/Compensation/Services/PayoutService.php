@@ -775,9 +775,12 @@ final class PayoutService
      * money waited for the next batch (QA F93).
      *
      *   web_only            — personal BV below the NEFT minimum (Retailer gate).
-     *   kyc_pending         — KYC not verified (users.status !== 'active'). Income
-     *                         accrues and stays fully visible; only the bank
-     *                         release waits. Partner instruction 2026-07-08.
+     *   kyc_pending         — KYC not verified (users.status !== 'active'), or no
+     *                         PAN on file (the reserved company accounts carry
+     *                         none until assigned — R-66; TDS cannot be filed
+     *                         without one). Income accrues and stays fully
+     *                         visible; only the bank release waits. Partner
+     *                         instruction 2026-07-08.
      *   no_bank_account     — no bank account on file. Registration promises no
      *                         commission is released until one is, and without
      *                         this gate approve() would record an impossible NEFT.
@@ -2397,15 +2400,20 @@ final class PayoutService
     /**
      * KYC is "verified" when the distributor's user account is active — the
      * same definition {@see RequireKycApproval}
-     * uses ('active' carries the "Verified" pill). Until then the bank release
-     * is held (STATUS_KYC_PENDING); income still accrues and stays visible.
+     * uses ('active' carries the "Verified" pill) — and a PAN is on file. The
+     * reserved company accounts are seeded active with no PAN (R-66), and a
+     * payout without one would deduct TDS at the flat rate where §206AA wants
+     * 20%. Until both hold the bank release is held (STATUS_KYC_PENDING);
+     * income still accrues and stays visible.
      */
     private function isKycVerified(int $distributorId): bool
     {
         return DB::table('distributors')
             ->join('users', 'users.id', '=', 'distributors.user_id')
             ->where('distributors.id', $distributorId)
-            ->value('users.status') === 'active';
+            ->where('users.status', 'active')
+            ->whereNotNull('distributors.pan_hash')
+            ->exists();
     }
 
     /**

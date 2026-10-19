@@ -674,6 +674,21 @@ it('holds the weekly payout as kyc_pending when the distributor KYC is not verif
     expect(app(WalletService::class)->balancePaise($dist->id))->toBe(100_000);
 });
 
+it('holds the payout as kyc_pending when an active distributor with a bank on file has no PAN', function () {
+    // The reserved company accounts are seeded active with no PAN (R-66):
+    // adding a bank account alone must not release their accrued income.
+    $dist = makePayoutEligibleDistributor();
+    DB::table('distributors')->where('id', $dist->id)->update(['pan_hash' => null, 'pan_last4' => null]);
+    app(WalletService::class)->credit($dist->id, 100_000, 'gsb_credit', walletRef(), 'test_reference', earnedOn: earnedForBatch());
+
+    app(PayoutService::class)->runWeeklyBatch(Carbon::today());
+
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->firstOrFail();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_KYC_PENDING)
+        ->and($line->net_transferred_paise)->toBe(0)
+        ->and(app(WalletService::class)->balancePaise($dist->id))->toBe(100_000);
+});
+
 it('holds the monthly payout as kyc_pending when the distributor KYC is not verified', function () {
     $dist = makePayoutEligibleDistributor();
     $dist->user->update(['status' => 'pending']);

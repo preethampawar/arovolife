@@ -54,6 +54,15 @@ it('excludes a distributor whose KYC is not active', function (): void {
     expect($this->provider->count())->toBe(0);
 });
 
+it('excludes a distributor with no PAN on file — adding a bank would not release them', function (): void {
+    $distributor = Helpers::distributorWithoutBank();
+    DB::table('distributors')->where('id', $distributor->id)->update(['pan_hash' => null, 'pan_last4' => null]);
+    Helpers::personalBv($distributor->id);
+    Helpers::payableIncome($distributor->id);
+
+    expect($this->provider->count())->toBe(0);
+});
+
 it('excludes a distributor below the NEFT minimum BV', function (): void {
     $distributor = Helpers::distributorWithoutBank();
     Helpers::personalBv($distributor->id, 299_999);

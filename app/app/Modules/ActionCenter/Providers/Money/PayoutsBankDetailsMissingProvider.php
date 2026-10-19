@@ -21,7 +21,8 @@ use Illuminate\Support\Collection;
  * `sweepMonthlyBatch()` pull from `wallet_ledger_entries` (the four payable
  * GROUP type lists, unswept, positive, not reversed) and the same hold ladder
  * `PayoutService::holdStatusFor()` applies ahead of its bank-on-file check:
- * KYC must be active and personal BV must clear the NEFT minimum. A
+ * KYC must be active with a PAN on file, and personal BV must clear the
+ * NEFT minimum. A
  * distributor held for either of those reasons is not unblocked by adding a
  * bank record, so is deliberately left off this list — `kyc.pending_review`
  * already covers the KYC case elsewhere in the Action Center.
@@ -143,6 +144,7 @@ final class PayoutsBankDetailsMissingProvider extends AbstractProvider
             ->join('distributors', 'distributors.id', '=', 'wallet_ledger_entries.distributor_id')
             ->join('users', 'users.id', '=', 'distributors.user_id')
             ->where('users.status', 'active')
+            ->whereNotNull('distributors.pan_hash')
             ->where(function (Builder $bank): void {
                 $bank->whereNull('distributors.bank_account_enc')
                     ->orWhere('distributors.bank_account_enc', '')

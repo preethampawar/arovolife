@@ -165,6 +165,7 @@ final class PayoutsBankUndecryptableProvider extends AbstractProvider
             ->join('distributors', 'distributors.id', '=', 'wallet_ledger_entries.distributor_id')
             ->join('users', 'users.id', '=', 'distributors.user_id')
             ->where('users.status', 'active')
+            ->whereNotNull('distributors.pan_hash')
             // Bank details ARE on file — the three rungs above this one belong
             // to PayoutsBankDetailsMissingProvider and must not be listed twice.
             ->whereNotNull('distributors.bank_account_enc')
