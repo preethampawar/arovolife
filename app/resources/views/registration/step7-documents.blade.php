@@ -92,6 +92,21 @@
 (function () {
     const form = document.querySelector('[data-upload-form]');
     if (! form) return;
+    // Mirrors the server's max:5120 rule so an oversized photo is caught
+    // before the upload starts, not after a long wait.
+    const MAX_BYTES = 5 * 1024 * 1024;
+    form.querySelectorAll('input[type="file"]').forEach(function (input) {
+        input.addEventListener('change', function () {
+            const file = input.files[0];
+            if (file && file.size > MAX_BYTES) {
+                const mb = (file.size / 1024 / 1024).toFixed(1);
+                input.setCustomValidity('This file is ' + mb + ' MB. Each document must be 5 MB or less — please choose a smaller photo or a scanned PDF.');
+                input.reportValidity();
+            } else {
+                input.setCustomValidity('');
+            }
+        });
+    });
     form.addEventListener('submit', function () {
         if (! form.checkValidity()) return;
         const note = form.querySelector('[data-upload-progress]');

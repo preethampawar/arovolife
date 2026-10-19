@@ -58,6 +58,15 @@ it('renders the branded 429 view', function (): void {
         ->assertSee('Too many requests');
 });
 
+it('renders the branded 413 view when an upload is larger than post_max_size', function (): void {
+    $this->call('POST', '/register/documents', server: ['CONTENT_LENGTH' => (string) (1024 * 1024 * 1024)])
+        ->assertStatus(413)
+        ->assertSee('Your files are too large')
+        ->assertSee('5 MB or less')
+        ->assertSee('Go back and try again')
+        ->assertDontSee('Go to home');
+});
+
 it('alerts the slack log channel on a server-side failure', function (): void {
     config(['logging.channels.slack.url' => 'https://hooks.slack.test/x']);
 
