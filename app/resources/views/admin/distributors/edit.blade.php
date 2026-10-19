@@ -174,11 +174,11 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-xs text-gray-700">
             <div>
                 <p class="text-gray-600 mb-0.5">Current PAN (last 4)</p>
-                <p class="text-gray-800 font-mono text-sm">XXXXXX{{ $distributor->pan_last4 }}</p>
+                <p class="text-gray-800 font-mono text-sm">{{ $distributor->pan_last4 ? 'XXXXXX'.$distributor->pan_last4 : '—' }}</p>
             </div>
             <div>
                 <p class="text-gray-600 mb-0.5">Current Aadhaar (last 4)</p>
-                <p class="text-gray-800 font-mono text-sm">XXXX XXXX {{ $distributor->aadhaar_last4 ?? '—' }}</p>
+                <p class="text-gray-800 font-mono text-sm">{{ $distributor->aadhaar_last4 ? 'XXXX XXXX '.$distributor->aadhaar_last4 : '—' }}</p>
             </div>
         </div>
         <form method="POST" action="{{ route('admin.distributors.identity', $distributor->id) }}" class="space-y-3" autocomplete="off"

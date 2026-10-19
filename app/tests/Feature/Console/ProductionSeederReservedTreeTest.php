@@ -42,6 +42,20 @@ it('seeds the 63 reserved company distributors with sponsorship on a fresh datab
         ->and(DB::table('genealogy_closure')->count())->toBe(321);
 });
 
+it('seeds the reserved company distributors with no PAN or Aadhaar of any kind', function () {
+    $this->seed(ProductionSeeder::class);
+
+    expect(Distributor::query()->count())->toBe(63)
+        ->and(Distributor::query()->where(function ($q): void {
+            $q->whereNotNull('pan_hash')
+                ->orWhereNotNull('pan_last4')
+                ->orWhereNotNull('pan_encrypted')
+                ->orWhereNotNull('aadhaar_ref')
+                ->orWhereNotNull('aadhaar_last4')
+                ->orWhereNotNull('aadhaar_encrypted');
+        })->count())->toBe(0);
+});
+
 it('is idempotent — re-running never duplicates or mutates the reserved block', function () {
     $this->seed(ProductionSeeder::class);
     $before = Distributor::query()->orderBy('id')->get(['id', 'adn', 'sponsor_id', 'placement_parent_id'])->toArray();

@@ -53,7 +53,7 @@
             <dd class="text-gray-900">{{ $distributor->user->phone_e164 }}</dd>
 
             <dt class="text-gray-600">PAN (last 4)</dt>
-            <dd class="text-gray-900 font-mono">{{ $distributor->pan_last4 }}</dd>
+            <dd class="text-gray-900 font-mono">{{ $distributor->pan_last4 ?? '—' }}</dd>
 
             <dt class="text-gray-600">Aadhaar (last 4)</dt>
             <dd class="text-gray-900 font-mono">{{ $distributor->aadhaar_last4 ?? '—' }}</dd>

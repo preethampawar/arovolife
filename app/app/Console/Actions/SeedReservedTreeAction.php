@@ -394,18 +394,16 @@ final class SeedReservedTreeAction
         $side = $i === 0 ? null : ((($i - 1) % 2) === 0 ? 'L' : 'R');
         $depth = self::depthOfIndex($i);
 
-        // Compute synthetic PAN (must be unique 10-char + hash). Use ADN-derived deterministic string.
-        $syntheticPan = sprintf('ARVO%07d', (int) $adn % 9_999_999); // visibly fake
-        $panHash = hash('sha256', $syntheticPan, true);
-
+        // No identity numbers: a reserved account carries no PAN or Aadhaar
+        // until it is assigned to a leader who brings their own (R-66).
         return $this->db->table('distributors')->insertGetId([
             'user_id' => $userId,
             'adn' => $adn,
-            'pan_hash' => $panHash,
-            'pan_last4' => substr($syntheticPan, -4),
+            'pan_hash' => null,
+            'pan_last4' => null,
             'pan_encrypted' => null,
-            'aadhaar_ref' => 'RESERVED_'.$adn,
-            'aadhaar_last4' => '0000',
+            'aadhaar_ref' => null,
+            'aadhaar_last4' => null,
             'aadhaar_encrypted' => null,
             'bank_account_enc' => null,
             'bank_ifsc' => null,

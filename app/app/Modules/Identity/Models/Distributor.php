@@ -27,7 +27,7 @@ use Illuminate\Support\Carbon;
  * @property int $user_id
  * @property string $adn
  * @property string|null $pan_hash
- * @property string $pan_last4
+ * @property string|null $pan_last4
  * @property string|null $pan_encrypted
  * @property string|null $aadhaar_ref
  * @property string|null $aadhaar_last4

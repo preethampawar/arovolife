@@ -99,8 +99,8 @@
             <div><p class="text-xs text-gray-700 mb-0.5">Phone</p><p class="text-gray-800">{{ $distributor->phone_e164 }}</p></div>
             <div><p class="text-xs text-gray-700 mb-0.5">State</p><p class="text-gray-800">{{ $distributor->state }}</p></div>
             <div><p class="text-xs text-gray-700 mb-0.5">Date of Birth</p><p class="text-gray-800">{{ $distributor->date_of_birth ?? '—' }}</p></div>
-            <div><p class="text-xs text-gray-700 mb-0.5">PAN (last 4)</p><p class="text-gray-800 font-mono">XXXXXX{{ $distributor->pan_last4 }}</p></div>
-            <div><p class="text-xs text-gray-700 mb-0.5">Aadhaar (last 4)</p><p class="text-gray-800 font-mono">XXXXXXXX{{ $distributor->aadhaar_last4 ?? '—' }}</p></div>
+            <div><p class="text-xs text-gray-700 mb-0.5">PAN (last 4)</p><p class="text-gray-800 font-mono">{{ $distributor->pan_last4 ? 'XXXXXX'.$distributor->pan_last4 : '—' }}</p></div>
+            <div><p class="text-xs text-gray-700 mb-0.5">Aadhaar (last 4)</p><p class="text-gray-800 font-mono">{{ $distributor->aadhaar_last4 ? 'XXXXXXXX'.$distributor->aadhaar_last4 : '—' }}</p></div>
             <div><p class="text-xs text-gray-700 mb-0.5">Bank IFSC</p><p class="text-gray-800 font-mono">{{ $distributor->bank_ifsc }}</p></div>
             <div><p class="text-xs text-gray-700 mb-0.5">Registered</p><p class="text-gray-800">{{ \Carbon\Carbon::parse($distributor->user_created_at)->format('d M Y, h:i A') }}</p></div>
         </div>
