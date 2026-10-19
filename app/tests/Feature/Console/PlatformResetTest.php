@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
+use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Genealogy\Support\ReservedAdns;
 use App\Modules\Identity\Models\Distributor;
@@ -125,4 +126,34 @@ it('never reaches a real bucket: every s3 disk is a local scratch disk under tes
         expect($disk['driver'] ?? null)->not->toBe('s3', "disk {$name} still points at S3");
     }
     expect(Storage::disk('kyc')->path('probe'))->toContain('framework/testing/disks/kyc');
+});
+
+// The 2026-10-19 prod 500: a profile row survived the wipe and collided with
+// the first real joiner on a reused distributor id.
+it('leaves nothing attached to a distributor id the next joiner will reuse', function () {
+    $dist = Distributor::factory()->create();
+    DB::table('distributor_profiles')->insert([
+        'distributor_id' => $dist->id,
+        'gender' => 'male',
+        'marital_status' => 'single',
+        'highest_education' => 'graduate',
+        'mother_tongue' => 'telugu',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    $default = AreteCenter::create([
+        'name' => 'Arovolife Company Centre', 'centre_type' => AreteCenter::TYPE_COMPANY, 'location' => 'Hyderabad',
+        'city' => 'Hyderabad', 'state' => 'Telangana', 'status' => AreteCenter::STATUS_ACTIVE, 'is_company_default' => true,
+    ]);
+    $testAdc = AreteCenter::create([
+        'name' => 'Test ADC', 'centre_type' => AreteCenter::TYPE_DISTRIBUTOR, 'location' => 'Medak', 'city' => 'Medak',
+        'state' => 'Telangana', 'assigned_distributor_id' => $dist->id, 'status' => AreteCenter::STATUS_ACTIVE,
+        'is_company_default' => false,
+    ]);
+
+    $this->artisan('platform:reset', ['--force' => true])->assertExitCode(0);
+
+    expect(DB::table('distributor_profiles')->count())->toBe(0)
+        ->and(AreteCenter::query()->whereKey($testAdc->id)->exists())->toBeFalse()
+        ->and(AreteCenter::query()->whereKey($default->id)->value('assigned_distributor_id'))->toBeNull();
 });

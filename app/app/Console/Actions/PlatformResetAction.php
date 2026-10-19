@@ -65,6 +65,45 @@ final class PlatformResetAction
         // Family Card members — keyed on distributor_id; a truncate with FK
         // checks off would otherwise leave them attached to a re-used id.
         'distributor_family_members',
+        // Everything else keyed on a distributor, user or order. Left out until
+        // 2026-10-19, and the prod wipe that day showed why each one matters:
+        // truncating `distributors` restarts AUTO_INCREMENT, so the first real
+        // sign-ups took ids 64 and 65 — ids whose profile, nominee and Arete
+        // membership rows from that morning's test registrations had survived.
+        // The profile insert hit the unique key and both joiners got a 500
+        // after their distributor row had already committed.
+        'distributor_profiles',
+        'distributor_nominees',
+        'distributor_request_documents',
+        'distributor_requests',
+        'arete_center_application_declarations',
+        'arete_center_application_documents',
+        'arete_center_applications',
+        'arete_center_members',
+        'gsb_cutoff_deferrals',
+        'gsb_reversal_requests',
+        'offline_payments',
+        'payment_events',
+        'shipment_events',
+        'payout_gateway_events',
+        'payout_bank_file_rows',
+        'payout_bank_files',
+        'ticket_attachments',
+        'ticket_events',
+        'tickets',
+        'message_blocks',
+        'message_reports',
+        'messages',
+        'announcement_reads',
+        'action_center_snoozes',
+        'contact_inquiries',
+        // The tax-invoice series restarts with the invoices (CGST Rule 46):
+        // a surviving counter would open the real series at test number 65.
+        'invoice_number_sequences',
+        // Pulse telemetry names users by id, and ids are reused after a wipe.
+        'pulse_entries',
+        'pulse_aggregates',
+        'pulse_values',
         // Tree + main
         'sponsorship',
         'genealogy_closure',
@@ -81,6 +120,68 @@ final class PlatformResetAction
         'password_reset_tokens',
         'sessions',
         'users',
+    ];
+
+    /**
+     * Tables the reset deliberately keeps: configuration, the plan, the
+     * catalogue and framework bookkeeping. Every table in the schema must be
+     * in exactly one of wipeTables() or this list — PlatformResetCoverageTest
+     * fails on a new table that is in neither, so it can't be silently kept.
+     *
+     * @var list<string>
+     */
+    public const KEPT_TABLES = [
+        'migrations',
+        'cache',
+        'cache_locks',
+        'settings',
+        'features',
+        'content_pages',
+        'compliance_documents',
+        'agreements',
+        'announcements',
+        'banners',
+        'ledger_accounts',
+        'gsb_slabs',
+        'rank_tiers',
+        'fortune_bonus_levels',
+        'fortune_bonus_tiers',
+        'lifetime_award_rewards',
+        'lifetime_award_tranches',
+        'arete_centers',
+        'arete_center_declarations',
+        'coupons',
+        'monthly_offer_products',
+        'product_categories',
+        'products',
+        'product_variants',
+        'product_images',
+        'product_attributes',
+        'landing_price_history',
+        'inventory_levels',
+        'warehouses',
+        'suppliers',
+    ];
+
+    /**
+     * Person references inside KEPT_TABLES, nulled after the wipe. Users and
+     * distributors restart at the same ids, so a surviving reference would
+     * name — or, for arete_centers.assigned_distributor_id, hand an ADC and its
+     * income to — whichever real joiner takes that id next.
+     *
+     * @var array<string, list<string>>
+     */
+    public const KEPT_TABLE_PERSON_COLUMNS = [
+        'settings' => ['updated_by'],
+        'content_pages' => ['updated_by_user_id'],
+        'compliance_documents' => ['uploaded_by'],
+        'announcements' => ['created_by_user_id'],
+        'arete_centers' => ['assigned_distributor_id'],
+        'arete_center_declarations' => ['accepted_by_user_id'],
+        'coupons' => ['created_by_user_id'],
+        'monthly_offer_products' => ['created_by_user_id'],
+        'products' => ['created_by_user_id'],
+        'landing_price_history' => ['changed_by_user_id'],
     ];
 
     public function __construct(
@@ -118,6 +219,9 @@ final class PlatformResetAction
 
         $log('Truncating transactional tables...');
         $this->truncateAll();
+
+        $log('Removing test ADCs and person references from kept tables...');
+        $this->clearPersonReferences();
 
         $log('Resetting derived counters (coupons.used_count, inventory reserved)...');
         $this->purchaseReset->resetDerivedColumns();
@@ -194,6 +298,24 @@ final class PlatformResetAction
             }
         } finally {
             Schema::enableForeignKeyConstraints();
+        }
+    }
+
+    /**
+     * Every Arete centre except the company default was approved from a test
+     * ADC application, so it goes with its declarations; the default centre is
+     * kept as-is (its address and state drive the GST tax head).
+     */
+    private function clearPersonReferences(): void
+    {
+        $testCenters = $this->db->table('arete_centers')->where('is_company_default', false)->pluck('id');
+        $this->db->table('arete_center_declarations')->whereIn('center_id', $testCenters)->delete();
+        $this->db->table('arete_centers')->whereIn('id', $testCenters)->delete();
+
+        foreach (self::KEPT_TABLE_PERSON_COLUMNS as $table => $columns) {
+            if ($this->db->getSchemaBuilder()->hasTable($table)) {
+                $this->db->table($table)->update(array_fill_keys($columns, null));
+            }
         }
     }
 
