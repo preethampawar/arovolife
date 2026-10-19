@@ -33,7 +33,7 @@
 
             <p style="margin: 18px 0 0 0; font-size: 13px; line-height: 22px; color: #6b7280;">
                 If you believe this closure is in error, please reach out to
-                <a href="mailto:grievance@arovolife.com" style="color: #1f2937; text-decoration: underline;">grievance@arovolife.com</a>
+                <a href="mailto:support@arovolife.com" style="color: #1f2937; text-decoration: underline;">support@arovolife.com</a>
                 within 15 days. Per the Consumer Protection (Direct Selling) Rules, 2021, you have
                 the right to a formal review of this decision.
             </p>

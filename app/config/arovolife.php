@@ -76,6 +76,16 @@ return [
     'support_hours' => '9am to 5pm from Monday to Saturday (Except National Holidays)',
 
     /*
+    | Named officers published under DSR 2021 Rule 4 and DPDP §8(9): name,
+    | designation and contact must appear on the website. Both are reached on
+    | the helpline and support@ (client decision, 2026-10-19).
+    */
+    'officers' => [
+        'grievance' => ['role' => 'Grievance Officer', 'name' => 'Shankar G', 'designation' => 'Marketing Head'],
+        'dpo' => ['role' => 'Data Protection Officer', 'name' => 'Rajendar L', 'designation' => 'Customer Service & Legal Head'],
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | Analytics
     |--------------------------------------------------------------------------

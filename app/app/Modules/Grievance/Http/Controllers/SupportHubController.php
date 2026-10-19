@@ -37,7 +37,7 @@ final class SupportHubController extends Controller
         return view('grievance.help', [
             'openGrievances' => $openCount,
             'officers' => [
-                EscalationLevel::GrievanceOfficer->label() => $this->settings->mailboxFor(EscalationLevel::GrievanceOfficer),
+                EscalationLevel::GrievanceOfficer->label().' — '.config('arovolife.officers.grievance.name').', '.config('arovolife.officers.grievance.designation') => $this->settings->mailboxFor(EscalationLevel::GrievanceOfficer),
                 EscalationLevel::NodalOfficer->label() => $this->settings->mailboxFor(EscalationLevel::NodalOfficer),
                 EscalationLevel::ComplianceCommittee->label() => $this->settings->mailboxFor(EscalationLevel::ComplianceCommittee),
             ],

@@ -58,7 +58,7 @@ final class PublicGrievanceController extends Controller
             $seconds = RateLimiter::availableIn($key);
 
             return back()->withInput()->withErrors([
-                'body' => "Too many submissions from this connection. Please try again in {$seconds} seconds, or write to grievance@arovolife.com.",
+                'body' => "Too many submissions from this connection. Please try again in {$seconds} seconds, or write to support@arovolife.com.",
             ]);
         }
 

@@ -59,15 +59,19 @@ When no reply/response received within 2 weeks after complaint closure then comp
 | Website | 24*7 | www.arovolife.com |
 | Email | 24*7 | support@arovolife.com |
 | Written through post/courier | 24*7 | Arovolife Private Limited, registered office: H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak – 502001, Telangana, India |
-| Customer Support Centre | Between 9am to 5pm from Monday to Saturday (Except National Holidays) | +91 88866 62949 |
+| Customer Support Centre | Between 9am to 5pm from Monday to Saturday (Except National Holidays) | +91 96405 61966 |
 | Walk In | Between 9am to 5pm from Monday to Saturday (Except National Holidays) | In Grievances/Complaints drop box which is placed in arovolife Corporate Office |
+
+**Grievance Officer:** Shankar G, Marketing Head — Mobile No: +91 96405 61966, Email: support@arovolife.com
+
+**Data Protection Officer:** Rajendar L, Customer Service & Legal Head — Mobile No: +91 96405 61966, Email: support@arovolife.com
 
 ## 5. Grievance Redressal Committee
 
 Grievance Redressal Committee consists of three arovolife India employees:
 
-- a. Mr. L Rajender Pal – Manager Customer Service (Mobile No: +91 88866 62949, Email: support@arovolife.com)
-- b. G Shanker – Assistant Manager Marketing (Mobile No: +91 88866 62949, Email: support@arovolife.com)
+- a. Rajendar L – Customer Service & Legal Head (Mobile No: +91 96405 61966, Email: support@arovolife.com)
+- b. Shankar G – Marketing Head (Mobile No: +91 96405 61966, Email: support@arovolife.com)
 - c. L Priyanka – Manager Finance and Accounts (Mobile No: +91 9949792834, Email: support@arovolife.com)
 
 ## 6. Timelines

@@ -55,7 +55,7 @@
         </p>
         @unless($compact)
             <p class="text-[10px] text-gray-600 mt-1 leading-snug">
-                +91 88866 62949 <span class="text-gray-600">|</span> support@arovolife.com<br>
+                +91 96405 61966 <span class="text-gray-600">|</span> support@arovolife.com<br>
                 www.arovolife.com
             </p>
         @endunless

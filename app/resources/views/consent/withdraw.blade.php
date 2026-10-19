@@ -125,7 +125,7 @@
     <p class="mt-6 text-xs text-gray-600 leading-relaxed">
         If you want your data erased rather than your consent withdrawn, that is a separate right with
         different limits — see §10.4 of the Privacy Policy, or write to the Data Protection Officer at
-        <a href="mailto:dpo@arovolife.com" class="underline">dpo@arovolife.com</a>.
+        <a href="mailto:support@arovolife.com" class="underline">support@arovolife.com</a>.
     </p>
 </div>
 @endsection

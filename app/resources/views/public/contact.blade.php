@@ -90,7 +90,7 @@
                     <span class="shrink-0 w-10 h-10 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center"><x-lucide-phone class="w-5 h-5" /></span>
                     <div>
                         <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold mb-0.5">Helpline</p>
-                        <a href="tel:+918886662949" class="text-sm font-semibold text-gray-900 hover:text-brand-700">+91 88866 62949</a>
+                        <a href="tel:+919640561966" class="text-sm font-semibold text-gray-900 hover:text-brand-700">+91 96405 61966</a>
                     </div>
                 </li>
                 <li class="flex gap-3.5">
@@ -109,6 +109,24 @@
                 </li>
             </ul>
             <div class="mt-6 pt-5 border-t border-slate-200/60">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Officers</h2>
+                <ul class="space-y-4">
+                    @foreach (config('arovolife.officers') as $officer)
+                        <li class="flex gap-3.5">
+                            <span class="shrink-0 w-10 h-10 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center"><x-lucide-user-round class="w-5 h-5" /></span>
+                            <div>
+                                <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500 font-semibold mb-0.5">{{ $officer['role'] }}</p>
+                                <p class="text-sm font-semibold text-gray-900">{{ $officer['name'] }}, {{ $officer['designation'] }}</p>
+                                <p class="text-sm text-gray-700 leading-relaxed">
+                                    <a href="tel:+919640561966" class="hover:text-brand-700">+91 96405 61966</a>
+                                    &middot; <a href="mailto:support@arovolife.com" class="hover:text-brand-700">support@arovolife.com</a>
+                                </p>
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+            <div class="mt-6 pt-5 border-t border-slate-200/60">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Registered Office</h2>
                 <div class="flex gap-3.5">
                     <span class="shrink-0 w-10 h-10 rounded-xl bg-brand-50 text-brand-700 flex items-center justify-center"><x-lucide-map-pin class="w-5 h-5" /></span>
@@ -119,7 +137,7 @@
                         <p class="text-sm text-gray-700 leading-relaxed">GSTIN: 36ABECA8336M1Z9</p>
                         <p class="text-sm text-gray-700 leading-relaxed">Principal place of business (GST): {{ config('arovolife.principal_place_of_business') }}</p>
                         <p class="text-sm text-gray-700 leading-relaxed mt-1">
-                            <a href="tel:+918886662949" class="hover:text-brand-700">+91 88866 62949</a>
+                            <a href="tel:+919640561966" class="hover:text-brand-700">+91 96405 61966</a>
                             &middot; <a href="mailto:support@arovolife.com" class="hover:text-brand-700">support@arovolife.com</a>
                         </p>
                         <p class="text-sm text-gray-700 leading-relaxed">{{ config('arovolife.support_hours') }}</p>

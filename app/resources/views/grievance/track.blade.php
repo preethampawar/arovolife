@@ -57,7 +57,7 @@
         @if (! empty($notFound))
             <div class="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
                 We could not find a grievance matching that complaint number and email. Check both, or write to
-                <a href="mailto:grievance@arovolife.com" class="underline">grievance@arovolife.com</a> quoting the number.
+                <a href="mailto:support@arovolife.com" class="underline">support@arovolife.com</a> quoting the number.
             </div>
         @endif
 

@@ -22,4 +22,4 @@ An order can be cancelled before it is shipped. See the [Order Cancellation Poli
 
 ## 6. Contact us
 
-For any question about the delivery of your order, email support@arovolife.com or call +91 88866 62949 (9am to 5pm, Monday to Saturday, except national holidays), and quote your order ID.
+For any question about the delivery of your order, email support@arovolife.com or call +91 96405 61966 (9am to 5pm, Monday to Saturday, except national holidays), and quote your order ID.

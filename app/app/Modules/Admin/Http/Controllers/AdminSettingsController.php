@@ -512,7 +512,7 @@ final class AdminSettingsController extends Controller
                 'type' => 'string',
                 'format' => 'email',
                 'max' => 255,
-                'default' => 'grievance@arovolife.com',
+                'default' => 'support@arovolife.com',
             ],
             'grievance.mailbox.nodal_officer' => [
                 'group' => 'grievance',
@@ -539,7 +539,7 @@ final class AdminSettingsController extends Controller
                 'type' => 'string',
                 'format' => 'email',
                 'max' => 255,
-                'default' => 'dpo@arovolife.com',
+                'default' => 'support@arovolife.com',
             ],
 
             // ── Placement (Genos) ──────────────────────────────────────────

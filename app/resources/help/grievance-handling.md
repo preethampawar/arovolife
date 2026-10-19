@@ -15,7 +15,7 @@ Every intake channel lands in the same tracker at **Admin → Grievances**:
 |---|---|
 | Web form | `/p/grievance/form` — open to anyone, account or not |
 | In-app | Distributor dashboard → Help → Raise a Grievance |
-| Email | `grievance@arovolife.com` — record it with **Record a complaint** |
+| Email | `support@arovolife.com` — record it with **Record a complaint** |
 | Phone | Helpline — record it with **Record a complaint** |
 | Post | Registered office — scan, then **Record a complaint** |
 | In person | Walk-in at an authorised centre — **Record a complaint** |

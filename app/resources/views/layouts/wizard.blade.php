@@ -195,7 +195,7 @@
         </div>
         <p class="mt-2 text-gray-600">
             Customer Care:
-            <a href="tel:+918886662949" class="hover:text-gray-900">+91 88866 62949</a> ·
+            <a href="tel:+919640561966" class="hover:text-gray-900">+91 96405 61966</a> ·
             <a href="mailto:support@arovolife.com" class="hover:text-gray-900">support@arovolife.com</a> ·
             {{ config('arovolife.support_hours') }}
         </p>

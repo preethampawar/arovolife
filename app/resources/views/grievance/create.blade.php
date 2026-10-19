@@ -175,7 +175,7 @@
                 </p>
                 <p class="mt-1.5">
                     Our Data Protection Officer is at
-                    <a href="mailto:dpo@arovolife.com" class="underline">dpo@arovolife.com</a>. You may
+                    <a href="mailto:support@arovolife.com" class="underline">support@arovolife.com</a>. You may
                     complain to the Data Protection Board of India if you are unhappy with how we handle your
                     data. Full detail: <a href="{{ route('content.show', 'privacy') }}" class="underline">Privacy Policy</a>.
                 </p>
@@ -199,8 +199,8 @@
 
         <div class="mt-10 rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 text-sm text-gray-700">
             <p class="font-semibold mb-1.5">Other ways to reach us</p>
-            <p>Email <a href="mailto:grievance@arovolife.com" class="underline">grievance@arovolife.com</a>,
-               call <a href="tel:+918886662949" class="underline">+91 88866 62949</a> ({{ config('arovolife.support_hours') }}),
+            <p>Email <a href="mailto:support@arovolife.com" class="underline">support@arovolife.com</a>,
+               call <a href="tel:+919640561966" class="underline">+91 96405 61966</a> ({{ config('arovolife.support_hours') }}),
                or write to the Grievance Officer at our registered office. Every channel lands in the same tracker.</p>
         </div>
     </div>

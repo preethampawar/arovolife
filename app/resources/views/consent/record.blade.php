@@ -111,7 +111,7 @@
 
     <p class="mt-6 text-xs text-gray-600 leading-relaxed">
         Questions about your data, or a correction to make? Write to the Data Protection Officer at
-        <a href="mailto:dpo@arovolife.com" class="underline">dpo@arovolife.com</a>.
+        <a href="mailto:support@arovolife.com" class="underline">support@arovolife.com</a>.
     </p>
 </div>
 @endsection

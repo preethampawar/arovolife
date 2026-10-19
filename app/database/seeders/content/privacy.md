@@ -58,8 +58,8 @@ This Policy applies to all data processed by arovolife — through the website, 
 | CIN | U46909TS2026PTC210896 |
 | Registered office & correspondence address | H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak – 502001, Telangana, India (as on the MCA / Income Tax Department record; this is also the address for all postal correspondence) |
 | Capacity under DPDP Act | Data Fiduciary |
-| Data Protection Officer (DPO) | G. Shankar — `dpo@arovolife.com` |
-| Grievance Officer (privacy matters) | G. Shankar — `grievance@arovolife.com` |
+| Data Protection Officer (DPO) | Rajendar L, Customer Service & Legal Head — +91 96405 61966 · `support@arovolife.com` |
+| Grievance Officer (privacy matters) | Shankar G, Marketing Head — +91 96405 61966 · `support@arovolife.com` |
 
 For privacy questions or to exercise any right described in §10, write to the DPO. For grievance escalation, see `/p/grievance`.
 
@@ -128,7 +128,7 @@ We process your personal data for:
 7. **Statutory reporting** — filings with Income Tax, GST authorities, MCA, and consumer-protection authorities.
 8. **Platform improvement** — first-party analytics on aggregate, pseudonymised usage; bug diagnostics; performance tuning.
 8a. **Anniversary greetings** — if you give your wedding anniversary date, using it only to send you an anniversary greeting. It is optional, is never used to decide eligibility, rank, income or placement, is never used to target offers at you, and is never shared with other Distributors or third parties. You can change or remove it at any time from My Profile.
-8b. **arovolife Family Card** — if you add family members on My Profile, keeping their name and relation to you only to register them as family members on your arovolife Family Card. The card shows only "1 + 5 family members", never their names. The card is not an insurance policy and gives no health cover, treatment or payment. Family members' data is optional, is never used to decide eligibility, rank, income or placement, is never used to target offers, and is never shared with other Distributors or third parties. You confirm each family member has agreed; for a child, you consent as their parent or guardian. A family member may ask us directly, at `dpo@arovolife.com`, to erase their details.
+8b. **arovolife Family Card** — if you add family members on My Profile, keeping their name and relation to you only to register them as family members on your arovolife Family Card. The card shows only "1 + 5 family members", never their names. The card is not an insurance policy and gives no health cover, treatment or payment. Family members' data is optional, is never used to decide eligibility, rank, income or placement, is never used to target offers, and is never shared with other Distributors or third parties. You confirm each family member has agreed; for a child, you consent as their parent or guardian. A family member may ask us directly, at `support@arovolife.com`, to erase their details.
 9. **Marketing** (only with consent and only after Phase 4 when the marketing module ships) — sending Distributor-only programme updates, product launches and ethics reminders.
 
 We do not use your data for any other purpose without obtaining fresh consent.
@@ -224,7 +224,7 @@ We do not use third-party advertising cookies. We do not place pixels for cross-
 
 ## 10. Your Rights as a Data Principal
 
-Under the DPDP Act and adjacent statutes you have the following rights, exercisable through `dpo@arovolife.com`:
+Under the DPDP Act and adjacent statutes you have the following rights, exercisable through `support@arovolife.com`:
 
 ### 10.1 Right to information
 
@@ -248,7 +248,7 @@ Where processing is based on consent, you may withdraw it at any time. The withd
 
 ### 10.6 Right to nominate
 
-Under DPDP Act §14, you may nominate another individual to exercise these rights in the event of your death or incapacity. Email `dpo@arovolife.com` with the nominee's name and contact details; we will issue a nomination acknowledgement.
+Under DPDP Act §14, you may nominate another individual to exercise these rights in the event of your death or incapacity. Email `support@arovolife.com` with the nominee's name and contact details; we will issue a nomination acknowledgement.
 
 ### 10.7 Right to grievance redressal
 
@@ -265,8 +265,8 @@ The arovolife service is for adults (18 and above; 21 and above in Maharashtra).
 The Grievance Officer contact details for privacy matters are the same as those published at `/p/grievance`. The internal escalation path is:
 
 1. **Customer Care** — first contact through `/contact-us` (reason: "Privacy").
-2. **Grievance Officer** — `grievance@arovolife.com`.
-3. **Data Protection Officer** — `dpo@arovolife.com`.
+2. **Grievance Officer** — Shankar G, Marketing Head, +91 96405 61966, `support@arovolife.com`.
+3. **Data Protection Officer** — Rajendar L, Customer Service & Legal Head, +91 96405 61966, `support@arovolife.com`.
 4. **Nodal Officer** — `nodal@arovolife.com`.
 5. **Data Protection Board of India** — per DPDP Act §27.
 
@@ -284,4 +284,4 @@ This Policy is effective from the `Published` date displayed at the top of this 
 
 ---
 
-*Privacy Policy version: v2026-10-11. The current published version is always available at `/p/privacy`. Questions: `dpo@arovolife.com`.*
+*Privacy Policy version: v2026-10-11. The current published version is always available at `/p/privacy`. Questions: `support@arovolife.com`.*

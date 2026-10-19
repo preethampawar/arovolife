@@ -191,7 +191,7 @@ it('CWD-09: an account with no consent rows still gets the full withdrawal flow 
         ->assertSee('it closes your ADN')
         ->assertSee('Type')
         ->assertSee('Keep my account')
-        ->assertSee('dpo@arovolife.com')
+        ->assertSee('support@arovolife.com')
         ->assertDontSee('already been withdrawn');
 });
 
