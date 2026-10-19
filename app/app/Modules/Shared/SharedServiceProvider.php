@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Modules\Shared;
 
 use App\Modules\Shared\Console\Commands\GenerateSbomCommand;
+use App\Modules\Shared\Mail\AddPlainTextAlternative;
 use App\Modules\Shared\Security\ClamAvScanner;
 use App\Modules\Shared\Security\UnconfiguredScanner;
 use App\Modules\Shared\Security\VirusScanner;
+use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 final class SharedServiceProvider extends ServiceProvider
@@ -36,6 +39,8 @@ final class SharedServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
+
+        Event::listen(MessageSending::class, AddPlainTextAlternative::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([
