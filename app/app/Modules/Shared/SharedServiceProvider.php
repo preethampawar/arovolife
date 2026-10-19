@@ -6,6 +6,7 @@ namespace App\Modules\Shared;
 
 use App\Modules\Shared\Console\Commands\GenerateSbomCommand;
 use App\Modules\Shared\Mail\AddPlainTextAlternative;
+use App\Modules\Shared\Mail\MarkAsTransactional;
 use App\Modules\Shared\Security\ClamAvScanner;
 use App\Modules\Shared\Security\UnconfiguredScanner;
 use App\Modules\Shared\Security\VirusScanner;
@@ -41,6 +42,7 @@ final class SharedServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
 
         Event::listen(MessageSending::class, AddPlainTextAlternative::class);
+        Event::listen(MessageSending::class, MarkAsTransactional::class);
 
         if ($this->app->runningInConsole()) {
             $this->commands([
