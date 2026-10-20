@@ -333,6 +333,8 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::post('/distributors/{id}/set-password', [AdminDistributorEditController::class, 'setPassword'])->whereNumber('id')->name('distributors.set-password');
         Route::post('/distributors/{id}/identity', [AdminDistributorEditController::class, 'updateIdentity'])->whereNumber('id')->name('distributors.identity');
         Route::post('/distributors/{id}/id-photo', [AdminDistributorEditController::class, 'updateIdPhoto'])->whereNumber('id')->name('distributors.id-photo');
+        // Joining date moves cooling-off and Fortune Bonus inputs — developer only.
+        Route::post('/distributors/{id}/joining-date', [AdminDistributorEditController::class, 'updateJoiningDate'])->whereNumber('id')->middleware('role:developer')->name('distributors.joining-date');
     });
     // Account discipline (block / unblock / terminate) — admin-compliance (R-17).
     Route::post('/distributors/{id}/nominee/unmask', [AdminDistributorController::class, 'unmaskNomineeAadhaar'])->whereNumber('id')->middleware('can:admin.kyc.unmask')->name('distributors.nominee.unmask');

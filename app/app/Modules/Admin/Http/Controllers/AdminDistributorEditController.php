@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Admin\Services\ChangeDistributorJoiningDate;
+use App\Modules\Admin\Services\Exceptions\JoiningDateChangeRefused;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Identity\Http\Rules\NotPwned;
@@ -19,6 +21,7 @@ use App\Modules\Shared\Crypto\PiiCrypter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -40,7 +43,8 @@ use Illuminate\View\View;
  *     (placement is irreversible after registration — the line-change
  *     request flow handles legitimate moves; even there an admin can't
  *     freely re-parent without compliance review)
- *   - distributors.cooling_off_end_at   — statutory 30-day clock (DSR §7)
+ *   - distributors.cooling_off_end_at   — statutory 30-day clock (DSR §7);
+ *     only ever extended, by the developer-only updateJoiningDate()
  *
  * Every field change writes an audit_log entry with a redacted diff. The
  * bank account number is NEVER logged in plaintext — only the new last-4
@@ -590,6 +594,32 @@ final class AdminDistributorEditController extends Controller
         ]);
 
         return back()->with('status', 'ID photo updated.');
+    }
+
+    /**
+     * Developer-only joining-date correction. The guards live in
+     * {@see ChangeDistributorJoiningDate}; a refusal comes back as a form error.
+     */
+    public function updateJoiningDate(Request $request, int $id, ChangeDistributorJoiningDate $change): RedirectResponse
+    {
+        $validated = $request->validate([
+            'joining_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'joining_date_reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        try {
+            $change(
+                $id,
+                Carbon::createFromFormat('Y-m-d', $validated['joining_date']),
+                $validated['joining_date_reason'],
+                (int) Auth::id(),
+                $request->ip(),
+            );
+        } catch (JoiningDateChangeRefused $e) {
+            return back()->withErrors(['joining_date' => $e->getMessage()])->withInput();
+        }
+
+        return back()->with('status', 'Joining date updated.');
     }
 
     private function dobToString(mixed $dob): ?string

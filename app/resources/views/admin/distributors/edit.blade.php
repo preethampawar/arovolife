@@ -213,6 +213,51 @@
         </form>
     </div>
 
+    {{-- Joining date — developer only; the route carries role:developer too. --}}
+    @if(auth()->user()?->hasRole('developer'))
+    <div class="bg-white rounded-2xl border border-amber-300 p-6">
+        <h3 class="font-semibold text-gray-800 mb-2 flex items-center gap-2">
+            Joining date
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded">Compliance-sensitive</span>
+        </h3>
+        <p class="text-xs text-gray-700 mb-4 leading-relaxed">
+            Current joining date: <span class="font-semibold">{{ $distributor->effective_date->format('d M Y') }}</span>.
+            Fortune Bonus, the line-change window, the inactivity clock and team stats all follow this date.
+            Cooling-off is never shortened — it ends on the later of the current cooling-off end date and the new joining date + 30 days; if extended, the D-7 / D-1 reminders are sent again.
+            Refused if the date would fall on or before the sponsor's or placement parent's joining date, on or after any direct team member's, before the terms acceptance or orientation pass, or in a month Fortune Bonus has already run.
+            A couple's spouse account moves with it.
+        </p>
+        <form method="POST" action="{{ route('admin.distributors.joining-date', $distributor->id) }}" class="space-y-3"
+            data-confirm="Change this distributor's joining date?"
+            data-confirm-title="Confirm joining date change"
+            data-confirm-impact="Moves the joining date that Fortune Bonus, line-change, inactivity and team stats read. Cooling-off can only be extended. The change and your reason are audit-logged.">
+            @csrf
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs text-gray-700 mb-1" for="joining_date">New joining date <x-help-tip text="The corrected date the distributor joined; it cannot be in the future." /></label>
+                    <input type="date" id="joining_date" name="joining_date" required
+                        max="{{ now()->toDateString() }}"
+                        value="{{ old('joining_date', $distributor->effective_date->toDateString()) }}"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-700 mb-1" for="joining_date_reason">Reason <x-help-tip text="Why the date is being corrected; recorded in the audit log. Do not enter PAN, Aadhaar, phone or bank numbers." /></label>
+                    <input type="text" id="joining_date_reason" name="joining_date_reason" required maxlength="500"
+                        value="{{ old('joining_date_reason') }}"
+                        placeholder="e.g. Agreement signed on 15 Oct; registration entered late"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+            </div>
+            @error('joining_date')<p class="text-xs text-red-700">{{ $message }}</p>@enderror
+            @error('joining_date_reason')<p class="text-xs text-red-700">{{ $message }}</p>@enderror
+            <button type="submit"
+                class="px-4 py-2 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium transition-colors">
+                Update joining date
+            </button>
+        </form>
+    </div>
+    @endif
+
     {{-- KYC review status + inline actions. The full document list +
          streaming endpoints live on /admin/kyc/{id} so each document
          view stays inside that page's audit boundary. --}}
