@@ -288,7 +288,7 @@ final class AdminKycController extends Controller
     {
         $validated = $request->validate([
             'type' => ['required', 'string', Rule::in([
-                'pan', 'aadhaar', 'cheque', 'address_proof_front', 'address_proof_back', 'photo',
+                'pan', 'aadhaar', 'aadhaar_back', 'cheque', 'address_proof_front', 'address_proof_back', 'photo',
             ])],
             'document' => [
                 'required', 'file', 'max:5120',

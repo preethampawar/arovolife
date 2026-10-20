@@ -14,6 +14,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Notifications\KycApprovedNotification;
 use App\Modules\Kyc\Models\KycDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -380,3 +381,25 @@ it('AKR-11: F111 — the approval notice is carried in-app as well as by email',
         ->and($notification->toArray(new stdClass))
         ->toMatchArray(['kind' => 'kyc.approved', 'adn' => '123456789']);
 });
+
+it('AKR-12: the admin can upload every document type the upload form offers', function (string $type) {
+    Storage::fake('kyc');
+
+    [, $id] = array_values(akrSeedDistributorPending());
+    $admin = akrAdmin();
+
+    // Every <option> on the form must pass the controller's type rule —
+    // aadhaar_back was offered but refused as "The selected type is invalid."
+    $this->actingAs($admin)->get("/admin/kyc/{$id}")
+        ->assertOk()
+        ->assertSee('<option value="'.$type.'">', false);
+
+    $this->actingAs($admin)
+        ->post("/admin/kyc/{$id}/document", [
+            'type' => $type,
+            'document' => UploadedFile::fake()->image("{$type}.png", 600, 400),
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(KycDocument::where('distributor_id', $id)->where('type', $type)->exists())->toBeTrue();
+})->with(['pan', 'aadhaar', 'aadhaar_back', 'cheque', 'address_proof_front', 'address_proof_back', 'photo']);
