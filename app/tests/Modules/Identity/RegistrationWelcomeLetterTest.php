@@ -50,6 +50,7 @@ it('RWL-03: the standalone letter renders the letter, the ADN and the free-joini
         ->and($html)->toContain('ARO7654321')
         ->and($html)->toContain('Registration is free of charge.')
         ->and($html)->toContain('30-day cooling-off period')
+        ->and($html)->toContain('Consumer Protection (Direct Selling) Rules, 2021')
         ->and($html)->not->toContain('Your registration')
         ->and(preg_match('/\\b(earn\\w*|income|legacy|financial growth|future generations)\\b/i', $html))->toBe(0);
 });

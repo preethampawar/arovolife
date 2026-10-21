@@ -17,7 +17,8 @@
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 Your 30-day cooling-off period has begun. If you change your mind, you can cancel at any
                 time within those 30 days by signing in or by writing to support@arovolife.com, and any
-                product you bought is refunded in full.
+                product you bought is refunded in full. This is your cooling-off period under the
+                Consumer Protection (Direct Selling) Rules, 2021.
             </p>
 
             <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%" style="margin: 14px 0; border: 1px solid #e5e7eb; background-color: #f9fafb; border-radius: 6px;">

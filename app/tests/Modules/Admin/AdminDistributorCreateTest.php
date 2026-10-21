@@ -289,6 +289,7 @@ it('ADC-08: the activation email addresses the account holder and always states 
         ->and($html)->toContain('123456789')
         ->and($html)->toContain('Registration is free of charge.')
         ->and($html)->toContain('30-day cooling-off period')
+        ->and($html)->toContain('Consumer Protection (Direct Selling) Rules, 2021')
         ->and($html)->toContain('/activate/')
         ->and($html)->not->toContain('co-distributor');
 });
