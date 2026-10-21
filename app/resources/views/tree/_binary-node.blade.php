@@ -84,8 +84,8 @@
          overflows it equally on both sides, so it sits centred over the
          junction. Each column is at least 5.5rem, half the widest card, so
          the overflow never reaches a neighbouring subtree. --}}
-    <div class="row-start-1 col-start-1 justify-self-end w-0 flex flex-col items-center relative pb-3 {{ $branchSide ? 'pt-3' : '' }}
-        {{ $branchSide ? "before:content-[''] before:absolute before:top-0 before:left-0 before:-translate-x-1/2 before:w-[2px] before:h-3 before:bg-slate-500" : '' }}
+    <div class="row-start-1 col-start-1 justify-self-end w-0 flex flex-col items-center relative pb-3 {{ $branchSide ? 'pt-5' : '' }}
+        {{ $branchSide ? "before:content-[''] before:absolute before:top-0 before:left-0 before:-translate-x-1/2 before:w-[2px] before:h-5 before:bg-slate-500" : '' }}
         after:content-[''] after:absolute after:bottom-0 after:left-0 after:-translate-x-1/2 after:w-[2px] after:h-3 after:bg-slate-500">
 @else
 <div class="flex flex-col items-center {{ $showLeafHoverEmpties ? 'relative' : '' }}"
@@ -289,7 +289,7 @@
     @foreach(['L' => $left, 'R' => $right] as $childSide => $child)
         @php $childBranches = $childSide === 'L' ? $leftBranches : $rightBranches; @endphp
         <div class="row-start-2 {{ $childSide === 'L' ? 'col-start-1' : 'col-start-2' }} relative flex items-start justify-center {{ $childPad }}
-            {{ $childBranches ? '' : "pt-3 before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-3 before:bg-slate-500 after:content-[''] after:absolute after:top-0 after:h-[2px] after:bg-slate-500" }}
+            {{ $childBranches ? '' : "pt-5 before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-5 before:bg-slate-500 after:content-[''] after:absolute after:top-0 after:h-[2px] after:bg-slate-500" }}
             {{ $childBranches ? '' : ($childSide === 'L' ? 'after:left-1/2 after:right-0' : 'after:left-0 after:right-1/2') }}">
             @if($child)
                 @include('tree._binary-node', [
