@@ -288,7 +288,7 @@
          padding around each child subtree, deeper levels get more. --}}
     @foreach(['L' => $left, 'R' => $right] as $childSide => $child)
         @php $childBranches = $childSide === 'L' ? $leftBranches : $rightBranches; @endphp
-        <div class="row-start-2 {{ $childSide === 'L' ? 'col-start-1' : 'col-start-2' }} relative flex justify-center {{ $childPad }}
+        <div class="row-start-2 {{ $childSide === 'L' ? 'col-start-1' : 'col-start-2' }} relative flex items-start justify-center {{ $childPad }}
             {{ $childBranches ? '' : "pt-3 before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-3 before:bg-slate-500 after:content-[''] after:absolute after:top-0 after:h-[2px] after:bg-slate-500" }}
             {{ $childBranches ? '' : ($childSide === 'L' ? 'after:left-1/2 after:right-0' : 'after:left-0 after:right-1/2') }}">
             @if($child)

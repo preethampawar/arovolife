@@ -330,5 +330,8 @@ it('TV-09: a long leg is laid out in content-sized columns, never equal halves t
         ->and($html)->not->toContain('grid grid-cols-2 gap-0')
         // l1, l2 and l3 are left children that branch, so each draws its
         // own half of the parent's connector out to the junction.
-        ->and(substr_count($html, 'row-start-1 col-start-2 relative'))->toBe(3);
+        ->and(substr_count($html, 'row-start-1 col-start-2 relative'))->toBe(3)
+        // A column is stretched to its taller sibling's height; its slot
+        // must stay card-height, not stretch down the whole leg.
+        ->and(substr_count($html, 'relative flex items-start justify-center'))->toBe(8);
 });
