@@ -32,7 +32,7 @@ final class RegistrationSubmittedNotification extends Notification implements Sh
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Welcome to arovolife — your registration is being reviewed')
+            ->subject('Welcome to the arovolife family — your registration is being reviewed')
             ->view('emails.registration-submitted', [
                 'adn' => $this->adn,
                 'fullName' => $this->fullName,
