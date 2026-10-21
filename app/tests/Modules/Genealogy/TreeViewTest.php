@@ -313,3 +313,22 @@ it('TV-08: the tree legend uses the "Terminated" bucket label (not "Closed")', f
     expect($labels)->toContain('Terminated');
     expect($labels)->not->toContain('Closed');
 });
+
+it('TV-09: a long leg is laid out in content-sized columns, never equal halves that double per level', function () {
+    // Equal halves made each level twice as wide as the longest leg below
+    // it; on production's 19-level leg that outgrew what the browser can
+    // lay out and the cards piled on top of each other.
+    $rootUser = tvUser('root');
+    $rootId = tvSeedRoot($rootUser->id);
+    $l1 = tvPlace($rootId, tvUser('l1'), 'L');
+    $l2 = tvPlace($l1, tvUser('l2'), 'L');
+    tvPlace($l2, tvUser('l3'), 'L');
+
+    $html = $this->actingAs($rootUser->refresh())->get('/tree?levels=4')->assertOk()->getContent();
+
+    expect(substr_count($html, 'grid-cols-[minmax(5.5rem,max-content)_minmax(5.5rem,max-content)]'))->toBe(4)
+        ->and($html)->not->toContain('grid grid-cols-2 gap-0')
+        // l1, l2 and l3 are left children that branch, so each draws its
+        // own half of the parent's connector out to the junction.
+        ->and(substr_count($html, 'row-start-1 col-start-2 relative'))->toBe(3);
+});

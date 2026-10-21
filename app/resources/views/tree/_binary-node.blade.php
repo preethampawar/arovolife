@@ -33,13 +33,64 @@
         default      => 'px-4',
     };
 
+    // Which side of its parent this node hangs on (null for the canvas
+    // root) and the parent's column padding, passed down by the parent so
+    // a branching child can draw its own half of the parent's connector.
+    $branchSide = $branchSide ?? null;
+    $parentPad  = $parentPad ?? null;
+
+    // A node whose children are drawn inline is laid out as two
+    // content-sized columns with its card centred on the line between
+    // them. Equal-width halves made every level double the width of the
+    // longest leg below it, so a 19-level leg needed a canvas far wider
+    // than the browser can lay out, and the cards piled on top of each
+    // other.
+    $branching = $renderInlineChildren;
+
+    // The connector stub a branching child draws reaches across its
+    // parent's column padding to meet the sibling's half at the junction.
+    // Static literals so Tailwind's JIT picks them up.
+    $stubReach = match ($parentPad) {
+        'px-0.5' => $branchSide === 'L' ? '-right-0.5' : '-left-0.5',
+        'px-1'   => $branchSide === 'L' ? '-right-1' : '-left-1',
+        'px-2'   => $branchSide === 'L' ? '-right-2' : '-left-2',
+        'px-3'   => $branchSide === 'L' ? '-right-3' : '-left-3',
+        'px-4'   => $branchSide === 'L' ? '-right-4' : '-left-4',
+        default  => '',
+    };
+
+    // A child column draws the connector itself when its child is a single
+    // card (a leaf or an empty slot), whose centre is the column's centre.
+    $leftBranches  = $left !== null && $level + 1 < $maxDepth;
+    $rightBranches = $right !== null && $level + 1 < $maxDepth;
+
     // Rank + personal BV for this card, resolved for the whole canvas at once
     // in _content.blade.php (R-65). Null rows render "—".
     $cardStats = $cardStatsById[$node->id] ?? null;
 @endphp
 
+@if($branching)
+{{-- content-start: a shorter subtree is stretched to its taller sibling's
+     height; keep that slack below the children instead of in the card row. --}}
+<div class="grid grid-cols-[minmax(5.5rem,max-content)_minmax(5.5rem,max-content)] content-start">
+    {{-- This node's half of its parent's horizontal connector: from the
+         junction above its card out to the edge of the parent's column. --}}
+    @if($branchSide === 'L')
+        <span class="row-start-1 col-start-2 relative" aria-hidden="true"><span class="absolute top-0 left-0 {{ $stubReach }} h-[2px] bg-slate-500"></span></span>
+    @elseif($branchSide === 'R')
+        <span class="row-start-1 col-start-1 relative" aria-hidden="true"><span class="absolute top-0 right-0 {{ $stubReach }} h-[2px] bg-slate-500"></span></span>
+    @endif
+    {{-- Zero-width anchor on the line between the two columns; the card
+         overflows it equally on both sides, so it sits centred over the
+         junction. Each column is at least 5.5rem, half the widest card, so
+         the overflow never reaches a neighbouring subtree. --}}
+    <div class="row-start-1 col-start-1 justify-self-end w-0 flex flex-col items-center relative pb-3 {{ $branchSide ? 'pt-3' : '' }}
+        {{ $branchSide ? "before:content-[''] before:absolute before:top-0 before:left-0 before:-translate-x-1/2 before:w-[2px] before:h-3 before:bg-slate-500" : '' }}
+        after:content-[''] after:absolute after:bottom-0 after:left-0 after:-translate-x-1/2 after:w-[2px] after:h-3 after:bg-slate-500">
+@else
 <div class="flex flex-col items-center {{ $showLeafHoverEmpties ? 'relative' : '' }}"
     @if($showLeafHoverEmpties) data-leaf-wrapper @endif>
+@endif
     @php
         // Single source of truth for the user.status → presentation
         // mapping. The same theme tokens power the verification pill on
@@ -49,7 +100,7 @@
         $theme = $node->user->statusTheme();
     @endphp
     <div data-node-adn="{{ $node->adn }}" data-node-id="{{ $node->id }}" data-node-card
-        class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-2 py-2 text-center min-w-[150px] max-w-[168px] shadow-sm transition-shadow">
+        class="relative rounded-xl border {{ $theme['border'] }} {{ $theme['bg'] }} {{ $isSelf ? 'ring-2 ring-brand-300' : '' }} px-2 py-2 text-center w-max min-w-[150px] max-w-[168px] shadow-sm transition-shadow">
         @include('tree._purchase-mark', ['state' => $cardStats['purchase_state'] ?? null])
         {{-- Status dot moved to top-LEFT so the 3-dots "more actions" menu
              can occupy the top-RIGHT corner, which is the conventional
@@ -227,63 +278,34 @@
         @endif
     </div>
 
-    @if($renderInlineChildren)
-        {{-- Children row. Connectors:
-             container::before — vertical from parent's bottom down to the horizontal (h-4 ends EXACTLY at the horizontal)
-             container::after  — horizontal at top-4
-             column::before    — vertical from horizontal down to each child card --}}
-        <div class="relative pt-6 grid grid-cols-2 gap-0 w-full
-            before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-3 before:bg-slate-500
-            after:content-[''] after:absolute after:top-3 after:left-1/4 after:right-1/4 after:h-[2px] after:bg-slate-500">
+    @if($branching)
+    </div>{{-- /anchor --}}
 
-            {{-- px-{N} = horizontal padding around each child subtree. The
-                 grid is recursive, so this padding cascades: leaves at the
-                 deepest level get 2*N px between siblings; upper levels
-                 inherit additional whitespace because every ancestor wraps
-                 its children with the same padding, so two adjacent subtrees
-                 are separated by their own padding PLUS their children's
-                 padding all the way down. px-3 (12px each side, 24px gap)
-                 is the minimum that keeps the densest level (16 leaves at
-                 depth 4) from touching at 100% zoom. --}}
-            <div class="relative pt-3 flex justify-center {{ $childPad }}
-                before:content-[''] before:absolute before:top-[-0.75rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-6 before:bg-slate-500">
-                @if($left)
-                    @include('tree._binary-node', [
-                        'node'              => $left,
-                        'level'             => $level + 1,
-                        'maxDepth'          => $maxDepth,
-                        'childByParentSide' => $childByParentSide,
-                        'adminContext'      => $adminContext,
-                    ])
-                @else
-                    @include('tree._empty-slot', ['parent' => $node, 'side' => 'L'])
-                @endif
-            </div>
-
-            {{-- px-{N} = horizontal padding around each child subtree. The
-                 grid is recursive, so this padding cascades: leaves at the
-                 deepest level get 2*N px between siblings; upper levels
-                 inherit additional whitespace because every ancestor wraps
-                 its children with the same padding, so two adjacent subtrees
-                 are separated by their own padding PLUS their children's
-                 padding all the way down. px-3 (12px each side, 24px gap)
-                 is the minimum that keeps the densest level (16 leaves at
-                 depth 4) from touching at 100% zoom. --}}
-            <div class="relative pt-3 flex justify-center {{ $childPad }}
-                before:content-[''] before:absolute before:top-[-0.75rem] before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-6 before:bg-slate-500">
-                @if($right)
-                    @include('tree._binary-node', [
-                        'node'              => $right,
-                        'level'             => $level + 1,
-                        'maxDepth'          => $maxDepth,
-                        'childByParentSide' => $childByParentSide,
-                        'adminContext'      => $adminContext,
-                    ])
-                @else
-                    @include('tree._empty-slot', ['parent' => $node, 'side' => 'R'])
-                @endif
-            </div>
+    {{-- Children row. Connectors: the anchor's ::after drops from the card
+         to the junction; a leaf column draws its own half of the horizontal
+         (::after) and the drop to its card (::before); a branching child
+         draws both itself (stub + anchor ::before). px-{N} = horizontal
+         padding around each child subtree, deeper levels get more. --}}
+    @foreach(['L' => $left, 'R' => $right] as $childSide => $child)
+        @php $childBranches = $childSide === 'L' ? $leftBranches : $rightBranches; @endphp
+        <div class="row-start-2 {{ $childSide === 'L' ? 'col-start-1' : 'col-start-2' }} relative flex justify-center {{ $childPad }}
+            {{ $childBranches ? '' : "pt-3 before:content-[''] before:absolute before:top-0 before:left-1/2 before:-translate-x-1/2 before:w-[2px] before:h-3 before:bg-slate-500 after:content-[''] after:absolute after:top-0 after:h-[2px] after:bg-slate-500" }}
+            {{ $childBranches ? '' : ($childSide === 'L' ? 'after:left-1/2 after:right-0' : 'after:left-0 after:right-1/2') }}">
+            @if($child)
+                @include('tree._binary-node', [
+                    'node'              => $child,
+                    'level'             => $level + 1,
+                    'maxDepth'          => $maxDepth,
+                    'childByParentSide' => $childByParentSide,
+                    'adminContext'      => $adminContext,
+                    'branchSide'        => $childSide,
+                    'parentPad'         => $childPad,
+                ])
+            @else
+                @include('tree._empty-slot', ['parent' => $node, 'side' => $childSide])
+            @endif
         </div>
+    @endforeach
     @elseif($showLeafHoverEmpties)
         {{-- Hover-only invite affordance, absolute-positioned so layout stays
              stable. The popover's open/close is driven by JS in binary.blade.php
