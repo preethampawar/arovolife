@@ -11,7 +11,7 @@ use App\Modules\Genealogy\Services\DTOs\PlacementResult;
 use App\Modules\Genealogy\Services\Exceptions\CrossLinePlacementError;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Models\User;
-use App\Modules\Identity\Notifications\SpouseActivationNotification;
+use App\Modules\Identity\Notifications\AccountActivationNotification;
 use App\Modules\Identity\Notifications\WelcomeLetterNotification;
 use App\Modules\Identity\Services\RegistrationService;
 use Illuminate\Database\DatabaseManager;
@@ -312,10 +312,10 @@ final class AdminCreateDistributorAction
         $this->db->connection()->afterCommit(function () use ($userId, $primaryFullName, $primaryAdn, $sendWelcomeLetter): void {
             $u = User::query()->find($userId);
             if ($u !== null) {
-                Notification::send($u, new SpouseActivationNotification(
+                Notification::send($u, new AccountActivationNotification(
                     userId: $userId,
-                    primaryFullName: $primaryFullName,
-                    primaryAdn: $primaryAdn,
+                    fullName: $primaryFullName,
+                    adn: $primaryAdn,
                 ));
                 if ($sendWelcomeLetter) {
                     Notification::send($u, new WelcomeLetterNotification(

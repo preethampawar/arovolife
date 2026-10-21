@@ -6,8 +6,13 @@
 <div class="max-w-md mx-auto py-12">
     <h1 class="text-2xl font-bold mb-2">Activate your account</h1>
     <p class="text-sm text-gray-600 mb-6">
+        @if($isCoDistributor)
         Welcome, {{ $user->full_name ?? $user->email }}. You've been listed as a co-distributor on
         an arovolife couple registration. Set a password below to activate your account.
+        @else
+        Welcome, {{ $user->full_name ?? $user->email }}. Set a password below to activate your
+        arovolife account.
+        @endif
     </p>
 
     @if($errors->any())

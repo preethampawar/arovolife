@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Notifications\AccountActivationNotification;
 use App\Modules\Identity\Notifications\SpouseActivationNotification;
 use App\Modules\Identity\Notifications\WelcomeLetterNotification;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\URL;
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
 /**
- * ADC-01 .. ADC-07 — admin-driven distributor creation. The admin enters
+ * ADC-01 .. ADC-09 — admin-driven distributor creation. The admin enters
  * everything the prospect handed them on paper; the action wires it
  * through PlacementEngine, opens cooling-off, attests orientation +
  * consent on the prospect's behalf, and emails a magic-link activation
@@ -24,6 +26,8 @@ uses(RefreshDatabase::class);
  * ADC-05: the welcome letter is sent when the admin leaves the box ticked
  * ADC-06: unticking the box sends only the activation link
  * ADC-07: the create form shows the welcome-letter box ticked by default
+ * ADC-08: the activation email addresses the account holder and always states free joining and cooling-off
+ * ADC-09: the activation page shows couple wording only to the secondary of a couple
  */
 function adcSeedSponsor(): int
 {
@@ -207,7 +211,7 @@ it('ADC-03: duplicate PAN rejected via dedup guard', function (): void {
     expect(DB::table('distributors')->count())->toBe($countAfterFirst);
 });
 
-it('ADC-04: created user has password_set_at=null and receives a spouse-activation magic link', function (): void {
+it('ADC-04: created user has password_set_at=null and receives an account-activation magic link', function (): void {
     Notification::fake();
 
     $sponsorId = adcSeedSponsor();
@@ -225,9 +229,10 @@ it('ADC-04: created user has password_set_at=null and receives a spouse-activati
         ->and($newUser->password_set_at)->toBeNull()
         ->and($newUser->status)->toBe('pending');
 
-    // Magic-link notification dispatched (same flow as spouse activation
-    // — gates on password_set_at IS NULL).
-    Notification::assertSentTo($newUser, SpouseActivationNotification::class);
+    // Magic-link notification dispatched (same signed route as spouse
+    // activation — gates on password_set_at IS NULL), never the couple copy.
+    Notification::assertSentTo($newUser, AccountActivationNotification::class);
+    Notification::assertNotSentTo($newUser, SpouseActivationNotification::class);
 });
 
 it('ADC-05: the welcome letter is sent when the admin leaves the box ticked', function (): void {
@@ -244,7 +249,7 @@ it('ADC-05: the welcome letter is sent when the admin leaves the box ticked', fu
 
     $newUser = User::where('email', $payload['email'])->firstOrFail();
     $adn = (string) DB::table('distributors')->where('user_id', $newUser->id)->value('adn');
-    Notification::assertSentTo($newUser, SpouseActivationNotification::class);
+    Notification::assertSentTo($newUser, AccountActivationNotification::class);
     Notification::assertSentTo($newUser, WelcomeLetterNotification::class, fn (WelcomeLetterNotification $n): bool => $n->adn === $adn);
 });
 
@@ -260,7 +265,7 @@ it('ADC-06: unticking the box sends only the activation link', function (): void
         ->assertRedirect();
 
     $newUser = User::where('email', $payload['email'])->firstOrFail();
-    Notification::assertSentTo($newUser, SpouseActivationNotification::class);
+    Notification::assertSentTo($newUser, AccountActivationNotification::class);
     Notification::assertNotSentTo($newUser, WelcomeLetterNotification::class);
 });
 
@@ -272,4 +277,43 @@ it('ADC-07: the create form shows the welcome-letter box ticked by default', fun
         ->assertSeeHtml('<input type="hidden" name="send_welcome_letter" value="0">');
 
     expect(preg_match('/name="send_welcome_letter" value="1"\\s+checked/', $response->getContent()))->toBe(1);
+});
+
+it('ADC-08: the activation email addresses the account holder and always states free joining and cooling-off', function (): void {
+    $user = adcAdmin();
+    $html = (string) (new AccountActivationNotification(userId: $user->id, fullName: 'Ravi Kumar', adn: '123456789'))
+        ->toMail($user)
+        ->render();
+
+    expect($html)->toContain('Dear Ravi Kumar,')
+        ->and($html)->toContain('123456789')
+        ->and($html)->toContain('Registration is free of charge.')
+        ->and($html)->toContain('30-day cooling-off period')
+        ->and($html)->toContain('/activate/')
+        ->and($html)->not->toContain('co-distributor');
+});
+
+it('ADC-09: the activation page shows couple wording only to the secondary of a couple', function (): void {
+    Notification::fake();
+
+    $sponsorId = adcSeedSponsor();
+    $sponsorAdn = (string) DB::table('distributors')->where('id', $sponsorId)->value('adn');
+    $payload = adcValidPayload($sponsorAdn);
+    $this->actingAs(adcAdmin())
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.distributors.store'), $payload)
+        ->assertRedirect();
+    auth()->logout();
+
+    $newUser = User::where('email', $payload['email'])->firstOrFail();
+    $url = URL::temporarySignedRoute('spouse.activate.show', now()->addDay(), ['user' => $newUser->id]);
+
+    $this->get($url)->assertOk()
+        ->assertSee('Set a password below to activate your')
+        ->assertDontSee('co-distributor');
+
+    DB::table('distributors')->where('user_id', $newUser->id)
+        ->update(['spouse_distributor_id' => $sponsorId, 'is_primary_couple' => 0]);
+
+    $this->get($url)->assertOk()->assertSee('co-distributor');
 });

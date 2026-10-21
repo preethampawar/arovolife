@@ -35,7 +35,14 @@ final class SpouseActivationController extends Controller
                 ->with('status', 'This account is already active. Please sign in with your password.');
         }
 
-        return view('auth.spouse-activate', ['user' => $u]);
+        // The same signed page activates admin-registered distributors, so the
+        // couple wording is shown only to the secondary of a couple.
+        $isCoDistributor = $u->distributor()
+            ->where('is_primary_couple', false)
+            ->whereNotNull('spouse_distributor_id')
+            ->exists();
+
+        return view('auth.spouse-activate', ['user' => $u, 'isCoDistributor' => $isCoDistributor]);
     }
 
     public function submit(Request $request, int $user): RedirectResponse
