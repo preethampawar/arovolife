@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Notifications\SpouseActivationNotification;
+use App\Modules\Identity\Notifications\WelcomeLetterNotification;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -14,11 +15,15 @@ use Spatie\Permission\Models\Role;
 uses(RefreshDatabase::class);
 
 /**
- * ADC-01 .. ADC-04 — admin-driven distributor creation. The admin enters
+ * ADC-01 .. ADC-07 — admin-driven distributor creation. The admin enters
  * everything the prospect handed them on paper; the action wires it
  * through PlacementEngine, opens cooling-off, attests orientation +
  * consent on the prospect's behalf, and emails a magic-link activation
  * URL so the prospect can set their own password.
+ *
+ * ADC-05: the welcome letter is sent when the admin leaves the box ticked
+ * ADC-06: unticking the box sends only the activation link
+ * ADC-07: the create form shows the welcome-letter box ticked by default
  */
 function adcSeedSponsor(): int
 {
@@ -223,4 +228,48 @@ it('ADC-04: created user has password_set_at=null and receives a spouse-activati
     // Magic-link notification dispatched (same flow as spouse activation
     // — gates on password_set_at IS NULL).
     Notification::assertSentTo($newUser, SpouseActivationNotification::class);
+});
+
+it('ADC-05: the welcome letter is sent when the admin leaves the box ticked', function (): void {
+    Notification::fake();
+
+    $sponsorAdn = (string) DB::table('distributors')->where('id', adcSeedSponsor())->value('adn');
+    $payload = adcValidPayload($sponsorAdn) + ['send_welcome_letter' => '1'];
+
+    $this->actingAs(adcAdmin())
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.distributors.store'), $payload)
+        ->assertRedirect()
+        ->assertSessionHas('status', fn (string $status): bool => str_contains($status, 'welcome letter'));
+
+    $newUser = User::where('email', $payload['email'])->firstOrFail();
+    $adn = (string) DB::table('distributors')->where('user_id', $newUser->id)->value('adn');
+    Notification::assertSentTo($newUser, SpouseActivationNotification::class);
+    Notification::assertSentTo($newUser, WelcomeLetterNotification::class, fn (WelcomeLetterNotification $n): bool => $n->adn === $adn);
+});
+
+it('ADC-06: unticking the box sends only the activation link', function (): void {
+    Notification::fake();
+
+    $sponsorAdn = (string) DB::table('distributors')->where('id', adcSeedSponsor())->value('adn');
+    $payload = adcValidPayload($sponsorAdn) + ['send_welcome_letter' => '0'];
+
+    $this->actingAs(adcAdmin())
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.distributors.store'), $payload)
+        ->assertRedirect();
+
+    $newUser = User::where('email', $payload['email'])->firstOrFail();
+    Notification::assertSentTo($newUser, SpouseActivationNotification::class);
+    Notification::assertNotSentTo($newUser, WelcomeLetterNotification::class);
+});
+
+it('ADC-07: the create form shows the welcome-letter box ticked by default', function (): void {
+    $response = $this->actingAs(adcAdmin())
+        ->get(route('admin.distributors.create'))
+        ->assertOk()
+        ->assertSee('Send the welcome letter')
+        ->assertSeeHtml('<input type="hidden" name="send_welcome_letter" value="0">');
+
+    expect(preg_match('/name="send_welcome_letter" value="1"\\s+checked/', $response->getContent()))->toBe(1);
 });

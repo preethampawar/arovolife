@@ -12,6 +12,7 @@ use App\Modules\Genealogy\Services\Exceptions\CrossLinePlacementError;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Notifications\SpouseActivationNotification;
+use App\Modules\Identity\Notifications\WelcomeLetterNotification;
 use App\Modules\Identity\Services\RegistrationService;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Facades\Crypt;
@@ -260,6 +261,7 @@ final class AdminCreateDistributorAction
                         // periodic compliance report.
                         'admin_attested_orientation' => true,
                         'admin_attested_consent' => true,
+                        'send_welcome_letter' => (bool) ($input['send_welcome_letter'] ?? false),
                         // Snapshot of what the admin submitted (minus
                         // secrets) so the audit trail is self-contained.
                         'submission_snapshot' => [
@@ -305,7 +307,9 @@ final class AdminCreateDistributorAction
         $primaryAdn = (string) $this->db->table('distributors')
             ->where('id', $result->distributorId)
             ->value('adn');
-        $this->db->connection()->afterCommit(function () use ($userId, $primaryFullName, $primaryAdn): void {
+        // The welcome letter is opt-out: the admin form's box is ticked by default.
+        $sendWelcomeLetter = (bool) ($input['send_welcome_letter'] ?? false);
+        $this->db->connection()->afterCommit(function () use ($userId, $primaryFullName, $primaryAdn, $sendWelcomeLetter): void {
             $u = User::query()->find($userId);
             if ($u !== null) {
                 Notification::send($u, new SpouseActivationNotification(
@@ -313,6 +317,12 @@ final class AdminCreateDistributorAction
                     primaryFullName: $primaryFullName,
                     primaryAdn: $primaryAdn,
                 ));
+                if ($sendWelcomeLetter) {
+                    Notification::send($u, new WelcomeLetterNotification(
+                        adn: $primaryAdn,
+                        fullName: $primaryFullName,
+                    ));
+                }
             }
         });
 

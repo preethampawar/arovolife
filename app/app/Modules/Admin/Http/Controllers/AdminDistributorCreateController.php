@@ -86,6 +86,7 @@ final class AdminDistributorCreateController extends Controller
             'bank_ifsc' => ['nullable', 'regex:/^[A-Z]{4}0[A-Z0-9]{6}$/', 'required_with:bank_account'],
 
             'state' => ['required', 'in:'.implode(',', array_keys(AdminDistributorEditController::indianStates()))],
+            'send_welcome_letter' => ['sometimes', 'boolean'],
         ], [
             'sponsor_adn.regex' => 'Sponsor ADN must be 9 digits (optionally followed by -S).',
             'placement_adn.regex' => 'Placement ADN must be 9 digits (optionally followed by -S).',
@@ -105,12 +106,15 @@ final class AdminDistributorCreateController extends Controller
         // canonical actor address. (The action takes this from $input so
         // it stays testable without needing a Request.)
         $validated['admin_ip'] = $request->ip();
+        $validated['send_welcome_letter'] = $request->boolean('send_welcome_letter');
 
         $adminId = (int) Auth::id();
         $result = $this->action->execute($validated, $adminId);
 
         return redirect()
             ->route('admin.distributors.show', $result->distributorId)
-            ->with('status', 'Distributor created. An activation link is queued to '.$validated['email'].' by email.');
+            ->with('status', 'Distributor created. An activation link'
+                .($validated['send_welcome_letter'] ? ' and the welcome letter are' : ' is')
+                .' queued to '.$validated['email'].' by email.');
     }
 }

@@ -159,6 +159,20 @@
         </div>
     </x-ui.card>
 
+    <x-ui.card padding="p-6">
+        <input type="hidden" name="send_welcome_letter" value="0">
+        <label class="flex items-start gap-3 text-sm text-gray-700" for="send_welcome_letter">
+            <input type="checkbox" id="send_welcome_letter" name="send_welcome_letter" value="1"
+                @checked(old('send_welcome_letter', '1') === '1')
+                class="mt-0.5 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+            <span>
+                <span class="font-medium text-gray-800">Send the welcome letter</span>
+                <x-help-tip text="Emails arovolife's welcome letter to the new distributor along with the activation link. Untick to send only the activation link." />
+                <span class="block text-xs text-gray-500 mt-0.5">Untick if this distributor should not receive the welcome letter.</span>
+            </span>
+        </label>
+    </x-ui.card>
+
     <div class="flex items-center gap-3">
         <x-ui.button >
             Create distributor
