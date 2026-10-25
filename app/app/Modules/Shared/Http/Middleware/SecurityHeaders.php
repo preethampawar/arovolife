@@ -91,17 +91,29 @@ final class SecurityHeaders
         ."form-action 'self'; "
         ."frame-ancestors 'none'";
 
+    /**
+     * Origins Google Analytics 4 needs (Google's published GA4 CSP list):
+     * gtag.js loads from googletagmanager.com and beacons to the regional
+     * google-analytics.com / analytics.google.com collectors. Image beacons
+     * are already covered by `img-src https:`.
+     */
+    private const GA_SCRIPT_SRC = 'https://*.googletagmanager.com';
+
+    private const GA_CONNECT_SRC = 'https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com';
+
     public function handle(Request $request, Closure $next): Response
     {
         /** @var Response $response */
         $response = $next($request);
 
+        $csp = match (true) {
+            $this->isPulseDashboard($request) => self::CSP_PULSE,
+            $this->isPayPage($request) => self::CSP_PAY,
+            default => self::CSP,
+        };
+
         $headers = [
-            'Content-Security-Policy' => match (true) {
-                $this->isPulseDashboard($request) => self::CSP_PULSE,
-                $this->isPayPage($request) => self::CSP_PAY,
-                default => self::CSP,
-            },
+            'Content-Security-Policy' => $this->withGoogleAnalytics($csp),
             'X-Frame-Options' => 'DENY',
             // Stops a browser second-guessing a declared content type, which
             // is how an uploaded file served as text/plain becomes script.
@@ -131,6 +143,23 @@ final class SecurityHeaders
         }
 
         return $response;
+    }
+
+    /**
+     * Widened only where the GA snippet can actually fire: an environment
+     * without GOOGLE_ANALYTICS_ID (dev, staging) keeps the strict policy.
+     */
+    private function withGoogleAnalytics(string $csp): string
+    {
+        if (empty(config('arovolife.analytics.google_id'))) {
+            return $csp;
+        }
+
+        return str_replace(
+            ["script-src 'self'", "connect-src 'self'"],
+            ["script-src 'self' ".self::GA_SCRIPT_SRC, "connect-src 'self' ".self::GA_CONNECT_SRC],
+            $csp,
+        );
     }
 
     private function isPayPage(Request $request): bool

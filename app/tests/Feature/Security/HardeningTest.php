@@ -15,6 +15,8 @@ declare(strict_types=1);
  * SEC-06: the scrubber is attached to every log channel, not just the file ones
  * SEC-07: password spraying across many accounts from one IP is capped
  * SEC-08: account creation and checkout are rate limited
+ * SEC-09: the CSP admits Google Analytics only where GA is configured
+ * SEC-10: the GA snippet never fires on a signed link
  */
 
 use App\Modules\Shared\Logging\PiiScrubberProcessor;
@@ -146,4 +148,28 @@ it('SEC-08: account creation and checkout are rate limited', function () {
         ->and($resolved->maxAttempts)->toBeGreaterThan(0)
         ->and($resolved->maxAttempts)->toBeLessThanOrEqual(60)
         ->and($resolved->decaySeconds)->toBeGreaterThanOrEqual(60);
+});
+
+it('SEC-09: the CSP admits Google Analytics only where GA is configured', function () {
+    config(['arovolife.analytics.google_id' => null]);
+    $strict = (string) $this->get('/')->headers->get('Content-Security-Policy');
+
+    config(['arovolife.analytics.google_id' => 'G-TEST123']);
+    $withGa = (string) $this->get('/')->headers->get('Content-Security-Policy');
+
+    // Without an ID the snippet never renders, so the policy stays strict.
+    expect($strict)->not->toContain('googletagmanager')
+        ->and($withGa)->toContain("script-src 'self' https://*.googletagmanager.com")
+        ->and($withGa)->toContain('https://*.google-analytics.com')
+        ->and($withGa)->toContain("frame-ancestors 'none'");
+});
+
+it('SEC-10: the GA snippet never fires on a signed link', function () {
+    // `signature` is a live activation / re-upload credential for up to 30
+    // days, and GA4 sends page_location — query string included — to Google.
+    config(['arovolife.analytics.google_id' => 'G-TEST123']);
+    $this->app['router']->get('/__ga_test', fn () => view('partials._google-analytics'))->middleware('web');
+
+    expect($this->get('/__ga_test')->getContent())->toContain('G-TEST123')
+        ->and($this->get('/__ga_test?expires=1&signature=abc')->getContent())->not->toContain('G-TEST123');
 });

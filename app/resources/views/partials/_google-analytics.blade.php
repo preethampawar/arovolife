@@ -5,9 +5,12 @@
      and admin pages render PII we don't want sent to GA.
 
      INTENTIONALLY NOT included on auth/reset-password — the reset token is
-     in the URL path and GA4's page_location would ship it to Google. --}}
+     in the URL path and GA4's page_location would ship it to Google.
+     Skipped for the same reason on any signed link (account / spouse
+     activation, KYC re-upload): `signature` in the query string is a live
+     credential for up to 30 days. --}}
 @php $googleAnalyticsId = config('arovolife.analytics.google_id'); @endphp
-@if(!empty($googleAnalyticsId))
+@if(!empty($googleAnalyticsId) && ! request()->has('signature'))
 <script>
 (function () {
     'use strict';
