@@ -16,7 +16,7 @@ We will keep your personal information private. You will be informed about these
 
 ## III. Use of Cookies
 
-Cookies are small pieces of information that are stored on computer hard drives. We may use cookies to recognize you when you return to the Website in order to provide you with a better user experience. We may allow third parties to use cookies on the Website. We do not control the use or contents of third party cookies. If you elect to block cookies, please note that you may not be able to take full advantage of the features and functions of the Website. You may accept or decline the cookies when you access the Website. It is your responsibility to set your browser to alert you to accept or to reject cookies.
+Cookies are small pieces of information that are stored on computer hard drives. We may use cookies to recognize you when you return to the Website in order to provide you with a better user experience. We may allow third parties to use cookies on the Website. We do not control the use or contents of third party cookies. If you elect to block cookies, please note that you may not be able to take full advantage of the features and functions of the Website. You may decline cookies through your browser settings; to refuse Google Analytics, see §9. It is your responsibility to set your browser to alert you to accept or to reject cookies.
 
 ## IV. Data Transmission & Information Security
 
@@ -85,7 +85,7 @@ For privacy questions or to exercise any right described in §10, write to the D
 | Consent log | Acceptance of T&C / Ethics / Privacy / Returns / Compensation Plan with version, IP, timestamp, device fingerprint. |
 | Transactions (from Phase 2) | Orders placed, customer attributions, BV earned, commission credits, payouts, TDS deductions, GST invoices, returns and refunds. |
 | Communications | In-app messages, support tickets, grievances and their attachments. |
-| Behavioural | Login timestamps, IP addresses, device fingerprints, page-view analytics (first-party). |
+| Behavioural | Login timestamps, IP addresses, device fingerprints, page-view and usage analytics (collected by us and through Google Analytics — see §9). |
 
 ### 2.3 Received from third parties
 
@@ -105,7 +105,7 @@ We do not knowingly collect: data about minors, other than the name and relation
 
 Each category of processing is grounded in one or more of the lawful bases recognised by the DPDP Act:
 
-- **Consent** — for registration, marketing communications, optional analytics, retention of supporting documents beyond statutory minima. Consent is captured electronically, version-stamped, and revocable.
+- **Consent** — for registration, marketing communications, optional analytics (Google Analytics — which you can refuse at any time as described in §9), retention of supporting documents beyond statutory minima. Consent is captured electronically, version-stamped, and revocable; Google Analytics is not asked for in advance, and you refuse it as described in §9.
 - **Performance of contract** — for issuing your ADN, executing your orders, paying your commissions, processing returns and refunds, providing customer and Distributor support.
 - **Legal obligation** — for KYC under DSR 2021; for TDS reporting under the Income Tax Act; for GST invoicing under the CGST Act; for record retention under the Companies Act 2013, the Income Tax Act §44AA, and DSR 2021 Rule 12; for grievance redressal under DSR 2021 Rule 12.
 - **Legitimate use** under DPDP Act §7 — for fraud prevention, security incident response, internal audit and ensuring the integrity of the Genos (binary placement tree).
@@ -126,7 +126,7 @@ We process your personal data for:
 5b. **Moderation of reported messages** — where you report a message you have received, reading that message and up to three messages either side of it in the same conversation, so that we can judge it in context; recording the report, our decision and the reason for it. Only the Operations and Compliance staff who handle grievances can do this, every time one of them opens a report it is written to the audit log, and the message itself is never edited or deleted by us. We do **not** read, scan or index private messages that nobody has reported, and no such scanning is planned. Both people in the conversation are told, on the compose screen, that a message can be reported and read this way.
 6. **Fraud prevention and security** — detecting account compromise, surrogate selling, ghost placements, BV manipulation, payment fraud, and abuse of the platform.
 7. **Statutory reporting** — filings with Income Tax, GST authorities, MCA, and consumer-protection authorities.
-8. **Platform improvement** — first-party analytics on aggregate, pseudonymised usage; bug diagnostics; performance tuning.
+8. **Platform improvement** — analytics on aggregate, pseudonymised usage, including through Google Analytics (§9); bug diagnostics; performance tuning.
 8a. **Anniversary greetings** — if you give your wedding anniversary date, using it only to send you an anniversary greeting. It is optional, is never used to decide eligibility, rank, income or placement, is never used to target offers at you, and is never shared with other Distributors or third parties. You can change or remove it at any time from My Profile.
 8b. **arovolife Family Card** — if you add family members on My Profile, keeping their name and relation to you only to register them as family members on your arovolife Family Card. The card shows only "1 + 5 family members", never their names. The card is not an insurance policy and gives no health cover, treatment or payment. Family members' data is optional, is never used to decide eligibility, rank, income or placement, is never used to target offers, and is never shared with other Distributors or third parties. You confirm each family member has agreed; for a child, you consent as their parent or guardian. A family member may ask us directly, at `support@arovolife.com`, to erase their details.
 9. **Marketing** (only with consent and only after Phase 4 when the marketing module ships) — sending Distributor-only programme updates, product launches and ethics reminders.
@@ -151,6 +151,7 @@ We do not use your data for any other purpose without obtaining fresh consent.
 | Family members for the Family Card | until you (or the family member, by asking us) remove them, and in any case deleted on termination of your ADN; a child's details are deleted after the year they turn 18 | Purpose limitation and minimisation under DPDP Act §4, §8(7); consent for a child does not extend to the adult, §9. |
 | Marketing contact data after opt-out | **purged within 30 days** of opt-out | DPDP Act §6, §13. |
 | Cookies (first-party, technical) | session or up to **12 months** | See §9. |
+| Google Analytics cookies, and the usage data Google holds for us | cookies up to **24 months**; usage data up to **14 months** | Minimisation under DPDP Act §4. See §9. |
 
 After the retention period expires, data is purged from production systems within 90 days. Backups are rotated such that residual copies do not exceed retention by more than the backup window (currently 35 days).
 
@@ -201,6 +202,7 @@ We share personal data only with the categories of recipients listed below, only
 | Statutory authorities (Income Tax, GST, MCA, consumer authorities, courts) | Compliance with law | As required by the specific order or filing. |
 | Your sponsor and the Distributors above you in your Genos line (Distributors, not third parties) | Mentoring and coordinating product training within your line (§4 5a) | Name; ADN; KYC status; activation date; current and highest rank; accumulated personal BV. Never purchase history, bank details, PAN or Aadhaar. |
 | The Distributor who runs the Arete Development Centre you chose for collection (a Distributor, not a third party) | Receiving your parcel, identifying you and handing it over (§4 4a) | Name; mobile; order number. Never payment details, purchase history, or any other order. |
+| Web analytics provider (Google LLC — Google Analytics) | Measuring, in aggregate, how the website and platform are used (§9) | Pages viewed (the page's general address and title, with your ADN, order numbers and other identifiers removed — and nothing at all from the password-reset page or emailed activation and re-upload links); browser and device type; approximate location derived from your IP address; a random cookie identifier; the referring site. Never your name, ADN, PAN, Aadhaar, bank, order or KYC details. |
 | Professional advisors (auditors, tax, legal) | Internal audit, statutory audit, legal advice | The minimum necessary, under confidentiality agreement. |
 | Acquirer / successor entity in a merger or restructuring | Continuity of services | As legally required, with notice to Data Principals. |
 
@@ -208,7 +210,7 @@ We do **not** sell, rent or trade personal data. We do not share personal data f
 
 ## 8. International Transfers
 
-arovolife processes and stores personal data **within India**. No personal data is routinely transferred outside India. If a future transfer becomes necessary (e.g. for a global service the Government of India has not restricted), arovolife will (i) obtain your fresh consent or rely on another lawful basis, (ii) ensure adequate protection under the DPDP Act and the rules made under it, and (iii) update this Policy in advance.
+arovolife processes and stores personal data **within India**. No personal data is routinely transferred outside India, except the website-usage data described in §9, which Google may process on servers outside India. If a future transfer becomes necessary (e.g. for a global service the Government of India has not restricted), arovolife will (i) obtain your fresh consent or rely on another lawful basis, (ii) ensure adequate protection under the DPDP Act and the rules made under it, and (iii) update this Policy in advance.
 
 ## 9. Cookies & Analytics
 
@@ -216,9 +218,9 @@ arovolife uses cookies and equivalent technologies for:
 
 - **Strictly necessary** — session management, security, CSRF protection. Cannot be disabled; they are required for the platform to function.
 - **Preference** — remembering your last-used language, your dashboard layout, and similar non-personal preferences.
-- **Analytics (first-party)** — aggregated, pseudonymised page-view and performance metrics used to improve the platform. We do not embed third-party analytics scripts that build cross-site profiles.
+- **Analytics** — we use **Google Analytics**, a service of Google LLC, to see in aggregate how visitors use the website and platform (which pages are visited, from what kind of device, and roughly where from), so that we can improve it. Google Analytics sets cookies on our domain (`_ga`, `_ga_*`) and sends the usage data listed in §7 to Google. We send Google the general address of each page, with your ADN, order numbers and other identifiers removed. We have turned off Google signals and advertising personalisation, we do not use this data for advertising, and we have not linked Google Analytics to any advertising service. Google Analytics is not loaded on the admin console, on the password-reset page, or on any emailed activation or re-upload link. You can stop it by blocking these cookies in your browser, by sending a "do-not-track" signal, or with Google's opt-out add-on at https://tools.google.com/dlpage/gaoptout.
 
-You can clear cookies in your browser at any time. Strictly necessary cookies will be re-issued on next visit; analytics cookies respect the "do-not-track" header where sent.
+You can clear cookies in your browser at any time. Strictly necessary cookies will be re-issued on next visit; Google Analytics does not load at all when your browser sends a "do-not-track" signal.
 
 We do not use third-party advertising cookies. We do not place pixels for cross-site advertising partners.
 
