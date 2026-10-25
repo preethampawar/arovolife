@@ -14,12 +14,26 @@
      not `/tree/ARV00012345`. ADNs, order numbers and cart codes travel in our
      paths, and Privacy Policy §7 promises they never reach Google. A page
      whose route has parameters sends the pattern as its title too, since a
-     title can repeat what the path carries. --}}
+     title can repeat what the path carries.
+
+     The one exception is a public catalogue or policy page: its slug names a
+     company product or document, never a person, so the real slug and title
+     are sent and each product reports as its own page. Add a route here only
+     if every one of its parameters is company content. --}}
 @php
     $googleAnalyticsId = config('arovolife.analytics.google_id');
     $gaRoute = request()->route();
-    $gaPath = $gaRoute !== null ? '/'.ltrim($gaRoute->uri(), '/') : '/(not-found)';
-    $gaTitle = ($gaRoute === null || $gaRoute->parameterNames() !== []) ? $gaPath : null;
+    $gaPublicParams = ['shop.product' => ['slug'], 'content.show' => ['slug']];
+    $gaPath = '/(not-found)';
+    $gaTitle = $gaPath;
+    if ($gaRoute !== null) {
+        $gaKept = $gaPublicParams[$gaRoute->getName()] ?? [];
+        $gaPath = '/'.ltrim($gaRoute->uri(), '/');
+        foreach ($gaKept as $gaParam) {
+            $gaPath = str_replace('{'.$gaParam.'}', rawurlencode((string) $gaRoute->originalParameter($gaParam)), $gaPath);
+        }
+        $gaTitle = array_diff($gaRoute->parameterNames(), $gaKept) !== [] ? $gaPath : null;
+    }
 @endphp
 @if(!empty($googleAnalyticsId) && ! request()->has('signature'))
 <script>

@@ -18,6 +18,7 @@ declare(strict_types=1);
  * SEC-09: the CSP admits Google Analytics only where GA is configured
  * SEC-10: the GA snippet never fires on a signed link
  * SEC-11: GA is sent the route pattern, never the ADN or order number in the path
+ * SEC-12: a public product page keeps its slug and title, so products report separately
  */
 
 use App\Modules\Shared\Logging\PiiScrubberProcessor;
@@ -185,4 +186,17 @@ it('SEC-11: GA is sent the route pattern, never the ADN or order number in the p
 
     expect($html)->toContain(json_encode('/__ga_test/{adn}'))
         ->and($html)->not->toContain('ARV00012345');
+});
+
+it('SEC-12: a public product page keeps its slug and title, so products report separately', function () {
+    // A product slug names company content, not a person, so it is the one
+    // kind of path parameter allowed through to Google.
+    config(['arovolife.analytics.google_id' => 'G-TEST123']);
+    $this->app['router']->get('/__ga_shop/{slug}', fn () => view('partials._google-analytics'))
+        ->middleware('web')->name('shop.product');
+
+    $html = (string) $this->get('/__ga_shop/aloe-vera-gel')->getContent();
+
+    expect($html)->toContain(json_encode('/__ga_shop/aloe-vera-gel'))
+        ->and($html)->toContain('var GA_TITLE = null;');
 });
