@@ -8,7 +8,7 @@
     @php
     // R-75 / QA F53: the Wednesday-to-Tuesday payout week and the 8th-of-month
     // monthly run are plan disclosures. While the `compensation` policy page is
-    // held back for the DSA §6.2 30-day notice, no distributor surface may state
+    // unpublished (it goes live only by name, R-75), no distributor surface may state
     // them — a tooltip that says what the unpublished page has not yet said is
     // the same disclosure by another route. Falls back to the cadence that is
     // already published.

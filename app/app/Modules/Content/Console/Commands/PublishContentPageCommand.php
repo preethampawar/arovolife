@@ -14,8 +14,8 @@ use Illuminate\Console\Command;
  *
  * `db:seed --class=ContentPageSeeder` rewrites the body of *every* policy page,
  * and the pages do not share a publication gate: the payout-week wording in
- * `compensation.md` is held by R-75 until the DSA §6.2 30-day notice has run,
- * while a privacy-notice amendment may need to go out immediately. Publishing
+ * `compensation.md` is held by R-75 until the plan-change notice is ready to start (R-123),
+ * while a privacy-notice amendment may need to go out on its own. Publishing
  * all five to ship one is how an un-notified material amendment reaches
  * distributors as a side effect of an unrelated fix.
  *
