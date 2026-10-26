@@ -16,7 +16,7 @@ We will keep your personal information private. You will be informed about these
 
 ## III. Use of Cookies
 
-Cookies are small pieces of information that are stored on computer hard drives. We may use cookies to recognize you when you return to the Website in order to provide you with a better user experience. The only third-party cookies on the Website are those of Google Analytics, and they are set only if you choose "Allow analytics" in our cookie banner (see §9). If you elect to block cookies, please note that you may not be able to take full advantage of the features and functions of the Website.
+Cookies are small pieces of information that are stored on computer hard drives. We may use cookies to recognize you when you return to the Website in order to provide you with a better user experience. We may allow third parties to use cookies on the Website. We do not control the use or contents of third party cookies. If you elect to block cookies, please note that you may not be able to take full advantage of the features and functions of the Website. You may decline cookies through your browser settings; to refuse Google Analytics, see §9. It is your responsibility to set your browser to alert you to accept or to reject cookies.
 
 ## IV. Data Transmission & Information Security
 
@@ -32,7 +32,7 @@ We may employ vendors to perform functions on our behalf, such as fulfilling ord
 
 ## VII. Transfer of Information
 
-You hereby acknowledge & accept that the information you provide to us or that we obtain as a result of your use of the Website may be collected in your country and subsequently transferred to another country in accordance with applicable laws. If you do not want to disclose your personal information to us, please do not submit it. This does mean that in some cases, we may not be able to provide you the service you have requested. The use of this Website & the provision of information from your side demonstrates your consent to the processing of information as described in these Terms, except Google Analytics, which is used only if you choose "Allow analytics" (see §9).
+You hereby acknowledge & accept that the information you provide to us or that we obtain as a result of your use of the Website may be collected in your country and subsequently transferred to another country in accordance with applicable laws. If you do not want to disclose your personal information to us, please do not submit it. This does mean that in some cases, we may not be able to provide you the service you have requested. The use of this Website & the provision of information from your side demonstrates your consent to the processing of information as described in these Terms.
 
 ## VIII. Modifications, Amendments & Changes to the Policy
 
@@ -105,7 +105,7 @@ We do not knowingly collect: data about minors, other than the name and relation
 
 Each category of processing is grounded in one or more of the lawful bases recognised by the DPDP Act:
 
-- **Consent** — for registration, marketing communications, optional analytics (Google Analytics — used only if you choose "Allow analytics" in our cookie banner, and withdrawable at any time through "Cookie settings" at the foot of any page; see §9), retention of supporting documents beyond statutory minima. Consent is captured electronically, version-stamped, and revocable. Your Google Analytics choice is kept only in a cookie in your browser (`arovo_analytics_consent`); we do not keep a record of it on our servers, and if you clear your cookies we will ask again.
+- **Consent** — for registration, marketing communications, optional analytics (Google Analytics — which you can refuse at any time as described in §9), retention of supporting documents beyond statutory minima. Consent is captured electronically, version-stamped, and revocable; Google Analytics is not asked for in advance, and you refuse it as described in §9.
 - **Performance of contract** — for issuing your ADN, executing your orders, paying your commissions, processing returns and refunds, providing customer and Distributor support.
 - **Legal obligation** — for KYC under DSR 2021; for TDS reporting under the Income Tax Act; for GST invoicing under the CGST Act; for record retention under the Companies Act 2013, the Income Tax Act §44AA, and DSR 2021 Rule 12; for grievance redressal under DSR 2021 Rule 12.
 - **Legitimate use** under DPDP Act §7 — for fraud prevention, security incident response, internal audit and ensuring the integrity of the Genos (binary placement tree).
@@ -151,8 +151,7 @@ We do not use your data for any other purpose without obtaining fresh consent.
 | Family members for the Family Card | until you (or the family member, by asking us) remove them, and in any case deleted on termination of your ADN; a child's details are deleted after the year they turn 18 | Purpose limitation and minimisation under DPDP Act §4, §8(7); consent for a child does not extend to the adult, §9. |
 | Marketing contact data after opt-out | **purged within 30 days** of opt-out | DPDP Act §6, §13. |
 | Cookies (first-party, technical) | session or up to **12 months** | See §9. |
-| Google Analytics cookies, and the usage data Google holds for us | only if you allow them: cookies up to **24 months**, deleted from your browser when you withdraw; usage data up to **14 months** | Minimisation under DPDP Act §4. See §9. |
-| Your cookie choice (`arovo_analytics_consent`) | **12 months**, in your browser only | Records whether you allowed Google Analytics. See §9. |
+| Google Analytics cookies, and the usage data Google holds for us | cookies up to **24 months**; usage data up to **14 months** | Minimisation under DPDP Act §4. See §9. |
 
 After the retention period expires, data is purged from production systems within 90 days. Backups are rotated such that residual copies do not exceed retention by more than the backup window (currently 35 days).
 
@@ -203,7 +202,7 @@ We share personal data only with the categories of recipients listed below, only
 | Statutory authorities (Income Tax, GST, MCA, consumer authorities, courts) | Compliance with law | As required by the specific order or filing. |
 | Your sponsor and the Distributors above you in your Genos line (Distributors, not third parties) | Mentoring and coordinating product training within your line (§4 5a) | Name; ADN; KYC status; activation date; current and highest rank; accumulated personal BV. Never purchase history, bank details, PAN or Aadhaar. |
 | The Distributor who runs the Arete Development Centre you chose for collection (a Distributor, not a third party) | Receiving your parcel, identifying you and handing it over (§4 4a) | Name; mobile; order number. Never payment details, purchase history, or any other order. |
-| Web analytics provider (Google LLC — Google Analytics) — only if you allow Google Analytics | Measuring, in aggregate, how the website and platform are used (§9) | Pages viewed (the page's general address and title, with your ADN, order numbers and other identifiers removed — and nothing at all from the password-reset page or emailed activation and re-upload links); browser and device type; approximate location derived from your IP address; a random cookie identifier; the referring site. Never your name, ADN, PAN, Aadhaar, bank, order or KYC details. |
+| Web analytics provider (Google LLC — Google Analytics) | Measuring, in aggregate, how the website and platform are used (§9) | Pages viewed (the page's general address and title, with your ADN, order numbers and other identifiers removed — and nothing at all from the password-reset page or emailed activation and re-upload links); browser and device type; approximate location derived from your IP address; a random cookie identifier; the referring site. Never your name, ADN, PAN, Aadhaar, bank, order or KYC details. |
 | Professional advisors (auditors, tax, legal) | Internal audit, statutory audit, legal advice | The minimum necessary, under confidentiality agreement. |
 | Acquirer / successor entity in a merger or restructuring | Continuity of services | As legally required, with notice to Data Principals. |
 
@@ -211,17 +210,17 @@ We do **not** sell, rent or trade personal data. We do not share personal data f
 
 ## 8. International Transfers
 
-arovolife processes and stores personal data **within India**. No personal data is routinely transferred outside India, except, if you allow Google Analytics, the website-usage data described in §9, which Google may process on servers outside India. If a future transfer becomes necessary (e.g. for a global service the Government of India has not restricted), arovolife will (i) obtain your fresh consent or rely on another lawful basis, (ii) ensure adequate protection under the DPDP Act and the rules made under it, and (iii) update this Policy in advance.
+arovolife processes and stores personal data **within India**. No personal data is routinely transferred outside India, except the website-usage data described in §9, which Google may process on servers outside India. If a future transfer becomes necessary (e.g. for a global service the Government of India has not restricted), arovolife will (i) obtain your fresh consent or rely on another lawful basis, (ii) ensure adequate protection under the DPDP Act and the rules made under it, and (iii) update this Policy in advance.
 
 ## 9. Cookies & Analytics
 
 arovolife uses cookies and equivalent technologies for:
 
-- **Strictly necessary** — session management, security, CSRF protection, and the `arovo_analytics_consent` cookie that remembers your Google Analytics choice for 12 months. Cannot be disabled; they are required for the platform to function.
+- **Strictly necessary** — session management, security, CSRF protection. Cannot be disabled; they are required for the platform to function.
 - **Preference** — remembering your last-used language, your dashboard layout, and similar non-personal preferences.
-- **Analytics** — we use **Google Analytics**, a service of Google LLC, to see in aggregate how visitors use the website and platform (which pages are visited, from what kind of device, and roughly where from), so that we can improve it. Google Analytics sets cookies on our domain (`_ga`, `_ga_*`) and sends the usage data listed in §7 to Google. We send Google the general address of each page, with your ADN, order numbers and other identifiers removed. We have turned off Google signals and advertising personalisation, we do not use this data for advertising, and we have not linked Google Analytics to any advertising service. Google Analytics loads only after you choose "Allow analytics" in our cookie banner; if you choose "No thanks", or make no choice, it does not load and we delete any Google Analytics cookie already in your browser. You can change your choice at any time through "Cookie settings" at the foot of any page; when you withdraw, we stop Google Analytics and delete its cookies from your browser. Data already sent to Google is kept for up to 14 months and then deleted. Google Analytics is not loaded on the admin console, on the password-reset page, or on any emailed activation or re-upload link. It also does not load when your browser sends a "do-not-track" or Global Privacy Control signal, and you can block it with Google's opt-out add-on at https://tools.google.com/dlpage/gaoptout.
+- **Analytics** — we use **Google Analytics**, a service of Google LLC, to see in aggregate how visitors use the website and platform (which pages are visited, from what kind of device, and roughly where from), so that we can improve it. Google Analytics sets cookies on our domain (`_ga`, `_ga_*`) and sends the usage data listed in §7 to Google. We send Google the general address of each page, with your ADN, order numbers and other identifiers removed. We have turned off Google signals and advertising personalisation, we do not use this data for advertising, and we have not linked Google Analytics to any advertising service. Google Analytics is not loaded on the admin console, on the password-reset page, or on any emailed activation or re-upload link. You can stop it by blocking these cookies in your browser, by sending a "do-not-track" signal, or with Google's opt-out add-on at https://tools.google.com/dlpage/gaoptout.
 
-You can clear cookies in your browser at any time. Strictly necessary cookies will be re-issued on next visit. Clearing cookies also removes your Google Analytics choice, and the cookie banner will ask you again.
+You can clear cookies in your browser at any time. Strictly necessary cookies will be re-issued on next visit; Google Analytics does not load at all when your browser sends a "do-not-track" signal.
 
 We do not use third-party advertising cookies. We do not place pixels for cross-site advertising partners.
 
@@ -247,7 +246,7 @@ You may request a structured, commonly used, machine-readable copy of the person
 
 ### 10.5 Right to withdraw consent
 
-Where processing is based on consent, you may withdraw it at any time. The withdrawal does not invalidate processing that occurred before the withdrawal. Some withdrawals (e.g. withdrawal of consent for KYC) may make it impossible for us to continue providing the service; in that case the ADN is terminated under the Direct Seller Agreement. For Google Analytics, use "Cookie settings" at the foot of any page.
+Where processing is based on consent, you may withdraw it at any time. The withdrawal does not invalidate processing that occurred before the withdrawal. Some withdrawals (e.g. withdrawal of consent for KYC) may make it impossible for us to continue providing the service; in that case the ADN is terminated under the Direct Seller Agreement.
 
 ### 10.6 Right to nominate
 
@@ -288,4 +287,4 @@ This Policy is effective from the `Published` date displayed at the top of this 
 
 ---
 
-*Privacy Policy version: v2026-10-26. The current published version is always available at `/p/privacy`. Questions: `support@arovolife.com`.*
+*Privacy Policy version: v2026-10-11. The current published version is always available at `/p/privacy`. Questions: `support@arovolife.com`.*
