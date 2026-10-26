@@ -17,7 +17,6 @@ declare(strict_types=1);
  * PCN-10 the email skips agreed, terminated and reserved accounts, and does nothing with the flag OFF
  * PCN-11 the list shows only versions newer than the one the distributor accepted
  * PCN-12 the published page yields entries, newest first, and the newest matches the footer label
- * PCN-13 the earliest lawful start is the later of notice + 33 days and last email + 30 days
  * PCN-14 agreeing twice (two tabs, a double click) records one consent and sends one receipt
  * PCN-15 the notice is held when the text changed under a reused label, or has no readable change list
  * PCN-16 a failed email is recorded, counted as never reached, and retried on the next run
@@ -28,7 +27,6 @@ use App\Modules\Consent\Models\PlanChangeNotice;
 use App\Modules\Consent\Models\PlanTextVersion;
 use App\Modules\Consent\Notifications\PlanChangeAcceptedNotification;
 use App\Modules\Consent\Notifications\PlanChangeNoticeNotification;
-use App\Modules\Consent\Services\DTOs\NotifyUnreadSummary;
 use App\Modules\Consent\Services\PlanChangeNotices;
 use App\Modules\Content\Models\ContentPage;
 use App\Modules\Genealogy\Support\ReservedAdns;
@@ -296,17 +294,6 @@ it('PCN-12: the published page yields entries, newest first, and the newest matc
         // The block ends at the footer rule; nothing after it leaks into the last entry.
         ->and($entries[array_key_last($entries)]->html)->not->toContain('current version of this page')
         ->and($notices->entries('<p>No change list here.</p>'))->toBe([]);
-});
-
-it('PCN-13: the earliest lawful start is the later of notice + 33 days and last email + 30 days', function () {
-    $summary = fn (?string $lastEmail) => new NotifyUnreadSummary(
-        'v2026-10-27', Carbon::parse('2026-11-01 10:00:00'), null, 0, 0, 0, 0, [], 0, 0,
-        $lastEmail === null ? null : Carbon::parse($lastEmail),
-    );
-
-    expect($summary(null)->earliestStart()->toDateString())->toBe('2026-12-05')
-        ->and($summary('2026-11-04 10:00:00')->earliestStart()->toDateString())->toBe('2026-12-05')
-        ->and($summary('2026-11-10 09:00:00')->earliestStart()->toDateString())->toBe('2026-12-11');
 });
 
 it('PCN-14: agreeing twice records one consent and sends one receipt', function () {

@@ -12,8 +12,9 @@
                 The arovolife Compensation Plan has changed
             </h2>
             <p class="mt-2 text-sm text-gray-700">
-                We have changed the Compensation Plan. Please read the changes below. They start on the date written in the plan,
-                at least 30 days after we tell you about them. A change never applies to the past.
+                We have changed the Compensation Plan. Please read the changes below. These changes already apply. Each one applies from
+                the day after it was published on the plan page, unless it gives a later date, and only to sales and bonus periods from
+                then on. A change never applies to the past.
             </p>
         </div>
 
@@ -36,8 +37,8 @@
                     You can send it by email to <a href="mailto:{{ config('arovolife.support_email') }}">{{ config('arovolife.support_email') }}</a>
                     or through <a href="{{ url('/contact-us') }}">Contact us</a>,
                     or hand it in or send it by registered post to our registered office, as section 22 of the Agreement provides.
-                    Products you bought may be returned under the buy-back terms in section 8 of the Agreement.
-                    If you keep your account, these changes apply to you from their start date, even if you do not click "I have read the changes and agree".
+                    Products you bought may be returned in saleable condition within 30 days under the buy-back terms in section 8 of the Agreement.
+                    If you keep your account, these changes apply to you from the day they take effect, even if you do not click "I have read the changes and agree".
                     If you have a question or a complaint, use <a href="{{ url('/p/grievance') }}">Grievance Redressal</a>.
                 </p>
             </details>

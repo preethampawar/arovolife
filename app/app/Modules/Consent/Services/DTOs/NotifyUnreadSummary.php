@@ -7,12 +7,11 @@ namespace App\Modules\Consent\Services\DTOs;
 use Illuminate\Support\Carbon;
 
 /**
- * What one `plan:notify-unread` run found and did, plus the earliest date the
- * current plan text may lawfully take effect (plan page §12): no earlier than
- * 33 days after the notice started, and at least 30 days after the last
- * notice email was sent. It counts only distributors the notice reached:
- * `neverReached` must be 0 (or each one covered by the risk acceptance in
- * R-123) before a start date is written on the page.
+ * What one `plan:notify-unread` run found and did. A change takes effect from
+ * the start of the day after publication (IST), and for weekly/monthly bonuses
+ * from the next period (plan page §12, client requirement 2026-10-26), so these counts
+ * are the record of who was told: `neverReached` lists those the email has
+ * not reached and who have not agreed.
  */
 final class NotifyUnreadSummary
 {
@@ -38,33 +37,5 @@ final class NotifyUnreadSummary
     public static function idle(?string $blockedReason = null): self
     {
         return new self(null, null, null, 0, 0, 0, 0, [], 0, 0, null, 0, $blockedReason);
-    }
-
-    /** The first whole day the change may start on, or null while no notice has started. */
-    public function earliestStart(): ?Carbon
-    {
-        if ($this->noticeStartedAt === null) {
-            return null;
-        }
-
-        $earliest = self::nextWholeDay($this->noticeStartedAt->copy()->addDays(33));
-
-        if ($this->lastEmailedAt !== null) {
-            $afterEmail = self::nextWholeDay($this->lastEmailedAt->copy()->addDays(30));
-
-            if ($afterEmail->greaterThan($earliest)) {
-                $earliest = $afterEmail;
-            }
-        }
-
-        return $earliest;
-    }
-
-    /** The start of the day at or after the given moment, so no part-day counts as a day. */
-    private static function nextWholeDay(Carbon $moment): Carbon
-    {
-        return $moment->equalTo($moment->copy()->startOfDay())
-            ? $moment
-            : $moment->startOfDay()->addDay();
     }
 }

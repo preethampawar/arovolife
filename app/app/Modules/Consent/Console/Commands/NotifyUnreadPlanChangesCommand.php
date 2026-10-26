@@ -10,8 +10,8 @@ use Illuminate\Console\Command;
 /**
  * Emails the compensation-plan change notice to every distributor who has not
  * agreed to the published text three days after the notice started (plan page
- * §12, R-123), and prints the evidence counts and the earliest lawful start
- * date. Idempotent: each distributor is emailed once per plan text.
+ * §12, R-123), and prints the evidence counts. Idempotent: each distributor
+ * is emailed once per plan text.
  */
 final class NotifyUnreadPlanChangesCommand extends Command
 {
@@ -50,11 +50,10 @@ final class NotifyUnreadPlanChangesCommand extends Command
             ['Reserved company accounts not agreed (not emailed)', (string) $summary->reservedNotAccepted],
             ['Never reached (email failed, not agreed)', (string) $summary->neverReached],
             ['Last notice email', $summary->lastEmailedAt === null ? '—' : $format($summary->lastEmailedAt)],
-            ['Earliest start (reached distributors only)', $summary->earliestStart()?->format('d M Y') ?? '—'],
         ]);
 
         if ($summary->neverReached > 0) {
-            $this->warn('Do not write a start date on the plan page while "Never reached" is above 0, unless R-123 covers each one.');
+            $this->warn($summary->neverReached.' distributor(s) have not been reached by email and have not agreed — check their email addresses and follow up.');
         }
 
         if ($summary->failedAdns !== []) {

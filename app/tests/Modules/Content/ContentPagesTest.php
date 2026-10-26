@@ -185,18 +185,19 @@ it('ties the pooled methods and monthly bonuses to the plan start date in §12',
     expect($body)->not->toContain('EFFECTIVE DATE — TO BE INSERTED')
         ->and($body)->not->toContain('the date this plan opens to Distributors')
         ->and(substr_count($body, 'plan start date'))->toBeGreaterThanOrEqual(8)
-        // Real Distributors accepted v2026-10-17, so naming the date is an
-        // amendment and keeps the 30-day notice the page promises (R-123).
-        ->and($body)->toContain('at least 30 days after we send you the notice')
+        // A change takes effect on publication (client requirement
+        // 2026-10-26, R-123): the 30 days' prior notice is withdrawn.
+        ->and($body)->toContain('A change takes effect at the start of the day after it is published here')
+        ->and($body)->toContain('It applies only to sales made on or after the day it takes effect')
+        ->and($body)->toContain('That promise is withdrawn')
+        ->and($body)->not->toContain('may be amended only with')
+        ->and($body)->not->toContain('33 days')
         ->and($body)->toContain('No bonus of any kind is calculated or credited before the plan start date')
         // Notice is a pop-up on sign-in plus an email to anyone who has not
-        // confirmed in 3 days (user decision 2026-10-26); the written-notice
-        // promise the 60 accepted with v2026-10-17 stays in paragraph 1.
-        ->and($body)->toContain("30 days' prior written notice")
+        // confirmed in 3 days (user decision 2026-10-26).
         ->and($body)->toContain('How you are told about a change')
         ->and($body)->toContain('The next time you sign in, a message shows you the list of changes')
         ->and($body)->toContain('about the change, we email the same list')
-        ->and($body)->toContain('never earlier than 33 days after we publish it here')
         ->and($body)->toContain('support@arovolife.com')
         ->and($body)->toContain('Changes to this plan, by version')
         ->and($body)->not->toContain('meeting of Distributors')

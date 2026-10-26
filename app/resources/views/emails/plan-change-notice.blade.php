@@ -30,9 +30,9 @@
                 </p>
             @endforelse
 
-            <p style="margin: 18px 0 8px 0; font-size: 16px; line-height: 24px; font-weight: 700; color: #111827;">When the changes start</p>
+            <p style="margin: 18px 0 8px 0; font-size: 16px; line-height: 24px; font-weight: 700; color: #111827;">When the changes apply</p>
             <p style="margin: 0 0 14px 0; font-size: 14px; line-height: 22px; color: #374151;">
-                The changes start on the date written in the plan. That date is at least 30 days after the date of this email. A change never applies to the past.
+                These changes already apply. Each one applies from the day after it was published on the plan page, unless it gives a later date, and only to sales and bonus periods from then on. A change never applies to the past.
             </p>
 
             <p style="margin: 18px 0 8px 0; font-size: 16px; line-height: 24px; font-weight: 700; color: #111827;">What you can do</p>
@@ -48,7 +48,7 @@
             </ul>
 
             <p style="margin: 0 0 14px 0; font-size: 14px; line-height: 22px; color: #374151;">
-                If you keep your account, these changes apply to you from their start date, even if you do not click "I have read the changes and agree". If you have a question or a complaint, use Grievance Redressal:
+                If you keep your account, these changes apply to you from the day they take effect, even if you do not click "I have read the changes and agree". If you have a question or a complaint, use Grievance Redressal:
                 <a href="{{ url('/p/grievance') }}" style="color: #c46e0e;">{{ url('/p/grievance') }}</a>.
             </p>
 

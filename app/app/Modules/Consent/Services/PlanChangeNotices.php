@@ -99,7 +99,7 @@ final class PlanChangeNotices
     /**
      * The notice record for the published text, created the first time the
      * notice meets it while the flag is on. Its `notice_started_at` is the
-     * moment every §12 clock runs from.
+     * moment the 3-day email clock runs from.
      */
     public function currentVersion(): ?PlanTextVersion
     {
@@ -132,7 +132,8 @@ final class PlanChangeNotices
      * Why the published text must not be noticed, or null when it may be.
      *
      * A notice that lists nothing new is worse than none: it asks every
-     * distributor to agree again and restarts the §12 clock. So the notice
+     * distributor to agree again to a list that does not show the change.
+     * So the notice
      * holds — and the command says why — when the page has no version label,
      * when its change list cannot be read (the admin editor's purifier strips
      * headings), or when the text changed but kept a label an earlier text
