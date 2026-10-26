@@ -189,6 +189,16 @@ it('ties the pooled methods and monthly bonuses to the plan start date in §12',
         // amendment and keeps the 30-day notice the page promises (R-123).
         ->and($body)->toContain('at least 30 days before that date')
         ->and($body)->toContain('no bonus of any kind is calculated or credited before that date')
+        // The client explains the changes at a Distributors' meeting (2026-10-26),
+        // but the 60 who accepted v2026-10-17 hold a written-notice promise, so
+        // the meeting hands out a written notice and absentees are sent it.
+        ->and($body)->toContain("30 days' prior written notice")
+        ->and($body)->toContain('give every active Distributor written notice of it')
+        ->and($body)->toContain('The Company will also hold a meeting of Distributors')
+        ->and($body)->toContain('the Company will keep a record of who attended')
+        ->and($body)->toContain('A Distributor who does not attend will be sent the written notice individually')
+        ->and($body)->toContain('by registered post to the address on their account')
+        ->and($body)->not->toContain('by email and SMS')
         // The engines take the 10% repurchase share from Mentorship too.
         ->and($body)->toContain('GSB, Mentorship Bonus, Growth Booster, Rank Bonus and Fortune Bonus')
         ->and($body)->not->toContain('The Mentorship Bonus carries no repurchase deduction')
