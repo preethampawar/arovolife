@@ -19,6 +19,8 @@ declare(strict_types=1);
  * SEC-10: the GA snippet never fires on a signed link
  * SEC-11: GA is sent the route pattern, never the ADN or order number in the path
  * SEC-12: a public product page keeps its slug and title, so products report separately
+ * SEC-13: gtag.js loads only from the consent-gated loader, behind a banner
+ * SEC-14: no cookie banner where GA is absent — no GA id, password reset, signed links
  */
 
 use App\Modules\Shared\Logging\PiiScrubberProcessor;
@@ -199,4 +201,42 @@ it('SEC-12: a public product page keeps its slug and title, so products report s
 
     expect($html)->toContain(json_encode('/__ga_shop/aloe-vera-gel'))
         ->and($html)->toContain('var GA_TITLE = null;');
+});
+
+it('SEC-13: gtag.js loads only from the consent-gated loader, behind a banner', function () {
+    // DPDP Act §6: GA must wait for "Allow analytics". The loader is the only
+    // place gtag.js is injected, and only a stored "granted" calls it.
+    config(['arovolife.analytics.google_id' => 'G-TEST123']);
+    $html = (string) $this->get('/')->getContent();
+
+    $loader = strpos($html, 'function loadGa()');
+    $inject = strpos($html, 'googletagmanager.com/gtag/js');
+
+    expect($html)->toContain('<template id="arovo-cookie-banner">')
+        ->and($html)->toContain('data-cookie-choice="granted"')
+        ->and($html)->toContain('data-cookie-choice="denied"')
+        ->and(substr_count($html, 'googletagmanager.com/gtag/js'))->toBe(1)
+        ->and($loader)->not->toBeFalse()
+        ->and($inject)->toBeGreaterThan($loader)
+        ->and($html)->toMatch("/if \\(choice === 'granted'\\) \\{\\s*loadGa\\(\\);\\s*\\} else \\{\\s*deleteGaCookies\\(\\);/")
+        // The footer opener renders hidden; only the GA script reveals it.
+        ->and($html)->toContain('<span data-cookie-settings hidden');
+});
+
+it('SEC-14: no cookie banner where GA is absent — no GA id, password reset, signed links', function () {
+    config(['arovolife.analytics.google_id' => null]);
+    $withoutGa = (string) $this->get('/')->getContent();
+
+    config(['arovolife.analytics.google_id' => 'G-TEST123']);
+    $this->app['router']->get('/__ga_test', fn () => view('partials._google-analytics'))->middleware('web');
+    $signed = (string) $this->get('/__ga_test?expires=1&signature=abc')->getContent();
+    $reset = (string) $this->get(route('password.reset.show', ['token' => 'abc']))->getContent();
+
+    // The opener is still in the footer, but hidden and with no script to
+    // reveal it, so it never offers a choice that does nothing.
+    expect($withoutGa)->not->toContain('arovo-cookie-banner')
+        ->and($withoutGa)->toContain('<span data-cookie-settings hidden')
+        ->and($signed)->not->toContain('arovo-cookie-banner')
+        ->and($reset)->not->toContain('arovo-cookie-banner')
+        ->and($reset)->not->toContain('googletagmanager');
 });
