@@ -57,6 +57,10 @@ final class PlatformResetAction
         'job_batches',
         'failed_jobs',
         // Transactional / leaf rows
+        // Plan-change notice state: who was shown / emailed / agreed, and the
+        // clock per plan text. Both restart with the people they describe.
+        'plan_change_notices',
+        'plan_text_versions',
         'consents',
         'orientation_views',
         'cooling_off_events',

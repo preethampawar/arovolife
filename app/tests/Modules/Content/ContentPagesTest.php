@@ -187,17 +187,24 @@ it('ties the pooled methods and monthly bonuses to the plan start date in §12',
         ->and(substr_count($body, 'plan start date'))->toBeGreaterThanOrEqual(8)
         // Real Distributors accepted v2026-10-17, so naming the date is an
         // amendment and keeps the 30-day notice the page promises (R-123).
-        ->and($body)->toContain('at least 30 days before that date')
-        ->and($body)->toContain('no bonus of any kind is calculated or credited before that date')
-        // The client explains the changes at a Distributors' meeting (2026-10-26),
-        // but the 60 who accepted v2026-10-17 hold a written-notice promise, so
-        // the meeting hands out a written notice and absentees are sent it.
+        ->and($body)->toContain('at least 30 days after we send you the notice')
+        ->and($body)->toContain('No bonus of any kind is calculated or credited before the plan start date')
+        // Notice is a pop-up on sign-in plus an email to anyone who has not
+        // confirmed in 3 days (user decision 2026-10-26); the written-notice
+        // promise the 60 accepted with v2026-10-17 stays in paragraph 1.
         ->and($body)->toContain("30 days' prior written notice")
-        ->and($body)->toContain('give every active Distributor written notice of it')
-        ->and($body)->toContain('The Company will also hold a meeting of Distributors')
-        ->and($body)->toContain('the Company will keep a record of who attended')
-        ->and($body)->toContain('A Distributor who does not attend will be sent the written notice individually')
-        ->and($body)->toContain('by registered post to the address on their account')
+        ->and($body)->toContain('How you are told about a change')
+        ->and($body)->toContain('The next time you sign in, a message shows you the list of changes')
+        ->and($body)->toContain('about the change, we email the same list')
+        ->and($body)->toContain('never earlier than 33 days after we publish it here')
+        ->and($body)->toContain('support@arovolife.com')
+        ->and($body)->toContain('Changes to this plan, by version')
+        ->and($body)->not->toContain('meeting of Distributors')
+        // Registered post is only a way for the Distributor to reach us (DSA §22);
+        // we do not post notices out (risk accepted in R-123).
+        ->and($body)->toContain('send it by registered post to our registered office')
+        ->and($body)->not->toContain('we send the notice by registered post')
+        ->and($body)->toContain('Wording only (§8)')
         ->and($body)->not->toContain('by email and SMS')
         // The engines take the 10% repurchase share from Mentorship too.
         ->and($body)->toContain('GSB, Mentorship Bonus, Growth Booster, Rank Bonus and Fortune Bonus')

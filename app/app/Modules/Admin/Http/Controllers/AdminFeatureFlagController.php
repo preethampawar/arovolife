@@ -23,6 +23,7 @@ use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\MessagingFeature;
 use App\Modules\Shared\Features\OfflineOrdersFeature;
+use App\Modules\Shared\Features\PlanChangeNoticeFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RankProgressSnapshotFeature;
@@ -200,6 +201,13 @@ final class AdminFeatureFlagController extends Controller
                 'class' => AnnouncementsFeature::class,
                 'label' => 'Company announcements',
                 'description' => 'Lets the company address distributors directly — an admin writes an announcement, targets it at everyone or at one rank or account status, and it appears in the distributors\' announcements list and on the notification bell. Bodies are scanned by the public copy audit when saved, so an income claim is refused at authoring rather than after it has gone out. OFF leaves no trace: no menu item, no routes, no bell section.',
+                'owner' => 'developer',
+                'requires' => [],
+            ],
+            'content.plan_change_notice' => [
+                'class' => PlanChangeNoticeFeature::class,
+                'label' => 'Compensation plan change notice',
+                'description' => 'Plan page §12 (R-123). When /p/compensation changes, each distributor whose accepted plan text differs sees a pop-up after login listing the changes and can click "I have read the changes and agree" (recorded as a plan consent with the version and hash). plan:notify-unread emails the same notice to anyone who has not confirmed three days after the notice started. After this is ON, the notice clock for the published text starts at the first pop-up shown or the next 10:00 IST plan:notify-unread run (run the command to see the recorded start); a change may take effect no earlier than 33 days later, so publish the page and switch this on together. Every change to the page body needs a new footer version and a matching #### entry under "Changes to this plan, by version" — otherwise the notice is held and the command says why. OFF leaves no trace: no pop-up, no emails.',
                 'owner' => 'developer',
                 'requires' => [],
             ],

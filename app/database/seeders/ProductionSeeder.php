@@ -27,6 +27,7 @@ use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\MessagingFeature;
 use App\Modules\Shared\Features\OfflineOrdersFeature;
+use App\Modules\Shared\Features\PlanChangeNoticeFeature;
 use App\Modules\Shared\Features\PurchaseOffersFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RankProgressSnapshotFeature;
@@ -333,6 +334,7 @@ final class ProductionSeeder extends Seeder
             FaqLibraryFeature::class => true,
             RankProgressSnapshotFeature::class => true,
             PurchaseOffersFeature::class => false,
+            PlanChangeNoticeFeature::class => false,
             InventoryFeature::class => true,
             ActionCenterFeature::class => true,
         ];

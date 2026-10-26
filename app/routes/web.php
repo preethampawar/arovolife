@@ -80,6 +80,7 @@ use App\Modules\Compliance\Http\Controllers\CoolingOffController;
 use App\Modules\Compliance\Http\Controllers\PublicComplianceDocumentController;
 use App\Modules\Consent\Http\Controllers\ConsentRecordController;
 use App\Modules\Consent\Http\Controllers\ConsentWithdrawalController;
+use App\Modules\Consent\Http\Controllers\PlanChangeNoticeController;
 use App\Modules\Content\Http\Controllers\Admin\AdminAnnouncementController;
 use App\Modules\Content\Http\Controllers\Admin\AdminContentPageController;
 use App\Modules\Content\Http\Controllers\AnnouncementController;
@@ -1375,6 +1376,13 @@ Route::middleware(['auth', 'kyc.rejected.resubmit'])->group(function (): void {
 
     // Profile + change-password (any logged-in user; admins included).
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
+
+    // The plan-change pop-up's two buttons (plan page §12, R-123). The pop-up
+    // itself renders from a view composer; these only record the answer.
+    Route::post('/plan-changes/accept', [PlanChangeNoticeController::class, 'accept'])
+        ->middleware('throttle:10,1')->name('plan-changes.accept');
+    Route::post('/plan-changes/later', [PlanChangeNoticeController::class, 'later'])
+        ->middleware('throttle:30,1')->name('plan-changes.later');
 
     // The distributor's own record of what they agreed to (DPDP 2023 §5, §6).
     // A right to withdraw is hard to exercise against an agreement you cannot
