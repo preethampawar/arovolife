@@ -1,4 +1,4 @@
-<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-10-17 (removed the month-end repurchase-wallet condition from §7.2 and §8; added §11.2 Rank Bonus terms — rank conditions, qualifying again, the AO-GO offer and the two-pass pool; added §11.3 Growth Booster, §11.4 Arete Development Centre Bonus and §11.5 Lifetime Awards & Rewards; replaced the effective-date placeholders with the 8 November 2026 start; corrected the DSA citation from a non-existent §6.2 to §12 (Modification); previously v2026-09-17, which removed §11.1 Franchise commission; previously v2026-09-03, which amended §7.2 repurchase-wallet condition and §7.4 per-level maximums; previous v2026-08-07). START DATE: §5.4, §6.5, §7.6 and §11.2–§11.5 apply from 8 November 2026, the go-live date; change all seven if go-live moves. No pre-launch notice (user decision 2026-10-17: no Distributor exists before launch, so there is no one to notify; R-118). §12's 30-day notice still governs every amendment after launch. -->
+<!-- DRAFT — LEGAL REVIEW REQUIRED. This document is a working draft to be reviewed by counsel before public launch. Not legal advice. Version: v2026-10-26 (Mentorship Bonus added to the §8 repurchase-wallet deduction, matching the system; the seven 8 November 2026 start dates replaced by the plan start date in §12, because go-live is not fixed; previously v2026-10-17, which removed the month-end repurchase-wallet condition from §7.2 and §8; added §11.2 Rank Bonus terms — rank conditions, qualifying again, the AO-GO offer and the two-pass pool; added §11.3 Growth Booster, §11.4 Arete Development Centre Bonus and §11.5 Lifetime Awards & Rewards; replaced the effective-date placeholders with the 8 November 2026 start; corrected the DSA citation from a non-existent §6.2 to §12 (Modification); previously v2026-09-17, which removed §11.1 Franchise commission; previously v2026-09-03, which amended §7.2 repurchase-wallet condition and §7.4 per-level maximums; previous v2026-08-07). START DATE: §5.4, §6.5, §7.6 and §11.2–§11.5 apply from the plan start date in §12; state that date in §12 once the client fixes go-live. Registration opened on 20 Oct 2026, so Distributors exist and have accepted v2026-10-17 — the R-118 "no one to notify" reasoning no longer holds. §12's 30-day notice governs every amendment, including v2026-10-26, for every Distributor who accepted an earlier version (R-123). -->
 
 This page is the published Compensation Plan disclosure of Arovolife Private Limited (CIN U46909TS2026PTC210896) ("arovolife", "the Company"), required by Rule 5 of the Consumer Protection (Direct Selling) Rules 2021 ("DSR 2021") and published under §12 (Modification) of the [Direct Seller Agreement](/p/terms).
 
@@ -74,7 +74,7 @@ The score value is capped at **₹250 per point for every slab, without exceptio
 
 ### 5.4 The pooled score value for slabs 3–7
 
-> **From 8 November 2026, the date this plan opens to Distributors:** slabs 3–7 are paid at the pooled score value below. Slabs 1 and 2 remain fixed at ₹250 per point.
+> **From the plan start date (§12):** slabs 3–7 are paid at the pooled score value below. Slabs 1 and 2 remain fixed at ₹250 per point.
 
 After the fixed slab-1 and slab-2 bonuses have been met from the day's 45% pool, whatever remains is shared across everyone who matched slabs 3–7 that day, in proportion to their scores:
 
@@ -130,7 +130,7 @@ If no Distributor earns any MSB points on a given day, the point value for that 
 
 ### 6.5 Status
 
-> The Mentorship Bonus is operative from **8 November 2026**, the date this plan opens to Distributors.
+> The Mentorship Bonus is operative from the **plan start date** (§12).
 
 ## 7. Fortune Bonus
 
@@ -187,7 +187,7 @@ Every point value depends on the Company's total BV for the month, on how many o
 
 ### 7.6 Status
 
-> The Fortune Bonus is operative from **8 November 2026**, the date this plan opens to Distributors.
+> The Fortune Bonus is operative from the **plan start date** (§12).
 
 ## 8. Deductions
 
@@ -195,9 +195,9 @@ The administrative charge and Tax Deducted at Source are applied to bonuses at t
 
 | Deduction | Rate | Cap | Applies to |
 |---|---|---|---|
-| Administrative charge | 3% | ₹25,000 per payout period | GSB, MSB, Rank Bonus, Growth Booster, Fortune and Arete Development Centre bonuses |
+| Administrative charge | 3% | ₹25,000 per payout period | GSB, Mentorship Bonus, Rank Bonus, Growth Booster, Fortune and Arete Development Centre bonuses |
 | Tax Deducted at Source | 5% | — | All monetary bonuses, as required by the Income-tax Act 1961 |
-| Repurchase wallet | 10% of each bonus, taken when that bonus is credited | ₹10,000 for a given earning month | GSB, Growth Booster, Rank Bonus and Fortune Bonus. The Mentorship Bonus carries no repurchase deduction |
+| Repurchase wallet | 10% of each bonus, taken when that bonus is credited | ₹10,000 for a given earning month | GSB, Mentorship Bonus, Growth Booster, Rank Bonus and Fortune Bonus. The Arete Development Centre Bonus and Lifetime Awards carry no repurchase deduction |
 
 The repurchase-wallet amount is credited to your repurchase wallet and applied automatically against your own product purchases at checkout; it is not withdrawable as cash. The ₹10,000 ceiling is counted per month of income earned, not per payment: deductions taken from bonuses earned for the same month are added together and stop once that month's ₹10,000 has been reached.
 
@@ -271,7 +271,7 @@ No Distributor is required to buy anything. These conditions concern products bo
 
 The total Rank Bonus paid for a month can never exceed the 20% pool. Whatever the two passes do not pay out — rounding remainders and amounts above the ₹200 cap — remains with the Company and is not redistributed. Every point value depends on the Company's total BV for the month and on how many Distributors qualified, none of which any Distributor can know in advance or control. **A point value may be ₹0**, in which case no Rank Bonus is payable for that month.
 
-> The Rank Bonus is operative from **8 November 2026**, the date this plan opens to Distributors.
+> The Rank Bonus is operative from the **plan start date** (§12).
 
 ### 11.3 Growth Booster Bonus
 
@@ -291,7 +291,7 @@ A day on which the Distributor's repurchase cycle stood failed produces no slab 
 
 The Growth Booster Bonus is subject to the deductions in §8 and the caps in §10.
 
-> The Growth Booster Bonus is operative from **8 November 2026**, the date this plan opens to Distributors.
+> The Growth Booster Bonus is operative from the **plan start date** (§12).
 
 ### 11.4 Arete Development Centre Bonus
 
@@ -303,7 +303,7 @@ The Arete Development Centre Bonus is paid only to the Distributor who operates 
 
 The bonus is calculated after the month has closed and **may be ₹0** in a month with no such orders. It carries no repurchase-wallet deduction and is subject to the administrative charge and Tax Deducted at Source in §8.
 
-> The Arete Development Centre Bonus is operative from **8 November 2026**, the date this plan opens to Distributors.
+> The Arete Development Centre Bonus is operative from the **plan start date** (§12).
 
 ### 11.5 Lifetime Awards & Rewards
 
@@ -329,14 +329,16 @@ No Distributor is assured of reaching any rank. The figures below describe the p
 
 The figures are the value of the merchandise for each part, not money owed. The items are chosen by the Company. A part that a later correction shows was not earned is withdrawn before it is handed over. Awards carry no repurchase-wallet deduction and no administrative charge. Tax under section 194R of the Income-tax Act 1961 applies to awards in kind and is settled before release at the rate then in force (§8).
 
-> Lifetime Awards & Rewards are operative from **8 November 2026**, the date this plan opens to Distributors.
+> Lifetime Awards & Rewards are operative from the **plan start date** (§12).
 
 ## 12. Changes to this plan
 
 This plan may be amended only with **30 days' prior written notice** to all active Distributors. This is the Company's undertaking under §12 (Modification) of the Direct Seller Agreement. An amendment takes effect from the date stated in that notice and never retrospectively: bonuses already calculated are settled at the values that applied on the day they were calculated, and are not recomputed when the plan changes.
 
+**Plan start date.** The parts of this plan marked as operative from the plan start date have not started yet, and no bonus of any kind is calculated or credited before that date. The Company will state the plan start date on this page and will give written notice of it to every active Distributor, by email and SMS to the contact details on their account, **at least 30 days before that date**. The notice will list every change made to this plan since the version each Distributor accepted when they joined. A Distributor who does not agree to a change may terminate under §12 (Modification) of the Direct Seller Agreement; a Distributor still within the 30-day cooling-off period may instead cancel with a full refund under §4 of that Agreement.
+
 The current version of this page is always available at `/p/compensation`. If you believe a payment does not match what is published here, raise it through [Grievance Redressal](/p/grievance); it will be answered within the SLA published on that page.
 
 ---
 
-*Compensation Plan disclosure version: v2026-10-17 (removed the month-end repurchase-wallet condition from §7.2 and §8; added the §11.2 Rank Bonus terms; added §11.3 Growth Booster, §11.4 Arete Development Centre Bonus and §11.5 Lifetime Awards & Rewards; GSB pooled pricing, Mentorship, Fortune, Rank Bonus, Growth Booster, ADC Bonus and Lifetime Awards apply from 8 November 2026). Published under §12 (Modification) of the Direct Seller Agreement. Read together with the [Direct Seller Agreement](/p/terms), the [Code of Ethics](/p/ethics) and the [Grievance Redressal Policy](/p/grievance).*
+*Compensation Plan disclosure version: v2026-10-26 (the Mentorship Bonus carries the 10% repurchase-wallet deduction in §8, like the other monetary bonuses; GSB pooled pricing, Mentorship, Fortune, Rank Bonus, Growth Booster, ADC Bonus and Lifetime Awards apply from the plan start date in §12; previously v2026-10-17, which removed the month-end repurchase-wallet condition from §7.2 and §8; added the §11.2 Rank Bonus terms; added §11.3 Growth Booster, §11.4 Arete Development Centre Bonus and §11.5 Lifetime Awards & Rewards; GSB pooled pricing, Mentorship, Fortune, Rank Bonus, Growth Booster, ADC Bonus and Lifetime Awards from 8 November 2026). Published under §12 (Modification) of the Direct Seller Agreement. Read together with the [Direct Seller Agreement](/p/terms), the [Code of Ethics](/p/ethics) and the [Grievance Redressal Policy](/p/grievance).*

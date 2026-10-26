@@ -175,16 +175,23 @@ it('publishes the compensation plan formulas and the no-projection statement', f
         ->toContain('no MSB is payable for a day on which nobody qualified');
 });
 
-it('states the go-live date from which the pooled methods and monthly bonuses apply', function (): void {
+it('ties the pooled methods and monthly bonuses to the plan start date in §12', function (): void {
     publishHeldContentPages();
 
     $body = (string) $this->get('/p/compensation')->getContent();
 
-    // No pre-launch §6.2 notice (user decision 2026-10-17, R-118): the page
-    // carries the go-live date instead of a placeholder. If go-live moves,
-    // this date and the seven on the page move with it.
+    // Go-live is not fixed (user, 2026-10-26), so the seven sections point at
+    // one plan start date that §12 will state, not a hard-coded day.
     expect($body)->not->toContain('EFFECTIVE DATE — TO BE INSERTED')
-        ->and(substr_count($body, '8 November 2026'))->toBeGreaterThanOrEqual(7)
+        ->and($body)->not->toContain('the date this plan opens to Distributors')
+        ->and(substr_count($body, 'plan start date'))->toBeGreaterThanOrEqual(8)
+        // Real Distributors accepted v2026-10-17, so naming the date is an
+        // amendment and keeps the 30-day notice the page promises (R-123).
+        ->and($body)->toContain('at least 30 days before that date')
+        ->and($body)->toContain('no bonus of any kind is calculated or credited before that date')
+        // The engines take the 10% repurchase share from Mentorship too.
+        ->and($body)->toContain('GSB, Mentorship Bonus, Growth Booster, Rank Bonus and Fortune Bonus')
+        ->and($body)->not->toContain('The Mentorship Bonus carries no repurchase deduction')
         // Redeem points stay off at launch.
         ->and($body)->toContain('available only from a date stated on this page under §12');
 });
