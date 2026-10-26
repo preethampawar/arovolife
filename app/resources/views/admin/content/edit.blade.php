@@ -10,16 +10,20 @@
     <div class="rounded-xl border border-amber-300 bg-amber-50 p-4 mb-6 text-sm text-amber-900" role="note">
         <p class="font-semibold mb-1 flex items-center gap-1.5">{{ svg('lucide-triangle-alert', 'w-4 h-4 shrink-0', ['aria-hidden' => 'true']) }} This is a legal page. Edit with care.</p>
         <ul class="list-disc pl-5 space-y-1 leading-relaxed">
+            @if($isPlanPage)
+            <li><strong>Your change does not go live when you save.</strong> It waits until a second person reads and approves it. Until then the live page stays as it is.</li>
+            @else
             <li>If the page is published, your changes are live for everyone as soon as you save.</li>
+            @endif
             <li>Keep the page's headings and tables. Use the buttons above the text to add them. Colours, fonts and images pasted in from elsewhere are removed when you save.</li>
             <li>Once you save a change here, this page is the master copy. Publishing from the code (<code>content:publish</code>, a re-seed or a platform reset) no longer overwrites it.</li>
             @if($isPlanPage)
             @if($planNoticeOn)
-            <li><strong>Every distributor will be shown the change when they next sign in, and emailed after 3 days if they have not confirmed.</strong> A change applies from the start of the day after it is published (saved as Published), unless the change gives a later date, and never to the past (plan §12).</li>
+            <li><strong>Every distributor will be shown the change when they next sign in, and emailed after 3 days if they have not confirmed.</strong> A change applies from the start of the day after it is approved, unless the change gives a later date, and never to the past (plan §12).</li>
             @else
-            <li class="font-semibold text-red-800">The plan-change notice is switched off, so distributors are NOT shown or emailed changes you publish here. Ask the developer to switch it on before you publish a change.</li>
+            <li class="font-semibold text-red-800">The plan-change notice is switched off, so distributors would NOT be shown or emailed a change. A change cannot be approved until it is switched on.</li>
             @endif
-            <li>For each change, do two things. First, put today's date in the version line at the very bottom, written exactly like <em>v2026-11-02</em> (<em>disclosure version: v2026-11-02</em>). Second, at the top of the "Changes to this plan, by version" list, add a <strong>Small heading</strong> containing exactly that same text, <em>v2026-11-02</em>, and under it the change in plain words. If a change was already published today, use tomorrow's date for the next one; it takes effect from tomorrow anyway. If the two do not match, distributors are not told and the save shows a red warning.</li>
+            <li>For each change, do two things. First, put today's date in the version line at the very bottom, written exactly like <em>v2026-11-02</em> (<em>disclosure version: v2026-11-02</em>). Second, at the top of the "Changes to this plan, by version" list, add a <strong>Small heading</strong> containing exactly that same text, <em>v2026-11-02</em>, and under it the change in plain words. If a change was already approved today, use tomorrow's date for the next one; it takes effect from tomorrow anyway. If the two do not match, or the date is before the day it is approved, the change is refused.</li>
             <li>Change the plan settings themselves (rates, slabs, caps) only at a week or month end, after that period's bonus run, and save this page no later than that change.</li>
             @endif
         </ul>
@@ -30,6 +34,21 @@
         <p class="leading-relaxed">Update the title and body of this public page. Changes are live immediately once saved if the page is published.</p>
     </div>
     @endif
+
+    @if($pendingChange ?? null)
+    <div class="rounded-xl border border-blue-300 bg-blue-50 p-4 mb-6 text-sm text-blue-900" role="status">
+        <p class="font-semibold mb-1">A change to this page is waiting for approval.</p>
+        <p class="leading-relaxed">Proposed {{ $pendingChange->created_at->format('d M Y, H:i') }}. The page below is the live version. Another change can be proposed once this one is approved, rejected or withdrawn.</p>
+        <a href="{{ route('admin.content.plan-changes.show', $pendingChange) }}" class="mt-2 inline-block font-medium text-brand-700 hover:text-brand-800">Open the waiting change →</a>
+    </div>
+    @endif
+
+    @error('plan_change')
+    <div class="rounded-xl border border-red-300 bg-red-50 p-4 mb-6 text-sm text-red-800" role="alert">
+        <p class="font-semibold mb-1">Your change was not saved.</p>
+        <p class="leading-relaxed">{{ $message }}</p>
+    </div>
+    @enderror
 
     <div class="mb-4 flex items-center justify-between">
         <a href="{{ route('admin.content.index') }}" class="text-sm text-gray-600 hover:text-gray-900">{{ svg('lucide-arrow-left', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Back to Content Pages</a>
@@ -42,12 +61,12 @@
     <form method="POST" action="{{ route('admin.content.update', $page) }}" class="bg-white rounded-2xl border border-gray-200 p-8"
         data-confirm="Save these changes?"
         data-confirm-title="Confirm save"
-        data-confirm-impact="{{ $isPlanPage ? ($planNoticeOn ? 'Saves the Compensation Plan. If it is published and you changed the text, every distributor is shown the change at their next sign-in, and it applies from the start of tomorrow unless it gives a later date.' : 'Saves the Compensation Plan. The plan-change notice is switched off, so distributors will NOT be told about a change you publish.') : ($policyPage ? 'Saves this legal page. If it is published, the live page updates immediately, and this copy becomes the master that code publishing no longer overwrites.' : 'Saves your edits to this content page. If it is published, the live page updates immediately. You can edit it again later.') }}">
+        data-confirm-impact="{{ $isPlanPage ? 'Saves your change for approval. The live Compensation Plan does not change until a second person approves it. Once approved, every distributor is shown the change at their next sign-in.' : ($policyPage ? 'Saves this legal page. If it is published, the live page updates immediately, and this copy becomes the master that code publishing no longer overwrites.' : 'Saves your edits to this content page. If it is published, the live page updates immediately. You can edit it again later.') }}">
         @method('PATCH')
-        @include('admin.content._form', ['submitLabel' => 'Save Changes'])
+        @include('admin.content._form', ['submitLabel' => $isPlanPage ? 'Save for approval' : 'Save Changes'])
     </form>
 
-    @if($page->status !== 'archived')
+    @if($page->status !== 'archived' && ! $isPlanPage)
     <form method="POST" action="{{ route('admin.content.destroy', $page) }}" class="mt-8 bg-white rounded-2xl border border-red-200 p-6"
         data-confirm="Archive this page?"
         data-confirm-title="Confirm archive"

@@ -83,6 +83,7 @@ use App\Modules\Consent\Http\Controllers\ConsentWithdrawalController;
 use App\Modules\Consent\Http\Controllers\PlanChangeNoticeController;
 use App\Modules\Content\Http\Controllers\Admin\AdminAnnouncementController;
 use App\Modules\Content\Http\Controllers\Admin\AdminContentPageController;
+use App\Modules\Content\Http\Controllers\Admin\AdminPlanChangeController;
 use App\Modules\Content\Http\Controllers\AnnouncementController;
 use App\Modules\Content\Http\Controllers\Public\PublicBlogController;
 use App\Modules\Content\Http\Controllers\Public\PublicContentPageController;
@@ -996,6 +997,16 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::get('/content/{page}/edit', [AdminContentPageController::class, 'edit'])->middleware('can:content.publish')->name('content.edit');
     Route::patch('/content/{page}', [AdminContentPageController::class, 'update'])->middleware('can:content.publish')->name('content.update');
     Route::delete('/content/{page}', [AdminContentPageController::class, 'destroy'])->middleware('can:content.publish')->name('content.destroy');
+
+    // Compensation Plan changes wait for a second person (R-125). Approving
+    // and rejecting are developer-only — a `role:` gate the Gate::before
+    // bypass can't open — because the client runs a single admin login.
+    Route::get('/content/plan-changes/{revision}', [AdminPlanChangeController::class, 'show'])->middleware('can:content.publish')->name('content.plan-changes.show');
+    Route::post('/content/plan-changes/{revision}/withdraw', [AdminPlanChangeController::class, 'withdraw'])->middleware('can:content.publish')->name('content.plan-changes.withdraw');
+    Route::middleware('role:developer')->group(function (): void {
+        Route::post('/content/plan-changes/{revision}/approve', [AdminPlanChangeController::class, 'approve'])->name('content.plan-changes.approve');
+        Route::post('/content/plan-changes/{revision}/reject', [AdminPlanChangeController::class, 'reject'])->name('content.plan-changes.reject');
+    });
 
     // Company announcements (flag-gated in the controller: AnnouncementsFeature).
     // Same permission as the content pages they sit beside — this is publishing.

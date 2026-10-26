@@ -7,8 +7,10 @@ namespace App\Modules\Content\Http\Controllers\Admin;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Consent\Services\PlanChangeNotices;
+use App\Modules\Content\Exceptions\PlanChangeRefused;
 use App\Modules\Content\Http\Requests\ContentPageRequest;
 use App\Modules\Content\Models\ContentPage;
+use App\Modules\Content\Services\PlanChangeApprovals;
 use App\Modules\Shared\Features\FaqLibraryFeature;
 use App\Modules\Shared\Support\FilterField;
 use App\Modules\Shared\Support\ListFilters;
@@ -69,6 +71,12 @@ final class AdminContentPageController extends Controller
     public function store(ContentPageRequest $request): RedirectResponse
     {
         $data = $request->validated();
+
+        // The plan page comes from the seeder and changes only with a second
+        // person's approval (R-125); creating it here would publish it alone.
+        if ($data['slug'] === PlanChangeNotices::SLUG) {
+            return back()->withInput()->withErrors(['slug' => 'The Compensation Plan page cannot be created here.']);
+        }
         $data['body'] = $this->isPolicyPage($data['slug'])
             ? $this->purifyPolicy($data['body'] ?? '')
             : $this->purify($data['body'] ?? '');
@@ -91,14 +99,17 @@ final class AdminContentPageController extends Controller
             ->with('status', "Page \"{$page->title}\" created.");
     }
 
-    public function edit(ContentPage $page, PlanChangeNotices $planChangeNotices): View
+    public function edit(ContentPage $page, PlanChangeNotices $planChangeNotices, PlanChangeApprovals $approvals): View
     {
+        $isPlanPage = PlanChangeApprovals::governs($page);
+
         return view('admin.content.edit', [
             'page' => $page,
             'faqLibraryOn' => $this->faqLibraryOn(),
             'policyPage' => $this->isPolicyPage($page->slug),
-            'isPlanPage' => $page->slug === PlanChangeNotices::SLUG,
+            'isPlanPage' => $isPlanPage,
             'planNoticeOn' => $planChangeNotices->enabled(),
+            'pendingChange' => $isPlanPage ? $approvals->pending($page) : null,
         ]);
     }
 
@@ -114,14 +125,18 @@ final class AdminContentPageController extends Controller
         return Feature::for(null)->active(FaqLibraryFeature::class);
     }
 
-    public function update(ContentPageRequest $request, ContentPage $page, PlanChangeNotices $planChangeNotices): RedirectResponse
+    public function update(ContentPageRequest $request, ContentPage $page, PlanChangeApprovals $approvals): RedirectResponse
     {
+        // Decided on the stored slug, never the submitted one.
+        if (PlanChangeApprovals::governs($page)) {
+            return $this->proposePlanChange($request, $page, $approvals);
+        }
+
         $policyPage = $this->isPolicyPage($page->slug);
         $data = $request->validated();
         $data['body'] = $policyPage
             ? $this->policyBodyForUpdate($data['body'] ?? '', $page)
             : $this->purify($data['body'] ?? '');
-        $previousLabel = $planChangeNotices->label((string) $page->body);
 
         $previousStatus = (string) $page->status;
         $before = AuditDigests::snapshot($page);
@@ -164,47 +179,46 @@ final class AdminContentPageController extends Controller
             'previous_status' => $previousStatus,
         ], $before);
 
-        $redirect = redirect()
+        return redirect()
             ->route('admin.content.edit', $page)
             ->with('status', 'Page saved.');
-
-        // A plan edit that distributors will not be told about must say so
-        // now, not on the day the daily email run fails.
-        if ($page->slug === PlanChangeNotices::SLUG && $page->wasChanged('body') && $page->isPublished()) {
-            $problem = $this->planNoticeProblem($planChangeNotices, $page, $previousLabel);
-
-            if ($problem !== null) {
-                $redirect->with('error', 'The plan page is saved, but distributors will not be told about the change: '.$problem);
-            }
-        }
-
-        return $redirect;
     }
 
     /**
-     * Why a plan edit just saved will not reach distributors, or null.
-     *
-     * The label comparison is made here against the text being replaced,
-     * because blockedReason() can only see labels it has already recorded,
-     * and it records none while the notice is off or after a platform reset.
+     * A change to the Compensation Plan is not saved to the page: it waits
+     * for a second person to approve it (R-125). The live page is untouched.
      */
-    private function planNoticeProblem(PlanChangeNotices $planChangeNotices, ContentPage $page, ?string $previousLabel): ?string
+    private function proposePlanChange(ContentPageRequest $request, ContentPage $page, PlanChangeApprovals $approvals): RedirectResponse
     {
-        if (! $planChangeNotices->enabled()) {
-            return 'the plan-change notice is switched off, so nobody is shown or emailed this change. Ask the developer to switch on content.plan_change_notice.';
+        $data = $request->validated();
+        $proposed = [
+            'title' => (string) $data['title'],
+            'meta_description' => $data['meta_description'] ?? null,
+            'status' => (string) $data['status'],
+            'body' => $this->policyBodyForUpdate($data['body'] ?? '', $page),
+        ];
+
+        if ($approvals->changedFields($page, $proposed) === []) {
+            return redirect()->route('admin.content.edit', $page)->with('status', 'Nothing was changed, so nothing was saved.');
         }
 
-        $label = $planChangeNotices->label((string) $page->body);
-
-        if ($label !== null && $label === $previousLabel) {
-            return 'the version line at the bottom still says '.$label.'. Change it to a new date (today\'s, or tomorrow\'s if a change was already published today) and add a Small heading reading exactly the same, with the change under it.';
+        try {
+            $revision = $approvals->request($page, $proposed, (string) $data['change_note'], (int) Auth::id());
+        } catch (PlanChangeRefused $refused) {
+            return back()->withInput()->withErrors(['plan_change' => $refused->getMessage()]);
         }
 
-        return $planChangeNotices->blockedReason();
+        return redirect()
+            ->route('admin.content.plan-changes.show', $revision)
+            ->with('status', 'Your change is saved and waiting for approval. The live page has not changed yet.');
     }
 
     public function destroy(ContentPage $page): RedirectResponse
     {
+        if (PlanChangeApprovals::governs($page)) {
+            return back()->with('error', 'The Compensation Plan is not archived from here. To take it down, save it as Archived with a note, and it waits for approval like any other plan change.');
+        }
+
         $title = $page->title;
         $previousStatus = (string) $page->status;
         $before = AuditDigests::snapshot($page);

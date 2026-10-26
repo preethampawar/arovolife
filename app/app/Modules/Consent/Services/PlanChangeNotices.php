@@ -148,11 +148,26 @@ final class PlanChangeNotices
             return null;
         }
 
-        if ($published['label'] === null) {
+        return $this->problemWithText((string) $published['page']->body);
+    }
+
+    /**
+     * Why this plan text, once published, could not be noticed — or null.
+     *
+     * The checks {@see blockedReason()} makes on the live page, made on any
+     * text: the plan-change approval runs them on a proposed change before it
+     * goes live, so a change that would hold the notice is refused rather than
+     * published.
+     */
+    public function problemWithText(string $html): ?string
+    {
+        $label = $this->label($html);
+
+        if ($label === null) {
             return 'The plan page footer has no "disclosure version: vYYYY-MM-DD" label.';
         }
 
-        $entries = $this->entries((string) $published['page']->body);
+        $entries = $this->entries($html);
 
         if ($entries === []) {
             return 'The plan page has no readable "'.self::CHANGES_HEADING.'" list.';
@@ -161,18 +176,18 @@ final class PlanChangeNotices
         // Without this, a new footer version with no entry of its own went
         // out listing only the older entries: distributors would agree to a
         // list that does not show the change.
-        if ($entries[0]->label !== $published['label']) {
-            return 'The plan page footer says '.$published['label'].' but the newest entry in "'.self::CHANGES_HEADING.'" is '
-                .$entries[0]->label.' — add a Small heading reading exactly '.$published['label'].' with the change under it.';
+        if ($entries[0]->label !== $label) {
+            return 'The plan page footer says '.$label.' but the newest entry in "'.self::CHANGES_HEADING.'" is '
+                .$entries[0]->label.' — add a Small heading reading exactly '.$label.' with the change under it.';
         }
 
         $labelReused = PlanTextVersion::query()
-            ->where('label', $published['label'])
-            ->where('doc_hash_sha256', '!=', $published['hash'])
+            ->where('label', $label)
+            ->where('doc_hash_sha256', '!=', hash('sha256', $html, true))
             ->exists();
 
         if ($labelReused) {
-            return 'The plan text changed but kept the version label '.$published['label']
+            return 'The plan text changed but kept the version label '.$label
                 .' — bump the footer version and add a matching #### entry before this notice can go out.';
         }
 

@@ -41,10 +41,17 @@ final class ContentPageRequest extends FormRequest
         $id = $this->route('page')?->id;
 
         $copyRules = $this->auditsCopy() ? [new NoIncomeProjection] : [];
+        $editingPlan = $this->isStoredPlanPage();
 
         return [
             'title' => ['required', 'string', 'max:200', ...$copyRules],
-            'slug' => ['required', 'string', 'max:120', 'regex:/^[a-z0-9-]+$/', Rule::unique('content_pages', 'slug')->ignore($id)],
+            // The plan page's slug is fixed: renaming it would take it out of
+            // the second-person approval (R-125) and off /p/compensation.
+            'slug' => $editingPlan
+                ? ['required', Rule::in([PlanChangeNotices::SLUG])]
+                : ['required', 'string', 'max:120', 'regex:/^[a-z0-9-]+$/', Rule::unique('content_pages', 'slug')->ignore($id)],
+            // Read by whoever approves the change (R-125).
+            'change_note' => $editingPlan ? ['required', 'string', 'max:1000'] : ['prohibited'],
             // 'faq' is offered only while the library is live: a draft
             // authored against a surface nobody can reach is a draft that gets
             // forgotten and published later by accident.
@@ -97,6 +104,14 @@ final class ContentPageRequest extends FormRequest
             || ($page instanceof ContentPage && $page->slug === PlanChangeNotices::SLUG);
     }
 
+    /** Is the page being saved the stored plan page, whatever slug was submitted? */
+    private function isStoredPlanPage(): bool
+    {
+        $page = $this->route('page');
+
+        return $page instanceof ContentPage && $page->slug === PlanChangeNotices::SLUG;
+    }
+
     /**
      * The type this save is about: what was submitted if anything was, else
      * what the page already is.
@@ -132,6 +147,8 @@ final class ContentPageRequest extends FormRequest
     {
         return [
             'slug.regex' => 'Slug must be lowercase letters, numbers and hyphens only.',
+            'slug.in' => 'The Compensation Plan\'s address cannot be changed.',
+            'change_note.required' => 'Say what you changed and why, for the person who approves it.',
         ];
     }
 }

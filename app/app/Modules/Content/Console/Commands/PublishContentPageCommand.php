@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Content\Console\Commands;
 
 use App\Modules\Compliance\Models\AuditLog;
+use App\Modules\Compliance\Support\AuditDigests;
 use App\Modules\Content\Models\ContentPage;
 use Database\Seeders\ContentPageSeeder;
 use Illuminate\Console\Command;
@@ -32,7 +33,11 @@ use Illuminate\Console\Command;
  *
  * A page an administrator has changed in the portal is kept, not replaced:
  * from 2026-10-26 the plan page is edited there, so that copy is the master
- * (R-125). `--overwrite-portal-edits` replaces it from the markdown anyway.
+ * (R-125). So is the published plan page even before its first portal edit:
+ * a plan change there needs a second person's approval, and this command
+ * would otherwise be the way round it. `--overwrite-portal-edits` replaces
+ * either from the markdown anyway — a one-person developer path, recorded
+ * with each page's before and after digest.
  */
 final class PublishContentPageCommand extends Command
 {
@@ -72,27 +77,52 @@ final class PublishContentPageCommand extends Command
         }
 
         $overwrite = (bool) $this->option('overwrite-portal-edits');
-        $kept = $overwrite ? [] : array_values(array_filter($slugs, ContentPageSeeder::editedInPortal(...)));
+        $kept = $overwrite ? [] : array_values(array_filter($slugs, ContentPageSeeder::keptFromSource(...)));
 
         if ($kept !== []) {
             $this->warn('Kept the portal version of: '.implode(', ', $kept).'. '
-                .'These were changed in the admin editor, so that copy is the master. '
+                .'These are changed in the admin editor (plan changes with a second person\'s approval), so that copy is the master. '
                 .'Pass --overwrite-portal-edits to replace them from the markdown source.');
         }
 
+        $written = array_values(array_diff($slugs, $kept));
+        $before = $this->digests($written);
+
         $seeder = new ContentPageSeeder;
         $count = $seeder->publish($slugs, $overwrite);
+
+        $after = $this->digests($written);
+        $digests = [];
+
+        foreach ($written as $slug) {
+            $digests[$slug] = ['before' => $before[$slug] ?? null, 'after' => $after[$slug] ?? null];
+        }
 
         AuditLog::create([
             'actor_id' => null,
             'action' => 'content_page.republished',
             'subject_type' => 'content_page',
             'subject_id' => null,
-            'details' => ['slugs' => $slugs, 'pages_written' => $count, 'portal_versions_kept' => $kept, 'overwrote_portal_edits' => $overwrite],
+            'details' => ['slugs' => $slugs, 'pages_written' => $count, 'portal_versions_kept' => $kept, 'overwrote_portal_edits' => $overwrite, 'digests' => $digests],
         ]);
 
-        $this->info('Republished '.$count.' page(s): '.implode(', ', array_diff($slugs, $kept)).'.');
+        $this->info('Republished '.$count.' page(s): '.implode(', ', $written).'.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Each existing page's digest, hex, keyed by slug.
+     *
+     * @param  list<string>  $slugs
+     * @return array<string, string>
+     */
+    private function digests(array $slugs): array
+    {
+        return ContentPage::query()
+            ->whereIn('slug', $slugs)
+            ->get()
+            ->mapWithKeys(fn (ContentPage $page): array => [$page->slug => bin2hex((string) AuditDigests::of($page))])
+            ->all();
     }
 }

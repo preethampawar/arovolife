@@ -86,6 +86,10 @@ final class PlatformResetAction
         'arete_center_members',
         'gsb_cutoff_deferrals',
         'gsb_reversal_requests',
+        // Proposed plan changes name their author and approver by user id,
+        // and user ids restart with the wipe. The approved text is the page
+        // itself, which is kept.
+        'content_page_revisions',
         'offline_payments',
         'payment_events',
         'shipment_events',

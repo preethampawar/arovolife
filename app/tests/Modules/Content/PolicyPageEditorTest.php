@@ -8,20 +8,24 @@ declare(strict_types=1);
  *   PPE-01  a policy page gets the visual editor and a warning; other pages keep Trix
  *   PPE-02  saving the plan page unchanged leaves its text, hash and version date as they were
  *   PPE-03  an edit keeps headings, tables and the change list, and strips the rest
- *   PPE-04  content:publish and a re-seed keep a page changed in the portal
- *   PPE-05  a plan edit that keeps the old version label says the notice will not go out
- *   PPE-06  a new footer version with no matching change entry holds the notice
- *   PPE-07  a new version with its own change entry saves with no warning
- *   PPE-08  a plan edit while the notice is switched off says nobody will be told
+ *   PPE-04  content:publish and a re-seed keep a page changed in the portal, and the published plan
+ *   PPE-05  a plan edit that keeps the old version label is refused
+ *   PPE-06  a new footer version with no matching change entry is refused
+ *   PPE-07  a new version with its own change entry is saved for approval
+ *   PPE-08  a plan edit while the notice is switched off is saved, and the page says it is off
  *   PPE-09  the income-projection rule applies to the plan page
+ *
+ * Approving a plan change is covered by PlanChangeApprovalTest.
  */
 
 use App\Modules\Consent\Services\PlanChangeNotices;
 use App\Modules\Content\Models\ContentPage;
+use App\Modules\Content\Models\ContentPageRevision;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\PlanChangeNoticeFeature;
 use Database\Seeders\ContentPageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Pennant\Feature;
 use Spatie\Permission\Models\Role;
@@ -29,6 +33,9 @@ use Spatie\Permission\Models\Role;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    // The proposals below are dated v2026-11-02; a version dated before the
+    // day it is proposed is refused.
+    $this->travelTo(Carbon::parse('2026-11-02 10:00:00'));
     seedConsentDocuments();
 });
 
@@ -64,6 +71,7 @@ function ppeForm(ContentPage $page, string $body): array
         'meta_description' => $page->meta_description,
         'body' => $body,
         'status' => $page->status,
+        'change_note' => 'A test change.',
     ];
 }
 
@@ -100,30 +108,33 @@ it('PPE-02: saving the plan page unchanged leaves its text exactly as it was', f
     // Browsers send textarea line breaks as CRLF.
     $this->actingAs(ppeAdmin())
         ->patch(route('admin.content.update', $page), ppeForm($page, str_replace("\n", "\r\n", $before)))
-        ->assertSessionHasNoErrors();
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('status', 'Nothing was changed, so nothing was saved.');
 
     $page->refresh();
 
     // Nor its updated_at: that date is the version every new plan consent records.
     expect($page->body)->toBe($before)
         ->and($page->updated_at->equalTo($updatedAt))->toBeTrue()
-        ->and($page->edited_in_portal_at)->toBeNull();
+        ->and($page->edited_in_portal_at)->toBeNull()
+        ->and(ContentPageRevision::query()->count())->toBe(0);
 });
 
 it('PPE-03: an edit keeps headings, tables and the change list, and strips scripts and styles', function (): void {
+    // The plan's own change is proposed, not saved; the text proposed is
+    // cleaned the same way and is what an approval publishes.
     $page = ppePlan();
     $edited = str_replace(
-        '<h2>',
-        '<script>alert(1)</script><h2 style="color:red" onclick="x()">',
-        (string) $page->body,
+        ['<h2>', '<h3>Changes to this plan, by version</h3>'],
+        ['<script>alert(1)</script><h2 style="color:red" onclick="x()">', '<h3>Changes to this plan, by version</h3><h4>v2026-11-02</h4><ul><li>A test change.</li></ul>'],
+        ppeBumpFooter((string) $page->body, 'v2026-11-02'),
     );
 
     $this->actingAs(ppeAdmin())
         ->patch(route('admin.content.update', $page), ppeForm($page, $edited))
         ->assertSessionHasNoErrors();
 
-    $page->refresh();
-    $body = (string) $page->body;
+    $body = (string) ContentPageRevision::query()->sole()->body;
 
     expect($body)->not->toContain('<script')
         ->and($body)->not->toContain('onclick')
@@ -132,13 +143,26 @@ it('PPE-03: an edit keeps headings, tables and the change list, and strips scrip
         ->and($body)->toContain('<h3>')
         ->and($body)->toContain('<h4>')
         ->and($body)->toContain('<table>')
-        ->and($page->edited_in_portal_at)->not->toBeNull()
         // The sign-in notice can still read the change list.
         ->and(app(PlanChangeNotices::class)->entries($body))->not->toBe([]);
 });
 
 it('PPE-04: content:publish and a re-seed keep a page changed in the portal unless told to overwrite', function (): void {
     $page = ppePlan();
+
+    // Published but never edited in the portal: still kept, because its
+    // changes need a second person's approval there.
+    $page->update(['status' => ContentPage::STATUS_PUBLISHED, 'body' => '<p>Approved text.</p>']);
+    $this->artisan('content:publish', ['slug' => ['compensation']])
+        ->expectsOutputToContain('Kept the portal version of: compensation')
+        ->assertExitCode(0);
+    expect($page->fresh()->body)->toBe('<p>Approved text.</p>');
+
+    // Taken down by an approved change: still not brought back from source.
+    $page->update(['status' => ContentPage::STATUS_DRAFT]);
+    $this->artisan('content:publish', ['slug' => ['compensation']])->assertExitCode(0);
+    expect($page->fresh()->status)->toBe(ContentPage::STATUS_DRAFT);
+
     $page->update(['body' => '<p>Portal text.</p>', 'edited_in_portal_at' => now()]);
 
     $this->artisan('content:publish', ['slug' => ['compensation']])
@@ -168,7 +192,7 @@ function ppeBumpFooter(string $body, string $label): string
     return str_replace('disclosure version: v2026-10-27', 'disclosure version: '.$label, $body);
 }
 
-it('PPE-05: a plan edit that keeps the old version label warns that distributors will not be told', function (): void {
+it('PPE-05: a plan edit that keeps the old version label is refused', function (): void {
     // No version has been recorded for the old text yet (as after a platform
     // reset), so the controller has to compare the labels itself.
     ppePlanNoticeOn();
@@ -178,26 +202,25 @@ it('PPE-05: a plan edit that keeps the old version label warns that distributors
 
     $this->actingAs(ppeAdmin())
         ->patch(route('admin.content.update', $page), ppeForm($page, (string) $edited))
-        ->assertSessionHas('status', 'Page saved.')
-        ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'still says v2026-10-27'));
+        ->assertSessionHasErrors(['plan_change' => 'The version line at the bottom still says v2026-10-27. Change it to today\'s date (or tomorrow\'s if a change was already published today) and add a Small heading reading exactly the same, with the change under it.']);
+
+    expect(ContentPageRevision::query()->count())->toBe(0);
 });
 
-it('PPE-06: a new footer version with no matching change entry holds the notice', function (): void {
+it('PPE-06: a new footer version with no matching change entry is refused', function (): void {
     ppePlanNoticeOn();
 
     $page = ppePlan();
 
     $this->actingAs(ppeAdmin())
         ->patch(route('admin.content.update', $page), ppeForm($page, ppeBumpFooter((string) $page->body, 'v2026-11-02')))
-        ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'the newest entry')
-            && str_contains($message, 'v2026-11-02'));
+        ->assertSessionHasErrors('plan_change');
 
-    app()->forgetScopedInstances();
-
-    expect(app(PlanChangeNotices::class)->blockedReason())->toContain('newest entry');
+    expect(session('errors')->first('plan_change'))->toContain('the newest entry')->toContain('v2026-11-02')
+        ->and(ContentPageRevision::query()->count())->toBe(0);
 });
 
-it('PPE-07: a new version with its own change entry saves with no warning', function (): void {
+it('PPE-07: a new version with its own change entry is saved for approval, not published', function (): void {
     ppePlanNoticeOn();
 
     $page = ppePlan();
@@ -207,19 +230,21 @@ it('PPE-07: a new version with its own change entry saves with no warning', func
         ppeBumpFooter((string) $page->body, 'v2026-11-02'),
     );
 
+    $before = (string) $page->body;
+
     $this->actingAs(ppeAdmin())
         ->patch(route('admin.content.update', $page), ppeForm($page, $edited))
-        ->assertSessionHas('status', 'Page saved.')
-        ->assertSessionMissing('error');
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('status', 'Your change is saved and waiting for approval. The live page has not changed yet.');
 
-    app()->forgetScopedInstances();
-    $notices = app(PlanChangeNotices::class);
+    $revision = ContentPageRevision::query()->sole();
 
-    expect($notices->blockedReason())->toBeNull()
-        ->and($notices->entries((string) $page->fresh()->body)[0]->label)->toBe('v2026-11-02');
+    expect($page->fresh()->body)->toBe($before)
+        ->and($revision->state)->toBe(ContentPageRevision::STATE_PENDING)
+        ->and(app(PlanChangeNotices::class)->entries((string) $revision->body)[0]->label)->toBe('v2026-11-02');
 });
 
-it('PPE-08: a plan edit while the notice is switched off says nobody will be told', function (): void {
+it('PPE-08: a plan edit while the notice is switched off is saved for approval, and the editor says it is off', function (): void {
     Feature::for(null)->deactivate(PlanChangeNoticeFeature::class);
     $page = ppePlan();
     $admin = ppeAdmin();
@@ -227,11 +252,18 @@ it('PPE-08: a plan edit while the notice is switched off says nobody will be tol
     $this->actingAs($admin)->get(route('admin.content.edit', $page))
         ->assertSee('The plan-change notice is switched off');
 
-    $edited = preg_replace('/<p>/', '<p>A new sentence. ', (string) $page->body, 1);
+    $edited = str_replace(
+        '<h3>Changes to this plan, by version</h3>',
+        '<h3>Changes to this plan, by version</h3><h4>v2026-11-02</h4><ul><li>A test change.</li></ul>',
+        ppeBumpFooter((string) $page->body, 'v2026-11-02'),
+    );
 
+    // Proposing is allowed; approving waits for the notice (PlanChangeApprovalTest).
     $this->actingAs($admin)
-        ->patch(route('admin.content.update', $page), ppeForm($page, (string) $edited))
-        ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'switched off'));
+        ->patch(route('admin.content.update', $page), ppeForm($page, $edited))
+        ->assertSessionHasNoErrors();
+
+    expect(ContentPageRevision::query()->count())->toBe(1);
 });
 
 it('PPE-09: the income-projection rule applies to the plan page', function (): void {

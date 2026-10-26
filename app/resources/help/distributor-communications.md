@@ -282,18 +282,30 @@ not in the code (client decision, R-125).
 - **Once you change a page here, this copy is the master.** `content:publish`,
   a re-seed and a platform reset leave it alone. A developer can replace it from
   the code only with `content:publish <slug> --overwrite-portal-edits`.
-- **Changing the Compensation Plan tells every distributor** — while the
-  developer-owned flag `content.plan_change_notice` is on. They are shown the
-  change at their next sign-in and emailed after 3 days if they have not
-  confirmed (plan §12). A change applies from the start of the day after it is
-  published, unless it gives a later date, and never to the past. For each
+- **A change to the Compensation Plan needs a second person.** Saving it
+  does not change the live page. The change waits, with your note on what
+  changed and why, until a second person reads it and approves it (R-125). You cannot approve your own change; you can withdraw
+  it. Only one change waits at a time. The waiting change shows on the plan's
+  edit page and in the Action Center under *Plan changes awaiting approval*.
+  The page's address cannot be changed, and it is taken down only by saving it
+  as Archived, which waits for approval too.
+- **Approving the change publishes it and tells every distributor.** They are
+  shown it at their next sign-in and emailed after 3 days if they have not
+  confirmed (plan §12). It cannot be approved while the plan-change notice is
+  switched off. A change applies from the start of the day after it is
+  approved, unless it gives a later date, and never to the past. For each
   change, put today's date in the version line at the very bottom, written
   exactly like *v2026-11-02*, and at the top of the "Changes to this plan, by
   version" list add a **Small heading** containing exactly the same text, with
-  the change in plain words under it. If a change was already published that
-  day, use tomorrow's date for the next one (it takes effect from tomorrow
-  anyway). If they do not match, the notice holds
-  and the save says so in red. It also says so in red when the flag is off.
+  the change in plain words under it. If a change was already approved that
+  day, use tomorrow's date for the next one. A change whose two dates do not
+  match, or whose date is before the day it is approved, is refused. If the
+  page changes while a proposal waits, the proposal can no longer be approved:
+  reject it and propose it again.
+- **`content:publish` never replaces a plan page that has been published** unless a developer
+  adds `--overwrite-portal-edits`. That is a one-person path, kept for
+  emergencies and recorded in the audit log with the page's before and after
+  digest.
 - **The income-projection check runs on the plan page.** A save is refused if
   the title or text promises or projects earnings. The Code of Ethics and the
   other legal pages are exempt, because they quote the banned phrases in order

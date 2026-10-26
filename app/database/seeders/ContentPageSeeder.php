@@ -144,7 +144,10 @@ final class ContentPageSeeder extends Seeder
      * $overwritePortalEdits is set: from 2026-10-26 the plan page is edited
      * there, so the portal copy is the master and the markdown source may be
      * stale (R-125). That covers the blanket paths too — run() is what
-     * `db:seed` and `platform:reset` call.
+     * `db:seed` and `platform:reset` call. A plan page that was ever published is skipped
+     * the same way even before anyone has edited it in the portal: a change
+     * to it goes live only after a second person approves it there, so
+     * replacing it from source is the developer's explicit override.
      *
      * @param  list<string>|null  $slugs  null republishes every page
      * @return int the number of pages written
@@ -159,7 +162,7 @@ final class ContentPageSeeder extends Seeder
                 continue;
             }
 
-            if (! $overwritePortalEdits && self::editedInPortal($meta['slug'])) {
+            if (! $overwritePortalEdits && self::keptFromSource($meta['slug'])) {
                 continue;
             }
 
@@ -258,6 +261,25 @@ final class ContentPageSeeder extends Seeder
         }
 
         return $created;
+    }
+
+    /**
+     * Does publishing from source leave this page alone unless told to
+     * overwrite? Yes for a page changed in the portal, and for a plan page
+     * that has ever been published, whose changes need a second person's
+     * approval (R-125).
+     */
+    public static function keptFromSource(string $slug): bool
+    {
+        if (self::editedInPortal($slug)) {
+            return true;
+        }
+
+        // Once published, always kept: an approved change that took the plan
+        // down to Draft or Archived must not be undone from source either.
+        // approve() never clears published_at.
+        return $slug === self::HELD_SLUGS[0]
+            && ContentPage::query()->where('slug', $slug)->whereNotNull('published_at')->exists();
     }
 
     /** Has an administrator changed this page in the portal since it was last published from source? */
