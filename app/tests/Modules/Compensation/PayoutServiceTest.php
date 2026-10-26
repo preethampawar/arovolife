@@ -230,6 +230,37 @@ it('weekly batch: sweeps repurchase_transfer entries and reports deduction in li
     expect($walletSvc->repurchaseWalletBalancePaise($dist->id))->toBe(20_000);
 });
 
+it('weekly batch: sweeps the Mentorship Bonus repurchase_transfer too (R-124)', function () {
+    // Mentorship is credited through creditWithRepurchaseDeduction() like GSB
+    // (client, 2026-09-10). The weekly batch only swept GSB's transfers, so it
+    // wired the full Mentorship gross and left the main wallet 10% negative.
+    $dist = makePayoutEligibleDistributor();
+    $walletSvc = app(WalletService::class);
+
+    // ₹1,050 MB: 10% = 10,500 paise deducted at credit time.
+    $walletSvc->creditWithRepurchaseDeduction(
+        distributorId: $dist->id,
+        grossPaise: 105_000,
+        bonusType: 'mb_credit',
+        referenceId: walletRef(),
+        referenceType: 'mentorship_bonus_result',
+        bonusMonth: now()->startOfMonth(),
+        earnedOn: earnedForBatch(),
+    );
+
+    app(PayoutService::class)->runWeeklyBatch(Carbon::today());
+
+    // wallet_balance = 105,000 − 10,500 = 94,500; admin 3% of 105,000 = 3,150;
+    // payable 91,350; TDS 5% = 4,568; net 86,782.
+    $line = PayoutLineItem::where('distributor_id', $dist->id)->first();
+    expect($line->gross_paise)->toBe(105_000)
+        ->and($line->repurchase_deduction_paise)->toBe(10_500)
+        ->and($line->wallet_balance_paise)->toBe(94_500)
+        ->and($line->net_transferred_paise)->toBe(86_782)
+        ->and($walletSvc->balancePaise($dist->id))->toBe(0)
+        ->and($walletSvc->repurchaseWalletBalancePaise($dist->id))->toBe(10_500);
+});
+
 it('weekly batch: no repurchase deduction when plain credit() is used (no repurchase_transfer entries)', function () {
     // A plain credit() call (e.g. manual_credit) writes no
     // repurchase_transfer debit, so the payout reports zero deduction and

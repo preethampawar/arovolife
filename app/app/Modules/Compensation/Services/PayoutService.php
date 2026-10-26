@@ -92,7 +92,7 @@ final class PayoutService
     }
 
     /** reference_type values that produce repurchase_transfer debits from the weekly (Group A) engines. */
-    private const WEEKLY_REPURCHASE_REF_TYPES = ['gsb_cutoff_result'];
+    private const WEEKLY_REPURCHASE_REF_TYPES = ['gsb_cutoff_result', 'mentorship_bonus_result'];
 
     /** reference_type values that produce repurchase_transfer debits from the monthly (Group B) engines. */
     private const MONTHLY_REPURCHASE_REF_TYPES = ['gbb_monthly_result', 'rank_bonus_result', 'fortune_bonus_result'];
@@ -468,7 +468,7 @@ final class PayoutService
             $gross = $gsbEffective + $mbEffective;
             $capForfeit = $allocation['forfeit'];
 
-            // Repurchase was deducted at credit time: each gsb_credit has a
+            // Repurchase was deducted at credit time: each gsb_credit and mb_credit has a
             // matching repurchase_transfer debit already in the main wallet.
             // Sweep those entries alongside the bonus credits so the balance
             // closes to zero; the payout_debit uses effectiveGross (post-
