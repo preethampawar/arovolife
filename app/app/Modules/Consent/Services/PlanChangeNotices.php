@@ -135,9 +135,10 @@ final class PlanChangeNotices
      * distributor to agree again to a list that does not show the change.
      * So the notice
      * holds — and the command says why — when the page has no version label,
-     * when its change list cannot be read (the admin editor's purifier strips
-     * headings), or when the text changed but kept a label an earlier text
-     * already carried (a body edit without a new version and `####` entry).
+     * when its change list cannot be read, when the newest entry in that list
+     * is not the footer's version, or when the text changed but kept a label
+     * an earlier text already carried (a body edit without a new version and
+     * a matching entry).
      */
     public function blockedReason(): ?string
     {
@@ -151,8 +152,18 @@ final class PlanChangeNotices
             return 'The plan page footer has no "disclosure version: vYYYY-MM-DD" label.';
         }
 
-        if ($this->entries((string) $published['page']->body) === []) {
+        $entries = $this->entries((string) $published['page']->body);
+
+        if ($entries === []) {
             return 'The plan page has no readable "'.self::CHANGES_HEADING.'" list.';
+        }
+
+        // Without this, a new footer version with no entry of its own went
+        // out listing only the older entries: distributors would agree to a
+        // list that does not show the change.
+        if ($entries[0]->label !== $published['label']) {
+            return 'The plan page footer says '.$published['label'].' but the newest entry in "'.self::CHANGES_HEADING.'" is '
+                .$entries[0]->label.' — add a Small heading reading exactly '.$published['label'].' with the change under it.';
         }
 
         $labelReused = PlanTextVersion::query()

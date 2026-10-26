@@ -1,8 +1,9 @@
 # Distributor Communications
 
-Three surfaces where the company and its distributors talk to each other:
+Where the company and its distributors talk to each other:
 direct messages between distributors, announcements from the company, and the
-FAQ library. Each is gated by its own feature flag under **Feature Flags**, and
+FAQ library — and the legal pages they agree to (section 4). The first three are
+gated by their own feature flags under **Feature Flags**, and
 each is tuned under **Settings → Distributor communications**.
 
 Read this before you change a setting here. Two of these controls are
@@ -259,3 +260,44 @@ an income projection like any other.
 While the flag is off, `faq` is refused as a content-page type in the editor:
 a draft authored against a surface nobody can reach is a draft that gets
 forgotten and published later by accident.
+
+---
+
+## 4. Legal pages, including the Compensation Plan
+
+**Catalog & Content → Content Pages.** The legal pages — Direct Seller
+Agreement, Code of Ethics, Privacy Policy, Grievance Redressal, Compensation
+Plan, returns, shipping, cancellation, disclaimer and the rest of `/p/…` — are
+edited here. From 26 Oct 2026 the Compensation Plan is changed in this editor,
+not in the code (client decision, R-125).
+
+- **The page is edited as it looks.** The editor has buttons for Heading,
+  Subheading, Small heading, bold, lists, links and tables. The blog editor is
+  not used for these pages: it knows one heading size and no tables, and
+  rewrote them the moment it opened them. Colours, fonts and images pasted in
+  from elsewhere are removed on save.
+- **Saving without changing anything changes nothing** — not the text, not the
+  page's date. That date and the text's fingerprint are what a distributor
+  agrees to, so an empty save must not ask anyone to agree again.
+- **Once you change a page here, this copy is the master.** `content:publish`,
+  a re-seed and a platform reset leave it alone. A developer can replace it from
+  the code only with `content:publish <slug> --overwrite-portal-edits`.
+- **Changing the Compensation Plan tells every distributor** — while the
+  developer-owned flag `content.plan_change_notice` is on. They are shown the
+  change at their next sign-in and emailed after 3 days if they have not
+  confirmed (plan §12). A change applies from the start of the day after it is
+  published, unless it gives a later date, and never to the past. For each
+  change, put today's date in the version line at the very bottom, written
+  exactly like *v2026-11-02*, and at the top of the "Changes to this plan, by
+  version" list add a **Small heading** containing exactly the same text, with
+  the change in plain words under it. If a change was already published that
+  day, use tomorrow's date for the next one (it takes effect from tomorrow
+  anyway). If they do not match, the notice holds
+  and the save says so in red. It also says so in red when the flag is off.
+- **The income-projection check runs on the plan page.** A save is refused if
+  the title or text promises or projects earnings. The Code of Ethics and the
+  other legal pages are exempt, because they quote the banned phrases in order
+  to forbid them.
+- **Change the plan settings themselves** (rates, slabs, caps) only at a week
+  or month end, after that period's bonus run, and save the page no later than
+  that change.

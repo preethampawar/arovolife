@@ -95,6 +95,43 @@
         @error('status')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
     </div>
 
+    @if($policyPage ?? false)
+    {{-- Policy pages use their own visual editor (R-125): Trix knows one
+         heading level and no tables, and rewrote the body the moment it
+         loaded, so a save with no edits published the page without its
+         section headings, its tables or the plan's change list. The hidden
+         input keeps the stored text until the page is actually edited. --}}
+    @php
+        $toolbar = [
+            [['paragraph', 'Normal text', 'Ordinary paragraph text'], ['heading', 'Heading', 'Section heading'], ['subheading', 'Subheading', 'Heading inside a section'], ['smallheading', 'Small heading', 'Small heading, used for each entry in the plan\'s change list']],
+            [['bold', 'Bold', 'Bold'], ['italic', 'Italic', 'Italic'], ['underline', 'Underline', 'Underline'], ['link', 'Link', 'Add or change a link'], ['unlink', 'Remove link', 'Remove the link']],
+            [['bulletList', '• List', 'Bulleted list'], ['orderedList', '1. List', 'Numbered list'], ['blockquote', 'Quote', 'Indented quote'], ['horizontalRule', 'Line', 'Dividing line']],
+            [['insertTable', 'Insert table', 'Insert a table'], ['addRowAfter', '+ Row', 'Add a row below'], ['addColumnAfter', '+ Column', 'Add a column to the right'], ['deleteRow', '− Row', 'Delete this row'], ['deleteColumn', '− Column', 'Delete this column'], ['deleteTable', 'Delete table', 'Delete this table']],
+            [['undo', 'Undo', 'Undo'], ['redo', 'Redo', 'Redo']],
+        ];
+    @endphp
+    <div>
+        <label id="policy-body-label" class="block text-sm font-medium text-gray-700 mb-1.5">Body <x-help-tip text="The page as visitors will see it. Use the buttons to add headings, lists, links and tables." /></label>
+        <input id="content-body-input" type="hidden" name="body" value="{{ old('body', $page->body) }}">
+        <div data-policy-editor data-input="content-body-input" aria-labelledby="policy-body-label"
+             class="rounded-lg border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-brand-500">
+            <div role="toolbar" aria-label="Formatting" class="sticky top-0 z-10 flex flex-wrap gap-x-3 gap-y-2 rounded-t-lg border-b border-gray-200 bg-gray-50 p-2">
+                @foreach($toolbar as $group)
+                    <div class="flex flex-wrap gap-1">
+                        @foreach($group as [$cmd, $label, $title])
+                            <button type="button" data-cmd="{{ $cmd }}" title="{{ $title }}" aria-pressed="false"
+                                class="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 aria-pressed:border-brand-300 aria-pressed:bg-brand-50 aria-pressed:text-brand-800">{{ $label }}</button>
+                        @endforeach
+                    </div>
+                @endforeach
+            </div>
+            <div data-policy-surface class="max-h-[70vh] overflow-y-auto px-6 py-4"></div>
+        </div>
+        {{-- Filled in by the boot check below when the editor never starts. --}}
+        <p id="content-body-editor-error" class="mt-1 text-xs text-red-700" role="alert" hidden></p>
+        @error('body')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+    </div>
+    @else
     <div>
         <label class="block text-sm font-medium text-gray-700 mb-1.5">Body <x-help-tip text="The full rich-text content of the page shown to visitors." /></label>
         <input id="content-body-input" type="hidden" name="body" value="{{ old('body', $page->body) }}">
@@ -105,6 +142,7 @@
         <p id="content-body-editor-error" class="mt-1 text-xs text-red-700" role="alert" hidden></p>
         @error('body')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
     </div>
+    @endif
 
 </div>
 
@@ -114,6 +152,51 @@
     </x-ui.button>
 </div>
 
+@if($policyPage ?? false)
+@push('styles')
+<style>
+    .policy-editor-surface, .policy-editor-surface:focus, .policy-editor-surface:focus-visible { min-height: 360px; outline: none; box-shadow: none; }
+    .policy-editor-surface > :first-child { margin-top: 0; }
+    .policy-editor-surface h1 { font-size: 1.625rem; font-weight: 700; margin: 1.75rem 0 0.75rem; color: #111827; }
+    .policy-editor-surface h2 { font-size: 1.5rem; font-weight: 700; margin: 1.25rem 0 0.5rem; color: #111827; }
+    .policy-editor-surface h3 { font-size: 1.2rem; font-weight: 600; margin: 1rem 0 0.5rem; color: #111827; }
+    .policy-editor-surface h4 { font-size: 1.05rem; font-weight: 600; margin: 0.875rem 0 0.375rem; color: #111827; }
+    .policy-editor-surface p  { margin: 0.75rem 0; line-height: 1.65; color: #374151; }
+    .policy-editor-surface ul { list-style: disc; padding-left: 1.5rem; margin: 0.75rem 0; }
+    .policy-editor-surface ol { list-style: decimal; padding-left: 1.5rem; margin: 0.75rem 0; }
+    .policy-editor-surface li { margin: 0.25rem 0; color: #374151; }
+    .policy-editor-surface li p, .policy-editor-surface td p, .policy-editor-surface th p { margin: 0; }
+    .policy-editor-surface a  { color: #127a70; text-decoration: underline; }
+    .policy-editor-surface blockquote { border-left: 3px solid #2ab3a6; padding-left: 1rem; margin: 1rem 0; color: #4b5563; font-style: italic; }
+    .policy-editor-surface strong { font-weight: 600; color: #111827; }
+    .policy-editor-surface code { background: #f3f4f6; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.875em; }
+    .policy-editor-surface hr { margin: 1.5rem 0; border-color: #e5e7eb; }
+    .policy-editor-surface table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9375rem; table-layout: fixed; }
+    .policy-editor-surface th, .policy-editor-surface td { border: 1px solid #e5e7eb; padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; color: #374151; position: relative; }
+    .policy-editor-surface th { background: #f9fafb; font-weight: 600; color: #111827; }
+    .policy-editor-surface .selectedCell { background: #e6f6f4; }
+</style>
+@endpush
+
+@push('scripts')
+@vite('resources/js/policy-editor.js')
+<script>
+    // `load` fires after the module script has run, so a missing bundle or a
+    // start-up error is the only way `ready` is still unset here.
+    window.addEventListener('load', function () {
+        var root = document.querySelector('[data-policy-editor]');
+        var notice = document.getElementById('content-body-editor-error');
+        if (root === null || notice === null || root.dataset.ready === 'true') {
+            return;
+        }
+
+        notice.textContent = 'The editor could not start, so the page text cannot be edited. '
+            + 'Reload the page before making changes — saving now leaves the text exactly as it is.';
+        notice.hidden = false;
+    });
+</script>
+@endpush
+@else
 @push('styles')
 <style>
     trix-toolbar { background: #f3f6fa; border: 1px solid #e0e7ed; border-bottom: 0; border-radius: 0.5rem 0.5rem 0 0; padding: 0.5rem; }
@@ -152,3 +235,4 @@
     });
 </script>
 @endpush
+@endif

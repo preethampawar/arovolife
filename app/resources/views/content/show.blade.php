@@ -17,10 +17,13 @@
         .page-body > :first-child { margin-top: 0; }
         .page-body h2 { font-size: 1.5rem; font-weight: 700; margin: 1.25rem 0 0.5rem; color: #111827; }
         .page-body h3 { font-size: 1.2rem; font-weight: 600; margin: 1rem 0 0.5rem; color: #111827; }
+        .page-body h4 { font-size: 1.05rem; font-weight: 600; margin: 0.875rem 0 0.375rem; color: #111827; }
         .page-body p  { margin: 0.75rem 0; line-height: 1.65; color: #374151; }
         .page-body ul { list-style: disc; padding-left: 1.5rem; margin: 0.75rem 0; }
         .page-body ol { list-style: decimal; padding-left: 1.5rem; margin: 0.75rem 0; }
         .page-body li { margin: 0.25rem 0; color: #374151; }
+        /* The admin's visual editor wraps list items and table cells in <p>. */
+        .page-body li p, .page-body td p, .page-body th p { margin: 0; }
         .page-body a  { color: #127a70; text-decoration: underline; }
         .page-body blockquote { border-left: 3px solid #2ab3a6; padding-left: 1rem; margin: 1rem 0; color: #4b5563; font-style: italic; }
         .page-body strong { font-weight: 600; color: #111827; }

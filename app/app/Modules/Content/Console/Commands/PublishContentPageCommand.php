@@ -29,11 +29,16 @@ use Illuminate\Console\Command;
  * (ConsentDocuments), and a freshly seeded environment holds `compensation`
  * as a draft — while an environment whose page is already live keeps its
  * notified text.
+ *
+ * A page an administrator has changed in the portal is kept, not replaced:
+ * from 2026-10-26 the plan page is edited there, so that copy is the master
+ * (R-125). `--overwrite-portal-edits` replaces it from the markdown anyway.
  */
 final class PublishContentPageCommand extends Command
 {
     protected $signature = 'content:publish {slug* : One or more page slugs to republish}
-        {--if-unpublished : Only publish pages that are missing or not yet published}';
+        {--if-unpublished : Only publish pages that are missing or not yet published}
+        {--overwrite-portal-edits : Also replace pages an administrator has changed in the portal}';
 
     protected $description = 'Republish named policy pages from their markdown source.';
 
@@ -66,18 +71,27 @@ final class PublishContentPageCommand extends Command
             }
         }
 
+        $overwrite = (bool) $this->option('overwrite-portal-edits');
+        $kept = $overwrite ? [] : array_values(array_filter($slugs, ContentPageSeeder::editedInPortal(...)));
+
+        if ($kept !== []) {
+            $this->warn('Kept the portal version of: '.implode(', ', $kept).'. '
+                .'These were changed in the admin editor, so that copy is the master. '
+                .'Pass --overwrite-portal-edits to replace them from the markdown source.');
+        }
+
         $seeder = new ContentPageSeeder;
-        $count = $seeder->publish($slugs);
+        $count = $seeder->publish($slugs, $overwrite);
 
         AuditLog::create([
             'actor_id' => null,
             'action' => 'content_page.republished',
             'subject_type' => 'content_page',
             'subject_id' => null,
-            'details' => ['slugs' => $slugs, 'pages_written' => $count],
+            'details' => ['slugs' => $slugs, 'pages_written' => $count, 'portal_versions_kept' => $kept, 'overwrote_portal_edits' => $overwrite],
         ]);
 
-        $this->info('Republished '.$count.' page(s): '.implode(', ', $slugs).'.');
+        $this->info('Republished '.$count.' page(s): '.implode(', ', array_diff($slugs, $kept)).'.');
 
         return self::SUCCESS;
     }

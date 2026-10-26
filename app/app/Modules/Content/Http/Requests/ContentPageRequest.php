@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Content\Http\Requests;
 
+use App\Modules\Consent\Services\PlanChangeNotices;
 use App\Modules\Content\Models\ContentPage;
 use App\Modules\Shared\Features\FaqLibraryFeature;
 use App\Modules\Shared\Rules\NoIncomeProjection;
@@ -63,7 +64,8 @@ final class ContentPageRequest extends FormRequest
      * are copy an administrator writes in a textarea and publishes without a
      * code review, which is the whole reason the rule exists.
      *
-     * No for the untyped pages, and that exemption is narrow and deliberate:
+     * No for the untyped pages other than the plan, and that exemption is
+     * narrow and deliberate:
      * `type === null` is exactly the policy/legal set — the Code of Ethics,
      * the Privacy Policy, the T&C — whose bodies *quote* the banned phrases in
      * order to forbid them ("Phrases such as … 'passive income' … are
@@ -78,7 +80,21 @@ final class ContentPageRequest extends FormRequest
      */
     private function auditsCopy(): bool
     {
-        return $this->resolvedType() !== null;
+        return $this->resolvedType() !== null || $this->isPlanPage();
+    }
+
+    /**
+     * The Compensation Plan is the one untyped page held to the rule too.
+     * From 2026-10-26 administrators change it in the portal with no code
+     * review (R-125), and it is the page a projection would do most harm on;
+     * its published text passes the rule as it stands.
+     */
+    private function isPlanPage(): bool
+    {
+        $page = $this->route('page');
+
+        return $this->input('slug') === PlanChangeNotices::SLUG
+            || ($page instanceof ContentPage && $page->slug === PlanChangeNotices::SLUG);
     }
 
     /**

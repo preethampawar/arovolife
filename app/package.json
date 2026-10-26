@@ -19,6 +19,10 @@
         "vite": "^8.0.0"
     },
     "dependencies": {
+        "@tiptap/core": "3.31.4",
+        "@tiptap/extension-table": "3.31.4",
+        "@tiptap/pm": "3.31.4",
+        "@tiptap/starter-kit": "3.31.4",
         "cropperjs": "^1.6.2",
         "trix": "^2.1.19"
     },

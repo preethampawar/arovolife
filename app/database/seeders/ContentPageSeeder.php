@@ -140,16 +140,26 @@ final class ContentPageSeeder extends Seeder
      * unrelated page. `content:publish <slug>` exists so that a deploy can
      * name what it means to publish.
      *
+     * A page an administrator has changed in the portal is skipped unless
+     * $overwritePortalEdits is set: from 2026-10-26 the plan page is edited
+     * there, so the portal copy is the master and the markdown source may be
+     * stale (R-125). That covers the blanket paths too — run() is what
+     * `db:seed` and `platform:reset` call.
+     *
      * @param  list<string>|null  $slugs  null republishes every page
      * @return int the number of pages written
      */
-    public function publish(?array $slugs = null): int
+    public function publish(?array $slugs = null, bool $overwritePortalEdits = false): int
     {
         $now = now();
         $count = 0;
 
         foreach (self::PAGES as $meta) {
             if ($slugs !== null && ! in_array($meta['slug'], $slugs, true)) {
+                continue;
+            }
+
+            if (! $overwritePortalEdits && self::editedInPortal($meta['slug'])) {
                 continue;
             }
 
@@ -161,6 +171,7 @@ final class ContentPageSeeder extends Seeder
                     'body' => $this->renderBody($meta['slug']),
                     'status' => ContentPage::STATUS_PUBLISHED,
                     'published_at' => $now,
+                    'edited_in_portal_at' => null,
                 ],
             );
 
@@ -247,6 +258,15 @@ final class ContentPageSeeder extends Seeder
         }
 
         return $created;
+    }
+
+    /** Has an administrator changed this page in the portal since it was last published from source? */
+    public static function editedInPortal(string $slug): bool
+    {
+        return ContentPage::query()
+            ->where('slug', $slug)
+            ->whereNotNull('edited_in_portal_at')
+            ->exists();
     }
 
     /** @return list<string> every slug this seeder knows how to publish */

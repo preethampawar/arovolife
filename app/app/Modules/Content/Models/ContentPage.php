@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $meta_description
  * @property string $status
  * @property Carbon|null $published_at
+ * @property Carbon|null $edited_in_portal_at
  * @property int|null $updated_by_user_id
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -50,6 +51,7 @@ final class ContentPage extends Model
         'meta_description',
         'status',
         'published_at',
+        'edited_in_portal_at',
         'updated_by_user_id',
     ];
 
@@ -57,6 +59,7 @@ final class ContentPage extends Model
     {
         return [
             'published_at' => 'datetime',
+            'edited_in_portal_at' => 'datetime',
             'sort_order' => 'integer',
         ];
     }

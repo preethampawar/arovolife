@@ -42,6 +42,17 @@ return [
             'AutoFormat.RemoveEmpty' => true,
             'HTML.TargetBlank' => true,
         ],
+        // Repo-sourced policy pages (terms, ethics, privacy, grievance,
+        // compensation…) edited as raw HTML in the admin editor (R-125).
+        // Allows exactly what Str::markdown renders their sources to, so a
+        // save keeps the section headings, tables and the plan page's
+        // "Changes to this plan, by version" list. No style, no images.
+        'policy' => [
+            'HTML.Doctype' => 'HTML 4.01 Transitional',
+            'HTML.Allowed' => 'h1,h2,h3,h4,p,br,hr,strong,b,em,i,u,ul,ol,li,a[href|title],blockquote,code,pre,table,thead,tbody,tr,th,td',
+            'AutoFormat.AutoParagraph' => false,
+            'AutoFormat.RemoveEmpty' => false,
+        ],
         'test' => [
             'Attr.EnableID' => 'true',
         ],
