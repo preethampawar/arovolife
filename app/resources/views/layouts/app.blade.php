@@ -67,8 +67,5 @@
          is intercepted and confirmed here before submitting. --}}
     <x-confirm-modal />
 
-    {{-- Compensation-plan change notice (plan §12); outputs nothing unless one is pending. --}}
-    @include('partials.plan-change-notice')
-
 </body>
 </html>

@@ -391,7 +391,6 @@ final class PlanChangeNotices
                                 coolingOffEndsAt: $distributor->cooling_off_end_at?->isFuture()
                                     ? $distributor->cooling_off_end_at->format('d M Y')
                                     : null,
-                                canConfirmOnline: in_array($user->status, self::POPUP_STATUSES, true),
                             ));
                             $emailedNow++;
                         } catch (Throwable $e) {

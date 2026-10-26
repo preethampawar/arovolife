@@ -13,7 +13,9 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * The two buttons on the plan-change pop-up (plan page §12, R-123).
+ * The two buttons of the plan-change pop-up (plan page §12, R-123). The
+ * pop-up is no longer rendered (user decision 2026-10-26); these endpoints
+ * are kept so it can be restored without rebuilding the consent record.
  *
  * Agreeing is the distributor's own act, so it is refused while staff are
  * impersonating them: a consent recorded from a borrowed session would read

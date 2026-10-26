@@ -24,7 +24,6 @@ final class PlanChangeNoticeNotification extends Notification
         public readonly ?string $label,
         public readonly array $entries,
         public readonly ?string $coolingOffEndsAt,
-        public readonly bool $canConfirmOnline = true,
     ) {}
 
     /** @return array<int, string> */
@@ -43,7 +42,6 @@ final class PlanChangeNoticeNotification extends Notification
                 'label' => $this->label,
                 'entries' => $this->entries,
                 'coolingOffEndsAt' => $this->coolingOffEndsAt,
-                'canConfirmOnline' => $this->canConfirmOnline,
             ]);
     }
 }

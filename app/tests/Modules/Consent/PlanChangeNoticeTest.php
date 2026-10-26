@@ -5,14 +5,14 @@ declare(strict_types=1);
 /**
  * The compensation-plan change notice (plan page §12, R-123).
  *
- * PCN-01 a distributor whose accepted plan text differs sees the pop-up with the change list
+ * PCN-01 a distributor whose accepted plan text differs sees no pop-up after login (user decision 2026-10-26)
  * PCN-02 nothing shows once they hold a consent for the published text, or with the flag OFF
  * PCN-03 nothing shows for super-staff, under impersonation, or on the exempt pages
  * PCN-04 agreeing records a plan consent with the published version + hash, links it, and emails a receipt
  * PCN-05 agreeing to a text that is no longer published records nothing
  * PCN-06 agreeing is refused under impersonation
- * PCN-07 "Remind me later" hides it for the rest of the session only
- * PCN-08 showing the pop-up records shown_at, once
+ * PCN-07 "Remind me later" still answers, and nothing shows afterwards either
+ * PCN-08 browsing the account records no shown_at, so only the email counts as notice
  * PCN-09 the email waits 3 days from the notice start, goes to everyone not agreed, once
  * PCN-10 the email skips agreed, terminated and reserved accounts, and does nothing with the flag OFF
  * PCN-11 the list shows only versions newer than the one the distributor accepted
@@ -73,18 +73,15 @@ function pcnDistributor(string $status = 'active', ?string $planHash = null, arr
     return $distributor->fresh();
 }
 
-it('PCN-01: shows the pop-up with the change list to a distributor on an older plan text', function () {
+it('PCN-01: shows no pop-up to a distributor on an older plan text', function () {
     $distributor = pcnDistributor();
 
     $this->actingAs($distributor->user)
         ->get(route('profile.show'))
         ->assertOk()
-        ->assertSee('The arovolife Compensation Plan has changed')
-        ->assertSee('v2026-10-27')
-        ->assertSee('v2026-10-26')
-        ->assertSee('Mentorship Bonus — repurchase wallet', false)
-        ->assertSee('I have read the changes and agree')
-        ->assertSee(bin2hex(pcnPlanHash()));
+        ->assertDontSee('The arovolife Compensation Plan has changed')
+        ->assertDontSee('I have read the changes and agree')
+        ->assertDontSee('Remind me later');
 });
 
 it('PCN-02: shows nothing once the published text is agreed, or while the flag is off', function () {
@@ -175,38 +172,26 @@ it('PCN-06: agreeing is refused while staff impersonate the distributor', functi
     expect(Consent::query()->where('distributor_id', $distributor->id)->where('document_type', 'plan')->count())->toBe(1);
 });
 
-it('PCN-07: "Remind me later" hides the pop-up for the rest of the session only', function () {
+it('PCN-07: "Remind me later" still answers, and nothing shows afterwards either', function () {
     $distributor = pcnDistributor();
-    $hash = bin2hex(pcnPlanHash());
 
     $this->actingAs($distributor->user)
-        ->post(route('plan-changes.later'), ['hash' => $hash])
+        ->post(route('plan-changes.later'), ['hash' => bin2hex(pcnPlanHash())])
         ->assertRedirect();
 
-    $this->actingAs($distributor->user)->get(route('profile.show'))
-        ->assertDontSee('I have read the changes and agree');
-
     $this->flushSession();
 
     $this->actingAs($distributor->user)->get(route('profile.show'))
-        ->assertSee('I have read the changes and agree');
+        ->assertOk()
+        ->assertDontSee('I have read the changes and agree');
 });
 
-it('PCN-08: showing the pop-up records when it was first shown, and what it listed', function () {
+it('PCN-08: browsing the account records no shown_at, so only the email counts as notice', function () {
     $distributor = pcnDistributor();
 
-    Carbon::setTestNow('2026-11-01 10:00:00');
-    $this->actingAs($distributor->user)->get(route('profile.show'))->assertOk();
-    $this->flushSession();
-    Carbon::setTestNow('2026-11-02 10:00:00');
     $this->actingAs($distributor->user)->get(route('profile.show'))->assertOk();
 
-    $notice = PlanChangeNotice::query()->where('distributor_id', $distributor->id)->sole();
-    expect($notice->shown_at->toDateTimeString())->toBe('2026-11-01 10:00:00')
-        ->and($notice->labels_shown)->toBe('v2026-10-27,v2026-10-26')
-        ->and($notice->emailed_at)->toBeNull();
-
-    Carbon::setTestNow();
+    expect(PlanChangeNotice::query()->where('distributor_id', $distributor->id)->whereNotNull('shown_at')->exists())->toBeFalse();
 });
 
 it('PCN-09: emails everyone not agreed once the notice is 3 days old, once, even if they saw the pop-up', function () {
