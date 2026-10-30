@@ -95,7 +95,7 @@
                     <span class="font-semibold text-gray-700">@include('partials._legal-entity')</span>
                 </p>
                 <p class="text-[11px] text-gray-600 mt-1 leading-snug">
-                    <a href="tel:+919640561966" class="hover:text-brand-800">+91 96405 61966</a>
+                    <a href="tel:+919640561976" class="hover:text-brand-800">+91 96405 61976</a>
                     <span class="text-gray-600">|</span>
                     <a href="mailto:support@arovolife.com" class="hover:text-brand-800">support@arovolife.com</a>
                     <span class="text-gray-600">|</span>

@@ -42,7 +42,7 @@ it('F37-04: a policy page offers Save as PDF and ends with the contact footer', 
         ->assertOk()
         ->assertSee('Download / Print')
         ->assertSee('Save as PDF', escape: false)
-        ->assertSee('+91 96405 61966')
+        ->assertSee('+91 96405 61976')
         ->assertSee('support@arovolife.com')
         ->assertSee('www.arovolife.com');
 });
@@ -52,7 +52,7 @@ it('names the Grievance Officer and DPO with their contact on the public pages',
 
     $this->get('/contact-us')
         ->assertOk()
-        ->assertSeeInOrder(['Grievance Officer', 'Shankar G, Marketing Head', '+91 96405 61966', 'Data Protection Officer', 'Rajendar L, Customer Service &amp; Legal Head', '+91 96405 61966', 'Nodal Officer', 'KP Naik', '+91 96405 61966', 'Compliance Committee', 'Shankar G, Marketing Head'], escape: false);
+        ->assertSeeInOrder(['Grievance Officer', 'Shankar G, Marketing Head', '+91 96405 61976', 'Data Protection Officer', 'Rajendar L, Customer Service &amp; Legal Head', '+91 96405 61976', 'Nodal Officer', 'KP Naik', '+91 96405 61976', 'Compliance Committee', 'Shankar G, Marketing Head'], escape: false);
 
     $this->get('/p/grievance')->assertOk()->assertSee('Shankar G, Marketing Head')->assertSee('Rajendar L, Customer Service')->assertDontSee('Shanker');
     $this->get('/p/privacy')->assertOk()->assertSee('Shankar G')->assertSee('Rajendar L')->assertSee('KP Naik')->assertDontSee('dpo@arovolife.com')->assertDontSee('nodal@arovolife.com');

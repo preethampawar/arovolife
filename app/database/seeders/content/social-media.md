@@ -78,4 +78,4 @@ We reserve the right to update or revise these Social Media Policy, at any time 
 
 ### For more information
 
-If you have questions or need further guidance, please contact customer support centre on arovolife mail id support@arovolife.com or call at +91 96405 61966.
+If you have questions or need further guidance, please contact customer support centre on arovolife mail id support@arovolife.com or call at +91 96405 61976.

@@ -777,7 +777,7 @@
                     <h4 class="text-white text-sm font-semibold mb-2">Customer Care</h4>
                     <ul class="space-y-1.5 text-sm">
                         <li>
-                            <a href="tel:+919640561966" class="hover:text-white">+91 96405 61966</a>
+                            <a href="tel:+919640561976" class="hover:text-white">+91 96405 61976</a>
                         </li>
                         <li>
                             <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a>

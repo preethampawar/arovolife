@@ -5,7 +5,7 @@ This page explains how an order placed on the arovolife website can be cancelled
 You can cancel an order at any time before it is shipped.
 
 - **From your account.** Sign in, open **My Orders**, select the order and choose **Cancel order**. This is available while the order is placed or paid and has not been shipped.
-- **By contacting us.** Email support@arovolife.com or call +91 96405 61966, and quote your order ID. Our Customer Support team will cancel the order for you if it has not been shipped.
+- **By contacting us.** Email support@arovolife.com or call +91 96405 61976, and quote your order ID. Our Customer Support team will cancel the order for you if it has not been shipped.
 
 ## 2. Orders that have already shipped
 
@@ -39,7 +39,7 @@ When an order is cancelled, the Business Volume (BV) recorded for that order is 
 | GSTIN | 36ABECA8336M1Z9 |
 | Principal place of business (GST) | 6-51/2, LIG Phase 1, Bank Colony, Pothreddipalle, Sangareddy, Telangana – 502001, India |
 | Registered office | H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak – 502001, Telangana, India |
-| Phone | +91 96405 61966 (9am to 5pm, Monday to Saturday, except national holidays) |
+| Phone | +91 96405 61976 (9am to 5pm, Monday to Saturday, except national holidays) |
 | Email | support@arovolife.com |
 
 See also: [Shipping & Delivery](/p/shipping), [Product Return, Warranty & Guarantee Policy](/p/returns), [Privacy Policy](/p/privacy) and [Policies & Procedures](/p/policies).

@@ -58,8 +58,8 @@ This Policy applies to all data processed by arovolife — through the website, 
 | CIN | U46909TS2026PTC210896 |
 | Registered office & correspondence address | H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak – 502001, Telangana, India (as on the MCA / Income Tax Department record; this is also the address for all postal correspondence) |
 | Capacity under DPDP Act | Data Fiduciary |
-| Data Protection Officer (DPO) | Rajendar L, Customer Service & Legal Head — +91 96405 61966 · `support@arovolife.com` |
-| Grievance Officer (privacy matters) | Shankar G, Marketing Head — +91 96405 61966 · `support@arovolife.com` |
+| Data Protection Officer (DPO) | Rajendar L, Customer Service & Legal Head — +91 96405 61976 · `support@arovolife.com` |
+| Grievance Officer (privacy matters) | Shankar G, Marketing Head — +91 96405 61976 · `support@arovolife.com` |
 
 For privacy questions or to exercise any right described in §10, write to the DPO. For grievance escalation, see `/p/grievance`.
 
@@ -267,10 +267,10 @@ The arovolife service is for adults (18 and above; 21 and above in Maharashtra).
 The Grievance Officer contact details for privacy matters are the same as those published at `/p/grievance`. The internal escalation path is:
 
 1. **Customer Care** — first contact through `/contact-us` (reason: "Privacy").
-2. **Grievance Officer** — Shankar G, Marketing Head, +91 96405 61966, `support@arovolife.com`.
-3. **Data Protection Officer** — Rajendar L, Customer Service & Legal Head, +91 96405 61966, `support@arovolife.com`.
-4. **Nodal Officer** — KP Naik, +91 96405 61966, `support@arovolife.com`.
-5. **Compliance Committee** — Shankar G, Marketing Head, +91 96405 61966, `support@arovolife.com`.
+2. **Grievance Officer** — Shankar G, Marketing Head, +91 96405 61976, `support@arovolife.com`.
+3. **Data Protection Officer** — Rajendar L, Customer Service & Legal Head, +91 96405 61976, `support@arovolife.com`.
+4. **Nodal Officer** — KP Naik, +91 96405 61976, `support@arovolife.com`.
+5. **Compliance Committee** — Shankar G, Marketing Head, +91 96405 61976, `support@arovolife.com`.
 6. **Data Protection Board of India** — per DPDP Act §27.
 
 SLA: acknowledgement in 48 hours; first substantive response in 5 working days; resolution within 30 days (extendable to 60 days for matters that require external verification).

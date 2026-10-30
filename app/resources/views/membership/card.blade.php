@@ -128,7 +128,7 @@
                         Quality you can trust · Value that returns · Service that listens
                     </p>
                     <p class="text-[10px] text-gray-600 mt-1 leading-snug">
-                        +91 96405 61966 <span class="text-gray-600">|</span> support@arovolife.com<br>
+                        +91 96405 61976 <span class="text-gray-600">|</span> support@arovolife.com<br>
                         www.arovolife.com
                     </p>
                 </div>
@@ -173,7 +173,7 @@
                         H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak – 502001, Telangana, India.
                     </p>
                     <p class="text-[10px] text-gray-600 mt-1 leading-snug">
-                        +91 96405 61966 <span class="text-gray-600">|</span> support@arovolife.com<br>
+                        +91 96405 61976 <span class="text-gray-600">|</span> support@arovolife.com<br>
                         www.arovolife.com
                     </p>
                 </div>

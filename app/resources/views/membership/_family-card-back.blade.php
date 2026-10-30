@@ -33,7 +33,7 @@
             H No 6-51/2, Bank Colony, Pothireddipally, Sangareddy B/s Complex, Sangareddy, Medak – 502001, Telangana, India.
         </p>
         <p class="text-[10px] text-gray-600 mt-1 leading-snug">
-            <a href="tel:+919640561966" class="hover:underline">+91 96405 61966</a> <span class="text-gray-600">|</span>
+            <a href="tel:+919640561976" class="hover:underline">+91 96405 61976</a> <span class="text-gray-600">|</span>
             <a href="mailto:support@arovolife.com" class="hover:underline">support@arovolife.com</a><br>
             <a href="https://www.arovolife.com" class="hover:underline">www.arovolife.com</a>
         </p>

@@ -69,7 +69,7 @@ Direct Seller may return the products as per below guidelines.
 | Modes | Timings | Details of Call Centre |
 |---|---|---|
 | Email | 24*7 | support@arovolife.com |
-| Customer Support Centre | Between 9am to 5pm from Monday to Saturday (Except National Holidays) | +91 96405 61966 |
+| Customer Support Centre | Between 9am to 5pm from Monday to Saturday (Except National Holidays) | +91 96405 61976 |
 
 - b. Fill details and send scan copy back to arovolife mail id support@arovolife.com
 - c. Customer Support Officers will compile data for the day & they will send data to logistic department.

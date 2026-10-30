@@ -549,7 +549,7 @@
             </div>
             <p class="text-xs text-gray-400 mb-3 leading-relaxed">
                 Customer Care:
-                <a href="tel:+919640561966" class="hover:text-white">+91 96405 61966</a> ·
+                <a href="tel:+919640561976" class="hover:text-white">+91 96405 61976</a> ·
                 <a href="mailto:support@arovolife.com" class="hover:text-white">support@arovolife.com</a> ·
                 {{ config('arovolife.support_hours') }}
             </p>

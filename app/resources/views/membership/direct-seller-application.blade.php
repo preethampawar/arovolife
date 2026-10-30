@@ -380,7 +380,7 @@
         <div class="text-center text-[11px] text-slate-600 space-y-1">
             <p>Arovolife Private Limited &mdash; CIN U46909TS2026PTC210896</p>
             <p>
-                <a href="tel:+919640561966" class="text-brand-700 hover:underline">+91 96405 61966</a>
+                <a href="tel:+919640561976" class="text-brand-700 hover:underline">+91 96405 61976</a>
                 <span class="text-slate-600">|</span>
                 <a href="mailto:support@arovolife.com" class="text-brand-700 hover:underline">support@arovolife.com</a>
             </p>

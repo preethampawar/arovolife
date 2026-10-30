@@ -62,7 +62,7 @@
             @endforeach
             <div class="flex flex-wrap justify-between gap-2 pt-2 border-t border-gray-200">
                 <dt class="text-gray-600">Helpline ({{ config('arovolife.support_hours') }})</dt>
-                <dd><a href="tel:+919640561966" class="font-medium text-brand-700 underline">+91 96405 61966</a></dd>
+                <dd><a href="tel:+919640561976" class="font-medium text-brand-700 underline">+91 96405 61976</a></dd>
             </div>
         </dl>
         <p class="mt-4 text-xs text-gray-600 leading-relaxed">
