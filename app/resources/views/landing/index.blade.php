@@ -136,10 +136,10 @@
 
                     {{-- Inner WHITE disc with the primary arovolife logo, nested
                          inside the blue outer disc. inset-10 = 240px container,
-                         logo at w-45 = 180px (reduced 20% on request). --}}
+                         logo at w-56 = 224px → 8px breathing room. --}}
                     <div class="hero-logo-disc absolute inset-10 bg-white rounded-full shadow-2xl shadow-brand-900/40 flex items-center justify-center">
-                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo.png') }}" alt="arovolife" data-theme-logo="light" class="w-45 h-auto">
-                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" data-theme-logo="dark" class="w-45 h-auto">
+                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo.png') }}" alt="arovolife" data-theme-logo="light" class="w-56 h-auto">
+                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" data-theme-logo="dark" class="w-56 h-auto">
                     </div>
 
                     {{-- 5 floating dots around the ring — curcuma gold → deep blue gradient --}}
