@@ -282,7 +282,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-4 sm:gap-6 lg:gap-8">
 
         <a href="{{ route('home') }}" class="flex items-center shrink-0 py-2.5">
-            <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.svg') }}" alt="arovolife" class="h-8 sm:h-10 w-auto">
+            <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" class="h-8 sm:h-10 w-auto">
         </a>
 
         {{-- Desktop nav (lg+) --}}

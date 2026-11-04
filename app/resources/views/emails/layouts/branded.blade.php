@@ -58,7 +58,7 @@
                                     <td align="left" valign="middle" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 22px; line-height: 26px; font-weight: 700; color: #ffffff; letter-spacing: -0.3px;">
                                         {{-- Light (on-dark) logo, brand guidelines v2. Styled alt text
                                              keeps the wordmark readable when images are blocked. --}}
-                                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" width="168" height="30" style="display: block; border: 0; outline: none; text-decoration: none; height: 30px; width: 168px; color: #ffffff; font-size: 22px; font-weight: 700;">
+                                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" width="159" height="40" style="display: block; border: 0; outline: none; text-decoration: none; height: 40px; width: 159px; color: #ffffff; font-size: 22px; font-weight: 700;">
                                     </td>
                                 </tr>
                                 {{-- Caption sits BELOW the logo, left-aligned. --}}

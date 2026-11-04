@@ -138,8 +138,8 @@
                          inside the blue outer disc. inset-10 = 240px container,
                          logo at w-56 = 224px → 8px breathing room. --}}
                     <div class="hero-logo-disc absolute inset-10 bg-white rounded-full shadow-2xl shadow-brand-900/40 flex items-center justify-center">
-                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo.svg') }}" alt="arovolife" data-theme-logo="light" class="w-56 h-auto">
-                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.svg') }}" alt="arovolife" data-theme-logo="dark" class="w-56 h-auto">
+                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo.png') }}" alt="arovolife" data-theme-logo="light" class="w-56 h-auto">
+                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" data-theme-logo="dark" class="w-56 h-auto">
                     </div>
 
                     {{-- 5 floating dots around the ring — curcuma gold → deep blue gradient --}}
@@ -769,7 +769,7 @@
         <div class="max-w-7xl mx-auto px-6">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
                 <div>
-                    <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.svg') }}" alt="arovolife" class="h-12 w-auto mb-3">
+                    <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" class="h-12 w-auto mb-3">
                     <p class="text-sm leading-relaxed mb-4">
                         @include('partials._legal-entity')
                     </p>
