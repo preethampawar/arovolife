@@ -68,11 +68,11 @@
                 <svg viewBox="0 0 72 72" class="w-20 h-20 shrink-0" role="img"
                      aria-label="Personal BV {{ round($card->qualifyFraction() * 100) }} percent of the amount needed to start a repurchase cycle">
                     <circle cx="36" cy="36" r="{{ $ringRadius }}" fill="none" stroke="#e5e7eb" stroke-width="7"/>
-                    <circle cx="36" cy="36" r="{{ $ringRadius }}" fill="none" stroke="#b76017" stroke-width="7"
+                    <circle cx="36" cy="36" r="{{ $ringRadius }}" fill="none" stroke="#a54a27" stroke-width="7"
                             stroke-linecap="round"
                             stroke-dasharray="{{ round($ringCirc * $card->qualifyFraction(), 2) }} {{ round($ringCirc, 2) }}"
                             transform="rotate(-90 36 36)"/>
-                    <text x="36" y="41" text-anchor="middle" font-size="15" font-weight="700" fill="#b76017">
+                    <text x="36" y="41" text-anchor="middle" font-size="15" font-weight="700" fill="#a54a27">
                         {{ round($card->qualifyFraction() * 100) }}%
                     </text>
                 </svg>

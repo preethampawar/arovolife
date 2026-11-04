@@ -1,8 +1,8 @@
 @php
     $url   = $url   ?? '#';
     $label = $label ?? 'Continue';
-    $bg    = $bg    ?? '#00b6ef';   // brand-500 (new arovolife blue)
-    $bgD   = $bgD   ?? '#0a719f';   // brand-700 (border / VML)
+    $bg    = $bg    ?? '#1e4952';   // brand-900 (v2 primary navy) — 9.9:1 with white
+    $bgD   = $bgD   ?? '#112e35';   // brand-950 (border / VML)
 @endphp
 {{-- Bulletproof button — VML for Outlook + table-cell for everyone else.
      Keeps a clean rendered button across all major email clients. --}}

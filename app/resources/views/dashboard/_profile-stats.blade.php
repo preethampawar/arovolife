@@ -1,6 +1,6 @@
 {{-- Profile Stats — the ADN card: 15-row stats + ID photo upload/crop. --}}
 <div class="relative overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-leaf-50/60 shadow-sm p-6">
-    <span class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-500 via-leaf-500 to-sunrise-500" aria-hidden="true"></span>
+    <span class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-sunrise-500 via-brand-900 to-brand-500" aria-hidden="true"></span>
     <div class="flex items-center justify-between gap-3 mb-4">
         <div class="flex items-center gap-3">
             <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md shadow-brand-500/30">

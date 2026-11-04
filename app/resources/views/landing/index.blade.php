@@ -112,12 +112,12 @@
                          that you see in the reference image. --}}
                     <div class="hero-glow absolute -inset-4 bg-brand-400/60 rounded-full blur-3xl"></div>
 
-                    {{-- Tighter blue halo gradient — concentrates the colour
+                    {{-- Tighter teal halo gradient — concentrates the colour
                          right at the rim of the white disc. --}}
                     <div class="hero-halo absolute inset-2 bg-gradient-to-br from-brand-300 to-brand-500 rounded-full opacity-50 blur-md"></div>
 
-                    {{-- Outer light-brand-blue disc — sits inside the ripple
-                         zone (inset-4 = 288px). brand-300 (#5fd2f8) at
+                    {{-- Outer light-brand-teal disc — sits inside the ripple
+                         zone (inset-4 = 288px). brand-300 (#5ed4c7) at
                          85% alpha so the soft halo behind bleeds through
                          subtly. The animated rings emanate outward from
                          its edge; the inner white disc nests inside it. --}}
@@ -128,27 +128,26 @@
                          full lifetime spans 3 stagger windows), and the
                          opacity fades linearly across the full lifetime
                          so rings don't linger as ghost outlines.
-                         Colours: gold + violet + brand-blue (deep navy
-                         was too dark against the light brand-300 disc;
-                         brand-500 #00b6ef ties back to the platform
-                         primary). --}}
-                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2" style="border-color: rgba(212, 160, 23, 0.5);"></div>
-                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2" style="border-color: rgba(124, 94, 189, 0.5);"></div>
-                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2" style="border-color: rgba(0, 182, 239, 0.5);"></div>
+                         Colours: the three v2 guideline colours — coral,
+                         navy, teal (#e57b4f, #1e4952, #0db8a9) at 50% alpha. --}}
+                    <div class="hero-ring hero-ring-1 absolute inset-0 rounded-full border-2" style="border-color: rgba(229, 123, 79, 0.5);"></div>
+                    <div class="hero-ring hero-ring-2 absolute inset-0 rounded-full border-2" style="border-color: rgba(30, 73, 82, 0.5);"></div>
+                    <div class="hero-ring hero-ring-3 absolute inset-0 rounded-full border-2" style="border-color: rgba(13, 184, 169, 0.5);"></div>
 
-                    {{-- Inner WHITE disc with the blue arovolife logo, nested
+                    {{-- Inner WHITE disc with the primary arovolife logo, nested
                          inside the blue outer disc. inset-10 = 240px container,
                          logo at w-56 = 224px → 8px breathing room. --}}
                     <div class="hero-logo-disc absolute inset-10 bg-white rounded-full shadow-2xl shadow-brand-900/40 flex items-center justify-center">
-                        <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="w-56 h-auto">
+                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo.svg') }}" alt="arovolife" data-theme-logo="light" class="w-56 h-auto">
+                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.svg') }}" alt="arovolife" data-theme-logo="dark" class="w-56 h-auto">
                     </div>
 
                     {{-- 5 floating dots around the ring — curcuma gold → deep blue gradient --}}
-                    <span class="hero-spark hero-spark-1 absolute w-3 h-3 rounded-full"  style="background:#d4a017;color:#d4a017;"></span>
-                    <span class="hero-spark hero-spark-2 absolute w-2.5 h-2.5 rounded-full" style="background:#e88e1a;color:#e88e1a;"></span>
-                    <span class="hero-spark hero-spark-3 absolute w-2 h-2 rounded-full" style="background:#7c5ebd;color:#7c5ebd;"></span>
-                    <span class="hero-spark hero-spark-4 absolute w-2.5 h-2.5 rounded-full" style="background:#1c80e3;color:#1c80e3;"></span>
-                    <span class="hero-spark hero-spark-5 absolute w-3 h-3 rounded-full" style="background:#0b427a;color:#0b427a;"></span>
+                    <span class="hero-spark hero-spark-1 absolute w-3 h-3 rounded-full"  style="background:#e57b4f;color:#e57b4f;"></span>
+                    <span class="hero-spark hero-spark-2 absolute w-2.5 h-2.5 rounded-full" style="background:#f0a480;color:#f0a480;"></span>
+                    <span class="hero-spark hero-spark-3 absolute w-2 h-2 rounded-full" style="background:#5ed4c7;color:#5ed4c7;"></span>
+                    <span class="hero-spark hero-spark-4 absolute w-2.5 h-2.5 rounded-full" style="background:#0db8a9;color:#0db8a9;"></span>
+                    <span class="hero-spark hero-spark-5 absolute w-3 h-3 rounded-full" style="background:#1e4952;color:#1e4952;"></span>
                 </div>
             </div>
         </div>
@@ -177,7 +176,7 @@
             }
 
             /* Animation panel — transparent rectangle; the dark brand-600
-               (#008cc7) colour now lives on the circular orbit itself
+               (#0a8a80) colour now lives on the circular orbit itself
                (.hero-circle) rather than the surrounding card. Padding
                reserves clearance around the 320px orbit so the
                5 spark dots don't clip at the panel edge. */
@@ -232,11 +231,11 @@
                 animation: heroOrbit 16s linear infinite;
                 transform-origin: center center;
             }
-            .hero-spark-1 { animation-delay:   0s;   }  /*   0° — curcuma gold (#d4a017) */
-            .hero-spark-2 { animation-delay:  -6.4s; }  /* 144° — amber (#e88e1a) — opposite curcuma */
-            .hero-spark-3 { animation-delay:  -3.2s; }  /*  72° — violet bridge */
-            .hero-spark-4 { animation-delay:  -9.6s; }  /* 216° — brand azure */
-            .hero-spark-5 { animation-delay: -12.8s; }  /* 288° — deep blue */
+            .hero-spark-1 { animation-delay:   0s;   }  /*   0° — v2 coral (#e57b4f) */
+            .hero-spark-2 { animation-delay:  -6.4s; }  /* 144° — light coral (#f0a480) */
+            .hero-spark-3 { animation-delay:  -3.2s; }  /*  72° — light teal (#5ed4c7) */
+            .hero-spark-4 { animation-delay:  -9.6s; }  /* 216° — v2 teal (#0db8a9) */
+            .hero-spark-5 { animation-delay: -12.8s; }  /* 288° — v2 navy (#1e4952) */
 
             @keyframes heroOrbit {
                 from { transform: translate(-50%, -50%) rotate(0deg)   translateX(160px); }
@@ -682,13 +681,13 @@
     </section>
 
     {{-- Compliance commitment banner (replaces "Absolute Skincare set") --}}
-    <section class="relative bg-brand-600 text-white overflow-hidden">
+    <section class="relative bg-brand-900 text-white overflow-hidden">
         <div class="absolute -top-24 -right-24 w-[420px] h-[420px] bg-brand-500/25 rounded-full blur-3xl"></div>
         <div class="absolute -bottom-24 -left-24 w-[380px] h-[380px] bg-sunrise-500/15 rounded-full blur-3xl"></div>
 
         <div class="relative max-w-7xl mx-auto px-6 py-16 md:py-20">
             <div class="text-center mb-12">
-                <span class="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-sunrise-500/15 border border-sunrise-400/40 text-sunrise-300 text-xs font-semibold uppercase tracking-wider">
+                <span class="inline-flex items-center gap-2 px-3 py-1 mb-4 rounded-full bg-sunrise-500/15 border border-sunrise-400/40 text-sunrise-200 text-xs font-semibold uppercase tracking-wider">
                     <x-lucide-shield-check class="w-4 h-4" />
                     Trust &amp; Compliance
                 </span>
@@ -757,7 +756,7 @@
 
             <div class="text-center mt-10">
                 <a href="{{ route('content.show', 'terms') }}"
-                   class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-sunrise-500 text-white hover:bg-sunrise-600 text-sm font-semibold shadow-lg shadow-sunrise-500/20 transition-colors">
+                   class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-sunrise-600 text-white hover:bg-sunrise-700 text-sm font-semibold shadow-lg shadow-sunrise-500/20 transition-colors">
                     Read the Direct Seller Agreement
                     <x-lucide-arrow-right class="w-4 h-4" />
                 </a>
@@ -770,7 +769,7 @@
         <div class="max-w-7xl mx-auto px-6">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
                 <div>
-                    <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-12 w-auto mb-3">
+                    <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.svg') }}" alt="arovolife" class="h-12 w-auto mb-3">
                     <p class="text-sm leading-relaxed mb-4">
                         @include('partials._legal-entity')
                     </p>

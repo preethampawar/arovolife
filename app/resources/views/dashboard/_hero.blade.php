@@ -11,7 +11,7 @@
     // half-screen hole where the panel used to be.
     $heroAside = $hasDistributorBlock && ($repurchaseCard ?? null) !== null;
 @endphp
-<section class="relative overflow-hidden rounded-3xl bg-brand-600 text-white shadow-lg mb-6">
+<section class="relative overflow-hidden rounded-3xl bg-brand-700 text-white shadow-lg mb-6">
 
     <div class="relative grid grid-cols-1 {{ $heroAside ? 'lg:grid-cols-[1fr_minmax(0,560px)] lg:items-center' : '' }} gap-5 p-5 sm:p-6">
         {{-- One identity row: avatar, name, then a single chip line carrying
@@ -52,7 +52,7 @@
                              which means the rank is genuinely not yet achieved. --}}
                         @if($rankOn && $rankStatus !== null)
                             @php $currentRankName = $rankStatus->currentRankName(); @endphp
-                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold {{ $currentRankName ? 'bg-sunrise-400/25 border border-sunrise-300/40' : 'bg-white/10 border border-white/20 text-white/70' }}">
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold {{ $currentRankName ? 'bg-sunrise-400/25 border border-sunrise-300/40' : 'bg-white/10 border border-white/20 text-white/90' }}">
                                 <x-lucide-trophy class="w-3.5 h-3.5" />
                                 {{ $currentRankName ?? 'No Rank' }}
                             </span>
@@ -61,7 +61,7 @@
                              queries failed; a TitleResult with a null title is a
                              distributor who has not reached the first threshold. --}}
                         @if($title !== null)
-                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold {{ $title->title ? 'bg-leaf-400/25 border border-leaf-300/40' : 'bg-white/10 border border-white/20 text-white/70' }}">
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold {{ $title->title ? 'bg-leaf-400/25 border border-leaf-300/40' : 'bg-white/10 border border-white/20 text-white/90' }}">
                                 {{ $title->title ?? 'No Title' }}
                             </span>
                         @endif

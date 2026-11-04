@@ -527,7 +527,7 @@
     {{-- Footer (matches landing) --}}
     <footer class="bg-gray-900 text-gray-400 py-12">
         <div class="max-w-7xl mx-auto px-6 text-center">
-            <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" class="h-12 w-auto mx-auto mb-4">
+            <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.svg') }}" alt="arovolife" class="h-12 w-auto mx-auto mb-4">
             <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs mb-4">
                 <a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Terms</a>
                 <a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy</a>

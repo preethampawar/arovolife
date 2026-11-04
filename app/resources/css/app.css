@@ -1,63 +1,51 @@
-/* Outfit and Fraunces, served from our own origin.
+/* Brand type (Brand Guidelines v2, Nov 2026): Century Gothic + Montserrat,
+   served from our own origin.
    ------------------------------------------------------------------
-   These were @import'd from fonts.googleapis.com, and the site-wide CSP in
-   SecurityHeaders (style-src 'self' 'unsafe-inline'; font-src 'self' data:)
-   blocked both requests outright — so on staging the whole platform rendered
-   in fallback system type, with three CSP errors in every console.
+   Self-hosted because the site-wide CSP in SecurityHeaders allows only
+   font-src 'self' data:, and because a Google-hosted font makes every
+   visitor's browser announce its IP to a third party before consent (DPDP).
 
-   Self-hosting fixes that without widening the policy, and settles the other
-   half of it too: a Google-hosted font makes every visitor's browser announce
-   its IP to a third party before they have consented to anything, which is a
-   disclosure we would have to notice under DPDP and have no reason to make.
+   Century Gothic is a licensed Monotype face. Its web licence is being
+   bought; until its woff2 files land in public/fonts with @font-face rules
+   here, the stacks in @theme fall straight through to Montserrat. Adding
+   those rules is the whole switch — nothing else changes.
 
-   Both families are variable fonts, so one file per subset covers the whole
-   weight range Google was serving. Subsets and unicode-ranges are copied
-   verbatim from its css2 output, which matters more than it looks: the rupee
-   sign (U+20B9) lives in latin-ext, not latin, and this platform prints it on
-   almost every screen. Fraunces keeps its vietnamese subset for parity.
+   Montserrat is OFL and variable, so one file per subset covers 300–800.
+   Subsets and unicode-ranges are copied verbatim from Google's css2 output:
+   the rupee sign (U+20B9) lives in latin-ext, not latin, and this platform
+   prints it on almost every screen.
 
    To refresh, re-download the woff2 files named below into public/fonts. */
 @font-face {
-    font-family: 'Outfit';
+    font-family: 'Montserrat';
     font-style: normal;
     font-weight: 300 800;
     font-display: swap;
-    src: url('/fonts/outfit-latin-ext.woff2') format('woff2');
-    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    src: url('/fonts/montserrat-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-    font-family: 'Outfit';
+    font-family: 'Montserrat';
     font-style: normal;
     font-weight: 300 800;
     font-display: swap;
-    src: url('/fonts/outfit-latin.woff2') format('woff2');
+    src: url('/fonts/montserrat-latin.woff2') format('woff2');
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
-
-/* Fraunces — editorial display companion to Outfit. Used for wizard headings,
-   step numerals, and any moment that wants a touch of editorial warmth. */
 @font-face {
-    font-family: 'Fraunces';
-    font-style: normal;
-    font-weight: 300 600;
+    font-family: 'Montserrat';
+    font-style: italic;
+    font-weight: 300 800;
     font-display: swap;
-    src: url('/fonts/fraunces-vietnamese.woff2') format('woff2');
-    unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+    src: url('/fonts/montserrat-italic-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
-    font-family: 'Fraunces';
-    font-style: normal;
-    font-weight: 300 600;
+    font-family: 'Montserrat';
+    font-style: italic;
+    font-weight: 300 800;
     font-display: swap;
-    src: url('/fonts/fraunces-latin-ext.woff2') format('woff2');
-    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
-@font-face {
-    font-family: 'Fraunces';
-    font-style: normal;
-    font-weight: 300 600;
-    font-display: swap;
-    src: url('/fonts/fraunces-latin.woff2') format('woff2');
+    src: url('/fonts/montserrat-italic-latin.woff2') format('woff2');
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 /* Cropper.js — client-side ID-photo crop/pan/zoom before upload. */
@@ -80,26 +68,30 @@
 }
 
 @theme {
-    --font-sans: 'Outfit', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
-    --font-display: 'Fraunces', 'Outfit', ui-serif, Georgia, serif;
+    --font-sans: 'Century Gothic', 'Montserrat', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --font-display: 'Century Gothic', 'Montserrat', ui-sans-serif, system-ui, sans-serif;
 
-    /* Brand palette — sampled from the official arovolife blue logo
-       (logo-color-code.jpeg → #00B6EF). Hue ~194°, saturation tapered from
-       100% at the 500 step toward the deeper shades; lightness curve
-       follows a Tailwind-style smooth ramp so 50…950 reads cleanly. */
-    --color-brand-50:  #ecfaff;
-    --color-brand-100: #cff1fd;
-    --color-brand-200: #a3e5fc;
-    --color-brand-300: #5fd2f8;
-    --color-brand-400: #21bef1;
-    --color-brand-500: #00b6ef;  /* base — official brand blue */
-    --color-brand-600: #008cc7;
-    --color-brand-700: #0a719f;
-    --color-brand-800: #115d80;
-    --color-brand-900: #114a68;
-    --color-brand-950: #082f44;
+    /* Brand palette — Brand Guidelines v2 (Nov 2026). Teal #0DB8A9 is the
+       500 step; the ramp darkens into the primary navy #1E4952 at 900, so
+       brand-900 IS the guideline navy (dark grounds: nav bar, footer, the
+       light-logo backdrop). Every 600+ step has equal or better contrast on
+       white than the blue step it replaced, and 600 clears AA with white text (5.5:1 — buttons are bg-brand-600 text-white app-wide), so no
+       existing text/button pairing lost contrast in the swap. */
+    --color-brand-50:  #ebfaf8;
+    --color-brand-100: #cdf3ee;
+    --color-brand-200: #9de6dd;
+    --color-brand-300: #5ed4c7;
+    --color-brand-400: #26c2b3;
+    --color-brand-500: #0db8a9;  /* base — guideline teal */
+    --color-brand-600: #06766c;
+    --color-brand-700: #0a6660;
+    --color-brand-800: #135a58;
+    --color-brand-900: #1e4952;  /* guideline primary navy */
+    --color-brand-950: #112e35;
 
-    /* leaf: green swoosh (#4fb435) — nav & growth accents */
+    /* leaf: green — kept as the SUCCESS colour only (done / approved /
+       growth ticks). The v2 palette has no green; success must stay
+       distinguishable from teal brand buttons and links. */
     --color-leaf-50:  #f1faec;
     --color-leaf-100: #ddf3cf;
     --color-leaf-200: #bce7a0;
@@ -112,17 +104,18 @@
     --color-leaf-900: #1f4515;
     --color-leaf-950: #132c0c;
 
-    /* sunrise: orange swoosh (#f5922a) — CTAs & warnings */
-    --color-sunrise-50:  #fef4e5;
-    --color-sunrise-100: #fde3bd;
-    --color-sunrise-200: #fbd093;
-    --color-sunrise-300: #f9bd66;
-    --color-sunrise-400: #f7a83e;
-    --color-sunrise-500: #f5922a;
-    --color-sunrise-600: #d67920;
-    --color-sunrise-700: #b76017;
-    --color-sunrise-800: #8f4b11;
-    --color-sunrise-900: #66350c;
+    /* sunrise: guideline coral #e57b4f (500) — CTAs & warnings. 600+ steps
+       out-contrast the orange they replaced; 600 clears AA with white (4.56:1). */
+    --color-sunrise-50:  #fdf3ee;
+    --color-sunrise-100: #fbe2d6;
+    --color-sunrise-200: #f6c5ae;
+    --color-sunrise-300: #f0a480;
+    --color-sunrise-400: #ea8d65;
+    --color-sunrise-500: #e57b4f;
+    --color-sunrise-600: #bd5830;
+    --color-sunrise-700: #a54a27;
+    --color-sunrise-800: #833c22;
+    --color-sunrise-900: #66301d;
 
     /* ---------------------------------------------------------------
        ELEVATION. Tailwind's defaults are flat drops of pure black:
@@ -186,7 +179,7 @@
 body.admin-shell {
     /* --- Canvas ------------------------------------------------------
        #f4f7f6 sat at OKLCH hue 174.5 — a green-cyan cast, 55° away from
-       the brand blue (#00b6ef, hue 229.8). That mismatch is what read as
+       the old brand blue (#00b6ef, hue 229.8; replaced by v2 teal in Nov 2026). That mismatch is what read as
        "muddy". #f3f6fa is the same lightness (L 97.2 vs 97.4) at hue 245:
        cool, clean, and on the same side of neutral as the logo. Declared
        here rather than in @layer base so the public site keeps #f4f7f6. */
@@ -235,7 +228,7 @@ body.admin-shell {
        brand-500 is only 2.35:1 on white — the 190 existing
        focus:ring-brand-500 rings currently FAIL WCAG 1.4.11 (3:1 for
        non-text UI). brand-600 clears it on all three light surfaces.  */
-    --focus-ring:     #008cc7;   /* 3.77 white · 3.47 canvas · 3.60 gray-50 */
+    --focus-ring:     #06766c;   /* brand-600 — 5.5 on white */
     --focus-contrast: #ffffff;   /* fills the 2px outline-offset gap */
 
     /* --- Table chrome ------------------------------------------------
@@ -251,7 +244,7 @@ body.admin-shell {
 }
 
 html.dark body.admin-shell {
-    --focus-ring:     #5fd2f8;   /* 9.32 on the dark card, 10.46 on the canvas */
+    --focus-ring:     #58dacb;   /* 9.32 on the dark card, 10.46 on the canvas */
     --focus-contrast: #0e161f;
 
     --admin-thead-bg:  #232c36;   /* matches html.dark .bg-gray-50      */
@@ -404,7 +397,7 @@ html.dark #adminTopbarStack {
 
 /* =====================================================================
    Wizard — registration flow visual treatment.
-   "Refined editorial fintech": atmospheric mesh background, Fraunces
+   "Refined editorial fintech": atmospheric mesh background, display-font
    numerals for steps, card with brand-leaf-sunrise accent edge, soft
    stagger reveal on first paint. The intent is calm seriousness — this
    is a regulated KYC flow, not a marketing landing — but with enough
@@ -583,7 +576,7 @@ html.dark #adminTopbarStack {
 .markdown-doc ol { list-style: decimal; }
 .markdown-doc li { margin: 0.3rem 0; }
 .markdown-doc strong { color: #0c1727; font-weight: 600; }
-.markdown-doc code { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 0.82em; background: #f0f4f8; color: #0a719f; padding: 0.12em 0.4em; border-radius: 0.3rem; }
+.markdown-doc code { font-family: 'SFMono-Regular', Menlo, Consolas, monospace; font-size: 0.82em; background: #f0f4f8; color: #0c796f; padding: 0.12em 0.4em; border-radius: 0.3rem; }
 .markdown-doc pre { background: #0c1727; color: #e0e7ed; padding: 1rem; border-radius: 0.6rem; overflow-x: auto; margin: 1rem 0; }
 .markdown-doc pre code { background: none; color: inherit; padding: 0; }
 .markdown-doc blockquote { border-left: 3px solid var(--color-brand-300); background: var(--color-brand-50); padding: 0.6rem 1rem; margin: 1rem 0; border-radius: 0 0.5rem 0.5rem 0; color: #405368; }
@@ -846,18 +839,18 @@ html.dark .text-orange-700 { color: #fdba74; }
 html.dark .text-orange-800 { color: #fed7aa; }
 
 /* brand (logo blue) — the text end only; the 600–800 fills stay. */
-html.dark .bg-brand-50 { background-color: #0a2634; }
-html.dark .bg-brand-100 { background-color: #0d3244; }
-html.dark .from-brand-50 { --tw-gradient-from: #0a2634; }
-html.dark .hover\:bg-brand-50:hover { background-color: #0d3244; }
-html.dark .text-brand-600 { color: #5fd2f8; }
-html.dark .text-brand-700 { color: #5fd2f8; }
-html.dark .text-brand-800 { color: #a3e5fc; }
+html.dark .bg-brand-50 { background-color: #032925; }
+html.dark .bg-brand-100 { background-color: #013631; }
+html.dark .from-brand-50 { --tw-gradient-from: #032925; }
+html.dark .hover\:bg-brand-50:hover { background-color: #013631; }
+html.dark .text-brand-600 { color: #58dacb; }
+html.dark .text-brand-700 { color: #58dacb; }
+html.dark .text-brand-800 { color: #a1eadf; }
 html.dark .text-brand-900 { color: #cff1fd; }
 html.dark .hover\:text-brand-800:hover { color: #cff1fd; }
 html.dark .group:hover .group-hover\:text-brand-800 { color: #cff1fd; }
-html.dark .border-brand-100 { border-color: #0d3244; }
-html.dark .border-brand-200 { border-color: #114a68; }
+html.dark .border-brand-100 { border-color: #013631; }
+html.dark .border-brand-200 { border-color: #015049; }
 
 /* leaf (logo green) — the Active tree card's surface, the depth/minimap
    chips, the "expanded" pill. Solid leaf-500/600 fills stay put. */
@@ -908,16 +901,16 @@ html.dark .text-leaf-800 { color: #c4eda9; }
    impersonate row. bg-sunrise-500/800 are CTA fills and stay. */
 html.dark .bg-sunrise-50 { background-color: #2b1f0c; }
 html.dark .bg-sunrise-50\/70 { background-color: rgb(43 31 12 / 0.7); }
-html.dark .bg-sunrise-100 { background-color: #3a2a10; }
-html.dark .hover\:bg-sunrise-50:hover { background-color: #3a2a10; }
-html.dark .border-sunrise-200 { border-color: #71501b; }
-html.dark .border-sunrise-300 { border-color: #845e20; }
-html.dark .border-sunrise-400 { border-color: #996e26; }
-html.dark .text-sunrise-500 { color: #f9bd66; }
-html.dark .text-sunrise-600 { color: #f9bd66; }
-html.dark .text-sunrise-700 { color: #f9bd66; }
-html.dark .text-sunrise-700\/80 { color: rgb(249 189 102 / 0.8); }
-html.dark .text-sunrise-800 { color: #fbd093; }
+html.dark .bg-sunrise-100 { background-color: #41251a; }
+html.dark .hover\:bg-sunrise-50:hover { background-color: #41251a; }
+html.dark .border-sunrise-200 { border-color: #7d4731; }
+html.dark .border-sunrise-300 { border-color: #92533a; }
+html.dark .border-sunrise-400 { border-color: #a96144; }
+html.dark .text-sunrise-500 { color: #fdb69a; }
+html.dark .text-sunrise-600 { color: #fdb69a; }
+html.dark .text-sunrise-700 { color: #fdb69a; }
+html.dark .text-sunrise-700\/80 { color: rgb(253 182 154 / 0.8); }
+html.dark .text-sunrise-800 { color: #fdcbb7; }
 
 /* --- Misc ----------------------------------------------------------- */
 /* Prose/markdown blocks inside admin pages (/admin/help/*).
@@ -936,7 +929,7 @@ html.dark .markdown-doc strong,
 html.dark .markdown-doc th { color: #f1f4f7; }
 html.dark .markdown-doc h3 { color: #e3e8ee; }
 html.dark .markdown-doc h2 { border-top-color: #303a46; }
-html.dark .markdown-doc code { background: #2c3642; color: #7cd3f7; }
+html.dark .markdown-doc code { background: #2c3642; color: #75dbcd; }
 html.dark .markdown-doc pre { background: #0b1119; color: #cdd3da; }
 /* The blockquote's ground and rule are var(--color-brand-50/300), and the
    dark layer remaps class names rather than the tokens themselves — so
@@ -946,7 +939,7 @@ html.dark .markdown-doc blockquote {
     border-left-color: #08607f;
     color: #cbd5e1;
 }
-html.dark .markdown-doc a { color: #5fd2f8; }
+html.dark .markdown-doc a { color: #58dacb; }
 html.dark .markdown-doc hr { border-top-color: #303a46; }
 html.dark .markdown-doc th,
 html.dark .markdown-doc td { border-color: #303a46; }
@@ -989,7 +982,7 @@ html.dark #adminSidebar .bg-gray-100 { background-color: #1e2836; }
 html.dark #adminSidebar .hover\:bg-gray-100:hover { background-color: #1e2836; }
 html.dark #adminSidebar .hover\:bg-gray-200:hover { background-color: #2b3645; }
 html.dark #adminSidebar .text-sunrise-800,
-html.dark #adminSidebar .text-sunrise-600 { color: #f7a83e; }
+html.dark #adminSidebar .text-sunrise-600 { color: #fca07b; }
 html.dark #adminSidebar .hover\:text-red-600:hover { color: #f87171; }
 
 /* =====================================================================
@@ -1110,7 +1103,7 @@ html.dark .page-body th { color: #f1f4f7; }
 html.dark .page-body p,
 html.dark .page-body li,
 html.dark .page-body td { color: #cdd3da; }
-html.dark .page-body a { color: #5fd2f8; }
+html.dark .page-body a { color: #58dacb; }
 html.dark .page-body blockquote { color: #b5bdc6; border-left-color: var(--color-brand-400); }
 html.dark .page-body pre,
 html.dark .page-body code { background: #1f2731; color: #e3e8ec; }
@@ -1139,13 +1132,13 @@ html.dark .bg-amber-200 { background-color: #563e16; }
 html.dark .bg-amber-50\/30 { background-color: rgb(43 38 27 / 0.3); }
 html.dark .bg-amber-50\/40 { background-color: rgb(43 38 27 / 0.4); }
 html.dark .bg-amber-50\/70 { background-color: rgb(43 38 27 / 0.7); }
-html.dark .bg-brand-100\/60 { background-color: rgb(11 54 73 / 0.6); }
-html.dark .bg-brand-100\/70 { background-color: rgb(11 54 73 / 0.7); }
-html.dark .bg-brand-200\/40 { background-color: rgb(10 70 93 / 0.4); }
-html.dark .bg-brand-200\/50 { background-color: rgb(10 70 93 / 0.5); }
-html.dark .bg-brand-50\/40 { background-color: rgb(12 41 56 / 0.4); }
-html.dark .bg-brand-50\/60 { background-color: rgb(12 41 56 / 0.6); }
-html.dark .bg-brand-50\/70 { background-color: rgb(12 41 56 / 0.7); }
+html.dark .bg-brand-100\/60 { background-color: rgb(0 58 53 / 0.6); }
+html.dark .bg-brand-100\/70 { background-color: rgb(0 58 53 / 0.7); }
+html.dark .bg-brand-200\/40 { background-color: rgb(0 75 68 / 0.4); }
+html.dark .bg-brand-200\/50 { background-color: rgb(0 75 68 / 0.5); }
+html.dark .bg-brand-50\/40 { background-color: rgb(4 45 40 / 0.4); }
+html.dark .bg-brand-50\/60 { background-color: rgb(4 45 40 / 0.6); }
+html.dark .bg-brand-50\/70 { background-color: rgb(4 45 40 / 0.7); }
 html.dark .bg-emerald-100 { background-color: #0b3732; }
 html.dark .bg-emerald-50 { background-color: #0c2a2a; }
 html.dark .bg-emerald-50\/30 { background-color: rgb(12 42 42 / 0.3); }
@@ -1182,20 +1175,20 @@ html.dark .border-sky-300 { border-color: #1f5a7a; }
 html.dark .bg-sky-50\/60 { background-color: rgb(12 39 57 / 0.6); }
 html.dark .bg-sky-50\/70 { background-color: rgb(12 39 57 / 0.7); }
 html.dark .bg-sunrise-100\/40 { background-color: rgb(60 47 33 / 0.4); }
-html.dark .bg-sunrise-200\/40 { background-color: rgb(83 59 34 / 0.4); }
+html.dark .bg-sunrise-200\/40 { background-color: rgb(88 55 43 / 0.4); }
 html.dark .bg-teal-100 { background-color: #0b373a; }
 html.dark .bg-teal-50 { background-color: #0c2a2f; }
 html.dark .bg-violet-100 { background-color: #28224c; }
 html.dark .bg-violet-50 { background-color: #1d1d3a; }
 html.dark .bg-violet-50\/70 { background-color: rgb(29 29 58 / 0.7); }
 html.dark .border-amber-100 { border-color: #4c3817; }
-html.dark .border-brand-100\/80 { border-color: rgb(10 64 85 / 0.8); }
-html.dark .border-brand-200\/40 { border-color: rgb(9 80 106 / 0.4); }
-html.dark .border-brand-200\/50 { border-color: rgb(9 80 106 / 0.5); }
-html.dark .border-brand-200\/60 { border-color: rgb(9 80 106 / 0.6); }
-html.dark .border-brand-200\/70 { border-color: rgb(9 80 106 / 0.7); }
-html.dark .border-brand-300 { border-color: #08607f; }
-html.dark .border-brand-400 { border-color: #067093; }
+html.dark .border-brand-100\/80 { border-color: rgb(2 68 62 / 0.8); }
+html.dark .border-brand-200\/40 { border-color: rgb(7 85 77 / 0.4); }
+html.dark .border-brand-200\/50 { border-color: rgb(7 85 77 / 0.5); }
+html.dark .border-brand-200\/60 { border-color: rgb(7 85 77 / 0.6); }
+html.dark .border-brand-200\/70 { border-color: rgb(7 85 77 / 0.7); }
+html.dark .border-brand-300 { border-color: #04665d; }
+html.dark .border-brand-400 { border-color: #04766c; }
 html.dark .border-emerald-200 { border-color: #095241; }
 html.dark .border-indigo-100 { border-color: #242959; }
 html.dark .border-leaf-100 { border-color: #1f3f25; }
@@ -1205,21 +1198,21 @@ html.dark .border-purple-300 { border-color: #572c86; }
 html.dark .border-red-100 { border-color: #4c1c25; }
 html.dark .border-rose-100 { border-color: #4d192d; }
 html.dark .border-sky-100 { border-color: #0a3b56; }
-html.dark .border-sunrise-300\/40 { border-color: rgb(120 79 36 / 0.4); }
+html.dark .border-sunrise-300\/40 { border-color: rgb(127 73 52 / 0.4); }
 html.dark .border-teal-100 { border-color: #0a4142; }
 html.dark .border-violet-100 { border-color: #2f2559; }
 html.dark .border-violet-200 { border-color: #3c2b70; }
 html.dark .divide-red-100 > * { border-color: #4c1c25; }
-html.dark .ring-brand-200 { --tw-ring-color: #09506a; }
-html.dark .ring-brand-200\/40 { --tw-ring-color: rgb(9 80 106 / 0.4); }
-html.dark .ring-brand-200\/60 { --tw-ring-color: rgb(9 80 106 / 0.6); }
-html.dark .ring-brand-300 { --tw-ring-color: #08607f; }
+html.dark .ring-brand-200 { --tw-ring-color: #07554d; }
+html.dark .ring-brand-200\/40 { --tw-ring-color: rgb(7 85 77 / 0.4); }
+html.dark .ring-brand-200\/60 { --tw-ring-color: rgb(7 85 77 / 0.6); }
+html.dark .ring-brand-300 { --tw-ring-color: #04665d; }
 html.dark .ring-leaf-200 { --tw-ring-color: #254f27; }
 html.dark .ring-red-200 { --tw-ring-color: #631e27; }
 html.dark .ring-red-300 { --tw-ring-color: #7b202a; }
-html.dark .ring-sunrise-400 { --tw-ring-color: #8f5b25; }
-html.dark .text-brand-700\/70 { color: rgb(82 205 244 / 0.7); }
-html.dark .text-brand-700\/80 { color: rgb(82 205 244 / 0.8); }
+html.dark .ring-sunrise-400 { --tw-ring-color: #965439; }
+html.dark .text-brand-700\/70 { color: rgb(73 213 198 / 0.7); }
+html.dark .text-brand-700\/80 { color: rgb(73 213 198 / 0.8); }
 html.dark .text-emerald-600 { color: #47cfa1; }
 html.dark .text-emerald-700 { color: #52d1a7; }
 html.dark .text-emerald-800 { color: #8ce1c4; }
@@ -1233,7 +1226,7 @@ html.dark .text-purple-600 { color: #c47aff; }
 html.dark .text-purple-900 { color: #e8cbff; }
 html.dark .text-rose-600 { color: #ff5e85; }
 html.dark .text-rose-700 { color: #ff678c; }
-html.dark .text-sunrise-900 { color: #fce0c3; }
+html.dark .text-sunrise-900 { color: #feddd1; }
 html.dark .text-teal-600 { color: #47cec0; }
 html.dark .text-teal-700 { color: #52d1c3; }
 html.dark .text-teal-800 { color: #8ce0d7; }
@@ -1251,23 +1244,23 @@ html.dark .border-blue-100 { border-color: #1a3257; }
    Only the tint end (50-200) is remapped. A saturated stop is the brand
    and reads on both grounds, so from-brand-600, to-sky-600, via-leaf-500
    and the image scrims are deliberately left alone.                     */
-html.dark .from-brand-100 { --tw-gradient-from: #0d3244; }
+html.dark .from-brand-100 { --tw-gradient-from: #013631; }
 html.dark .from-indigo-50 { --tw-gradient-from: #171a33; }
 html.dark .from-leaf-100 { --tw-gradient-from: #1a3312; }
 html.dark .from-leaf-50 { --tw-gradient-from: #13260d; }
 html.dark .from-sky-50 { --tw-gradient-from: #0b2333; }
-html.dark .from-sunrise-100 { --tw-gradient-from: #3a2a10; }
+html.dark .from-sunrise-100 { --tw-gradient-from: #41251a; }
 html.dark .from-sunrise-50 { --tw-gradient-from: #2b1f0c; }
 html.dark .from-violet-100 { --tw-gradient-from: #28224c; }
-html.dark .to-brand-100 { --tw-gradient-to: #0d3244; }
-html.dark .to-brand-50 { --tw-gradient-to: #0a2634; }
-html.dark .to-brand-50\/60 { --tw-gradient-to: rgb(10 38 52 / 0.6); }
+html.dark .to-brand-100 { --tw-gradient-to: #013631; }
+html.dark .to-brand-50 { --tw-gradient-to: #032925; }
+html.dark .to-brand-50\/60 { --tw-gradient-to: rgb(3 41 37 / 0.6); }
 html.dark .to-leaf-50\/60 { --tw-gradient-to: rgb(19 38 13 / 0.6); }
 html.dark .to-sunrise-50 { --tw-gradient-to: #2b1f0c; }
 html.dark .to-violet-50 { --tw-gradient-to: #1d1d3a; }
-html.dark .via-brand-50 { --tw-gradient-via: #0a2634; }
-html.dark .via-brand-50\/50 { --tw-gradient-via: rgb(10 38 52 / 0.5); }
-html.dark .via-brand-50\/60 { --tw-gradient-via: rgb(10 38 52 / 0.6); }
+html.dark .via-brand-50 { --tw-gradient-via: #032925; }
+html.dark .via-brand-50\/50 { --tw-gradient-via: rgb(3 41 37 / 0.5); }
+html.dark .via-brand-50\/60 { --tw-gradient-via: rgb(3 41 37 / 0.6); }
 html.dark .via-leaf-50 { --tw-gradient-via: #13260d; }
 html.dark .via-leaf-50\/40 { --tw-gradient-via: rgb(19 38 13 / 0.4); }
 html.dark .via-white { --tw-gradient-via: #19212b; }
@@ -1286,9 +1279,9 @@ html.dark .via-slate-300 { --tw-gradient-via: #3e4b58; }
 
 /* Distributor UI changes 2026-09-28: dark remaps for the new dashboard tints. */
 html.dark .bg-pink-100 { background-color: #3d1a2e; }
-html.dark .hover\:bg-sunrise-200:hover { background-color: #4c3c22; }
+html.dark .hover\:bg-sunrise-200:hover { background-color: #54372b; }
 html.dark .hover\:bg-amber-200:hover { background-color: #4c3d26; }
-html.dark .hover\:bg-brand-200:hover { background-color: #1f4456; }
+html.dark .hover\:bg-brand-200:hover { background-color: #184842; }
 html.dark .hover\:bg-leaf-200:hover { background-color: #2c4524; }
 html.dark .hover\:bg-indigo-200:hover { background-color: #313659; }
 html.dark .hover\:bg-emerald-200:hover { background-color: #1d4944; }
@@ -1301,7 +1294,7 @@ html.dark .border-indigo-300 { border-color: #3b4380; }
 html.dark .border-pink-300 { border-color: #7a2e55; }
 html.dark .border-teal-300 { border-color: #1f6b6b; }
 html.dark .border-violet-300 { border-color: #4c3f8f; }
-html.dark .divide-brand-100 > * { border-color: #0d3244; }
+html.dark .divide-brand-100 > * { border-color: #013631; }
 html.dark .from-amber-50 { --tw-gradient-from: #2a2012; }
 html.dark .from-red-50 { --tw-gradient-from: #2a1517; }
 html.dark .from-violet-50 { --tw-gradient-from: #1d1d3a; }

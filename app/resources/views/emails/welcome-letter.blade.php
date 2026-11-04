@@ -11,7 +11,7 @@
 
             <p style="margin: 0 0 14px 0; padding-top: 18px; border-top: 1px solid #e5e7eb; font-size: 15px; line-height: 24px; color: #374151;">
                 Your Direct Seller account number is
-                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f; font-weight: 600;">{{ $adn }}</span>.
+                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660; font-weight: 600;">{{ $adn }}</span>.
                 A separate email has a link to set your password and sign in.
             </p>
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
@@ -32,7 +32,7 @@
 
             <p style="margin: 18px 0 0 0; font-size: 13px; line-height: 22px; color: #6b7280;">
                 Questions? Reply to this email or write to
-                <a href="mailto:support@arovolife.com" style="color: #0a719f; text-decoration: underline;">support@arovolife.com</a>.
+                <a href="mailto:support@arovolife.com" style="color: #0a6660; text-decoration: underline;">support@arovolife.com</a>.
             </p>
 
             @include('emails.partials.welcome-letter-signoff')
