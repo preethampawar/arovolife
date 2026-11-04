@@ -366,7 +366,7 @@
                 </span>
             </a>
             <button type="button"
-                onclick="document.getElementById('mobileNavDrawer').classList.toggle('hidden')"
+                onclick="(function (d) { d.classList.toggle('hidden'); if (! d.classList.contains('hidden')) { d.style.maxHeight = (window.innerHeight - d.getBoundingClientRect().top) + 'px'; } })(document.getElementById('mobileNavDrawer'))"
                 class="w-10 h-10 inline-flex items-center justify-center text-white rounded-md hover:bg-brand-700 transition-colors"
                 aria-label="Open menu">
                 <x-lucide-menu class="w-6 h-6" />
@@ -446,8 +446,11 @@
         })();
     </script>
 
-    {{-- Mobile drawer (slides down under the header) --}}
-    <div id="mobileNavDrawer" class="hidden lg:hidden bg-brand-600 border-t border-brand-500">
+    {{-- Mobile drawer (slides down under the header). The header is sticky,
+         so a drawer taller than the screen could never scroll to Sign out:
+         it is capped at the space below the header and scrolls inside
+         (the toggle sets the exact max-height; the class is the fallback). --}}
+    <div id="mobileNavDrawer" class="hidden lg:hidden bg-brand-600 border-t border-brand-500 max-h-[calc(100dvh-3.5rem)] overflow-y-auto overscroll-contain">
         <div class="px-4 py-2 flex flex-col text-sm">
             @foreach($navItems as $item)
                 @php
