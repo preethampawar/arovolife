@@ -118,7 +118,7 @@ Logs: `storage/logs/payments-YYYY-MM-DD.log` (180 days), every call/callback/web
 ## Standing constraints
 
 - **PCI-DSS SAQ-A**: `checkout.js` is loaded from Razorpay's origin, the card form renders in Razorpay's iframe, no card field ever posts to our origin, and the payload scrubber keeps only `card.last4`/`network`/`issuer`. Do not self-host or proxy `checkout.js`, and do not build custom card fields.
-- **DPDP**: contact, email, VPA, cardholder name, bank account, tokens and customer ids are dropped on write; acquirer references (RRN, ARN, UTR, UPI txn id) are kept for refund tracing (Rule 12 grievances). The Privacy Policy's processor table already names the gateway; sending the ADN in `notes` was deliberately **not** done.
+- **DPDP**: contact, email, VPA, cardholder name, bank account, tokens and customer ids are dropped on write; acquirer references (RRN, ARN, UTR, UPI txn id) are kept for refund tracing (Rule 12 grievances). The Privacy Policy's processor table names the gateway and lists the ADN as shared with it: distributor purchases send `arovolife_adn` in the Razorpay order and checkout `notes` so the dashboard can be searched by ADN (59161392, owner decision 2026-09-29, reconfirmed 2026-11-04); the scrubber keeps that key.
 - **Enum-free schema**: `payment_intents.status` and `refund_intents.status` keep their original enums; "expired" is `cancelled` + `cancel_reason`, "held" is `held_at` without `released_at`.
 
 ## Not built (next increments)
