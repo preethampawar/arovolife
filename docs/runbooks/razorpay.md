@@ -30,7 +30,7 @@ workers (`queue:restart`).
 ### Pre-launch exception (R-110)
 
 `RAZORPAY_ALLOW_TEST_MODE_IN_PRODUCTION=true` lets **production** use `rzp_test_` keys until
-`RazorpayClient::PRODUCTION_TEST_MODE_ENDS` (2026-11-05 00:00 IST; launch 2026-11-08). From then on it has no effect:
+`RazorpayClient::PRODUCTION_TEST_MODE_ENDS` (2026-12-29 00:00 IST; go-live working assumption 2027-01-01 — moved from 2026-11-05 on 2026-11-04). From then on it has no effect:
 production refuses test keys again and checkout closes until live keys are configured. While it is
 in force, checkout shows a red "no real money moves" notice, and every intent carries `mode = test`,
 which identifies test orders. Launch gates (R-110):
@@ -40,7 +40,9 @@ which identifies test orders. Launch gates (R-110):
 2. The pre-launch wipe is a full transactional reset (orders, BV, pools, engine runs, wallet
    ledger, payouts, invoices) with the invoice number series restarted — not a filter on `mode`.
 3. At go-live: live keys in, delete the override line, `config:cache`, `queue:restart`.
-4. arovolife.com stays unannounced until launch.
+4. Test-mode orders come only from staff/test ADNs. Real Distributors have been on production since
+   2026-10-20 (R-123): admin-compliance reviews every `mode = test` order from a non-test account weekly
+   and cancels it, and the wipe (gate 2) keeps their identity, Genos, KYC, consent and cooling-off records.
 
 Moving `PRODUCTION_TEST_MODE_ENDS` (e.g. a launch slip) needs its own reviewed commit that updates R-110.
 

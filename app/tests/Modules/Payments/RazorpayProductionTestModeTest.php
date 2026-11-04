@@ -65,10 +65,14 @@ function ptmCustomerWithCart(): User
     return $user;
 }
 
+it('PTM-00: the test-mode cut-off is the reviewed date (R-110) — moving it must change this test too', function (): void {
+    expect(RazorpayClient::PRODUCTION_TEST_MODE_ENDS)->toBe('2026-12-29 00:00:00');
+});
+
 it('PTM-01: production accepts a test key while the override is on and the test-mode cut-off has not come', function (): void {
     ptmConfig('rzp_test_ABCDEF123456', true);
     app()->detectEnvironment(fn () => 'production');
-    $this->travelTo(CarbonImmutable::parse('2026-11-04 23:59:59', 'Asia/Kolkata'));
+    $this->travelTo(CarbonImmutable::parse(RazorpayClient::PRODUCTION_TEST_MODE_ENDS, 'Asia/Kolkata')->subSecond());
 
     $client = app(RazorpayClient::class);
     expect($client->productionTestModeActive())->toBeTrue()
