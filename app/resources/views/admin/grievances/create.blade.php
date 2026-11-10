@@ -151,5 +151,4 @@
     </x-ui.button>
 </form>
 
-<x-confirm-modal />
 @endsection

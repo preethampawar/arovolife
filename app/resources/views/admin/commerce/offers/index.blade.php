@@ -158,5 +158,4 @@
     <div class="mt-4">{{ $grants->links() }}</div>
 @endif
 
-<x-confirm-modal />
 @endsection

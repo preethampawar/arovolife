@@ -265,7 +265,7 @@ test.describe('Action Center: type page', () => {
         await page.locator('#email').fill('complainant@e2e.test');
         await page.locator('form[action$="/admin/grievances"] button[type="submit"]').last().click();
         // This form always asks first ("Record this complaint?").
-        await page.locator('#confirm-modal-ok:visible').click();
+        await page.locator('#confirm-modal-ok').click();
         await expect(page).toHaveURL(/\/admin\/grievances\/\d+/);
 
         await page.goto(`/admin/action-center/${STATUTORY_TYPE}`);

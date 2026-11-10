@@ -147,5 +147,4 @@
     <div class="mt-4">{{ $distributors->links() }}</div>
 @endif
 
-<x-confirm-modal />
 @endsection

@@ -97,5 +97,4 @@
     </form>
 </div>
 
-<x-confirm-modal />
 @endsection

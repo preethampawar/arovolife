@@ -235,9 +235,5 @@
 </x-ui.card>
 @endif
 
-{{-- Unconditional: the centre form above declares data-confirm attributes but
-     the page never included this component, so that confirmation has never
-     actually been shown. --}}
-<x-confirm-modal />
 
 @endsection

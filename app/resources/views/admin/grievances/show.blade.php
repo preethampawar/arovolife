@@ -288,5 +288,4 @@
     </div>
 </div>
 
-<x-confirm-modal />
 @endsection
