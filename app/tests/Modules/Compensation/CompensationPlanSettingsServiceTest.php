@@ -29,7 +29,9 @@ it('falls back to the registry default when a scalar setting is absent', functio
     expect($plan->adminChargeWeeklyCapPaise())->toBe(2_500_000);  // ₹25,000 (KP Round-5)
     expect($plan->adminChargeMonthlyCapPaise())->toBe(2_500_000); // ₹25,000 (KP Round-5)
     expect($plan->minPayoutPaise())->toBe(10_000);          // ₹100 (KP)
-    expect($plan->gsbPoolRateBp())->toBe(4500);             // 45% daily GSB pool (KP 2026-07-29)
+    expect($plan->gsbPoolRateBp())->toBe(4200);             // 42% daily GSB pool (client 2026-11-04)
+    expect($plan->msbPoolRateBp())->toBe(400);              // 4% daily MSB pool (client 2026-11-04)
+    expect($plan->monthlyIncomeCapPaise())->toBe(1_000_000_000); // ₹1 crore (client 2026-11-04)
 });
 
 it('reads an overridden GSB pool rate from the database', function () {
@@ -67,10 +69,10 @@ it('excludes Fortune ranks 6–9 by default and respects an override', function 
 
 // ── Growth Booster (client 2026-10-09) ──────────────────────────────────────
 
-it('defaults the Growth Booster pool to 4% and the point value cap to ₹240', function () {
+it('defaults the Growth Booster pool to 6% and the point value cap to ₹240', function () {
     $plan = app(CompensationPlanSettingsService::class);
 
-    expect($plan->gbbPoolRateBp())->toBe(400);
+    expect($plan->gbbPoolRateBp())->toBe(600);
     expect($plan->gbbPointValueCapPaise())->toBe(24_000);
     expect(method_exists($plan, 'gbbAgpCap'))->toBeFalse();   // per-distributor AGP cap retired
 });

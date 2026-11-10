@@ -35,11 +35,13 @@ it('seeds the compensation plan tables and plan settings on a fresh database', f
     // as a code fallback (Task 13 Step 3: seeder keys == plan service keys).
     expect($settings['comp.admin_charge.weekly_cap_paise'])->toBe('2500000')
         ->and($settings['comp.admin_charge.monthly_cap_paise'])->toBe('2500000')
-        ->and($settings['comp.monthly_income_cap_paise'])->toBe('500000000')
+        ->and($settings['comp.monthly_income_cap_paise'])->toBe('1000000000')
         ->and($settings['comp.repurchase.cycle_days'])->toBe('30')
         ->and($settings['comp.fortune.min_commission_paise'])->toBe('3000');
 
-    expect($settings['comp.gsb.pool_rate_bp'])->toBe('4500')
+    expect($settings['comp.gsb.pool_rate_bp'])->toBe('4200')
+        ->and($settings['comp.gbb.pool_rate_bp'])->toBe('600')
+        ->and($settings['comp.msb.pool_rate_bp'])->toBe('400')
         ->and($settings['comp.fortune.pool_rate_bp'])->toBe('500')
         // One admin-charge toggle per cash bonus; Lifetime Awards are
         // merchandise only and have none (client 2026-10-09).

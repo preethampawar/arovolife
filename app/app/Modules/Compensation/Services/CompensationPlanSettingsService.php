@@ -38,7 +38,7 @@ final class CompensationPlanSettingsService
     public const GROUP_D_TYPES = ['adc_credit'];
 
     /**
-     * All five cash-bonus types that count toward the ₹50L monthly gross cap
+     * All five cash-bonus types that count toward the ₹1 crore monthly gross cap
      * (KP 2026-06-29 Round-4): GSB + MB + GBB + Rank + Fortune.
      * ADC and Awards are excluded from the cap.
      */
@@ -53,11 +53,12 @@ final class CompensationPlanSettingsService
         'comp.admin_charge.weekly_cap_paise' => 2_500_000,
         'comp.admin_charge.monthly_cap_paise' => 2_500_000,
         // Combined monthly gross cap across the five cash bonuses (KP Round-4).
-        // ₹50,00,000 = 500,000,000 paise. Combined gross of the five cash
+        // ₹1,00,00,000 = 1,000,000,000 paise (client 2026-11-04; was ₹50 lakh).
+        // Combined gross of the five cash
         // bonuses (MONTHLY_CAP_TYPES) per calendar month; excess is forfeited
         // at payout with an income_cap_forfeit ledger debit.
         // ADC and Awards are excluded from this cap.
-        'comp.monthly_income_cap_paise' => 500_000_000,
+        'comp.monthly_income_cap_paise' => 1_000_000_000,
         // Admin charge scope flags, ON for the six cash bonuses. Lifetime
         // Awards are merchandise only and carry no admin charge or TDS.
         'comp.admin_charge.applies_to_gsb' => true,
@@ -73,8 +74,8 @@ final class CompensationPlanSettingsService
         // the day's company-wide BV (bv_ledger_entries signed sum) that funds
         // GSB. Slabs 1–2 are paid fixed out of it first; the remainder is
         // divided by the day's total slab 3–7 scores (capped at the per-slab
-        // score value). 4500 bp = 45%.
-        'comp.gsb.pool_rate_bp' => 4500,
+        // score value). 4200 bp = 42% (client 2026-11-04; was 45%).
+        'comp.gsb.pool_rate_bp' => 4200,
         // Personal-BV top-up go-live (KP 2026-07-21). Accruals dated before this
         // are excluded from the conditional top-up pending pool — the old engine
         // already credited them daily. Permissive default so tests/fresh envs put
@@ -83,8 +84,8 @@ final class CompensationPlanSettingsService
         // Daily MSB pool (KP 2026-07-30): share of the day's company-wide BV
         // (same signed bv_ledger_entries sum as the GSB pool) that funds the
         // Mentorship Bonus. Divided by the day's total MSB score points to give
-        // one point value for every earner. 300 bp = 3%.
-        'comp.msb.pool_rate_bp' => 300,
+        // one point value for every earner. 400 bp = 4% (client 2026-11-04; was 3%).
+        'comp.msb.pool_rate_bp' => 400,
         // Client 2026-10-09: the highest MB point value the company pays.
         // ₹120 = 12,000 paise. Pool ÷ points above this is capped; the excess
         // stays with the company as leftover.
@@ -99,8 +100,8 @@ final class CompensationPlanSettingsService
         // condition. ₹3,600 = 360,000 paise (₹1,08,000 a month); the excess is
         // withheld. Not applied while the condition is met.
         'comp.msb.royalty_failed_daily_cap_paise' => 360_000,
-        // Client 2026-10-09: the GBB pool is 4% of the month's company BV.
-        'comp.gbb.pool_rate_bp' => 400,
+        // Client 2026-11-04: the GBB pool is 6% of the month's company BV (was 4%).
+        'comp.gbb.pool_rate_bp' => 600,
         // Client 2026-10-09: the highest GBB point value the company pays.
         // ₹240 = 24,000 paise. Pool ÷ AGP above this is capped; the excess stays
         // with the company as leftover. Replaced the per-distributor AGP cap.
@@ -199,7 +200,7 @@ final class CompensationPlanSettingsService
         return $this->scalarInt('comp.admin_charge.monthly_cap_paise');
     }
 
-    /** Combined monthly gross cap for the five cash bonuses (₹50L = 500_000_000 paise). */
+    /** Combined monthly gross cap for the five cash bonuses (₹1 crore = 1_000_000_000 paise). */
     public function monthlyIncomeCapPaise(): int
     {
         return $this->scalarInt('comp.monthly_income_cap_paise');
@@ -345,7 +346,7 @@ final class CompensationPlanSettingsService
 
     /**
      * Share of the day's company-wide BV that funds the daily GSB pool for the
-     * pro-rated slabs 3–7 (KP 2026-07-29). Basis points: 4500 = 45%.
+     * pro-rated slabs 3–7 (KP 2026-07-29). Basis points: 4200 = 42%.
      */
     public function gsbPoolRateBp(): int
     {
