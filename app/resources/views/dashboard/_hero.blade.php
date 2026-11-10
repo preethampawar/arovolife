@@ -65,7 +65,7 @@
                                 {{ $title->title ?? 'No Title' }}
                             </span>
                         @endif
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-white/85">
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-white">
                             Member since {{ $distributor->effective_date->format('d M Y') }}
                         </span>
                         <a href="{{ route('dashboard.documents') }}"
