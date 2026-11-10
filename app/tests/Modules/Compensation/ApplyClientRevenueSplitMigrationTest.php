@@ -48,17 +48,17 @@ it('moves every setting still at its previous default to the 2026-11-04 figure a
         ->and(strlen((string) $row->after_hash))->toBe(32);
 });
 
-it('keeps an admin override and records that it was not moved', function (): void {
+it('overwrites an admin override too and records the value it replaced', function (): void {
     setPlanSetting('comp.gsb.pool_rate_bp', '4400');
     setPlanSetting('comp.gbb.pool_rate_bp', '400');
 
     runRevenueSplitMigration();
 
-    expect(DB::table('settings')->where('key', 'comp.gsb.pool_rate_bp')->value('value'))->toBe('4400')
+    expect(DB::table('settings')->where('key', 'comp.gsb.pool_rate_bp')->value('value'))->toBe('4200')
         ->and(DB::table('settings')->where('key', 'comp.gbb.pool_rate_bp')->value('value'))->toBe('600');
 
     $details = revenueSplitAuditDetails()['settings'];
-    expect($details['comp.gsb.pool_rate_bp']['moved'])->toBeFalse()
+    expect($details['comp.gsb.pool_rate_bp'])->toMatchArray(['moved' => true, 'before' => '4400', 'value' => '4200'])
         ->and($details)->not->toHaveKey('comp.msb.pool_rate_bp');
 });
 
