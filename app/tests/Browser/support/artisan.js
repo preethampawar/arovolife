@@ -68,17 +68,20 @@ export function scenario(name) {
 /**
  * Replay every compensation engine through `asOf` and leave the clock there.
  * @param {string} asOf Asia/Kolkata instant, e.g. "2026-06-05 06:00:00"
- * @param {{settleRepurchase?: string, weeklyBatch?: string, approveAs?: string}} [options]
+ * @param {{settleRepurchase?: string, weeklyBatch?: string, monthlyBatch?: string, approveAs?: string}} [options]
  *   settleRepurchase: months (YYYY-MM, comma-separated) for the two-pass flow;
  *   weeklyBatch: Tuesdays (YYYY-MM-DD, comma-separated) to build a weekly payout batch for;
+ *   monthlyBatch: crediting months (YYYY-MM, comma-separated) paid by the 8th's payout close;
+ *     asOf must be on or after the 8th of the following month
  *   approveAs: staff e-mail that approves those batches (e.g. "finance@e2e.test")
  */
-export function runEngines(asOf, { settleRepurchase, weeklyBatch, approveAs } = {}) {
+export function runEngines(asOf, { settleRepurchase, weeklyBatch, monthlyBatch, approveAs } = {}) {
     return artisan(
         'e2e:engines',
         `--as-of=${asOf}`,
         ...(settleRepurchase ? [`--settle-repurchase=${settleRepurchase}`] : []),
         ...(weeklyBatch ? [`--weekly-batch=${weeklyBatch}`] : []),
+        ...(monthlyBatch ? [`--monthly-batch=${monthlyBatch}`] : []),
         ...(approveAs ? [`--approve-as=${approveAs}`] : []),
     );
 }

@@ -10,7 +10,8 @@
  * Requires:
  *   - the e2e stack on http://localhost:8085, world gsb-basic (fixtures.js)
  *   - T12 (NEFT export) runs on gsb-basic with a real, finance-approved
- *     weekly payout batch (e2e:engines --weekly-batch)
+ *     weekly payout batch (e2e:engines --weekly-batch); T12b the same for the
+ *     monthly batch (--monthly-batch)
  */
 
 import { readFileSync } from 'node:fs';
@@ -286,6 +287,38 @@ test.describe('Payout batch: NEFT export stays CSV', () => {
         expect(rows[1]).toContain('500000000001');
         expect(rows[1]).toContain('SBIN0000001');
         expect(rows[1]).toContain('1653.00');
+    });
+});
+
+test.describe('Payout batch: monthly NEFT export', () => {
+    // gsb-basic paid through the 8th's real payout close for June. Company BV
+    // 33,600 (3,200 + 15,200 + 15,200) × 6% = ₹2,016 GBB pool; root is the only
+    // earner (12 AGP from one slab-1 GSB cut-off → ₹168 an AGP, under the ₹240
+    // cap) so takes ₹2,016. Fortune: position 1, level 0 pays the ₹30 minimum.
+    // Gross ₹2,046 − ₹204.60 repurchase (10%, held at credit) − ₹61.38 admin
+    // charge (3% of gross) − ₹89.00 TDS (5% of ₹1,780.02) = ₹1,691.02.
+    test.use({
+        world: { name: 'gsb-basic', asOf: '2026-07-08 06:00:00', monthlyBatch: '2026-06', approveAs: 'finance@e2e.test' },
+    });
+
+    test('T12b: monthly NEFT bank file is .csv and pays root ₹1,691.02', async ({ page, builtWorld }) => {
+        await loginAsStaff(page, builtWorld, 'finance');
+        await page.goto('/admin/compensation/monthly-payouts');
+        const batchLink = page.locator('tbody tr').filter({ hasText: /01 Jul 2026/ }).locator('a[href*="/admin/compensation/monthly-payouts/"]').first();
+        await expect(batchLink).toBeVisible();
+        await batchLink.click();
+
+        const [download] = await Promise.all([
+            page.waitForEvent('download'),
+            submitAndConfirm(page, page.getByRole('button', { name: /Download bank file \(NEFT\)/ })),
+        ]);
+        expect(download.suggestedFilename()).toMatch(/\.csv$/);
+
+        const rows = readFileSync(await download.path(), 'utf8').trim().split('\n');
+        expect(rows).toHaveLength(2);
+        expect(rows[1]).toContain(builtWorld.partners.root.adn);
+        expect(rows[1]).toContain('SBIN0000001');
+        expect(rows[1]).toContain('1691.02');
     });
 });
 

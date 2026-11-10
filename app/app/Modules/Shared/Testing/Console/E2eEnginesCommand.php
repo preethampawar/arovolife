@@ -34,6 +34,11 @@ use RuntimeException;
  * the real PayoutService, after the replay. --approve-as signs those batches
  * off as that staff e-mail (the checker; the console build has no maker), so
  * the batch page shows the NEFT download as finance would see it.
+ *
+ * --monthly-batch pays each named CREDITING month (YYYY-MM) through the same
+ * compensation:monthly-payout-close the scheduler runs on the 8th, so its gates
+ * (engine completion, open-month guard) apply. --as-of must be on or after the
+ * 8th of the following month. --approve-as signs these batches off too.
  */
 final class E2eEnginesCommand extends Command
 {
@@ -41,7 +46,8 @@ final class E2eEnginesCommand extends Command
                             {--as-of= : Replay through this Asia/Kolkata instant, e.g. "2026-07-01 06:00:00"}
                             {--settle-repurchase= : Second pass: settle the cycles closing in these months (YYYY-MM, comma-separated)}
                             {--weekly-batch= : Build the weekly payout batch for these Tuesdays (YYYY-MM-DD, comma-separated)}
-                            {--approve-as= : Approve the built weekly batches as this staff e-mail}';
+                            {--monthly-batch= : Pay these crediting months through the payout close on the 8th (YYYY-MM, comma-separated)}
+                            {--approve-as= : Approve the built weekly and monthly batches as this staff e-mail}';
 
     protected $description = 'Replay the compensation engines on the e2e database up to a fixed instant';
 
@@ -76,24 +82,33 @@ final class E2eEnginesCommand extends Command
             $this->replay($runner);
         }
 
-        $this->buildWeeklyBatches($payouts);
+        $approverId = $this->approverId();
+        $this->buildWeeklyBatches($payouts, $approverId);
+        $this->buildMonthlyBatches($payouts, $approverId);
 
         $this->info('Engines replayed through '.Carbon::now()->format('Y-m-d H:i:s').'.');
 
         return self::SUCCESS;
     }
 
-    private function buildWeeklyBatches(PayoutService $payouts): void
+    private function approverId(): ?int
+    {
+        $approver = $this->option('approve-as');
+
+        if (! is_string($approver) || $approver === '') {
+            return null;
+        }
+
+        $id = DB::table('users')->where('email', $approver)->value('id')
+            ?? throw new RuntimeException("--approve-as: no user '{$approver}'.");
+
+        return (int) $id;
+    }
+
+    private function buildWeeklyBatches(PayoutService $payouts, ?int $approverId): void
     {
         $dates = $this->option('weekly-batch');
         $dates = is_string($dates) ? array_filter(array_map('trim', explode(',', $dates))) : [];
-        $approver = $this->option('approve-as');
-        $approverId = null;
-
-        if (is_string($approver) && $approver !== '') {
-            $approverId = DB::table('users')->where('email', $approver)->value('id')
-                ?? throw new RuntimeException("--approve-as: no user '{$approver}'.");
-        }
 
         foreach ($dates as $date) {
             $tuesday = Carbon::parse($date, 'Asia/Kolkata');
@@ -105,7 +120,7 @@ final class E2eEnginesCommand extends Command
             $batch = $payouts->runWeeklyBatch($tuesday);
 
             if ($approverId !== null) {
-                $batch = $payouts->approve($batch, (int) $approverId);
+                $batch = $payouts->approve($batch, $approverId);
             }
 
             if ($approverId !== null && $batch->status === PayoutBatch::STATUS_PENDING) {
@@ -113,6 +128,45 @@ final class E2eEnginesCommand extends Command
             }
 
             $this->info(sprintf('Weekly batch %s: #%d, %s.', $date, $batch->id, $batch->status));
+        }
+    }
+
+    private function buildMonthlyBatches(PayoutService $payouts, ?int $approverId): void
+    {
+        $months = $this->option('monthly-batch');
+        $months = is_string($months) ? array_filter(array_map('trim', explode(',', $months))) : [];
+
+        foreach ($months as $month) {
+            if (preg_match('/^\d{4}-\d{2}$/', $month) !== 1) {
+                throw new RuntimeException("--monthly-batch {$month}: expected YYYY-MM (the crediting month).");
+            }
+
+            $batchMonth = Carbon::createFromFormat('Y-m-d', $month.'-01', 'Asia/Kolkata')->addMonthNoOverflow()->startOfMonth();
+
+            if ($batchMonth->copy()->day(8)->isAfter(Carbon::now())) {
+                throw new RuntimeException("--monthly-batch {$month} pays on {$batchMonth->format('Y-m')}-08, which is after --as-of.");
+            }
+
+            $code = Artisan::call('compensation:monthly-payout-close', ['--month' => $month]);
+
+            if ($code !== self::SUCCESS) {
+                throw new RuntimeException("Monthly payout close for {$month} refused: ".trim(Artisan::output()));
+            }
+
+            $batch = PayoutBatch::whereDate('batch_date', $batchMonth->toDateString())
+                ->where('batch_type', PayoutBatch::TYPE_MONTHLY)
+                ->first()
+                ?? throw new RuntimeException("Monthly payout close for {$month} built no batch.");
+
+            if ($approverId !== null) {
+                $batch = $payouts->approve($batch, $approverId);
+
+                if ($batch->status === PayoutBatch::STATUS_PENDING) {
+                    throw new RuntimeException("Monthly batch for {$month} did not approve (still pending).");
+                }
+            }
+
+            $this->info(sprintf('Monthly batch for %s: #%d, %s.', $month, $batch->id, $batch->status));
         }
     }
 
