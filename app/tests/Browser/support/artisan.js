@@ -57,7 +57,7 @@ export function clearThrottles() {
  * Build a named scenario (see app/Modules/Shared/Testing/Scenarios/E2eScenarios.php)
  * on the current database and return what it made.
  * @returns {{scenario: string, password: string,
- *   partners: Record<string, {id: number, user_id: number, adn: string, email: string, phone: string, customer_id: number}>,
+ *   partners: Record<string, {id: number, user_id: number, adn: string, email: string, phone: string, pan_last4: string, customer_id: number|null}>,
  *   orders: Record<string, {id: number, order_no: string, partner: string, bv_paise: number, total_paise: number, paid_at: string}>}}
  */
 export function scenario(name) {

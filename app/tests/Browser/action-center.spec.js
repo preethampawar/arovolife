@@ -41,8 +41,12 @@ test.afterAll(() => resetDatabase());
 
 const NON_STATUTORY_TYPE = 'orders.paid_not_packed';
 const NON_STATUTORY_LABEL = 'Paid orders not packed';
-const STATUTORY_TYPE = 'orders.invoice_missing';
-const STATUTORY_LABEL = 'Paid orders missing an invoice';
+// Statutory (DSR grievance timelines), and one the real admin form can create:
+// a grievance an admin logs is acknowledged on the spot, and one received on
+// 25 May is past its first-response clock (3 working days) by the world's 5 June. (Paid orders missing an invoice no longer arise: the
+// world's orders go through real checkout, which issues the invoice.)
+const STATUTORY_TYPE = 'grievance.sla_due_or_breached';
+const STATUTORY_LABEL = 'Grievances past an SLA clock';
 
 test.describe('Action Center: sidebar and dashboard', () => {
     // The sidebar entry was narrowed to the developer role on 2026-09-12 while
@@ -250,6 +254,20 @@ test.describe('Action Center: type page', () => {
     });
 
     test('a statutory type shows no snooze control', async ({ adminPage: page }) => {
+        // The ticket stays until the afterAll reset.
+        await page.goto('/admin/grievances/create');
+        await page.locator('#channel').selectOption({ index: 0 });
+        await page.locator('#received_at').fill('2026-05-25');
+        await page.locator('#category').selectOption({ index: 1 });
+        await page.locator('#subject').fill('E2E: delivery delayed');
+        await page.locator('#body').fill('Logged by the Action Center spec to put one grievance past its first-response clock.');
+        await page.locator('#name').fill('E2E Complainant');
+        await page.locator('#email').fill('complainant@e2e.test');
+        await page.locator('form[action$="/admin/grievances"] button[type="submit"]').last().click();
+        // This form always asks first ("Record this complaint?").
+        await page.locator('#confirm-modal-ok:visible').click();
+        await expect(page).toHaveURL(/\/admin\/grievances\/\d+/);
+
         await page.goto(`/admin/action-center/${STATUTORY_TYPE}`);
         await expect(page.getByRole('heading', { name: STATUTORY_LABEL, exact: true })).toBeVisible();
 

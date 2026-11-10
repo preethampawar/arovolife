@@ -53,7 +53,7 @@ const SETTLE = `
  * stale fixture — the same reason the route inventory takes this as an env
  * override.
  */
-const SPONSOR = '900000025'; // partner p24 of the e2e world `many-partners`: both legs free
+const SPONSOR = '576780921'; // last depth-5 reserved company account: scenarios never use it, both legs free
 
 const stamp = Date.now().toString().slice(-9);
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';

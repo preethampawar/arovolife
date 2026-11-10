@@ -10,7 +10,7 @@ test.describe('e2e fixtures', () => {
     });
 
     test('distributorPage logs in as the world partner', async ({ distributorPage, builtWorld }) => {
-        expect(builtWorld.partners.root.adn).toBe('900000001');
+        expect(builtWorld.partners.root.adn).toMatch(/^\d{9}$/);
         await expect(distributorPage).toHaveURL(/\/dashboard/);
     });
 

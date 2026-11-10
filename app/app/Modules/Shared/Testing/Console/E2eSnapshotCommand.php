@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Shared\Testing\Console;
 
+use App\Console\Actions\SeedReservedTreeAction;
 use App\Modules\Fulfilment\Support\FulfilmentSettings;
 use App\Modules\Payments\Support\PaymentSettings;
 use App\Modules\Shared\Features;
@@ -89,6 +90,12 @@ final class E2eSnapshotCommand extends Command
         // published by hand, as it is on every env; registration refuses to
         // record consent against an unpublished page.
         $this->call('content:publish', ['slug' => ContentPageSeeder::HELD_SLUGS]);
+
+        // The reserved company block (root 444555666, levels 0-5), built by
+        // the same action production's seeder uses. Scenario partners without
+        // a parent register under its first free depth-5 leg, and the wizard
+        // specs refer partners from its last two leaves.
+        app(SeedReservedTreeAction::class)->buildFresh();
 
         $this->sealOutboundSettings();
 

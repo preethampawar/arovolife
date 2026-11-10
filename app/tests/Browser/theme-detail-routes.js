@@ -172,7 +172,6 @@ export const EXPECTED_UNRESOLVED = {
     '/admin/inventory/purchase-orders/{purchaseOrder}': 'needs: a purchase order',
     '/admin/inventory/suppliers/{supplier}/edit': 'needs: a supplier',
     '/admin/inventory/transfers/{stockTransfer}': 'needs: a stock transfer',
-    '/admin/payments/{intent}': 'needs: a payment intent',
     '/admin/returns/{return}': 'needs: a return request',
 
     '/admin/announcements/{announcement}/edit': 'no announcements published yet',
