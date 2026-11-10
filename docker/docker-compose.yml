@@ -191,6 +191,100 @@ services:
     networks: [arovolife]
 
   # ---------------------------------------------------------------------------
+  # E2E stack — off by default; `make e2e-up` (profile `e2e`). Playwright runs
+  # against http://localhost:8085 and database arovolife_e2e only. e2e-app sits
+  # on an internal network (no internet); `make e2e-up` attaches the running
+  # db / redis / mailpit to it with `docker network connect`, so those stateful
+  # containers are never recreated. See docs/testing/e2e-plan.md.
+  # ---------------------------------------------------------------------------
+  e2e-app:
+    image: arovolife-app:latest
+    container_name: arovolife-e2e-app
+    profiles: [e2e]
+    working_dir: /var/www/html
+    command: ["sh", "-c", "mkdir -p /tmp/e2e && exec php-fpm"]
+    volumes:
+      - ../app:/var/www/html
+      - ./php/php.ini:/usr/local/etc/php/conf.d/zz-arovolife.ini:ro
+    environment:
+      ARV_E2E: "1"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8085
+      # Own framework caches, outside the shared bootstrap/cache.
+      APP_CONFIG_CACHE: /tmp/e2e/config.php
+      APP_ROUTES_CACHE: /tmp/e2e/routes.php
+      APP_EVENTS_CACHE: /tmp/e2e/events.php
+      APP_SERVICES_CACHE: /tmp/e2e/services.php
+      APP_PACKAGES_CACHE: /tmp/e2e/packages.php
+      DB_CONNECTION: mysql
+      DB_URL: ""
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: arovolife_e2e
+      # Own user: ALL on arovolife_e2e + arovolife_e2e_base only, so even
+      # schema-qualified SQL cannot reach the dev database.
+      DB_USERNAME: arovolife_e2e
+      DB_PASSWORD: e2esecret
+      # Own Redis databases: sessions in 5, cache (and rate limiters) in 6.
+      REDIS_URL: ""
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: "5"
+      REDIS_CACHE_DB: "6"
+      REDIS_PREFIX: arovolife-e2e-
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      SESSION_CONNECTION: default
+      SESSION_COOKIE: arovolife_e2e_session
+      SESSION_SECURE_COOKIE: "false"
+      SESSION_EXPIRE_ON_CLOSE: "true"
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
+      MAIL_ENCRYPTION: ""
+      # Non-empty so the boot-time S3 check passes; unroutable, and every disk
+      # is remapped to storage/framework/e2e/disks by E2eServiceProvider anyway.
+      AWS_ACCESS_KEY_ID: e2e-invalid
+      AWS_SECRET_ACCESS_KEY: e2e-invalid
+      AWS_DEFAULT_REGION: ap-south-1
+      AWS_BUCKET: e2e-none
+      AWS_ENDPOINT: http://127.0.0.1:1
+      RAZORPAY_KEY_ID: ""
+      RAZORPAY_KEY_SECRET: ""
+      RAZORPAY_WEBHOOK_SECRET: ""
+      RAZORPAYX_KEY_ID: ""
+      RAZORPAYX_KEY_SECRET: ""
+      SHIPROCKET_EMAIL: ""
+      SHIPROCKET_PASSWORD: ""
+      SMS_API_KEY: ""
+      KYC_PAN_API_KEY: ""
+      KYC_AADHAAR_API_KEY: ""
+      KYC_AADHAAR_LICENCE_KEY: ""
+      KYC_BANK_PENNYDROP_KEY: ""
+      WHATSAPP_API_KEY: ""
+      PULSE_ENABLED: "false"
+      PASSWORD_HIBP_CHECK: "false"
+      COMP_RECOMPUTE_ENABLED: "true"
+      COMP_RECOMPUTE_ALLOWED_DATABASES: arovolife_e2e
+    networks: [arovolife-e2e]
+
+  e2e-web:
+    image: nginx:1.27-alpine
+    container_name: arovolife-e2e-web
+    profiles: [e2e]
+    ports: ["8085:80"]
+    volumes:
+      - ../app:/var/www/html:ro
+      - ./nginx/nginx.e2e.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [e2e-app]
+    # The internal network reaches e2e-app; the default one publishes :8085.
+    networks: [arovolife-e2e, arovolife]
+
+  # ---------------------------------------------------------------------------
   # Summary — runs once on `docker compose up`, prints access info, then exits.
   # ---------------------------------------------------------------------------
   summary:
@@ -234,6 +328,9 @@ services:
 networks:
   arovolife:
     name: arovolife
+  arovolife-e2e:
+    name: arovolife-e2e
+    internal: true
 
 volumes:
   dbdata:

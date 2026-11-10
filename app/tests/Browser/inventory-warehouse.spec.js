@@ -7,7 +7,7 @@
  *   export -> low-stock / expiry alert surfaces.
  *
  * Requires:
- *   - App running at APP_URL (default http://localhost:8084)
+ *   - the e2e stack on http://localhost:8085
  *   - admin@arovolife.test / admin12345 with `inventory.manage` (and
  *     `inventory.view`) permissions
  *   - At least one product variant with a SKU visible in the GRN/PO/transfer
@@ -24,7 +24,11 @@
  *     within a describe block run in file order and build on each other.
  */
 
+import { resetDatabase, withFeature } from './support/artisan.js';
 import { test, expect, submitAndConfirm } from './fixtures.js';
+
+// Warehouses, suppliers, POs, GRNs and transfers are created here; leave the e2e database as found.
+test.afterAll(() => resetDatabase());
 
 const stamp = Date.now().toString().slice(-8);
 const warehouseCode = `T${stamp}`.toUpperCase().slice(0, 10);
@@ -125,7 +129,7 @@ test.describe('Inventory: Purchase order', () => {
         const optionText = await options[1].textContent();
         state.variantLabel = optionText?.trim() ?? null;
         state.variantSku = state.variantLabel?.split(' — ')[0]?.trim() ?? null;
-        test.skip(!state.variantSku, 'No product variant available in the PO line dropdown — seed at least one catalog product.');
+        expect(state.variantSku, 'the base catalogue gives the PO line dropdown a variant').toBeTruthy();
 
         await variantSelect.selectOption({ label: state.variantLabel });
         await page.locator('#poLinesBody input.po-qty').first().fill(String(poQty));
@@ -145,7 +149,7 @@ test.describe('Inventory: Purchase order', () => {
     });
 
     test('send the PO to the supplier', async ({ adminPage: page }) => {
-        test.skip(!state.variantSku, 'PO was not created — see previous test.');
+        expect(state.variantSku, 'PO was not created — see previous test.').toBeTruthy();
 
         await page.goto('/admin/inventory/purchase-orders');
         const row = page.locator('tbody tr').filter({ hasText: warehouseCode }).first();
@@ -170,7 +174,7 @@ test.describe('Inventory: Purchase order', () => {
 
 test.describe('Inventory: Goods receipt (GRN)', () => {
     test('create a GRN against the PO with a batch number and expiry date', async ({ adminPage: page }) => {
-        test.skip(!state.poNo, 'No sent purchase order to receive against — see previous describe block.');
+        expect(state.poNo, 'No sent purchase order to receive against — see previous describe block.').toBeTruthy();
 
         await page.goto('/admin/inventory/purchase-orders');
         const row = page.locator('tbody tr').filter({ hasText: warehouseCode }).first();
@@ -237,7 +241,7 @@ test.describe('Inventory: Goods receipt (GRN)', () => {
     });
 
     test('post the GRN and confirm it brings stock on hand', async ({ adminPage: page }) => {
-        test.skip(!state.variantSku, 'No GRN in draft to post — see previous test.');
+        expect(state.variantSku, 'No GRN in draft to post — see previous test.').toBeTruthy();
 
         await page.goto('/admin/inventory/grns');
         const row = page.locator('tbody tr').filter({ hasText: batchNo }).first();
@@ -305,7 +309,7 @@ test.describe('Inventory: Stock transfer', () => {
     });
 
     test('create a transfer draft from the receiving warehouse to the new one', async ({ adminPage: page }) => {
-        test.skip(!state.variantSku, 'No stock to transfer — GRN post step did not run.');
+        expect(state.variantSku, 'No stock to transfer — GRN post step did not run.').toBeTruthy();
 
         await page.goto('/admin/inventory/transfers/create');
         await page.selectOption('#fromWarehouse', warehouseCode);
@@ -314,7 +318,7 @@ test.describe('Inventory: Stock transfer', () => {
         await expect(batchSelect).toBeVisible();
         const options = await batchSelect.locator('option').allTextContents();
         const batchOption = options.find((o) => o.includes(batchNo));
-        test.skip(!batchOption, 'The posted batch does not appear in the transfer batch dropdown — check stock is not fully reserved.');
+        expect(batchOption, `posted batch ${batchNo} is offered for transfer`).toBeTruthy();
         await batchSelect.selectOption({ label: batchOption });
         await page.selectOption('select[name="to_warehouse_code"]', secondWarehouseCode);
         await page.locator('.transfer-qty').first().fill('5');
@@ -326,7 +330,7 @@ test.describe('Inventory: Stock transfer', () => {
     });
 
     test('dispatch the transfer — stock leaves the source warehouse', async ({ adminPage: page }) => {
-        test.skip(!state.transferNo, 'No transfer draft to dispatch.');
+        expect(state.transferNo, 'No transfer draft to dispatch.').toBeTruthy();
 
         await page.goto('/admin/inventory/transfers');
         await page.locator('tbody tr').filter({ hasText: warehouseCode }).first().getByRole('link', { name: 'View' }).click();
@@ -340,7 +344,7 @@ test.describe('Inventory: Stock transfer', () => {
     });
 
     test('receive the transfer — stock lands at the destination warehouse', async ({ adminPage: page }) => {
-        test.skip(!state.transferNo, 'No dispatched transfer to receive.');
+        expect(state.transferNo, 'No dispatched transfer to receive.').toBeTruthy();
 
         await page.goto('/admin/inventory/transfers');
         await page.locator('tbody tr').filter({ hasText: warehouseCode }).first().getByRole('link', { name: 'View' }).click();
@@ -363,7 +367,7 @@ test.describe('Inventory: Stock transfer', () => {
 
 test.describe('Inventory: Stock adjustment', () => {
     test('record an adjustment and see the delta reflected on the stock screen', async ({ adminPage: page }) => {
-        test.skip(!state.variantSku, 'No stock batch available to adjust.');
+        expect(state.variantSku, 'No stock batch available to adjust.').toBeTruthy();
 
         const before = await (async () => {
             await page.goto(`/admin/inventory/stock?q=${encodeURIComponent(state.variantSku)}&warehouse_code=${warehouseCode}`);
@@ -377,7 +381,7 @@ test.describe('Inventory: Stock adjustment', () => {
         const batchSelect = page.locator('#adjBatch');
         const options = await batchSelect.locator('option').allTextContents();
         const batchOption = options.find((o) => o.includes(batchNo));
-        test.skip(!batchOption, 'No batch with our test batch number available for adjustment.');
+        expect(batchOption, `posted batch ${batchNo} is offered for adjustment`).toBeTruthy();
         await batchSelect.selectOption({ label: batchOption });
 
         await page.fill('input[name="qty_delta"]', '-2');
@@ -460,7 +464,7 @@ test.describe('Inventory: Reports', () => {
     });
 
     test('batch & expiry report shows our posted batch', async ({ adminPage: page }) => {
-        test.skip(!state.variantSku, 'No posted batch to look for.');
+        expect(state.variantSku, 'No posted batch to look for.').toBeTruthy();
         await page.goto(`/admin/inventory/reports/batch-expiry?warehouse_code=${warehouseCode}`);
         // The batch/expiry report lists every open batch at the warehouse;
         // ours should appear since it still has qty on hand.
@@ -483,14 +487,9 @@ async function openInventoryPanel(page) {
     await page.goto('/admin');
     const panel = page.locator('[data-panel-url*="/panel/inventory"]');
 
-    // A flag-off module leaves no trace in the shell — no placeholder, no
-    // title, and the endpoint 404s rather than 403s. So an absent panel here
-    // means InventoryFeature is off in this environment, which is the rule
-    // working, not a regression. The inventory screens themselves are not
-    // gated by it and the rest of this file still runs.
-    if ((await panel.count()) === 0) {
-        test.skip(true, 'InventoryFeature is off here, so the dashboard emits no inventory panel to assert on.');
-    }
+    // Callers switch InventoryFeature on first (the snapshot pins it OFF), so
+    // an absent panel is a failure, not an environment state.
+    await expect(panel).toHaveCount(1);
 
     await panel.scrollIntoViewIfNeeded();
     await expect(panel).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
@@ -498,19 +497,26 @@ async function openInventoryPanel(page) {
     return panel;
 }
 
+// The dashboard panel exists only with InventoryFeature ON; the snapshot pins
+// it OFF, so each test switches it on for its own duration.
 test.describe('Inventory: Alert surfaces', () => {
-    test('admin dashboard shows the inventory panel with its alert figures', async ({ adminPage: page }) => {
+    test('a flag-off dashboard leaves no inventory panel (zero trace)', async ({ adminPage: page }) => {
+        await page.goto('/admin');
+        await expect(page.locator('[data-panel-url*="/panel/inventory"]')).toHaveCount(0);
+    });
+
+    test('admin dashboard shows the inventory panel with its alert figures', async ({ adminPage: page }) => withFeature('InventoryFeature', async () => {
         const panel = await openInventoryPanel(page);
 
         await expect(panel).toContainText('Low stock');
         await expect(panel).toContainText('Expiring');
         await expect(panel).toContainText('Expired');
-    });
+    }));
 
-    test('low-stock report is reachable from the dashboard panel', async ({ adminPage: page }) => {
+    test('low-stock report is reachable from the dashboard panel', async ({ adminPage: page }) => withFeature('InventoryFeature', async () => {
         const panel = await openInventoryPanel(page);
 
         await panel.locator('a[href*="/inventory/reports/low-stock"]').first().click();
         await page.waitForURL('**/admin/inventory/reports/low-stock');
-    });
+    }));
 });

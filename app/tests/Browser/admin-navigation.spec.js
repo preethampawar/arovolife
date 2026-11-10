@@ -11,7 +11,7 @@
  *   the group toggle -> distributor refused the whole /admin prefix.
  *
  * Requires:
- *   - App running at APP_URL (default http://localhost:8084)
+ *   - the e2e stack on http://localhost:8085
  *   - admin@arovolife.test / admin12345 (super-staff — bypasses every
  *     permission via Gate::before, so every group and item in the plan §4
  *     table is visible to this session; no group is expected to be absent)
@@ -85,7 +85,7 @@ test.describe('sidebar grouping', () => {
     test('Warehouses sits inside the Inventory group', async ({ adminPage: page }) => {
         await page.goto('/admin');
         const inventoryGroup = page.locator('[data-nav-group="inventory"]');
-        test.skip((await inventoryGroup.count()) === 0, 'Inventory group is not rendered for this admin session (no inventory.view/manage permission).');
+        await expect(inventoryGroup, 'Inventory group is not rendered for this admin session (no inventory.view/manage permission).').not.toHaveCount(0);
 
         const warehousesLink = inventoryGroup.getByRole('link', { name: 'Warehouses' });
         await expect(warehousesLink).toBeVisible();
@@ -95,7 +95,7 @@ test.describe('sidebar grouping', () => {
     test('the active route\'s group is forced open', async ({ adminPage: page }) => {
         await page.goto('/admin/inventory/suppliers');
         const inventoryGroup = page.locator('[data-nav-group="inventory"]');
-        test.skip((await inventoryGroup.count()) === 0, 'Inventory group is not rendered for this admin session.');
+        await expect(inventoryGroup, 'Inventory group is not rendered for this admin session.').not.toHaveCount(0);
 
         await expect(inventoryGroup).toHaveAttribute('data-nav-group-active', '1');
         const toggle = inventoryGroup.locator('[data-nav-group-toggle]');
@@ -106,7 +106,7 @@ test.describe('sidebar grouping', () => {
     test('collapsing a group persists across reload, then is restored', async ({ adminPage: page }) => {
         await page.goto('/admin');
         const commerceGroup = page.locator('[data-nav-group="commerce"]');
-        test.skip((await commerceGroup.count()) === 0, 'Commerce group is not rendered for this admin session.');
+        await expect(commerceGroup, 'Commerce group is not rendered for this admin session.').not.toHaveCount(0);
 
         const toggle = commerceGroup.locator('[data-nav-group-toggle]');
         const list = page.locator('#nav-group-commerce');
@@ -139,7 +139,7 @@ test.describe('sidebar grouping', () => {
     test('the active route always wins over stored collapsed state', async ({ adminPage: page }) => {
         await page.goto('/admin');
         const inventoryGroup = page.locator('[data-nav-group="inventory"]');
-        test.skip((await inventoryGroup.count()) === 0, 'Inventory group is not rendered for this admin session.');
+        await expect(inventoryGroup, 'Inventory group is not rendered for this admin session.').not.toHaveCount(0);
 
         try {
             // Collapse Inventory while it is not the active group.
@@ -178,7 +178,7 @@ test.describe('sidebar grouping', () => {
             await expect(page.locator('html')).toHaveClass(/admin-nav-collapsed/);
 
             const inventoryGroup = page.locator('[data-nav-group="inventory"]');
-            test.skip((await inventoryGroup.count()) === 0, 'Inventory group is not rendered for this admin session.');
+            await expect(inventoryGroup, 'Inventory group is not rendered for this admin session.').not.toHaveCount(0);
 
             // Group headers are hidden in rail mode (display:none via the
             // html.admin-nav-collapsed .admin-nav-group-header rule).
@@ -204,7 +204,7 @@ test.describe('sidebar grouping', () => {
     test('group headers are keyboard-operable buttons with aria-expanded/aria-controls', async ({ adminPage: page }) => {
         await page.goto('/admin');
         const commerceGroup = page.locator('[data-nav-group="commerce"]');
-        test.skip((await commerceGroup.count()) === 0, 'Commerce group is not rendered for this admin session.');
+        await expect(commerceGroup, 'Commerce group is not rendered for this admin session.').not.toHaveCount(0);
 
         const toggle = commerceGroup.locator('[data-nav-group-toggle]');
         await expect(toggle).toHaveJSProperty('tagName', 'BUTTON');
@@ -238,7 +238,7 @@ test.describe('breadcrumbs', () => {
     test('a section index shows Admin > Inventory > Warehouses', async ({ adminPage: page }) => {
         await page.goto('/admin/inventory/warehouses');
         const breadcrumb = page.locator('nav[aria-label="Breadcrumb"]');
-        test.skip((await breadcrumb.count()) === 0, 'No breadcrumb bar rendered on /admin/inventory/warehouses for this admin session (route did not resolve, or access denied).');
+        await expect(breadcrumb, 'No breadcrumb bar rendered on /admin/inventory/warehouses for this admin session (route did not resolve, or access denied).').not.toHaveCount(0);
 
         const admin = breadcrumb.getByRole('link', { name: 'Admin', exact: true });
         await expect(admin).toBeVisible();
@@ -255,16 +255,16 @@ test.describe('breadcrumbs', () => {
     test('a detail page shows Admin > Network > Distributors > Distributor: <ADN>', async ({ adminPage: page }) => {
         await page.goto('/admin/distributors');
         const firstRow = page.locator('tbody tr').first();
-        test.skip((await firstRow.count()) === 0, 'The /admin/distributors index has no rows in the dev database right now.');
+        await expect(firstRow, 'The /admin/distributors index has no rows in the e2e world right now.').not.toHaveCount(0);
 
         const detailLink = firstRow.locator('a').first();
-        test.skip((await detailLink.count()) === 0, 'The first row on /admin/distributors has no link to a detail page.');
+        await expect(detailLink, 'The first row on /admin/distributors has no link to a detail page.').not.toHaveCount(0);
 
         await detailLink.click();
         await page.waitForURL('**/admin/distributors/**');
 
         const breadcrumb = page.locator('nav[aria-label="Breadcrumb"]');
-        test.skip((await breadcrumb.count()) === 0, 'No breadcrumb bar rendered on the distributor detail page.');
+        await expect(breadcrumb, 'No breadcrumb bar rendered on the distributor detail page.').not.toHaveCount(0);
 
         await expect(breadcrumb.getByText('Network', { exact: true })).toBeVisible();
         const distributorsCrumb = breadcrumb.getByRole('link', { name: 'Distributors', exact: true });
@@ -280,10 +280,10 @@ test.describe('breadcrumbs', () => {
 
     test('a three-level child page shows Admin > Network > Arete Centres > Applications', async ({ adminPage: page }) => {
         const response = await page.goto('/admin/arete-centres/applications');
-        test.skip((response?.status() ?? 0) >= 400, 'The Arete Centre Applications feature flag is off (or the item is hidden) for this admin session.');
+        expect(response?.status() ?? 0, 'The Arete Centre Applications feature flag is off (or the item is hidden) for this admin session.').toBeLessThan(400);
 
         const breadcrumb = page.locator('nav[aria-label="Breadcrumb"]');
-        test.skip((await breadcrumb.count()) === 0, 'No breadcrumb bar rendered on /admin/arete-centres/applications.');
+        await expect(breadcrumb, 'No breadcrumb bar rendered on /admin/arete-centres/applications.').not.toHaveCount(0);
 
         await expect(breadcrumb.getByText('Network', { exact: true })).toBeVisible();
         await expect(breadcrumb.getByRole('link', { name: 'Arete Centres', exact: true })).toBeVisible();

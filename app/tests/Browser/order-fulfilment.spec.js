@@ -10,12 +10,11 @@
  *   - a return/refund with a "saleable" inspection -> restock + refund status
  *
  * Requires:
- *   - App running at APP_URL (default http://localhost:8084)
+ *   - the e2e stack on http://localhost:8085 (world gsb-basic; the base data
+ *     carries warehouse stock and the stub gateway)
  *   - admin@arovolife.test / admin12345 (admin, `commerce.order.manage` +
  *     `finance.record` + `returns.receive`)
- *   - A11Y_ADN / A11Y_PASSWORD pointing at a distributor allowed to buy
- *     (KYC-approved, past cooling-off registration) — defaults to
- *     394325128 / Test1234!
+ *   - the buyer is partner `root` of the world (the `distributorPage` fixture)
  *   - The dev/local payment gateway must resolve to the STUB gateway
  *     (`PaymentSettings::stubEnabled()` true, Razorpay off) — this suite
  *     never drives the real Razorpay Checkout modal. If Razorpay is
@@ -29,7 +28,11 @@
  * dev database, not a shared one, if the BV/commission side effects matter.
  */
 
+import { resetDatabase } from './support/artisan.js';
 import { test, expect, submitAndConfirm, readStockOnHand } from './fixtures.js';
+
+// Orders, stock movements and returns are written here; leave the e2e database as found.
+test.afterAll(() => resetDatabase());
 
 /** Adds the first available shop product to the distributor's cart. */
 async function addFirstProductToCart(page) {
@@ -85,7 +88,7 @@ async function placeOrderViaStub(page) {
     await page.fill('input[name="buyer_phone"]', '9876543210');
     await page.fill('input[name="ship_line1"]', '221B Test Street');
     await page.fill('input[name="ship_city"]', 'Hyderabad');
-    await page.fill('input[name="ship_state"]', 'Telangana');
+    await page.selectOption('select[name="ship_state"]', { label: 'Telangana' });
     await page.fill('input[name="ship_pincode"]', '500001');
     await page.check('input[name="accept_terms"]');
 
@@ -110,6 +113,9 @@ async function gotoAdminOrder(page, orderNo) {
     await row.getByRole('link', { name: 'View' }).click();
 }
 
+// The first order's number, shared with the Returns describe below.
+let lifecycleOrderNo = null;
+
 test.describe.configure({ mode: 'serial' });
 
 // ---------------------------------------------------------------------------
@@ -121,22 +127,23 @@ test.describe('Order lifecycle: place, pack, ship, deliver', () => {
 
     test('distributor places an order through the storefront (stub gateway)', async ({ distributorPage: page }) => {
         const sku = await addFirstProductToCart(page);
-        test.skip(sku === null, 'No purchasable product found in the shop listing (empty catalog or all out of stock) — seed a shop product with stock.');
+        expect(sku, 'No purchasable product found in the shop listing (empty catalog or all out of stock) — seed a shop product with stock.').not.toBeNull();
 
         const result = await placeOrderViaStub(page);
-        test.skip(result.orderNo === null, `Could not place a stub-gateway order: ${result.reason}`);
+        expect(result.orderNo, `Could not place a stub-gateway order: ${result.reason}`).not.toBeNull();
         orderNo = result.orderNo;
+        lifecycleOrderNo = orderNo;
         expect(orderNo).toBeTruthy();
     });
 
     test('admin packs the order and the pick list shows a FEFO batch', async ({ adminPage: page }) => {
-        test.skip(orderNo === null, 'No order was placed — see previous test.');
+        expect(orderNo, 'No order was placed — see previous test.').not.toBeNull();
 
         await gotoAdminOrder(page, orderNo);
         await expect(page.getByRole('heading', { name: new RegExp(orderNo) })).toBeVisible();
 
         const packForm = page.locator('form').filter({ has: page.getByRole('button', { name: 'Pack order' }) });
-        test.skip((await packForm.count()) === 0, 'Order is not in a packable state (status is not "paid") — the stub order may not have reached "paid".');
+        await expect(packForm, 'Order is not in a packable state (status is not "paid") — the stub order may not have reached "paid".').not.toHaveCount(0);
 
         await submitAndConfirm(page, packForm.getByRole('button', { name: 'Pack order' }));
 
@@ -149,11 +156,11 @@ test.describe('Order lifecycle: place, pack, ship, deliver', () => {
     });
 
     test('admin ships the order with carrier and tracking number', async ({ adminPage: page }) => {
-        test.skip(orderNo === null, 'No order was placed.');
+        expect(orderNo, 'No order was placed.').not.toBeNull();
 
         await gotoAdminOrder(page, orderNo);
         const shipForm = page.locator('form').filter({ has: page.getByRole('button', { name: 'Mark as Shipped' }) });
-        test.skip((await shipForm.count()) === 0, 'Order is not in a shippable state (must be paid or ready_to_ship).');
+        await expect(shipForm, 'Order is not in a shippable state (must be paid or ready_to_ship).').not.toHaveCount(0);
 
         await shipForm.locator('input[name="ship_carrier"]').fill('Delhivery');
         await shipForm.locator('input[name="ship_tracking_no"]').fill(`PWTRACK${Date.now()}`);
@@ -163,18 +170,18 @@ test.describe('Order lifecycle: place, pack, ship, deliver', () => {
     });
 
     test('admin marks the order delivered, opening cooling-off', async ({ adminPage: page }) => {
-        test.skip(orderNo === null, 'No order was placed.');
+        expect(orderNo, 'No order was placed.').not.toBeNull();
 
         await gotoAdminOrder(page, orderNo);
         const deliverButton = page.getByRole('button', { name: /Mark as Delivered/ });
-        test.skip((await deliverButton.count()) === 0, 'Order is not shipped, so it cannot be marked delivered.');
+        await expect(deliverButton, 'Order is not shipped, so it cannot be marked delivered.').not.toHaveCount(0);
 
         await submitAndConfirm(page, deliverButton);
         await expect(page.locator('div').filter({ hasText: /^Delivered/ }).last()).toBeVisible();
     });
 
     test('customer-facing timeline reflects placed/paid/packed/shipped/delivered', async ({ distributorPage: page }) => {
-        test.skip(orderNo === null, 'No order was placed.');
+        expect(orderNo, 'No order was placed.').not.toBeNull();
 
         await page.goto(`/orders/${orderNo}`);
         const timeline = page.locator('ol[aria-label="Order timeline"]');
@@ -195,24 +202,24 @@ test.describe('Order lifecycle: cancel after packing returns stock', () => {
 
     test('distributor places a second order', async ({ distributorPage: page }) => {
         sku = await addFirstProductToCart(page);
-        test.skip(sku === null, 'No purchasable product found in the shop listing.');
+        expect(sku, 'No purchasable product found in the shop listing.').not.toBeNull();
 
         const result = await placeOrderViaStub(page);
-        test.skip(result.orderNo === null, `Could not place a stub-gateway order: ${result.reason}`);
+        expect(result.orderNo, `Could not place a stub-gateway order: ${result.reason}`).not.toBeNull();
         orderNo = result.orderNo;
     });
 
     test('pack the order, then read the post-pack stock level', async ({ adminPage: page }) => {
-        test.skip(orderNo === null, 'No order was placed.');
+        expect(orderNo, 'No order was placed.').not.toBeNull();
 
         await gotoAdminOrder(page, orderNo);
         const packForm = page.locator('form').filter({ has: page.getByRole('button', { name: 'Pack order' }) });
-        test.skip((await packForm.count()) === 0, 'Order is not packable.');
+        await expect(packForm, 'Order is not packable.').not.toHaveCount(0);
 
         warehouseCode = await packForm.locator('select[name="warehouse_code"] option:checked').textContent()
             .then((t) => t?.match(/\(([^)]+)\)/)?.[1] ?? null)
             .catch(() => null);
-        test.skip(warehouseCode === null, 'Could not determine the pack warehouse code from the pack form.');
+        expect(warehouseCode, 'Could not determine the pack warehouse code from the pack form.').not.toBeNull();
 
         await submitAndConfirm(page, packForm.getByRole('button', { name: 'Pack order' }));
         await expect(page.locator('h3').filter({ hasText: 'Pick list' })).toBeVisible();
@@ -221,11 +228,12 @@ test.describe('Order lifecycle: cancel after packing returns stock', () => {
     });
 
     test('cancel the packed order and confirm the stock comes back', async ({ adminPage: page }) => {
-        test.skip(orderNo === null || warehouseCode === null, 'Setup steps did not complete.');
+        expect(orderNo, 'Setup steps did not complete.').not.toBeNull();
+        expect(warehouseCode, 'Setup steps did not complete.').not.toBeNull();
 
         await gotoAdminOrder(page, orderNo);
         const cancelButton = page.getByRole('button', { name: 'Cancel Order' });
-        test.skip((await cancelButton.count()) === 0, 'Order is not in a cancellable state (placed/paid/ready_to_ship).');
+        await expect(cancelButton, 'Order is not in a cancellable state (placed/paid/ready_to_ship).').not.toHaveCount(0);
 
         await submitAndConfirm(page, cancelButton);
         // The "Cancelled" text lives in the Status card's <div> (with the
@@ -253,6 +261,18 @@ test.describe('Returns: saleable inspection restocks and settles a refund', () =
         await expect(page.getByRole('heading', { name: 'Returns' }).or(page.locator('h1, h2').filter({ hasText: /return/i }).first())).toBeVisible();
     });
 
+    test('the buyer opens a return on the delivered order', async ({ distributorPage: page }) => {
+        // Creates the return the next test inspects, so it no longer depends
+        // on whatever the database already held.
+        expect(lifecycleOrderNo, 'the lifecycle describe places and delivers this order').not.toBeNull();
+        await page.goto(`/orders/${lifecycleOrderNo}/return`);
+        const labels = await page.locator('select[name="reason"] option:not([value=""])').allTextContents();
+        const pick = labels.findIndex((l) => !/cooling/i.test(l));
+        await page.selectOption('select[name="reason"]', { index: (pick === -1 ? 0 : pick) + 1 });
+        await submitAndConfirm(page, page.getByRole('button', { name: 'Submit return request' }));
+        await expect(page).not.toHaveURL(/\/return$/);
+    });
+
     test('a return awaiting inspection can be inspected as saleable, approved, and shows restock + refund status', async ({ adminPage: page }) => {
         await page.goto('/admin/returns');
 
@@ -263,7 +283,7 @@ test.describe('Returns: saleable inspection restocks and settles a refund', () =
         // in a given run), so it works with whatever the dev DB already has.
         const rows = page.locator('tbody tr, li').filter({ hasText: /RMA|opened/i });
         const count = await rows.count().catch(() => 0);
-        test.skip(count === 0, 'No return requests exist in this dev database to inspect. Open one from the storefront (Orders → Return this order) with a delivered order first, then re-run.');
+        expect(count, 'The return the previous test opened is listed.').toBeGreaterThan(0);
 
         // The row's first <a> is the order-number link (admin.commerce.orders.show),
         // not the return itself — the return's own show page is the "Review" link.
@@ -283,11 +303,11 @@ test.describe('Returns: saleable inspection restocks and settles a refund', () =
             // to the approval step below rather than treating this as nothing
             // to verify.
             const alreadyInspected = await page.locator('dt', { hasText: 'Condition' }).count();
-            test.skip(alreadyInspected === 0, 'This return is not awaiting inspection and has no inspection recorded (likely a cooling-off cancellation, which never needs one).');
+            expect(alreadyInspected, 'This return is not awaiting inspection and has no inspection recorded (likely a cooling-off cancellation, which never needs one).').toBeGreaterThan(0);
         }
 
         const approveButton = page.getByRole('button', { name: /Approve refund/ });
-        test.skip((await approveButton.count()) === 0, 'No approve action available — check the `finance.record` permission on the admin fixture.');
+        await expect(approveButton, 'No approve action available — check the `finance.record` permission on the admin fixture.').not.toHaveCount(0);
         await submitAndConfirm(page, approveButton);
 
         // Refund status: the return now shows an approved/refunded state.

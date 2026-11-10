@@ -11,7 +11,7 @@
  *   -> the toggle is unreachable for a distributor (inherited /admin gating).
  *
  * Requires:
- *   - App running at APP_URL (default http://localhost:8084)
+ *   - the e2e stack on http://localhost:8085
  *   - admin@arovolife.test / admin12345
  *   - `npm i -D @axe-core/playwright` (already a devDependency)
  *
@@ -38,6 +38,11 @@ const setTheme = (page, value) => page.evaluate(([k, v]) => localStorage.setItem
 const toggle = (page) => page.getByRole('button', { name: /toggle dark mode/i });
 
 test.describe('admin theme toggle', () => {
+    // adminPage starts on about:blank, where localStorage is off limits.
+    test.beforeEach(async ({ adminPage }) => {
+        await adminPage.goto('/admin');
+    });
+
     test('defaults to light with empty storage', async ({ adminPage: page }) => {
         await clearTheme(page);
         await page.reload();
@@ -128,6 +133,11 @@ test.describe('admin theme toggle', () => {
 });
 
 test.describe('dark mode contrast', () => {
+    // adminPage starts on about:blank, where localStorage is off limits.
+    test.beforeEach(async ({ adminPage }) => {
+        await adminPage.goto('/admin');
+    });
+
     const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
 
     for (const [name, path] of [

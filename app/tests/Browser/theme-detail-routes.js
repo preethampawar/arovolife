@@ -55,7 +55,7 @@ export const ADMIN_DETAILS = [
     { from: '/admin/catalog/products', match: /^\/admin\/catalog\/products\/\d+\/edit$/, route: '/admin/catalog/products/{product}/edit', about: 'product edit' },
     { from: '/admin/commerce/bv-ledger', match: /^\/admin\/commerce\/bv-ledger\/\d+$/, route: '/admin/commerce/bv-ledger/{distributor}', about: 'BV ledger for one distributor' },
     { from: '/admin/commerce/coupons', match: /^\/admin\/commerce\/coupons\/\d+\/edit$/, route: '/admin/commerce/coupons/{coupon}/edit', about: 'coupon edit' },
-    { from: '/admin/commerce/orders', match: /^\/admin\/commerce\/orders\/\d+$/, route: '/admin/commerce/orders/{order}', about: 'order detail' },
+    { from: '/admin/commerce/orders?placed_from=2026-06-01', match: /^\/admin\/commerce\/orders\/\d+$/, route: '/admin/commerce/orders/{order}', about: 'order detail' },
     { from: '/admin/compensation/adc-bonus', match: /^\/admin\/compensation\/adc-bonus\/\d{4}-\d{2}$/, route: '/admin/compensation/adc-bonus/{month}', about: 'ADC bonus month' },
     { from: '/admin/compensation/daily-cutoffs', match: /^\/admin\/compensation\/daily-cutoffs\/\d{4}-\d{2}-\d{2}$/, route: '/admin/compensation/daily-cutoffs/{date}', about: 'a daily cut-off' },
     { from: '/admin/compensation/fortune-bonus', match: /^\/admin\/compensation\/fortune-bonus\/\d{4}-\d{2}$/, route: '/admin/compensation/fortune-bonus/{month}', about: 'Fortune Bonus month' },
@@ -161,6 +161,20 @@ export const DETAIL_SKIP = {
  * is the point: nothing here is a permanent exclusion.
  */
 export const EXPECTED_UNRESOLVED = {
+    // Declared for the e2e stack (world gsb-basic): the scenario builder makes
+    // partners and orders only, so these lists have no row to open.
+    '/admin/arete-centres/applications/{application}': 'needs: an Arete centre application',
+    '/admin/catalog/banners/{banner}/edit': 'needs: a banner',
+    '/admin/compensation/monthly-payouts/{batch}': 'needs: a monthly payout batch',
+    '/admin/compensation/rank-bonus/{month}': 'needs: a calculated Rank Bonus month',
+    '/admin/contact-inquiries/{id}': 'needs: a contact inquiry',
+    '/admin/inventory/grns/{purchaseInvoice}': 'needs: a GRN',
+    '/admin/inventory/purchase-orders/{purchaseOrder}': 'needs: a purchase order',
+    '/admin/inventory/suppliers/{supplier}/edit': 'needs: a supplier',
+    '/admin/inventory/transfers/{stockTransfer}': 'needs: a stock transfer',
+    '/admin/payments/{intent}': 'needs: a payment intent',
+    '/admin/returns/{return}': 'needs: a return request',
+
     '/admin/announcements/{announcement}/edit': 'no announcements published yet',
     '/admin/commerce/coupons/{coupon}/edit': 'no coupons created yet',
     '/admin/compensation/adc-bonus/{month}': 'no ADC bonus month has been calculated yet',
@@ -172,7 +186,6 @@ export const EXPECTED_UNRESOLVED = {
     '/admin/kyc/{id}': 'the KYC queue is empty in every tab — every distributor here is already active',
     '/admin/line-changes/{id}': 'no line-change requests raised yet',
     '/admin/messaging/reports/{report}': 'no message has been reported yet',
-    '/admin/staff/{id}/edit': 'the only staff user is the fixture itself, and a row cannot manage itself',
     '/announcements/{announcement}': 'no announcements published yet',
     '/messages/{user}': 'the fixture has no message thread open',
     '/orders/sales/{orderNo}': 'the fixture has made no sales',

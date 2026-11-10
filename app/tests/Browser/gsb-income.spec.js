@@ -9,10 +9,9 @@
  *  - Distributor wallet & payouts: running balance, next payout date
  *
  * Requires:
- *  - App running at APP_URL (default http://localhost:8084)
+ *  - the e2e stack on http://localhost:8085
  *  - admin@arovolife.test / admin12345 to be valid admin credentials
- *  - the distributor fixture account (A11Y_ADN, default 360801433) to have at
- *    least one credited GSB cut-off
+ *  - partner `root` of world gsb-basic, who has one credited GSB cut-off (3 June)
  *
  * Genos Sales Bonus ships behind a feature flag that is OFF until the DSA §6.2
  * notice period has run, and a flag that is off leaves no trace in the UI at
@@ -23,29 +22,26 @@
 
 import { test, expect } from './fixtures.js';
 
+// gsb-basic replayed to 4 June 06:00: the root's slab-1 credit is on the
+// 3 June cut-off, and "yesterday" (the My Income default filter) is 3 June.
+test.use({ world: { name: 'gsb-basic', asOf: '2026-06-04 06:00:00' }, partnerKey: 'root' });
+
+const CUTOFF_DATE = '2026-06-03';
+
+/** A wallet stat card, found by its small label (the cards are coloured, not bg-white, since the brand refresh). */
+function statCard(page, label) {
+    return page.locator('div.rounded-2xl.p-5').filter({ has: page.locator('p.text-xs', { hasText: label }) }).first();
+}
+
 /** True when Genos Sales Bonus is switched on for this environment. */
 async function gsbIsLive(page) {
     await page.goto('/income');
     return (await page.getByRole('link', { name: 'GSB History' }).count()) > 0;
 }
 
-/**
- * The overview's cut-off table is scoped to today, and the cut-off itself runs
- * at 23:59 IST — so it is empty for all but the last minute of the day. Row
- * level assertions run against the most recent completed cut-off instead.
- */
-function lastCutoffDate() {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 async function openLastCutoff(page) {
-    const date = lastCutoffDate();
-    await page.goto(`/admin/compensation/daily-cutoffs?date=${date}`);
-    const rows = page.locator('table tbody tr');
-    test.skip(await rows.count() === 0, `No cut-off rows for ${date} — the engine has not run in this environment.`);
-    return rows;
+    await page.goto(`/admin/compensation/daily-cutoffs?date=${CUTOFF_DATE}`);
+    return page.locator('table tbody tr');
 }
 
 // ---------------------------------------------------------------------------
@@ -118,7 +114,6 @@ test.describe('Admin: Daily Cut-Off Table', () => {
 
         // Status badges are <span> inside <td> — target them by combined class signature
         const creditedBadge = page.locator('tbody span').filter({ hasText: 'credited' }).first();
-        test.skip(await creditedBadge.count() === 0, 'No credited rows in the most recent cut-off.');
         await expect(creditedBadge).toBeVisible();
         await expect(creditedBadge).toHaveClass(/bg-green-100/);
     });
@@ -128,7 +123,6 @@ test.describe('Admin: Daily Cut-Off Table', () => {
 
         // Find the row that has the credited badge and check its net GSB cell
         const creditedRow = page.locator('tbody tr').filter({ has: page.locator('span').filter({ hasText: 'credited' }) }).first();
-        test.skip(await creditedRow.count() === 0, 'No credited rows in the most recent cut-off.');
         await expect(creditedRow).toBeVisible();
         const netCell = creditedRow.locator('td.text-green-700');
         await expect(netCell).toContainText('₹');
@@ -154,7 +148,9 @@ test.describe('Distributor: Income Dashboard', () => {
     test('wallet balance hero card shows a ₹ amount', async ({ distributorPage: page }) => {
         await page.goto('/income');
 
-        const hero = page.locator('.bg-gradient-to-r');
+        // The hero is now `bg-gradient-to-br` (the stat cards carry a
+        // `bg-gradient-to-r` accent bar), so pick the block holding the balance.
+        const hero = page.locator('.bg-gradient-to-br').filter({ has: page.locator('p.text-4xl') });
         await expect(hero).toBeVisible();
         await expect(hero.locator('p.text-4xl')).toContainText('₹');
     });
@@ -169,7 +165,7 @@ test.describe('Distributor: Income Dashboard', () => {
     });
 
     test('left and right Genos BV cards are present', async ({ distributorPage: page }) => {
-        test.skip(!(await gsbIsLive(page)), 'Genos Sales Bonus is flagged off — the BV cards are not rendered at all.');
+        expect(await gsbIsLive(page), 'Genos Sales Bonus must be live in the e2e stack').toBe(true);
 
         // The dashboard nests grids, so this matches both the card and its
         // wrapper — take the first rather than trip strict mode.
@@ -178,13 +174,13 @@ test.describe('Distributor: Income Dashboard', () => {
     });
 
     test('power-side carry over card is present', async ({ distributorPage: page }) => {
-        test.skip(!(await gsbIsLive(page)), 'Genos Sales Bonus is flagged off — the carry-over cards are not rendered at all.');
+        expect(await gsbIsLive(page), 'Genos Sales Bonus must be live in the e2e stack').toBe(true);
 
         await expect(page.locator('p').filter({ hasText: 'Power-side carry over' }).first()).toBeVisible();
     });
 
     test('slab-1 weaker carry over card is present', async ({ distributorPage: page }) => {
-        test.skip(!(await gsbIsLive(page)), 'Genos Sales Bonus is flagged off — the carry-over cards are not rendered at all.');
+        expect(await gsbIsLive(page), 'Genos Sales Bonus must be live in the e2e stack').toBe(true);
 
         await expect(page.locator('p').filter({ hasText: 'Slab-1 weaker carry over' }).first()).toBeVisible();
     });
@@ -236,7 +232,6 @@ test.describe('Distributor: GSB History', () => {
         expect(await rows.count()).toBeGreaterThan(0);
 
         const credited = rows.filter({ hasText: 'Credited' }).first();
-        test.skip(await credited.count() === 0, 'No credited GSB rows for the fixture distributor in this window.');
         await expect(credited).toBeVisible();
     });
 
@@ -244,7 +239,6 @@ test.describe('Distributor: GSB History', () => {
         await page.goto('/income/gsb-history');
 
         const row = page.locator('table tbody tr').filter({ hasText: 'Credited' }).first();
-        test.skip(await row.count() === 0, 'No credited GSB rows for the fixture distributor in this window.');
 
         // S.No. | Date | Left BV | Right BV | Slab | Gross | Repurchase deduction | Credited to wallet | Status
         await expect(row.locator('td').nth(5)).toContainText('₹');
@@ -290,7 +284,7 @@ test.describe('Distributor: Wallet & Payouts', () => {
         await page.goto('/income/wallet');
 
         // The balance <p> is inside the card that has the "Wallet Balance" label
-        const balanceCard = page.locator('div.bg-white').filter({ hasText: 'Wallet Balance' }).first();
+        const balanceCard = statCard(page, 'Income Wallet Balance');
         await expect(balanceCard).toBeVisible();
         await expect(balanceCard.locator('p.text-2xl')).toContainText('₹');
     });
@@ -299,7 +293,7 @@ test.describe('Distributor: Wallet & Payouts', () => {
         await page.goto('/income/wallet');
 
         // The date card contains both the label and the value; target the whole card
-        const dateCard = page.locator('div.bg-white').filter({ hasText: 'Next Payout Date' }).first();
+        const dateCard = statCard(page, 'Next Payout Date');
         await expect(dateCard).toBeVisible();
         // The date value is the p.text-2xl inside that card (e.g. "30 Jun")
         const dateText = await dateCard.locator('p.text-2xl').textContent();
@@ -312,7 +306,7 @@ test.describe('Distributor: Wallet & Payouts', () => {
         // "Min. Payout" label
         await expect(page.locator('p.text-xs').filter({ hasText: 'Min. Payout' })).toBeVisible();
         // ₹100 value (KP-confirmed minimum) is inside its stat card
-        const minCard = page.locator('div.bg-white').filter({ hasText: 'Min. Payout' }).first();
+        const minCard = statCard(page, 'Min. Payout');
         await expect(minCard.locator('p').filter({ hasText: '₹100' })).toBeVisible();
     });
 
@@ -362,21 +356,20 @@ test.describe('Distributor: Wallet & Payouts', () => {
         // balance. Ledger rows run oldest-first, so "last" is the newest entry.
         await page.goto('/income/wallet');
 
-        const balanceCard = page.locator('div.bg-white').filter({ hasText: 'Wallet Balance' }).first();
+        const balanceCard = statCard(page, 'Income Wallet Balance');
         const balanceText = (await balanceCard.locator('p.text-2xl').textContent())?.trim() ?? '';
         const balance = parseFloat(balanceText.replace(/[₹,]/g, ''));
         expect(Number.isFinite(balance)).toBe(true);
 
         const ledger = page.locator('section, div').filter({ hasText: 'Wallet Ledger' }).locator('table').first();
         const rows = ledger.locator('tbody tr');
-        test.skip(await rows.count() === 0, 'The fixture distributor has no wallet ledger entries.');
-        // Only the final page of the ledger ends on the current balance.
-        test.skip(
-            await page.getByRole('link', { name: 'Next' }).count() > 0,
-            'The ledger is paginated — the running balance on this page is partial.',
-        );
+        expect(await rows.count()).toBeGreaterThan(0);
+        // Only the final page of the ledger ends on the current balance; the
+        // root has two ledger rows, so there is one page.
+        await expect(page.getByRole('link', { name: 'Next' })).toHaveCount(0);
 
-        const runningText = (await rows.last().locator('td').last().textContent())?.trim() ?? '';
+        // Columns: S.No. | Date | Type | Bonus month | Amount | Running balance | Paid in batch
+        const runningText = (await rows.last().locator('td').nth(5).textContent())?.trim() ?? '';
         const running = parseFloat(runningText.replace(/[₹,]/g, ''));
         expect(Number.isFinite(running)).toBe(true);
         expect(Math.abs(balance - running)).toBeLessThanOrEqual(0.01);

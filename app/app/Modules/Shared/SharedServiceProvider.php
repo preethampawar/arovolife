@@ -10,6 +10,8 @@ use App\Modules\Shared\Mail\MarkAsTransactional;
 use App\Modules\Shared\Security\ClamAvScanner;
 use App\Modules\Shared\Security\UnconfiguredScanner;
 use App\Modules\Shared\Security\VirusScanner;
+use App\Modules\Shared\Testing\E2eMode;
+use App\Modules\Shared\Testing\E2eServiceProvider;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -35,6 +37,12 @@ final class SharedServiceProvider extends ServiceProvider
                 (int) config('services.clamav.timeout', 15),
             );
         });
+
+        // The isolated Playwright stack only (docker compose profile `e2e`).
+        // Fails closed: a set flag on any database not named *_e2e refuses to boot.
+        if (E2eMode::requested()) {
+            $this->app->register(E2eServiceProvider::class);
+        }
     }
 
     public function boot(): void

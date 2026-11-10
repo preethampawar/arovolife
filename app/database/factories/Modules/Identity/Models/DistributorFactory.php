@@ -24,7 +24,10 @@ class DistributorFactory extends Factory
 
         return [
             'user_id' => $user->id,
-            'adn' => 'ADN'.random_int(10000, 99999),
+            // Unique per process and drawn from 90 million values: the old
+            // random_int(10000, 99999) collided (~7%) in tests that create 100+
+            // distributors, e.g. PlanInvariantsTest F-9.
+            'adn' => 'ADN'.fake()->unique()->numberBetween(10_000_000, 99_999_999),
             // Raw 32 bytes, not the 64-char hex digest: distributors.pan_hash is
             // BINARY(32) and every production writer passes $binary = true. Hex
             // silently fits on sqlite and errors 1406 on MySQL.

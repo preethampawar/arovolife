@@ -1,62 +1,99 @@
-import { test as base } from '@playwright/test';
+import { clearThrottles, ensureWorld } from './support/artisan.js';
+import { ADMIN_STATE, seal, test as base } from './support/e2e-test.js';
 
 /**
- * Login helpers. Both functions POST to /login via form submission
- * (not fetch) so session cookies are set correctly.
+ * Pre-authenticated pages on the e2e stack (http://localhost:8085).
  *
- * Admin: admin@arovolife.test / admin12345
- * Distributor: identified by ADN — password reset in dev to Test1234!
+ * - adminPage: a fresh sealed context carrying the admin login globalSetup
+ *   saved (admin@arovolife.test / admin12345), so no spec logs in as admin.
+ * - distributorPage: logs in as one partner of the current WORLD — a named
+ *   scenario built on a fresh reset and replayed through the engines (see
+ *   ensureWorld in support/artisan.js). Override per file:
+ *     test.use({ world: { name: 'gsb-basic', asOf: '2026-06-05 06:00:00' }, partnerKey: 'left' });
+ *   The world object (partners, ADNs, orders) is the `world` fixture.
  */
 
 async function getCsrfToken(page) {
-    const token = await page.evaluate(() =>
+    return page.evaluate(() =>
         document.querySelector('meta[name="csrf-token"]')?.content ??
         document.querySelector('input[name="_token"]')?.value ?? ''
     );
-    return token;
 }
 
-export async function loginAsAdmin(page) {
+/** Log in by ADN (or e-mail) through the real form. Clears the login throttle first. */
+export async function loginAsDistributor(page, login, password) {
+    clearThrottles();
     await page.goto('/login');
-    const token = await getCsrfToken(page);
-    await page.evaluate(async ({ token }) => {
-        const resp = await fetch('/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ login: 'admin@arovolife.test', password: 'admin12345', _token: token }),
-        });
-        return resp.url;
-    }, { token });
-    await page.goto('/admin');
-    await page.waitForURL('**/admin**');
-}
-
-export async function loginAsDistributor(page, adn, password = 'Test1234!') {
-    await page.goto('/login');
-    await page.fill('input[placeholder="9-digit ADN"]', adn);
-    await page.fill('input[type="password"]', password);
-    await page.locator('form').evaluate(f => f.submit());
+    await page.locator('input[name="login"]').fill(login);
+    await page.locator('input[name="password"]').fill(password);
+    await page.locator('form').filter({ has: page.locator('input[name="password"]') }).evaluate((f) => f.submit());
     await page.waitForURL('**/dashboard**');
 }
 
-/** Extended test fixture that provides pre-authenticated pages. */
+/** Admin login through the form, for a page that is not `adminPage`. Prefer the `adminPage` fixture. */
+export async function loginAsAdmin(page) {
+    clearThrottles();
+    await page.goto('/login');
+    await page.locator('input[name="login"]').fill('admin@arovolife.test');
+    await page.locator('input[name="password"]').fill('admin12345');
+    await page.locator('form').filter({ has: page.locator('input[name="password"]') }).evaluate((f) => f.submit());
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'));
+}
+
+/** Back-office login through the form as a scenario staff key (finance, operations, compliance, developer). */
+export async function loginAsStaff(page, builtWorld, staffKey) {
+    const staff = builtWorld.staff?.[staffKey];
+    if (!staff) {
+        throw new Error(`World ${builtWorld.scenario} has no staff '${staffKey}' (has: ${Object.keys(builtWorld.staff ?? {}).join(', ')})`);
+    }
+    clearThrottles();
+    await page.goto('/login');
+    await page.locator('input[name="login"]').fill(staff.email);
+    await page.locator('input[name="password"]').fill(builtWorld.password);
+    await page.locator('form').filter({ has: page.locator('input[name="password"]') }).evaluate((f) => f.submit());
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'));
+}
+
 export const test = base.extend({
-    adminPage: async ({ page }, use) => {
-        await loginAsAdmin(page);
+    world: [{ name: 'gsb-basic', asOf: '2026-06-05 06:00:00' }, { option: true }],
+    partnerKey: ['root', { option: true }],
+    staffKey: ['finance', { option: true }],
+
+    builtWorld: async ({ world }, use) => {
+        const { name, ...options } = world;
+        await use(ensureWorld(name, options));
+    },
+
+    // Auto: every test runs on its declared world, even one that only uses
+    // `page` or `adminPage` (each `playwright test` process starts from the
+    // base snapshot, so without this an admin-only spec would see no data).
+    worldReady: [async ({ builtWorld }, use) => { await use(builtWorld); }, { auto: true }],
+
+    adminPage: async ({ browser, baseURL }, use) => {
+        const context = await browser.newContext({ baseURL, storageState: ADMIN_STATE, serviceWorkers: 'block' });
+        await seal(context);
+        const page = await context.newPage();
+        await use(page);
+        await context.close();
+    },
+
+    distributorPage: async ({ page, builtWorld, partnerKey }, use) => {
+        const partner = builtWorld.partners[partnerKey];
+        if (!partner) {
+            throw new Error(`World ${builtWorld.scenario} has no partner '${partnerKey}' (has: ${Object.keys(builtWorld.partners).join(', ')})`);
+        }
+        await loginAsDistributor(page, partner.adn, builtWorld.password);
         await use(page);
     },
-    distributorPage: async ({ page }, use) => {
-        // The dev database is reseeded from time to time, so the ADN is an env
-        // override rather than a constant: a hard-coded one that no longer
-        // exists fails as a login timeout, which reads like a broken page
-        // instead of a missing fixture. Set A11Y_ADN / A11Y_PASSWORD to point
-        // at whichever distributor your dev database actually has.
-        const adn = process.env.A11Y_ADN ?? '360801433';
-        const password = process.env.A11Y_PASSWORD ?? 'Test1234!';
-        await loginAsDistributor(page, adn, password);
+
+    // The `page` logged in as one back-office role: test.use({ staffKey: 'operations' }).
+    staffPage: async ({ page, builtWorld, staffKey }, use) => {
+        await loginAsStaff(page, builtWorld, staffKey);
         await use(page);
     },
 });
+
+export { getCsrfToken };
 
 /**
  * Confirmation-dialog helper.
@@ -92,4 +129,4 @@ export async function readStockOnHand(page, sku, warehouseCode) {
     return Number.isFinite(value) ? value : null;
 }
 
-export { expect } from '@playwright/test';
+export { expect } from './support/e2e-test.js';

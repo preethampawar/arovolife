@@ -9,7 +9,7 @@
  * than the assertion is worth.
  *
  * Requires:
- *   - App running at APP_URL (default http://localhost:8084)
+ *   - the e2e stack on http://localhost:8085
  *   - admin@arovolife.test / admin12345 (see fixtures.js)
  */
 
@@ -122,9 +122,7 @@ test.describe('Landing price is system-owned', () => {
 
     const firstEdit = adminPage.getByRole('link', { name: /edit/i }).first();
 
-    if ((await firstEdit.count()) === 0) {
-      test.skip(true, 'No products in the dev database to inspect.');
-    }
+    await expect(firstEdit, 'the base catalogue lists products').not.toHaveCount(0);
 
     await firstEdit.click();
 

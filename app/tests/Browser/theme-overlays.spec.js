@@ -131,7 +131,7 @@ test.describe('distributor overlays', () => {
 
         const triggers = page.locator('[data-node-menu-trigger]');
         const count = await triggers.count();
-        expect(count, 'the fixture distributor has no genealogy nodes — set A11Y_ADN to one that does')
+        expect(count, 'the fixture distributor has no genealogy nodes — the partner needs downline nodes')
             .toBeGreaterThan(0);
 
         // The root node is the signed-in distributor and has no "send message"

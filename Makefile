@@ -4,7 +4,7 @@
 # stop and warn before proceeding (per CLAUDE.md global rule on destructive
 # actions); the underlying commands surface their own prompts.
 
-.PHONY: help build dev reset test pint stan migrate up down logs sh tinker
+.PHONY: help build dev reset test pint stan migrate up down logs sh tinker e2e-up e2e-down e2e-snapshot e2e-reset e2e-test
 
 DOCKER_APP := docker exec arovolife-app
 NPM_DIR    := app
@@ -58,3 +58,30 @@ sh: ## Open a shell inside the app container
 
 tinker: ## Open a Laravel tinker REPL against the dev DB
 	@$(DOCKER_APP) php artisan tinker
+
+# ── E2E stack (Playwright, :8085, database arovolife_e2e only) ─────────────
+# The e2e network is internal (no internet). db / redis / mailpit are attached
+# to it with `docker network connect`, which adds an interface and never
+# recreates those stateful containers.
+
+E2E_COMPOSE := docker compose -f docker/docker-compose.yml --profile e2e
+
+e2e-up: ## Start the isolated e2e stack on :8085 (db, redis, mailpit must be up)
+	@docker compose -f docker/docker-compose.yml up -d --no-recreate mailpit
+	@$(E2E_COMPOSE) up -d --no-deps e2e-app e2e-web
+	@for svc in db redis mailpit; do \
+		docker network connect --alias $$svc arovolife-e2e arovolife-$$svc 2>/dev/null || true; \
+	done
+	@docker exec arovolife-e2e-app php artisan e2e:whoami
+
+e2e-down: ## Stop the e2e containers (the e2e databases are kept)
+	@$(E2E_COMPOSE) stop e2e-web e2e-app
+
+e2e-snapshot: ## Rebuild arovolife_e2e from scratch and store the reset template
+	@docker exec arovolife-e2e-app php artisan e2e:snapshot
+
+e2e-reset: ## Restore arovolife_e2e from the template
+	@docker exec arovolife-e2e-app php artisan e2e:reset
+
+e2e-test: ## Run the Playwright suite against the e2e stack (serial)
+	@cd $(NPM_DIR) && npm run test:e2e

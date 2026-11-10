@@ -1,27 +1,25 @@
 /**
  * End-to-end registration: walks the whole wizard AND posts step 12, so every
- * run creates real distributors. Only run it against an environment that will
- * be wiped afterwards (pre-launch prod, local dev), never by accident:
+ * run creates real distributors on the e2e database (restored by e2e:reset).
+ * Step flow mirrors theme-wizard.spec.js.
  *
- *   REGISTER_E2E=1 REGISTER_E2E_EMAIL=you@gmail.com APP_URL=https://arovolife.com \
- *     npx playwright test tests/Browser/prod-registration.spec.js
- *
- * Emails go to plus-addresses of REGISTER_E2E_EMAIL, so the welcome mails land
- * in an inbox instead of bouncing. Step flow mirrors theme-wizard.spec.js.
+ * Step 11 uses the company default Arete centre seeded into the e2e base.
  */
 
-import { test, expect } from '@playwright/test';
+import { resetDatabase } from './support/artisan.js';
+import { test, expect } from './fixtures.js';
 
-test.skip(!process.env.REGISTER_E2E, 'creates real distributors — set REGISTER_E2E=1 to run');
+test.use({ world: { name: 'many-partners' } });
 test.describe.configure({ timeout: 5 * 60 * 1000 });
+test.afterAll(() => resetDatabase());
 
-const [MAILBOX, DOMAIN] = (process.env.REGISTER_E2E_EMAIL ?? 'regtest@example.com').split('@');
+const [MAILBOX, DOMAIN] = ['reg', 'e2e.test'];
 
-/** Reserved depth-5 leaves (both legs free after a wipe). */
+/** Leaves of many-partners with both legs free: p24 and p23. */
 const RUNS = [
-    { n: 1, placement: '599939333' },
-    { n: 2, placement: '845868785' },
-    { n: 3, placement: '599939333' },
+    { n: 1, placement: '900000025' },
+    { n: 2, placement: '900000024' },
+    { n: 3, placement: '900000025' },
 ];
 
 const pathOf = (url) => new URL(url, 'http://x').pathname.replace(/\/$/, '') || '/';

@@ -30,7 +30,6 @@ use App\Modules\Tax\Models\Invoice;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use RuntimeException;
 
 uses(RefreshDatabase::class);
 

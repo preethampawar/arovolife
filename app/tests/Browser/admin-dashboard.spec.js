@@ -9,7 +9,7 @@
  * and never a tab nobody is looking at.
  *
  * Requires:
- *   - App running at APP_URL (default http://localhost:8084)
+ *   - the e2e stack on http://localhost:8085
  *   - admin@arovolife.test / admin12345 (super staff, so every panel is visible)
  *
  * Notes:
@@ -81,7 +81,11 @@ test.describe('Admin dashboard: shell', () => {
         // 600 + 250 margin: the test passed only when the first panel's response
         // happened to beat the observer's first callback and push the rest down.
         // 300px ends the margin at 550px, clear of it whatever the server does.
-        await page.setViewportSize({ width: 1280, height: 300 });
+        //
+        // Update for the e2e stack: flags leave only three panels, so the last
+        // skeleton's top sits near 380px and a 300px viewport (margin to 550px)
+        // would put it inside the margin. 50px ends the margin at 300px.
+        await page.setViewportSize({ width: 1280, height: 50 });
         await page.goto('/admin');
 
         await expect(panel(page, 'commerce')).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
@@ -138,8 +142,8 @@ test.describe('Admin dashboard: shell', () => {
         await expect(target).toHaveAttribute('data-panel-state', 'done', { timeout: 10_000 });
         await expect(target).toContainText('as of');
 
-        expect(requests.filter((u) => u.includes('/panel/sales'))).toHaveLength(1);
-        expect(requests.filter((u) => !u.includes('/panel/sales'))).toHaveLength(0);
+        expect(requests.filter((u) => u.includes('/panel/commerce'))).toHaveLength(1);
+        expect(requests.filter((u) => !u.includes('/panel/commerce'))).toHaveLength(0);
     });
 
     test('E2E-07: each panel is fetched once on arrival and nothing polls before its turn', async ({ adminPage: page }) => {

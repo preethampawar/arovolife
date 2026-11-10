@@ -8,7 +8,7 @@
  *   snooze control -> non-admin permission check.
  *
  * Requires:
- *   - App running at APP_URL (default http://localhost:8084)
+ *   - the e2e stack on http://localhost:8085 (world gsb-basic)
  *   - admin@arovolife.test / admin12345 (super-staff — bypasses every
  *     permission via Gate::before, so it sees every provider)
  *
@@ -33,7 +33,11 @@
  *     these fixtures allow. A distributor never holds any admin-family role.
  */
 
+import { resetDatabase, withFeature } from './support/artisan.js';
 import { test, expect, submitAndConfirm } from './fixtures.js';
+
+// The snooze test writes a row; leave the e2e database as it was found.
+test.afterAll(() => resetDatabase());
 
 const NON_STATUTORY_TYPE = 'orders.paid_not_packed';
 const NON_STATUTORY_LABEL = 'Paid orders not packed';
@@ -56,47 +60,55 @@ test.describe('Action Center: sidebar and dashboard', () => {
         await expect(page.getByRole('heading', { name: NON_STATUTORY_LABEL })).toBeVisible();
     });
 
-    test('sidebar badge shows only when the viewer has a critical count', async ({ adminPage: page }) => {
-        await page.goto('/admin');
-        // The badge (when non-zero) is nested inside the link and concatenates
-        // into its accessible name ("Action Center 319"), so match by prefix
-        // rather than `exact: true`.
-        const link = page.getByRole('link', { name: /^Action Center/ });
-        test.skip(await link.count() === 0, 'Action Center is dev-only in the sidebar right now.');
-        await expect(link).toBeVisible();
-        const badge = link.locator('.admin-nav-badge');
-        const badgeCount = await badge.count();
+    test.describe('as the developer', () => {
+        test.use({ staffKey: 'developer' });
 
-        if (badgeCount === 0) {
-            // Zero criticals renders no badge at all (plan §10.5) — nothing
-            // further to assert for this admin session right now.
-            return;
-        }
+        // The sidebar entry and the dashboard card are developer-only
+        // (AdminNavigation::overviewItems), so these run as the world's developer.
+        test('sidebar badge shows only when the viewer has a critical count', async ({ staffPage: page }) => {
+            await page.goto('/admin');
+            // The badge (when non-zero) is nested inside the link and concatenates
+            // into its accessible name ("Action Center 319"), so match by prefix
+            // rather than `exact: true`.
+            const link = page.getByRole('link', { name: /^Action Center/ });
+            await expect(link).toBeVisible();
+            const badge = link.locator('.admin-nav-badge');
+            const badgeCount = await badge.count();
 
-        const text = (await badge.first().textContent())?.trim() ?? '';
-        const n = parseInt(text, 10);
-        expect(Number.isFinite(n)).toBeTruthy();
-        expect(n).toBeGreaterThan(0);
-    });
+            if (badgeCount === 0) {
+                // Zero criticals renders no badge at all (plan §10.5) — nothing
+                // further to assert for this admin session right now.
+                return;
+            }
 
-    test('dashboard shows the Action Center card only when there are critical items, and it links through', async ({ adminPage: page }) => {
-        await page.goto('/admin');
-        const heading = page.getByRole('heading', { name: 'Action Center — oldest critical items' });
+            const text = (await badge.first().textContent())?.trim() ?? '';
+            const n = parseInt(text, 10);
+            expect(Number.isFinite(n)).toBeTruthy();
+            expect(n).toBeGreaterThan(0);
+        });
 
-        if ((await heading.count()) === 0) {
-            test.skip(true, 'No critical Action Center items in the dev database right now — dashboard card is not rendered.');
-        }
+        // The dashboard's "Needs attention" panel (DashboardPanels 'attention')
+        // replaced the old "oldest critical items" card. It is behind
+        // ActionCenterFeature, which the snapshot pins OFF: absent without it,
+        // listing the outstanding types with it, each row linking to its type page.
+        test('dashboard shows the Needs attention panel only with the flag on, and its rows link through', async ({ staffPage: page }) => {
+            const heading = page.getByRole('heading', { name: 'Needs attention', exact: true });
 
-        await expect(heading).toBeVisible();
-        // `div.filter({ has: heading })` also matches every ancestor div up to
-        // the page wrapper, not just this card, so `.first()` grabs the wrong
-        // (outermost) one and its "View all" turns up 3x. The card's "View
-        // all" link is the heading's own sibling in the markup.
-        const viewAll = heading.locator('xpath=following-sibling::a[1]');
-        await expect(viewAll).toBeVisible();
-        await viewAll.click();
-        await page.waitForURL('**/admin/action-center');
-        await expect(page.getByRole('heading', { name: 'Action Center', exact: true })).toBeVisible();
+            await page.goto('/admin');
+            await expect(heading).toHaveCount(0);
+
+            await withFeature('ActionCenterFeature', async () => {
+                await page.goto('/admin');
+                await expect(heading).toBeVisible();
+
+                // gsb-basic leaves paid, unpacked orders past the pack SLA.
+                const row = page.locator(`a[href$="/admin/action-center/${NON_STATUTORY_TYPE}"]`).first();
+                await expect(row).toContainText(NON_STATUTORY_LABEL);
+                await row.click();
+                await page.waitForURL(`**/admin/action-center/${NON_STATUTORY_TYPE}`);
+                await expect(page.getByRole('heading', { name: NON_STATUTORY_LABEL })).toBeVisible();
+            });
+        });
     });
 });
 
@@ -106,9 +118,8 @@ test.describe('Action Center: index', () => {
         await expect(page.getByRole('heading', { name: 'Action Center', exact: true })).toBeVisible();
 
         const empty = page.getByText('Nothing needs action right now.', { exact: true });
-        if (await empty.isVisible().catch(() => false)) {
-            test.skip(true, 'No Action Center items of any type in the dev database right now.');
-        }
+        // gsb-basic leaves three paid, unpacked orders past the pack SLA.
+        await expect(empty).toHaveCount(0);
 
         // At least one of the six group cards (plan §4 catalogue) is present.
         const groupLabels = ['Orders & fulfilment', 'Stock', 'Money', 'People', 'Compliance', 'Platform'];
@@ -125,7 +136,7 @@ test.describe('Action Center: index', () => {
         await page.goto('/admin/action-center');
 
         const row = page.getByRole('link', { name: new RegExp(NON_STATUTORY_LABEL) }).first();
-        test.skip((await row.count()) === 0, `"${NON_STATUTORY_LABEL}" is not on the index right now — no outstanding items of that type.`);
+        await expect(row).toBeVisible();
 
         await row.click();
         await page.waitForURL(`**/admin/action-center/${NON_STATUTORY_TYPE}`);
@@ -139,7 +150,7 @@ test.describe('Action Center: type page', () => {
         await expect(page.getByRole('heading', { name: NON_STATUTORY_LABEL, exact: true })).toBeVisible();
 
         const emptyRow = page.locator('td').filter({ hasText: 'Nothing needs action right now.' });
-        test.skip(await emptyRow.isVisible().catch(() => false), `No "${NON_STATUTORY_LABEL}" items in the dev database right now.`);
+        await expect(emptyRow).toHaveCount(0);
 
         const firstRow = page.locator('tbody tr').first();
         await expect(firstRow.locator('span').filter({ hasText: /^(Critical|Warning|Info)$/ }).first()).toBeVisible();
@@ -147,7 +158,7 @@ test.describe('Action Center: type page', () => {
         await expect(firstRow.locator('td').nth(2)).toHaveText(/^\d+h$/);
 
         const fixLink = firstRow.getByRole('link', { name: 'Fix' });
-        test.skip((await fixLink.count()) === 0, 'The first row has no "Fix" link (item.url is null for this provider/row).');
+        await expect(fixLink).toHaveCount(1);
 
         const href = await fixLink.getAttribute('href');
         await fixLink.click();
@@ -165,7 +176,7 @@ test.describe('Action Center: type page', () => {
         await page.goto(`/admin/action-center/${NON_STATUTORY_TYPE}`);
 
         const emptyRow = page.locator('td').filter({ hasText: 'Nothing needs action right now.' });
-        test.skip(await emptyRow.isVisible().catch(() => false), `No "${NON_STATUTORY_LABEL}" items in the dev database right now — cannot exercise filters.`);
+        await expect(emptyRow).toHaveCount(0);
 
         const rowCountBefore = await page.locator('tbody tr').count();
 
@@ -198,7 +209,7 @@ test.describe('Action Center: type page', () => {
         await page.goto(`/admin/action-center/${NON_STATUTORY_TYPE}`);
 
         const emptyRow = page.locator('td').filter({ hasText: 'Nothing needs action right now.' });
-        test.skip(await emptyRow.isVisible().catch(() => false), `No "${NON_STATUTORY_LABEL}" items in the dev database right now — nothing to snooze.`);
+        await expect(emptyRow).toHaveCount(0);
 
         const countBefore = await page.locator('tbody tr').count();
         const firstRow = page.locator('tbody tr').first();
@@ -209,7 +220,7 @@ test.describe('Action Center: type page', () => {
         // Both the <summary> toggle and the submit button read "Snooze" —
         // scope to the <summary> element specifically to avoid ambiguity.
         const snoozeToggle = firstRow.locator('summary').filter({ hasText: 'Snooze' });
-        test.skip((await snoozeToggle.count()) === 0, 'The first row has no Snooze control — it may be a statutory type row (unexpected here) or already snoozed.');
+        await expect(snoozeToggle).toHaveCount(1);
 
         await snoozeToggle.click();
         const form = firstRow.locator('form[action*="/snooze"]');
@@ -243,7 +254,7 @@ test.describe('Action Center: type page', () => {
         await expect(page.getByRole('heading', { name: STATUTORY_LABEL, exact: true })).toBeVisible();
 
         const emptyRow = page.locator('td').filter({ hasText: 'Nothing needs action right now.' });
-        test.skip(await emptyRow.isVisible().catch(() => false), `No "${STATUTORY_LABEL}" items in the dev database right now.`);
+        await expect(emptyRow).toHaveCount(0);
 
         await expect(page.getByText('Snooze', { exact: true })).toHaveCount(0);
     });

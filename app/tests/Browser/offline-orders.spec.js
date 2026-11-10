@@ -7,26 +7,26 @@
  * mismatch refusal, and what the buyer sees on My Orders.
  *
  * Requires:
- *   - App at APP_URL (default http://localhost:8084), admin@arovolife.test / admin12345
- *   - The `commerce.offline_orders` feature flag ON (developer → Feature Flags)
- *   - A11Y_ADN / A11Y_PASSWORD: a distributor who may buy (default 360801433 / Test1234!)
- *   - At least one active product
- *   - Optional scoped staff for the permission rows: E2E_OPS_EMAIL,
- *     E2E_FIN_EMAIL, E2E_COMPLIANCE_EMAIL with E2E_STAFF_PASSWORD. Those tests
- *     skip themselves when unset — the Pest suite (OfflineOrderTest) covers
- *     every permission-matrix row authoritatively.
+ *   - the e2e stack on http://localhost:8085 (world gsb-basic; the
+ *     `commerce.offline_orders` flag is ON in the base data)
+ *   - the scoped-role rows (PW-05..07) log in as the scenario's staff; the
+ *     Pest suite (OfflineOrderTest) still covers every matrix row.
  *
  * The orders placed here are real distributor purchases with BV on the dev
  * database — run against a disposable dev database if that matters.
  */
 
-import { test, expect, submitAndConfirm } from './fixtures.js';
+import { resetDatabase } from './support/artisan.js';
+import { test, expect, submitAndConfirm, loginAsStaff } from './fixtures.js';
 
-const ADN = process.env.A11Y_ADN ?? '360801433';
+// Orders placed here are real purchases on the e2e database; leave it as found.
+test.afterAll(() => resetDatabase());
+
+// The buyer is partner `root` of gsb-basic.
 
 /** Fills the create form for one unit of the first product and returns the quoted total text. */
-async function fillOfflineOrder(page, { channel = 'upi', reference = `UPI${Date.now()}`, amountOverride = null } = {}) {
-    await page.goto(`/admin/commerce/offline-orders/create?adn=${ADN}`);
+async function fillOfflineOrder(page, adn, { channel = 'upi', reference = `UPI${Date.now()}`, amountOverride = null } = {}) {
+    await page.goto(`/admin/commerce/offline-orders/create?adn=${adn}`);
     await expect(page.getByText('2. Products')).toBeVisible();
 
     await page.locator('input[name^="qty["]').first().fill('1');
@@ -51,11 +51,11 @@ async function fillOfflineOrder(page, { channel = 'upi', reference = `UPI${Date.
 }
 
 test.describe('Offline orders (admin)', () => {
-    test('PW-01/02: create an offline order, see it pending, confirm it paid', async ({ adminPage: page }) => {
+    test('PW-01/02: create an offline order, see it pending, confirm it paid', async ({ adminPage: page, builtWorld }) => {
         await page.goto('/admin/commerce/orders');
         await expect(page.getByRole('link', { name: 'New offline order' })).toBeVisible();
 
-        const quoted = await fillOfflineOrder(page);
+        const quoted = await fillOfflineOrder(page, builtWorld.partners.root.adn);
         expect(quoted).toMatch(/^₹/);
 
         await submitAndConfirm(page, page.getByRole('button', { name: 'Create offline order' }));
@@ -75,15 +75,15 @@ test.describe('Offline orders (admin)', () => {
         await expect(page.getByRole('button', { name: 'Mark as Shipped' })).toBeVisible();
     });
 
-    test('PW-03: an amount that does not match the total is refused', async ({ adminPage: page }) => {
-        await fillOfflineOrder(page, { amountOverride: '1.00' });
+    test('PW-03: an amount that does not match the total is refused', async ({ adminPage: page, builtWorld }) => {
+        await fillOfflineOrder(page, builtWorld.partners.root.adn, { amountOverride: '1.00' });
         await submitAndConfirm(page, page.getByRole('button', { name: 'Create offline order' }));
 
         await expect(page.getByText(/must match exactly/)).toBeVisible();
     });
 
-    test('PW-04: reject a second offline order', async ({ adminPage: page }) => {
-        await fillOfflineOrder(page);
+    test('PW-04: reject a second offline order', async ({ adminPage: page, builtWorld }) => {
+        await fillOfflineOrder(page, builtWorld.partners.root.adn);
         await submitAndConfirm(page, page.getByRole('button', { name: 'Create offline order' }));
         await page.waitForURL('**/admin/commerce/orders/**');
 
@@ -97,17 +97,14 @@ test.describe('Offline orders (admin)', () => {
 });
 
 test.describe('Offline orders (buyer)', () => {
-    test('PW-08: the buyer sees "Paid offline" and no Cancel while pending', async ({ adminPage: page, browser }) => {
-        await fillOfflineOrder(page);
+    test('PW-08: the buyer sees "Paid offline" and no Cancel while pending', async ({ adminPage: page, distributorPage: buyer, builtWorld }) => {
+        await fillOfflineOrder(page, builtWorld.partners.root.adn);
         await submitAndConfirm(page, page.getByRole('button', { name: 'Create offline order' }));
         await page.waitForURL('**/admin/commerce/orders/**');
         const flash = await page.getByText(/Offline order ORD-.* created/).textContent();
         const orderNo = flash?.match(/ORD-[0-9]{6}-[A-Z0-9]{6}/)?.[0];
         expect(orderNo).toBeTruthy();
 
-        const buyer = await (await browser.newContext()).newPage();
-        const { loginAsDistributor } = await import('./fixtures.js');
-        await loginAsDistributor(buyer, ADN, process.env.A11Y_PASSWORD ?? 'Test1234!');
         await buyer.goto(`/orders/${orderNo}`);
 
         await expect(buyer.getByText(/Paid offline/)).toBeVisible();
@@ -116,38 +113,24 @@ test.describe('Offline orders (buyer)', () => {
     });
 });
 
-async function loginStaff(page, email) {
-    await page.goto('/login');
-    const token = await page.evaluate(() => document.querySelector('input[name="_token"]')?.value ?? '');
-    await page.evaluate(async ({ email, password, token }) => {
-        await fetch('/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ login: email, password, _token: token }),
-        });
-    }, { email, password: process.env.E2E_STAFF_PASSWORD ?? '', token });
-}
-
+// Scoped roles log in as the scenario's staff (finance@e2e.test …).
 test.describe('Offline orders (scoped roles)', () => {
-    test('PW-05: operations sees the button but never Confirm', async ({ page }) => {
-        test.skip(!process.env.E2E_OPS_EMAIL, 'Set E2E_OPS_EMAIL + E2E_STAFF_PASSWORD to run the operations row.');
-        await loginStaff(page, process.env.E2E_OPS_EMAIL);
+    test('PW-05: operations sees the button but never Confirm', async ({ page, builtWorld }) => {
+        await loginAsStaff(page, builtWorld, 'operations');
         await page.goto('/admin/commerce/orders');
         await expect(page.getByRole('link', { name: 'New offline order' })).toBeVisible();
     });
 
-    test('PW-06: finance has no "New offline order" and cannot open the form', async ({ page }) => {
-        test.skip(!process.env.E2E_FIN_EMAIL, 'Set E2E_FIN_EMAIL + E2E_STAFF_PASSWORD to run the finance row.');
-        await loginStaff(page, process.env.E2E_FIN_EMAIL);
+    test('PW-06: finance has no "New offline order" and cannot open the form', async ({ page, builtWorld }) => {
+        await loginAsStaff(page, builtWorld, 'finance');
         await page.goto('/admin/commerce/orders');
         await expect(page.getByRole('link', { name: 'New offline order' })).toHaveCount(0);
         const response = await page.goto('/admin/commerce/offline-orders/create');
         expect(response?.status()).toBe(403);
     });
 
-    test('PW-07: compliance can neither create nor confirm', async ({ page }) => {
-        test.skip(!process.env.E2E_COMPLIANCE_EMAIL, 'Set E2E_COMPLIANCE_EMAIL + E2E_STAFF_PASSWORD to run the compliance row.');
-        await loginStaff(page, process.env.E2E_COMPLIANCE_EMAIL);
+    test('PW-07: compliance can neither create nor confirm', async ({ page, builtWorld }) => {
+        await loginAsStaff(page, builtWorld, 'compliance');
         const response = await page.goto('/admin/commerce/offline-orders/create');
         expect(response?.status()).toBe(403);
     });

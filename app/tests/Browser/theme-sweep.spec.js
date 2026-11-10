@@ -24,6 +24,9 @@ import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from './fixtures.js';
 import { PUBLIC_ROUTES, DISTRIBUTOR_ROUTES, ADMIN_ROUTES, SKIP, ALL_ROUTES } from './theme-routes.js';
 
+// The wizard sponsor in theme-routes.js (partner p24) lives in this world.
+test.use({ world: { name: 'many-partners' } });
+
 const KEY = 'arovolife_theme';
 
 /** The sweep is the slow spec in the suite; it must not also be the flaky one. */

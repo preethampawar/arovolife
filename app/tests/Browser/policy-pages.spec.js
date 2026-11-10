@@ -35,7 +35,7 @@ test.describe('Policy pages: each of the 9 client documents', () => {
     for (const [slug, title] of POLICY_SLUGS) {
         test(`guest can open /p/${slug} and sees its h1`, async ({ page }) => {
             const response = await page.goto(`/p/${slug}`);
-            test.skip(response?.status() === 404, `/p/${slug} is not published on this environment yet — run the ContentPageSeeder blanket seed.`);
+            expect(response?.status(), `/p/${slug} is not published on this environment yet — run the ContentPageSeeder blanket seed.`).not.toBe(404);
             expect(response?.status()).toBe(200);
             await expect(page.locator('h1').first()).toHaveText(title);
         });
@@ -54,7 +54,7 @@ test.describe('Policy pages: Home footer links', () => {
         test(`Home footer shows "${label}" and it navigates to /p/${slug}`, async ({ page }) => {
             await page.goto('/');
             const link = page.getByRole('link', { name: label, exact: true });
-            test.skip(await link.count() === 0, `"${label}" is not in the footer — ${slug} is not published on this environment.`);
+            await expect(link, `"${label}" is not in the footer — ${slug} is not published on this environment.`).not.toHaveCount(0);
             await expect(link).toHaveAttribute('href', new RegExp(`/p/${slug}$`));
             await link.click();
             await expect(page).toHaveURL(new RegExp(`/p/${slug}$`));
@@ -63,15 +63,13 @@ test.describe('Policy pages: Home footer links', () => {
     }
 });
 
-test.describe('Non-goal guard: the held compensation page', () => {
-    test('/p/compensation stays unavailable (held pending DSA §6.2 notice)', async ({ page }) => {
+test.describe('The compensation plan page', () => {
+    // Seeded as a draft and published explicitly (`content:publish compensation`),
+    // as on every environment since go-live prep; the e2e snapshot does the same,
+    // because registration refuses to record consent against an unpublished plan.
+    test('/p/compensation is published for guests', async ({ page }) => {
         const response = await page.goto('/p/compensation');
-        // Held = seeded as a draft, so the public route 404s until someone
-        // explicitly publishes it with `php artisan content:publish compensation`.
-        // That command has clearly been run by hand on this dev box (R-75
-        // still holds it in production/staging), so a 200 here is a dev-data
-        // state, not a code regression — skip rather than fail on it.
-        test.skip(response?.status() === 200, '/p/compensation is published on this dev environment (content:publish was run manually) — R-75 still gates it in production.');
-        expect(response?.status()).toBe(404);
+        expect(response?.status()).toBe(200);
+        await expect(page.locator('h1').first()).toBeVisible();
     });
 });

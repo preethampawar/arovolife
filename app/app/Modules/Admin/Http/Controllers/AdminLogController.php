@@ -41,7 +41,7 @@ final class AdminLogController extends Controller
         $this->ensureDeveloper($request);
 
         abort_unless(preg_match(self::FILE_PATTERN, $file) === 1, 404);
-        $path = storage_path('logs/'.$file);
+        $path = $this->logDirectory().'/'.$file;
         abort_unless(is_file($path), 404);
 
         AuditLog::create([
@@ -64,7 +64,7 @@ final class AdminLogController extends Controller
     private function logs(): array
     {
         $logs = [];
-        foreach (glob(storage_path('logs/*.log')) ?: [] as $path) {
+        foreach (glob($this->logDirectory().'/*.log') ?: [] as $path) {
             $file = basename($path);
             if (! is_file($path) || preg_match(self::FILE_PATTERN, $file, $m, PREG_UNMATCHED_AS_NULL) !== 1) {
                 continue;
@@ -85,5 +85,11 @@ final class AdminLogController extends Controller
     private function ensureDeveloper(Request $request): void
     {
         abort_unless($request->user()?->hasRole('developer') === true, 404);
+    }
+
+    /** storage/logs, except on the isolated e2e stack, which logs to its own directory. */
+    private function logDirectory(): string
+    {
+        return rtrim((string) config('logging.viewer_directory', storage_path('logs')), '/');
     }
 }

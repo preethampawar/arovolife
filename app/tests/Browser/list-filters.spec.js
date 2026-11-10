@@ -10,7 +10,7 @@
  * adding a page to the rollout means adding one row here, not a new test.
  *
  * Requires:
- *   - App running at APP_URL (default http://localhost:8084)
+ *   - the e2e stack on http://localhost:8085
  *   - admin@arovolife.test / admin12345 (super-staff — bypasses every
  *     permission via Gate::before, so every page below is reachable)
  *
@@ -21,22 +21,20 @@
  * distributors are fixtures. Treat the skips below as missing UI coverage,
  * never as a missing scope guarantee.
  *
- * Distributor coverage is credential-gated. The dev database's distributor
- * accounts do not carry a known test password, and this suite deliberately
- * does not set one — rewriting a password to make a test pass mutates the
- * dev database for everyone who uses it. Export A11Y_ADN and A11Y_PASSWORD
- * for an account you control and the distributor describe block runs;
- * without them it skips with a message naming what to set, rather than
- * failing as though the pages were broken.
+ * Distributor coverage runs as partner `root` of the e2e world `many-partners`
+ * (the `distributorPage` fixture); no credentials are needed.
  *
  * Run:
- *   npx playwright test tests/Browser/list-filters.spec.js
- *   A11Y_ADN=123456789 A11Y_PASSWORD='…' npx playwright test tests/Browser/list-filters.spec.js
+ *   npx playwright test tests/Browser/list-filters.spec.js --project=ui
  *
  * Plan: docs/plans/list-page-filters-2026-09-13.md
  */
 
+import { withFeature } from './support/artisan.js';
 import { test, expect } from './fixtures.js';
+
+// 25 partners (20 per page on the admin register) and one order for the root.
+test.use({ world: { name: 'many-partners' }, partnerKey: 'root' });
 
 /**
  * Every admin list page the rollout touched.
@@ -96,28 +94,25 @@ const FORBIDDEN_KEYS = ['adn', 'user_id', 'distributor_id', 'sponsor_id'];
 const bar = (page) => page.locator('[data-testid="filter-bar"]');
 const rows = (page) => page.locator('table tbody tr');
 
-/**
- * A page whose feature flag is off 404s, and a dev database legitimately has
- * flags off. Treat that as "not applicable here", not as a failure — but only
- * for 404, never for a 500.
- */
-async function gotoOrSkip(page, path) {
+/** Open a list page and require it to render (no 4xx, no 5xx). */
+async function gotoListPage(page, path) {
     const response = await page.goto(path);
     const status = response?.status() ?? 0;
 
-    if (status === 404) {
-        test.skip(true, `${path} is 404 — its feature flag is off in this database`);
-    }
-
-    expect(status, `${path} returned ${status}`).toBeLessThan(500);
+    // Every listed page is reachable on the e2e base data (flagged pages switch
+    // their flag on first), so a 404 is a failure, not a flag state.
+    expect(status, `${path} returned ${status}`).toBeLessThan(400);
 
     return status;
 }
 
 test.describe('admin — the toolbar is present on every rolled-out page', () => {
     for (const { path } of ADMIN_PAGES) {
-        test(`${path} renders a filter toolbar with at least one labelled control`, async ({ adminPage: page }) => {
-            await gotoOrSkip(page, path);
+        // /admin/announcements is behind AnnouncementsFeature, pinned OFF in the snapshot.
+        const flag = path === '/admin/announcements' ? 'AnnouncementsFeature' : null;
+
+        const assertToolbar = async (page) => {
+            await gotoListPage(page, path);
 
             await expect(bar(page)).toBeVisible();
             await expect(page.getByTestId('filter-apply')).toBeVisible();
@@ -125,7 +120,11 @@ test.describe('admin — the toolbar is present on every rolled-out page', () =>
             // A toolbar with no control is furniture — assert it can actually filter.
             const controls = bar(page).locator('input:not([type="hidden"]), select');
             expect(await controls.count(), `${path} has a toolbar but no controls`).toBeGreaterThan(0);
-        });
+        };
+
+        test(`${path} renders a filter toolbar with at least one labelled control`, async ({ adminPage: page }) => (
+            flag ? withFeature(flag, () => assertToolbar(page)) : assertToolbar(page)
+        ));
     }
 });
 
@@ -149,10 +148,11 @@ test.describe('admin — filtering behaviour', () => {
     test('a text search narrows to rows containing the term', async ({ adminPage: page }) => {
         await page.goto('/admin/distributors');
         const firstAdn = (await rows(page).first().locator('td').nth(1).textContent())?.trim();
-        test.skip(!firstAdn, 'no distributors in this database');
+        expect(firstAdn).toMatch(/^\d{9}$/);
 
         await bar(page).locator('input[type="search"]').first().fill(firstAdn);
         await page.getByTestId('filter-apply').click();
+        await expect(page).toHaveURL(/[?&]q=/);
 
         const count = await rows(page).count();
         expect(count).toBeGreaterThan(0);
@@ -193,7 +193,7 @@ test.describe('admin — filtering behaviour', () => {
         // Laravel's paginator renders twice (a mobile copy and a desktop one),
         // so filter to the visible link — the hidden one is never clickable.
         const next = page.getByRole('link', { name: /Next/ }).filter({ visible: true }).first();
-        test.skip((await next.count()) === 0, 'only one page of active distributors');
+        await expect(next).toBeVisible();
 
         await next.click();
         await expect(page).toHaveURL(/status=active/);
@@ -205,7 +205,7 @@ test.describe('admin — filtering behaviour', () => {
 
     test('applying a filter returns to page 1', async ({ adminPage: page }) => {
         await page.goto('/admin/distributors?page=2');
-        test.skip((await rows(page).count()) === 0, 'no second page in this database');
+        expect(await rows(page).count(), 'many-partners has 25 partners, so page 2 has rows').toBeGreaterThan(0);
 
         await page.getByTestId('filter-apply').click();
         await expect(page).not.toHaveURL(/page=2/);
@@ -238,12 +238,14 @@ test.describe('admin — filtering behaviour', () => {
     });
 
     test('an export link carries the active filters', async ({ adminPage: page }) => {
-        await page.goto('/admin/distributors?status=active');
+        // The distributor register has no export; the BV ledger is a page
+        // that does (its search filter is `q`).
+        await page.goto('/admin/commerce/bv-ledger?q=E2E');
 
         const exportLink = page.getByTestId('filter-export').first();
-        test.skip((await exportLink.count()) === 0, 'this page has no export');
+        await expect(exportLink).toBeVisible();
 
-        expect(await exportLink.getAttribute('href')).toContain('status=active');
+        expect(await exportLink.getAttribute('href')).toContain('q=E2E');
     });
 });
 
@@ -256,22 +258,15 @@ test.describe('permissions — admin pages are staff-only', () => {
     }
 });
 
-const distributorConfigured = Boolean(process.env.A11Y_ADN && process.env.A11Y_PASSWORD);
-
 test.describe('distributor — own-scoped filtering', () => {
-    test.skip(
-        !distributorConfigured,
-        'set A11Y_ADN and A11Y_PASSWORD to a distributor account to run these',
-    );
-
     for (const path of DISTRIBUTOR_PAGES) {
         test(`${path} renders a filter toolbar`, async ({ distributorPage: page }) => {
-            await gotoOrSkip(page, path);
+            await gotoListPage(page, path);
             await expect(bar(page)).toBeVisible();
         });
 
         test(`${path} offers no cross-distributor filter`, async ({ distributorPage: page }) => {
-            await gotoOrSkip(page, path);
+            await gotoListPage(page, path);
 
             for (const key of FORBIDDEN_KEYS) {
                 await expect(
@@ -282,11 +277,11 @@ test.describe('distributor — own-scoped filtering', () => {
         });
 
         test(`${path} ignores an injected scope parameter`, async ({ distributorPage: page }) => {
-            await gotoOrSkip(page, path);
+            await gotoListPage(page, path);
             const own = await page.locator('table tbody tr, [data-row]').count();
 
             const injected = FORBIDDEN_KEYS.map((k) => `${k}=999999`).join('&');
-            await gotoOrSkip(page, `${path}?${injected}`);
+            await gotoListPage(page, `${path}?${injected}`);
 
             expect(
                 await page.locator('table tbody tr, [data-row]').count(),

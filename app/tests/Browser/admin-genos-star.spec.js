@@ -15,59 +15,39 @@
  * assuming OFF.
  */
 
-import { test, expect, loginAsAdmin, loginAsDistributor } from './fixtures.js';
+import { test, expect, loginAsStaff } from './fixtures.js';
 
-async function purchaseMarkSettingIsOn(page) {
+// World gsb-basic: root with a left and a right partner, so the Genos has
+// three cards. `genealogy.purchase_mark_visible` is developer-owned, so the
+// precondition is read as the scenario's developer login, and asserted — the
+// gating test below is only meaningful while it is OFF.
+test.describe.configure({ mode: 'serial' });
+
+test('precondition: genealogy.purchase_mark_visible is OFF', async ({ page, builtWorld }) => {
+    await loginAsStaff(page, builtWorld, 'developer');
     await page.goto('/admin/settings');
     const toggle = page.locator('[aria-label="Toggle genealogy.purchase_mark_visible"]');
-    if (await toggle.count() === 0) {
-        return null; // setting not found on this page — caller should skip
-    }
-    return (await toggle.getAttribute('aria-checked')) === 'true';
-}
+    await expect(toggle).toHaveCount(1);
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+});
 
 test.describe('Staff star: admin Genos always shows the mark', () => {
     test('at least one [data-purchase-mark] is visible on /admin/tree, setting state notwithstanding', async ({ adminPage: page }) => {
-        const settingOn = await purchaseMarkSettingIsOn(page);
-        test.skip(settingOn === null, 'genealogy.purchase_mark_visible is not present on /admin/settings in this environment.');
-
         await page.goto('/admin/tree');
         const marks = page.locator('[data-purchase-mark]');
-        test.skip(await marks.count() === 0, 'No purchase-mark stars rendered — the dev tree may have no distributors with a resolvable personal-BV row.');
         await expect(marks.first()).toBeVisible();
     });
 });
 
 test.describe('Distributor gated: own /tree still respects the setting', () => {
-    test('no [data-purchase-mark] on non-own cards while the setting is OFF', async ({ browser }) => {
-        // adminPage and distributorPage both wrap the same underlying `page`
-        // fixture (fixtures.js), so they cannot be requested together in one
-        // test — the second login would run against an already-authenticated
-        // page. Use two independent browser contexts instead.
-        const adminContext = await browser.newContext();
-        const adminPage = await adminContext.newPage();
-        await loginAsAdmin(adminPage);
-        const settingOn = await purchaseMarkSettingIsOn(adminPage);
-        await adminContext.close();
-
-        test.skip(settingOn === null, 'genealogy.purchase_mark_visible is not present on /admin/settings in this environment.');
-        test.skip(settingOn === true, 'genealogy.purchase_mark_visible is ON in this environment — downline cards are expected to show the mark too, so there is nothing to gate against.');
-
-        const distContext = await browser.newContext();
-        const distPage = await distContext.newPage();
-        const adn = process.env.A11Y_ADN ?? '360801433';
-        const password = process.env.A11Y_PASSWORD ?? 'Test1234!';
-        await loginAsDistributor(distPage, adn, password);
-
-        await distPage.goto('/tree');
-        const marks = distPage.locator('[data-purchase-mark]');
-        const markCount = await marks.count();
-        await distContext.close();
+    test('no [data-purchase-mark] on non-own cards while the setting is OFF', async ({ distributorPage: page }) => {
+        await page.goto('/tree');
+        await expect(page.locator('[data-node-menu-trigger]').first()).toBeVisible();
 
         // Own card is the root of /tree and may legitimately carry the mark;
-        // with the setting OFF, no other (downline) card may.
-        test.skip(markCount === 0, 'No purchase-mark stars rendered on /tree — nothing to assert gating against for this distributor.');
-        expect(markCount).toBeLessThanOrEqual(1);
+        // with the setting OFF, no other (downline) card may. gsb-basic has
+        // two downline cards, so a leak would show as more than one mark.
+        expect(await page.locator('[data-purchase-mark]').count()).toBeLessThanOrEqual(1);
     });
 
     test('distributor /tree renders without error', async ({ distributorPage: page }) => {

@@ -32,6 +32,8 @@ import AxeBuilder from '@axe-core/playwright';
 import { test, expect } from './fixtures.js';
 import { WIZARD_ROUTES } from './theme-routes.js';
 
+test.use({ world: { name: 'many-partners' } });
+
 const KEY = 'arovolife_theme';
 
 /** The wizard is 11 page loads and a file upload; the default 30s is not it. */
@@ -51,7 +53,7 @@ const SETTLE = `
  * stale fixture — the same reason the route inventory takes this as an env
  * override.
  */
-const SPONSOR = process.env.THEME_WIZARD_ADN ?? '954454971';
+const SPONSOR = '900000025'; // partner p24 of the e2e world `many-partners`: both legs free
 
 const stamp = Date.now().toString().slice(-9);
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -173,6 +175,7 @@ async function post(page, action, fields, files = []) {
 }
 
 test.describe('dark mode holds across the registration wizard', () => {
+    // Step 11 picks the company default Arete centre (seeded into the e2e base).
     test('every step a joiner walks, 2 through 12', async ({ page }, testInfo) => {
         const scanned = [];
         const violations = [];
@@ -182,7 +185,7 @@ test.describe('dark mode holds across the registration wizard', () => {
         await page.goto(`/register?sponsor=${SPONSOR}&placement=${SPONSOR}`);
         await page.evaluate(([k, v]) => localStorage.setItem(k, v), [KEY, 'dark']);
         await page.reload();
-        expect(pathOf(page.url()), 'step 1 did not forward to the account step — check THEME_WIZARD_ADN')
+        expect(pathOf(page.url()), 'step 1 did not forward to the account step — check the sponsor ADN (a partner with a free leg)')
             .toBe('/register/account');
 
         const scan = async (path) => {

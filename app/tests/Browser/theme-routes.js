@@ -32,7 +32,7 @@
  * "placement_full". Visiting the link creates no data; it only puts the
  * sponsor and placement in the session.
  */
-const WIZARD_SPONSOR = process.env.THEME_WIZARD_ADN ?? '954454971';
+const WIZARD_SPONSOR = '900000025'; // partner p24 of the e2e world `many-partners`: a leaf with both legs free
 
 /**
  * Reachable signed out. The `page` fixture.
