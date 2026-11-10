@@ -1,8 +1,8 @@
 @extends('emails.layouts.branded', [
     'subject'      => 'Progress update on your grievance '.$ticketNo,
     'previewText'  => 'Where complaint '.$ticketNo.' currently stands.',
-    'accentColor'  => '#f5922a',
-    'accentDarker' => '#c46e0e',
+    'accentColor'  => '#1e4952',
+    'accentDarker' => '#a54a27',
 ])
 
 @section('content')
@@ -14,14 +14,14 @@
             </p>
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 Complaint
-                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #c46e0e; font-weight: 600;">{{ $ticketNo }}</span>
+                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #833c22; font-weight: 600;">{{ $ticketNo }}</span>
                 — {{ $ticketSubject }}
             </p>
 
             <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%" style="margin: 0 0 18px 0; background: #fff7ed; border-radius: 8px;">
                 <tr>
                     <td style="padding: 16px 18px;">
-                        <p style="margin: 0 0 6px 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #c46e0e;">
+                        <p style="margin: 0 0 6px 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #833c22;">
                             Where it stands
                         </p>
                         <p style="margin: 0; font-size: 15px; line-height: 24px; color: #111827;">
@@ -39,8 +39,8 @@
             @include('emails.partials.button', [
                 'url'   => url(route('grievance.track', [], false)),
                 'label' => 'Track this grievance',
-                'bg'    => '#f5922a',
-                'bgD'   => '#c46e0e',
+                'bg'    => '#a54a27',
+                'bgD'   => '#833c22',
             ])
 
             <p style="margin: 22px 0 0 0; font-size: 14px; line-height: 22px; color: #374151;">

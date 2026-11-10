@@ -103,7 +103,7 @@
                 </svg>
                 <div class="relative flex-1 flex items-center gap-5">
                     <div class="w-[38%] shrink-0 flex items-center justify-center">
-                        <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="max-h-20 w-auto object-contain">
+                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo.png') }}" alt="arovolife" class="max-h-20 w-auto object-contain">
                     </div>
                     <div class="flex-1 min-w-0">
                         <h2 class="text-lg sm:text-xl font-bold text-brand-700 border-b-2 border-brand-200 pb-1 mb-3">arovolife Direct Seller</h2>

@@ -14,9 +14,9 @@
         <div class="flex items-center gap-4">
             <svg viewBox="0 0 72 72" class="w-20 h-20 shrink-0" role="img" aria-label="{{ $daysShown }} of 30 cooling-off days remaining">
                 <circle cx="36" cy="36" r="{{ $r }}" fill="none" stroke="#f3f4f6" stroke-width="7"/>
-                <circle cx="36" cy="36" r="{{ $r }}" fill="none" stroke="{{ $urgent ? '#b91c1c' : '#b76017' }}" stroke-width="7"
+                <circle cx="36" cy="36" r="{{ $r }}" fill="none" stroke="{{ $urgent ? '#b91c1c' : '#a54a27' }}" stroke-width="7"
                         stroke-linecap="round" stroke-dasharray="{{ $dash }} {{ round($circ, 2) }}" transform="rotate(-90 36 36)"/>
-                <text x="36" y="40" text-anchor="middle" font-size="18" font-weight="700" fill="{{ $urgent ? '#b91c1c' : '#b76017' }}">{{ $daysShown }}</text>
+                <text x="36" y="40" text-anchor="middle" font-size="18" font-weight="700" fill="{{ $urgent ? '#b91c1c' : '#a54a27' }}">{{ $daysShown }}</text>
             </svg>
             <div class="min-w-0">
                 <p class="text-2xl font-bold {{ $urgent ? 'text-red-700' : 'text-amber-700' }} leading-tight">{{ $daysShown }} days</p>

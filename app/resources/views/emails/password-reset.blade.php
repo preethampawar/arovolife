@@ -26,7 +26,7 @@
 
             <p style="margin: 22px 0 0 0; font-size: 13px; line-height: 20px; color: #9ca3af;">
                 Trouble with the button? Copy and paste this URL into your browser:<br>
-                <a href="{{ $resetUrl }}" style="color: #0a719f; word-break: break-all;">{{ $resetUrl }}</a>
+                <a href="{{ $resetUrl }}" style="color: #0a6660; word-break: break-all;">{{ $resetUrl }}</a>
             </p>
 
             <p style="margin: 22px 0 0 0; font-size: 14px; line-height: 22px; color: #374151;">

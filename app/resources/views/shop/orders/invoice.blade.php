@@ -47,7 +47,7 @@
             {{-- Header --}}
             <div class="flex items-start justify-between gap-4 pb-5 mb-6 border-b border-gray-200">
                 <div class="flex items-center gap-4 min-w-0">
-                    <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="h-12 w-auto object-contain">
+                    <img src="{{ asset('assets/arovolife-logos/arovolife-logo.png') }}" alt="arovolife" class="h-12 w-auto object-contain">
                     <div class="min-w-0">
                         <p class="text-lg sm:text-xl font-bold text-brand-700 leading-tight">Arovolife Private Limited</p>
                         <p class="text-xs text-gray-600">CIN U46909TS2026PTC210896</p>

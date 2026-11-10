@@ -16,7 +16,7 @@
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 The arovolife team has registered your Direct Seller account. Your arovolife Distributor
                 Number (ADN) is
-                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f; font-weight: 600;">{{ $adn }}</span>.
+                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660; font-weight: 600;">{{ $adn }}</span>.
             </p>
             <p style="margin: 0 0 18px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 To start using your account, set a password using the link below.
@@ -43,7 +43,7 @@
 
             <p style="margin: 14px 0 0 0; font-size: 13px; line-height: 22px; color: #6b7280;">
                 If you did not ask to join arovolife, please write to
-                <a href="mailto:support@arovolife.com" style="color: #0a719f; text-decoration: underline;">support@arovolife.com</a>
+                <a href="mailto:support@arovolife.com" style="color: #0a6660; text-decoration: underline;">support@arovolife.com</a>
                 and we will close the account. No one can sign in to it until a password is set.
             </p>
 

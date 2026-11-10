@@ -16,9 +16,9 @@
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 A new arovolife distributor has been placed directly under your Genos (placement tree) on the
                 @if($side === 'L')
-                    <strong style="color: #0a719f;">left Genos ←</strong>
+                    <strong style="color: #0a6660;">left Genos ←</strong>
                 @else
-                    <strong style="color: #0a719f;">right Genos →</strong>
+                    <strong style="color: #0a6660;">right Genos →</strong>
                 @endif
                 on {{ $placedAtFormatted }}.
             </p>
@@ -27,7 +27,7 @@
                 <tr>
                     <td style="padding: 12px 14px; font-size: 13px; line-height: 20px; color: #374151; border-bottom: 1px solid #e5e7eb;">
                         <strong style="color: #111827;">Your ADN:</strong>
-                        <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f;">{{ $parentAdn }}</span>
+                        <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660;">{{ $parentAdn }}</span>
                     </td>
                 </tr>
                 <tr>
@@ -39,7 +39,7 @@
                 <tr>
                     <td style="padding: 12px 14px; font-size: 13px; line-height: 20px; color: #374151; border-bottom: 1px solid #e5e7eb;">
                         <strong style="color: #111827;">Their ADN:</strong>
-                        <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f;">{{ $newJoinerAdn }}</span>
+                        <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660;">{{ $newJoinerAdn }}</span>
                     </td>
                 </tr>
                 <tr>
@@ -61,7 +61,7 @@
 
             <table role="presentation" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td align="center" bgcolor="#00b6ef" style="border-radius: 6px;">
+                    <td align="center" bgcolor="#1e4952" style="border-radius: 6px;">
                         <a href="{{ $treeUrl }}" class="ar-btn" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 6px;">
                             View your tree →
                         </a>

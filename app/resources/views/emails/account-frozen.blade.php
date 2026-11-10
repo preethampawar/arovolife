@@ -17,7 +17,7 @@
             </p>
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 Your arovolife distributor account
-                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f; font-weight: 600;">{{ $adn }}</span>
+                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660; font-weight: 600;">{{ $adn }}</span>
                 was temporarily blocked on <strong style="color: #111827;">{{ $frozenAtFormatted }}</strong>.
                 You will not be able to sign in until the account has been reviewed.
             </p>

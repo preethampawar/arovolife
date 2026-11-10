@@ -15,7 +15,7 @@
             </p>
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 Your refund of <strong style="color: #111827;">{{ $amount }}</strong> for order
-                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f; font-weight: 600;">{{ $orderNo }}</span>
+                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660; font-weight: 600;">{{ $orderNo }}</span>
                 was paid {{ $methodLabel }} on {{ $settledAt }}.
             </p>
             @if ($reference)
@@ -28,7 +28,7 @@
                 Banks can take a few working days to show the credit in your account.
             </p>
             <p style="margin: 18px 0 0 0;">
-                <a href="{{ $orderUrl }}" style="display: inline-block; background-color: #0a719f; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-size: 14px; font-weight: 600;">View order</a>
+                <a href="{{ $orderUrl }}" style="display: inline-block; background-color: #0a6660; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-size: 14px; font-weight: 600;">View order</a>
             </p>
         </td>
     </tr>

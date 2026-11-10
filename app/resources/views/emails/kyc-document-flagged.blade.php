@@ -16,7 +16,7 @@
 </p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 18px 0;">
     <tr>
-        <td style="border-radius: 8px; background-color: #0a719f;">
+        <td style="border-radius: 8px; background-color: #0a6660;">
             <a href="{{ $reuploadUrl }}"
                style="display: inline-block; padding: 12px 22px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px;">
                 Re-upload {{ $documentType }} →
@@ -28,6 +28,6 @@
     This link is unique to you and expires on <strong>{{ $expiresOn }}</strong>. If you need a new link after that, sign in and visit your dashboard, or reply to this email.
 </p>
 <p style="margin: 0 0 14px 0; font-size: 13px; line-height: 22px; color: #6b7280;">
-    Questions? Email <a href="mailto:support@arovolife.com" style="color: #0a719f;">support@arovolife.com</a>.
+    Questions? Email <a href="mailto:support@arovolife.com" style="color: #0a6660;">support@arovolife.com</a>.
 </p>
 @endsection

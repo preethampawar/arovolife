@@ -6,11 +6,11 @@
 @section('content')
 <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
     Thanks — we've received your line-change request for ADN
-    <strong style="color: #0a719f;">{{ $requesterAdn }}</strong>.
+    <strong style="color: #0a6660;">{{ $requesterAdn }}</strong>.
 </p>
 <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
     You asked to move your Genos placement under ADN
-    <strong style="color: #0a719f;">{{ $targetParentAdn }}</strong>. This changes your
+    <strong style="color: #0a6660;">{{ $targetParentAdn }}</strong>. This changes your
     <strong>Genos placement only</strong> — your sponsor stays the same.
 </p>
 <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">

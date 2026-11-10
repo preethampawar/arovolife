@@ -31,7 +31,7 @@
                 <tr>
                     <td style="padding: 12px 14px; font-size: 13px; line-height: 20px; color: #374151; border-bottom: 1px solid #e5e7eb;">
                         <strong style="color: #111827;">ADN:</strong>
-                        <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f;">{{ $adn }}</span>
+                        <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660;">{{ $adn }}</span>
                     </td>
                 </tr>
                 <tr>

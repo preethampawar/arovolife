@@ -28,7 +28,7 @@
     </svg>
     <div class="relative flex-1 flex items-center {{ $compact ? 'gap-3' : 'gap-5' }}">
         <div class="w-[34%] shrink-0 flex items-center justify-center">
-            <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife"
+            <img src="{{ asset('assets/arovolife-logos/arovolife-logo.png') }}" alt="arovolife"
                  class="{{ $compact ? 'max-h-12' : 'max-h-20' }} w-auto object-contain">
         </div>
         <div class="flex-1 min-w-0">

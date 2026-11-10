@@ -38,7 +38,7 @@
             {{-- Stat tiles — 2×2 grid --}}
             <div class="grid grid-cols-2 gap-3">
                 {{-- Wallet balance — spans both columns --}}
-                <div class="col-span-2 rounded-xl bg-brand-600 text-white p-4">
+                <div class="col-span-2 rounded-xl bg-brand-700 text-white p-4">
                     <div class="flex items-center justify-between mb-1">
                         <p class="text-[11px] uppercase tracking-wider font-semibold text-white/80">Wallet balance</p>
                         <x-help-tip :light="true" text="Already net of the repurchase deduction taken when each bonus was credited. Transferred to your bank on payout days after the 3% admin charge and 5% TDS, once the minimum payout is met." />
@@ -125,7 +125,7 @@
                                 $y = $mBase - $bh;
                             @endphp
                             <rect x="{{ round($x, 2) }}" y="{{ round($y, 2) }}" width="{{ round($mBar, 2) }}" height="{{ round($bh, 2) }}" rx="2"
-                                  fill="{{ $paise > 0 ? '#0a719f' : '#d1d5db' }}">
+                                  fill="{{ $paise > 0 ? '#0a6660' : '#d1d5db' }}">
                                 <title>{{ \Illuminate\Support\Carbon::createFromFormat('Y-m', $monthKeys[$i])->format('M Y') }}: {{ $fmt::rupees((int) $paise) }}</title>
                             </rect>
                         @endforeach
@@ -145,7 +145,7 @@
         {{-- Right: per-bonus table --}}
         <div>
             <div class="relative divide-y divide-brand-100 rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 via-white to-leaf-50/60 overflow-hidden shadow-sm">
-                <span class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-500 via-leaf-500 to-sunrise-500" aria-hidden="true"></span>
+                <span class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-sunrise-500 via-brand-900 to-brand-500" aria-hidden="true"></span>
                 <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 px-4 pt-4 pb-3 text-[11px] uppercase tracking-wider font-semibold text-gray-600 bg-brand-50/70">
                     <span>Bonus</span><span class="text-right w-24">This month</span><span class="text-right w-28">Lifetime</span>
                 </div>

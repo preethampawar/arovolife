@@ -16,7 +16,7 @@
 </p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 18px 0;">
     <tr>
-        <td style="border-radius: 8px; background-color: #0a719f;">
+        <td style="border-radius: 8px; background-color: #0a6660;">
             <a href="{{ $bankUrl }}"
                style="display: inline-block; padding: 12px 22px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px;">
                 Review your bank details →
@@ -26,6 +26,6 @@
 </table>
 <p style="margin: 0 0 14px 0; font-size: 13px; line-height: 22px; color: #6b7280;">
     <strong style="color: #111827;">If this wasn't you</strong>, change your password immediately and email
-    <a href="mailto:support@arovolife.com" style="color: #0a719f;">support@arovolife.com</a> so we can hold your payouts while we check.
+    <a href="mailto:support@arovolife.com" style="color: #0a6660;">support@arovolife.com</a> so we can hold your payouts while we check.
 </p>
 @endsection

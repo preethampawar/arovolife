@@ -15,7 +15,7 @@
                 pace, always in line with the law and our Code of Ethics.
             </p>
 
-            <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%" style="margin: 14px 0; border-left: 3px solid #0a719f; background-color: #f0f7fb;">
+            <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%" style="margin: 14px 0; border-left: 3px solid #0a6660; background-color: #f0f7fb;">
                 <tr>
                     <td style="padding: 12px 14px; font-size: 14px; line-height: 22px; color: #374151;">
                         <strong style="color: #111827;">What we stand for</strong><br>
@@ -30,6 +30,6 @@
                 Together, let us promote good health, build trust and make a positive difference in our
                 families and communities.
             </p>
-            <p style="margin: 0 0 22px 0; font-size: 15px; line-height: 24px; color: #0a719f; font-style: italic;">
+            <p style="margin: 0 0 22px 0; font-size: 15px; line-height: 24px; color: #0a6660; font-style: italic;">
                 arovolife — for a better life, for a brighter tomorrow.
             </p>
