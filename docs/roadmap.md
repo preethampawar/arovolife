@@ -28,6 +28,7 @@
 | — | Operations build-out (grievance, termination, offers, analytics, GST invoice) | ✅ shipped |
 | — | Razorpay payment gateway (R-56) | ⏳ built 2026-09-04, flag OFF, awaiting credentials + live smoke test |
 | 12 | Production hardening (MFA, observability, Redis, couple follow-ups) | ⏸ deferred |
+| — | Client updates 2026-11-04 (split 42/6/5/4/20/20/3, ₹1 Cr cap, renames, GSB two-stage, R1/R2 sponsee rule, AEC change request, Downloads) | 📝 approved 2026-11-10, not built |
 | — | Final sign-off gate | ⏳ batched to launch |
 
 ---
@@ -206,6 +207,9 @@ Compliance · Admin.
   score snapshot + admin daily calculation report
 - **GSB daily pool pricing** — slabs 3–7 pro-rated daily from the 45% pool,
   slabs 1–2 fixed
+  - ⏳ *Approved 2026-11-10, not built:* 42% pool, two-stage pricing (slabs 1–3
+    then 4–7 from the remainder), lifetime weaker-side personal-BV top-up —
+    `docs/compensation/client-updates-2026-11-04.md`
 - **Mentorship Bonus (MSB)** — 3% of the day's BV ÷ the day's total MSB
   points = point value; third cut-off pass + MSB Input & Output report
 - **Growth Booster Bonus (GBB)** — BV pool + prior-month rank gate, frozen
@@ -304,6 +308,8 @@ at launch sign-off.
 Formerly sketched as "Phase 7–8, implied". Specced and shipped 2026-08-16/17.
 
 - **R.S.P. compensation updates (the client, 2026-10-09)** — repurchase 30-day inclusive window, MSB ₹120 cap + failed-sponsor gate + ₹3,600 royalty cap, GBB 4 % + ₹240 cap + lifetime rank exclusion + month-end verdict gate, Rank Bonus one 20 % pool priced in two passes at a ₹200 cap with RAP on every rank, Lifetime Awards per-tranche and merchandise only: `docs/compensation/rsp-new-updates-2026-10-09.md` (built on `feat/compensation-rsp-updates-2026-10`, deploy checklist inside)
+
+- **Client updates 2026-11-04** — approved 2026-11-10, **not built**: revenue split GSB 42 / GBB 6 / FB 5 / MB 4 / RB 20 / Awards 20 / AEC 3, ₹1 crore monthly cap, Partner / APN / AEC renames, GSB two-stage pricing + lifetime weaker-side top-up, R1/R2 direct-sponsee rule (rank top-up dropped), AEC change request with admin approval, top-bar Logout, Genos zoom, Direct Referral count, partner Downloads library. Pending: Free International Trip contest (R-127), Product Partnership Program (R-126, legal opinion). Build order and decisions: `docs/compensation/client-updates-2026-11-04.md`
 
 ### 1. Grievance redressal workflow (DSR Rule 4) — **statutory** ✅
 

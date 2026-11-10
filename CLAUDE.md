@@ -51,6 +51,7 @@ If a user request would break one of these rules, stop and reply with:
 | Term | Meaning |
 |---|---|
 | **ADN** | Arovolife Distributor Number — the permanent unique ID issued at the end of registration (T&C §3.I Step 10). |
+| **Planned renames** | Approved 2026-11-10, not built (`docs/compensation/client-updates-2026-11-04.md`): user-facing copy will say **Partner** (not Distributor), **APN** — Arovolife Partner Number (not ADN), and **Arete Education Center (AEC)** (not Arete Development Center). Code, routes and DB keep `adn` / `distributor` / `adc`. Until the sweep ships, keep current copy consistent. |
 | **BV** | Business Volume — points attached to each SKU and used by the compensation engine. (Phase 2+.) |
 | **Sponsor** | The distributor who introduced the new joiner. Captured in the `sponsorship` horizontal tree. Sponsor-tied earnings apply regardless of Genos depth. |
 | **Genos** | The binary placement tree — the two-sided (left group / right group) placement genealogy in which every distributor occupies one position. User-facing copy says "Genos" / "My Genos"; internal code keeps `binary` (route `tree.binary`, `_binary-node`, closure table). |
