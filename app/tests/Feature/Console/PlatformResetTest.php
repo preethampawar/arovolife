@@ -116,7 +116,7 @@ it('re-seeds through ProductionSeeder on production — no demo admin, plan and 
     expect(Distributor::query()->count())->toBe(63)
         ->and(User::query()->where('email', 'admin@arovolife.test')->exists())->toBeFalse()
         ->and(DB::table('gsb_slabs')->count())->toBe(7)
-        ->and(DB::table('settings')->where('key', 'comp.gsb.pool_rate_bp')->value('value'))->toBe('4500')
+        ->and(DB::table('settings')->where('key', 'comp.gsb.pool_rate_bp')->value('value'))->toBe('4200')
         ->and(Feature::for(null)->active(GenosSalesBonusFeature::class))->toBeTrue()
         ->and(Feature::for(null)->active(PurchaseOffersFeature::class))->toBeFalse();
 });

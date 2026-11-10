@@ -62,6 +62,8 @@ final class AdminPlanSettingsController extends Controller
             // The GBB explainer states the configured rate and cap, never a
             // figure written into the copy.
             'gbbPoolRateBp' => $gbbOn ? $this->plan->gbbPoolRateBp() : null,
+            'gsbPoolRateBp' => $gsbOn ? $this->plan->gsbPoolRateBp() : null,
+            'msbPoolRateBp' => Feature::for(null)->active(MentorshipBonusFeature::class) ? $this->plan->msbPoolRateBp() : null,
             'gbbPointValueCapPaise' => $gbbOn ? $this->gbbPointValueCapPaise() : null,
             'adcOn' => Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class),
             'awardsOn' => Feature::for(null)->active(LifetimeAwardsFeature::class),

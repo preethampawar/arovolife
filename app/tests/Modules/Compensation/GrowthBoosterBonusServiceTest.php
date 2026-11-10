@@ -25,6 +25,10 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
+    // The worked examples below were built on the rates before the client's
+    // 2026-11-04 split (GSB 45%, MB 3%, GBB 4%); pin them so the arithmetic
+    // stays locked to those examples whatever the code defaults are.
+    DB::table('settings')->updateOrInsert(['key' => 'comp.gbb.pool_rate_bp'], ['value' => '400']);
 });
 
 /**

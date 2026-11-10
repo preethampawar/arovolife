@@ -9,6 +9,8 @@
 @php
     $bv = fn ($paise) => $paise === null ? '—' : \App\Modules\Shared\Support\IndianNumber::format($paise / 100, 0).' BV';
     $rupees = fn ($paise) => $paise === null ? '—' : '₹'.\App\Modules\Shared\Support\IndianNumber::format($paise / 100, 2);
+    $gsbPoolPct = $gsbPoolRateBp === null ? '—' : \App\Modules\Shared\Support\IndianNumber::percentFromBp($gsbPoolRateBp);
+    $msbPoolPct = $msbPoolRateBp === null ? '—' : \App\Modules\Shared\Support\IndianNumber::percentFromBp($msbPoolRateBp);
     $planTabs = [];
     if ($gsbOn) {
         $planTabs['gsb'] = 'GSB Slabs';
@@ -51,9 +53,9 @@
     <div class="mt-4 grid gap-4 md:grid-cols-2">
         @if($gsbOn)
         <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
-            <h3 class="text-xs font-semibold text-gray-700 mb-2">Genos Sales Bonus — 45% of the day's BV</h3>
+            <h3 class="text-xs font-semibold text-gray-700 mb-2">Genos Sales Bonus — {{ $gsbPoolPct }} of the day's BV</h3>
             <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
-                <li>The day's <strong>pool</strong> is the GSB daily pool rate (45%) of the day's company-wide BV.</li>
+                <li>The day's <strong>pool</strong> is the GSB daily pool rate (currently {{ $gsbPoolPct }}) of the day's company-wide BV.</li>
                 <li><strong>Slabs 1–2</strong> are paid first at their fixed score value (₹ per score point) and always pay in full.</li>
                 <li>What remains is divided by the total scores of everyone who matched <strong>slabs 3–7</strong> that day, floored to whole rupees and <strong>capped</strong> at the fixed score value.</li>
                 <li>Each slab 3–7 earner is paid <strong>their score × that one value</strong>.</li>
@@ -63,12 +65,12 @@
 
         @if($msbOn)
         <div class="rounded-lg border border-gray-100 bg-gray-50 p-3">
-            <h3 class="text-xs font-semibold text-gray-700 mb-2">Mentorship Bonus — 3% of the day's BV</h3>
+            <h3 class="text-xs font-semibold text-gray-700 mb-2">Mentorship Bonus — {{ $msbPoolPct }} of the day's BV</h3>
             <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
-                <li>The day's <strong>pool</strong> is the MSB daily pool rate (3%) of the same company-wide BV.</li>
+                <li>The day's <strong>pool</strong> is the MSB daily pool rate (currently {{ $msbPoolPct }}) of the same company-wide BV.</li>
                 <li>Each time a <strong>directly sponsored</strong> distributor's cut-off matches a slab, their sponsor accrues that slab's <strong>MSB score</strong> points.</li>
-                <li><strong>Point value = pool ÷ the day's total MSB points</strong>, floored to whole rupees. There is no cap and no configured value.</li>
-                <li>Each sponsor is paid <strong>their points × that one value</strong>, so the day's MSB spend is the 3% envelope.</li>
+                <li><strong>Point value = pool ÷ the day's total MSB points</strong>, floored to whole rupees and capped at the MSB point value cap; the difference stays with the company.</li>
+                <li>Each sponsor is paid <strong>their points × that one value</strong>, so the day's MSB spend never exceeds the pool.</li>
             </ol>
         </div>
         @endif
@@ -79,11 +81,11 @@
         <p class="font-semibold mb-1">Worked example — a 1,00,000 BV day</p>
         <p class="mb-1 text-[11px] text-blue-700">Illustrative arithmetic only — not an earnings projection.</p>
         <p>
-            MSB pool = 3% = <strong>₹3,000</strong>. Two sponsors accrue 21 points each (their sponsees matched slab 1)
-            and one accrues 18 points (slab 2) — <strong>60 points</strong> in total.
-            Point value = 3,000 ÷ 60 = <strong>₹50</strong>.
-            The two slab-1 sponsors earn 21 × 50 = ₹1,050 each, the slab-2 sponsor earns 18 × 50 = ₹900 —
-            <strong>₹3,000</strong> in total, exactly the pool.
+            At the 4% default rate, MSB pool = <strong>₹4,000</strong>. Two sponsors accrue 21 points each (their sponsees matched slab 1)
+            and two accrue 19 points each — <strong>80 points</strong> in total.
+            Point value = 4,000 ÷ 80 = <strong>₹50</strong>.
+            The two 21-point sponsors earn 21 × 50 = ₹1,050 each, the two 19-point sponsors earn 19 × 50 = ₹950 each —
+            <strong>₹4,000</strong> in total, exactly the pool.
         </p>
     </div>
     @endif
@@ -165,9 +167,9 @@
         <p class="font-semibold mb-1">Worked example — a 10,00,000 BV month</p>
         <p class="mb-1 text-[11px] text-blue-700">Illustrative arithmetic only — not an earnings projection.</p>
         <p>
-            Pool = 5% = <strong>₹50,000</strong>. All eligible distributors together earned <strong>100 AGP</strong>,
-            so the point value is 50,000 ÷ 100 = <strong>₹500</strong>.
-            A distributor with two slab-1 matches (24 AGP) earns 24 × 500 = <strong>₹12,000</strong>.
+            At the 6% default rate, pool = <strong>₹60,000</strong>. All eligible distributors together earned <strong>300 AGP</strong>,
+            so the point value is 60,000 ÷ 300 = <strong>₹200</strong> (under the ₹240 cap).
+            A distributor with two slab-1 matches (24 AGP) earns 24 × 200 = <strong>₹4,800</strong>.
         </p>
     </div>
 
@@ -234,7 +236,7 @@
             <li>Each approved Arete Development Center earns the ADC rate (3%) of the month's <strong>net BV collected at that centre</strong> — orders whose buyers chose it as their collection point at checkout, with refunds deducted first.</li>
             <li>The credit is limited by the centre's <strong>monthly cap</strong> — ₹1,00,000 as standard, or the lower cap override applied while a development-phase upgrade is unproven.</li>
             <li>A centre whose collected BV nets to <strong>zero or negative</strong> for the month is skipped — a centre is never credited a negative amount.</li>
-            <li>The bonus is credited to the centre owner in the monthly payout; ADC sits outside the ₹50 lakh combined income ceiling under its own cap.</li>
+            <li>The bonus is credited to the centre owner in the monthly payout; ADC sits outside the ₹1 crore combined income ceiling under its own cap.</li>
         </ol>
     </div>
 
@@ -306,7 +308,7 @@
         Bonus follows the <strong>score × score value</strong> model. Slabs 1–2 carry a fixed, editable score
         value (₹ per score point) and always pay in full. Slabs 3–7 are <strong>pro-rated daily</strong> from the
         GSB pool (<a href="{{ route('admin.settings') }}#compensation_plan" class="underline">GSB daily pool rate</a>,
-        default 45% of the day's company BV): their score and score value are shown read-only here, and the day's
+        currently {{ $gsbPoolPct }} of the day's company BV): their score and score value are shown read-only here, and the day's
         variable score value — never above the fixed value — is computed at each cut-off. Each slab also carries its
         <strong>MSB score</strong>: the Mentorship Bonus points credited to the direct sponsor when a sponsee's
         cut-off matches this slab. Those points have no configured rupee value — they are priced daily from the
@@ -368,7 +370,7 @@
                     <span class="text-[11px] text-gray-600">→ up to {{ $row->score !== null ? '₹'.\App\Modules\Shared\Support\IndianNumber::format(($row->score * $row->score_value_paise) / 100, 0) : '—' }}</span>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Score value (₹) <x-help-tip text="Variable — computed at each daily cut-off from the GSB pool (45% of the day's company BV), capped at this fixed value. See the GSB Input & Output report for each day's value." /></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Score value (₹) <x-help-tip :text="'Variable — computed at each daily cut-off from the GSB pool (' . $gsbPoolPct . ' of the day\'s company BV), capped at this fixed value. See the GSB Input & Output report for each day\'s value.'" /></label>
                     <div class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-600">Variable (pool)</div>
                     <span class="text-[11px] text-gray-600">up to ₹{{ \App\Modules\Shared\Support\IndianNumber::format($row->score_value_paise / 100, 2) }} / score</span>
                 </div>
@@ -379,11 +381,13 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                     <span class="text-[11px] text-gray-600" data-msb-preview>→ {{ $row->msb_score }} points × the day's value</span>
                 </div>
+                @if($msbOn)
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">MSB point value (₹) <x-help-tip text="Variable — computed at each daily cut-off as the MSB pool (3% of the day's company BV) ÷ the day's total MSB score points, floored to whole rupees. See the MSB Input & Output report for each day's value." /></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">MSB point value (₹) <x-help-tip :text="'Variable — computed at each daily cut-off as the MSB pool (' . $msbPoolPct . ' of the day\'s company BV) ÷ the day\'s total MSB score points, floored to whole rupees. See the MSB Input & Output report for each day\'s value.'" /></label>
                     <div class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm text-gray-600">Variable (pool)</div>
-                    <span class="text-[11px] text-gray-600">3% pool ÷ the day's points</span>
+                    <span class="text-[11px] text-gray-600">{{ $msbPoolPct }} pool ÷ the day's points</span>
                 </div>
+                @endif
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">AGP / occurrence <x-help-tip text="Arovolife Growth Points awarded each time this slab is earned (feeds the monthly Growth Booster pool)." /></label>
                     <input type="number" name="agp_per_occurrence" data-field-label="AGP / occurrence" value="{{ $row->agp_per_occurrence }}" required min="0"
