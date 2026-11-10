@@ -15,7 +15,7 @@
             </p>
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 <strong>{{ $primaryFullName }}</strong> has registered an arovolife distributor account
-                (<span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f; font-weight: 600;">{{ $primaryAdn }}</span>)
+                (<span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660; font-weight: 600;">{{ $primaryAdn }}</span>)
                 and listed you as their co-distributor.
             </p>
             <p style="margin: 0 0 18px 0; font-size: 15px; line-height: 24px; color: #374151;">

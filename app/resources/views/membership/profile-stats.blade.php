@@ -63,7 +63,8 @@
 
             {{-- ── Header: company name + document title ─────────────────── --}}
             <div class="flex items-center gap-4 pb-5 mb-6 border-b border-gray-200">
-                <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="h-12 w-auto object-contain">
+                <img src="{{ asset('assets/arovolife-logos/arovolife-logo.png') }}" alt="arovolife" data-theme-logo="light" class="h-12 w-auto object-contain">
+                <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" data-theme-logo="dark" class="h-12 w-auto object-contain">
                 <div class="min-w-0">
                     <p class="text-lg sm:text-xl font-bold text-brand-700 leading-tight">Arovolife Private Limited</p>
                     <p class="text-sm text-gray-600">Profile Stats</p>

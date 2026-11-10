@@ -15,7 +15,7 @@
             </p>
             <p style="margin: 0 0 18px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 Your order
-                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f; font-weight: 600;">{{ $orderNo }}</span>
+                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660; font-weight: 600;">{{ $orderNo }}</span>
                 has arrived and is waiting for you at the centre you chose.
             </p>
 
@@ -64,7 +64,7 @@
 
             <table role="presentation" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td style="border-radius: 999px; background: #0a719f;">
+                    <td style="border-radius: 999px; background: #0a6660;">
                         <a href="{{ $orderUrl }}"
                             style="display: inline-block; padding: 12px 26px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 999px;">
                             View your order

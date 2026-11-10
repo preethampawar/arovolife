@@ -1,8 +1,8 @@
 @extends('emails.layouts.branded', [
     'subject'      => 'Your arovolife cooling-off period ends in '.$daysRemaining.' day'.($daysRemaining === 1 ? '' : 's'),
     'previewText'  => 'Cooling-off ends '.$coolingOffEndsAt.'. Cancel any time from your dashboard.',
-    'accentColor'  => '#f5922a',
-    'accentDarker' => '#c46e0e',
+    'accentColor'  => '#1e4952',
+    'accentDarker' => '#a54a27',
 ])
 
 @section('content')
@@ -17,7 +17,7 @@
             </p>
             <p style="margin: 0 0 14px 0; font-size: 15px; line-height: 24px; color: #374151;">
                 This is a reminder that your statutory 30-day cooling-off period for arovolife distributor account
-                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #c46e0e; font-weight: 600;">{{ $adn }}</span>
+                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #833c22; font-weight: 600;">{{ $adn }}</span>
                 ends in <strong>{{ $daysRemaining }} day{{ $daysRemaining === 1 ? '' : 's' }}</strong> — on
                 <strong style="color: #111827;">{{ $coolingOffEndsAt }}</strong>.
             </p>
@@ -28,8 +28,8 @@
             @include('emails.partials.button', [
                 'url'   => url(route('cooling-off.show', [], false)),
                 'label' => 'Cancel registration',
-                'bg'    => '#f5922a',
-                'bgD'   => '#c46e0e',
+                'bg'    => '#a54a27',
+                'bgD'   => '#833c22',
             ])
 
             <p style="margin: 14px 0 0 0; font-size: 13px; line-height: 22px; color: #6b7280;">

@@ -120,8 +120,8 @@
                 <a href="{{ route('admin.dashboard') }}" class="block rounded-lg">
                     {{-- Two logo variants swap with the theme, same mechanism as the
                          moon/sun toggle icons (see app.css, [data-theme-logo]). --}}
-                    <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" data-theme-logo="light" class="h-9 w-auto">
-                    <img src="{{ asset('assets/arovolife-logos/arovolife-white-logo.png') }}" alt="arovolife" data-theme-logo="dark" class="h-9 w-auto">
+                    <img src="{{ asset('assets/arovolife-logos/arovolife-logo.png') }}" alt="arovolife" data-theme-logo="light" class="h-9 w-auto">
+                    <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" data-theme-logo="dark" class="h-9 w-auto">
                 </a>
                 {{-- Neutral, not sunrise-800. With the orange ADMIN chip now in
                      the topbar, an orange caption 200px away was a second

@@ -17,7 +17,7 @@
                 Great news — your KYC documents were reviewed and approved on
                 <strong style="color: #111827;">{{ $approvedAtFormatted }}</strong>.
                 Your arovolife distributor account
-                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f; font-weight: 600;">{{ $adn }}</span>
+                <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660; font-weight: 600;">{{ $adn }}</span>
                 is now active.
             </p>
 
@@ -32,7 +32,7 @@
 
             <table role="presentation" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td align="center" bgcolor="#00b6ef" style="border-radius: 6px;">
+                    <td align="center" bgcolor="#1e4952" style="border-radius: 6px;">
                         <a href="{{ $dashboardUrl }}" class="ar-btn" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 6px;">
                             Open your dashboard →
                         </a>

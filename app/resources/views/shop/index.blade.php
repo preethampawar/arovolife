@@ -23,7 +23,7 @@
      banners). Kept centered in the normal content container (no full bleed). --}}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
 <section class="relative rounded-3xl overflow-hidden p-8 md:p-12">
-    <div class="absolute inset-0 bg-gradient-to-br from-brand-50 via-leaf-50 to-sunrise-50"></div>
+    <div class="absolute inset-0 bg-gradient-to-br from-brand-50 via-brand-50 to-sunrise-50"></div>
     <div class="absolute -top-16 -right-12 w-72 h-72 bg-brand-200/50 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute -bottom-16 -left-12 w-64 h-64 bg-leaf-200/50 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute top-1/2 left-1/3 w-48 h-48 bg-sunrise-200/40 rounded-full blur-3xl pointer-events-none"></div>

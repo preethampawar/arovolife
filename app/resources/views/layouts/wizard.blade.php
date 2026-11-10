@@ -87,7 +87,7 @@
                     <span aria-hidden="true"
                           class="absolute left-[14px] top-2 bottom-2 w-px bg-slate-200/70"></span>
                     <span aria-hidden="true"
-                          class="absolute left-[14px] top-2 w-px bg-gradient-to-b from-brand-500 via-leaf-500 to-sunrise-500 transition-[height] duration-700"
+                          class="absolute left-[14px] top-2 w-px bg-gradient-to-b from-sunrise-500 via-brand-900 to-brand-500 transition-[height] duration-700"
                           style="height: calc({{ $progressPct }}% - 0.5rem);"></span>
 
                     <ol class="space-y-0.5 relative">

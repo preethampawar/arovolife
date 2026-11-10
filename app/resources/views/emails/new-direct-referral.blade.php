@@ -23,7 +23,7 @@
                 <tr>
                     <td style="padding: 12px 14px; font-size: 13px; line-height: 20px; color: #374151; border-bottom: 1px solid #e5e7eb;">
                         <strong style="color: #111827;">Your ADN:</strong>
-                        <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f;">{{ $sponsorAdn }}</span>
+                        <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660;">{{ $sponsorAdn }}</span>
                     </td>
                 </tr>
                 <tr>
@@ -35,14 +35,14 @@
                 <tr>
                     <td style="padding: 12px 14px; font-size: 13px; line-height: 20px; color: #374151;">
                         <strong style="color: #111827;">Their ADN:</strong>
-                        <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a719f;">{{ $referralAdn }}</span>
+                        <span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #0a6660;">{{ $referralAdn }}</span>
                     </td>
                 </tr>
             </table>
 
             <table role="presentation" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td align="center" bgcolor="#00b6ef" style="border-radius: 6px;">
+                    <td align="center" bgcolor="#1e4952" style="border-radius: 6px;">
                         <a href="{{ $referralsUrl }}" class="ar-btn" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 6px;">
                             View my referrals →
                         </a>

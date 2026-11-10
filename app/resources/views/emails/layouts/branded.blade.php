@@ -1,8 +1,8 @@
 @php
     // Per-email overrides; default to neutral when not provided.
     $previewText  = $previewText  ?? ($subject ?? '');
-    $accentColor  = $accentColor  ?? '#00b6ef';   // brand-500 (new arovolife blue)
-    $accentDarker = $accentDarker ?? '#0a719f';   // brand-700
+    $accentColor  = $accentColor  ?? '#1e4952';   // brand-900 (v2 primary navy)
+    $accentDarker = $accentDarker ?? '#0a6660';   // brand-700
 @endphp
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
@@ -56,12 +56,14 @@
                             <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%">
                                 <tr>
                                     <td align="left" valign="middle" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 22px; line-height: 26px; font-weight: 700; color: #ffffff; letter-spacing: -0.3px;">
-                                        arovolife
+                                        {{-- Light (on-dark) logo, brand guidelines v2. Styled alt text
+                                             keeps the wordmark readable when images are blocked. --}}
+                                        <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" width="159" height="40" style="display: block; border: 0; outline: none; text-decoration: none; height: 40px; width: 159px; color: #ffffff; font-size: 22px; font-weight: 700;">
                                     </td>
                                 </tr>
                                 {{-- Caption sits BELOW the logo, left-aligned. --}}
                                 <tr>
-                                    <td align="left" valign="middle" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #cff1fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; padding-top: 4px;">
+                                    <td align="left" valign="middle" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #9de6dd; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; padding-top: 4px;">
                                         Direct Selling, Done Right
                                     </td>
                                 </tr>

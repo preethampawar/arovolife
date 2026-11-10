@@ -71,7 +71,8 @@
         {{-- ── Header card ────────────────────────────────────────────────── --}}
         <div class="dsa-card bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <div class="flex items-center gap-4 mb-4">
-                <img src="{{ asset('assets/arovolife-logos/arovolife-blue-logo.png') }}" alt="arovolife" class="h-12 w-auto">
+                <img src="{{ asset('assets/arovolife-logos/arovolife-logo.png') }}" alt="arovolife" data-theme-logo="light" class="h-12 w-auto">
+                <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" data-theme-logo="dark" class="h-12 w-auto">
                 <div>
                     <p class="text-[11px] uppercase tracking-wider text-brand-700 font-semibold">Direct Seller Application</p>
                     <p class="text-sm text-gray-600">Arovolife Private Limited · CIN U46909TS2026PTC210896</p>
