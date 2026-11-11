@@ -1,122 +1,75 @@
 @extends('admin.layouts.admin')
 @section('title', 'Lifetime Awards')
-@section('heading', 'Lifetime Awards & Milestones')
+@section('heading', 'Lifetime Awards')
 
 @section('content')
 
 @php $rupees = fn ($paise) => '₹'.\App\Modules\Shared\Support\IndianNumber::format(($paise ?? 0) / 100, 0); @endphp
 
-<div class="mb-6 flex items-start justify-between gap-4">
-    <div class="flex-1 rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-800">
-        Lifetime awards are paid in tranches of merchandise (the client, 2026-10-09): tranche A is released on a distributor's 1st qualification for a rank, B on the 2nd, C on the 3rd. Ranks 1–2 have one tranche, Ranks 3–5 two, Ranks 6–9 three. Awards are <strong>merchandise only, never cash</strong> — no admin charge, no TDS, no wallet credit.
-    </div>
-    <a href="{{ route('admin.lifetime-awards.catalog') }}" class="shrink-0 px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">Reward catalog {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
+<div class="mb-6 rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-800">
+    A Lifetime Award is a fixed cash amount per rank, paid once — the first time a partner achieves the rank (the client, 2026-11-10). Only the month's highest payable Rank Bonus rank earns one, and only if it is above every rank already awarded. It is credited on the 1st with the Rank Bonus and paid with the monthly payout on the 8th: <strong>TDS only</strong> — no admin charge, no repurchase deduction, outside the ₹1 crore cap. A KYC, bank or web-only hold keeps it in the wallet until a later 8th; it is never forfeited.
 </div>
 
 <x-filter-bar :filters="$filters" />
 
 <x-ui.card flush>
     @if($milestones->isEmpty())
-        <x-ui.empty-state title="No lifetime award milestones yet." />
+        <x-ui.empty-state title="No Lifetime Awards yet." />
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-4 py-2 text-left text-gray-600 w-12">S.No.</th>
+                    <th class="px-4 py-2 text-left text-gray-600">Partner</th>
                     <th class="px-4 py-2 text-left text-gray-600">ADN</th>
                     <th class="px-4 py-2 text-left text-gray-600">Rank</th>
-                    <th class="px-4 py-2 text-center text-gray-600">
-                        Tranche <x-help-tip text="A is released on the rank's 1st qualification, B on the 2nd, C on the 3rd." />
+                    <th class="px-4 py-2 text-left text-gray-600">
+                        Earned for <x-help-tip text="The month in which the partner first achieved the rank. The award is credited on the 1st of the next month and paid on the 8th." />
                     </th>
-                    <th class="px-4 py-2 text-left text-gray-600">Triggered</th>
-                    <th class="px-4 py-2 text-center text-gray-600">
-                        Qualifications <x-help-tip text="Qualifications of the rank / qualifications the tranche needs. A tranche is deliverable once the rank has been qualified at least that many times." />
-                    </th>
-                    <th class="px-4 py-2 text-left text-gray-600">Award</th>
+                    <th class="px-4 py-2 text-right text-gray-600">Amount</th>
                     <th class="px-4 py-2 text-center text-gray-600">Status</th>
-                    <th class="px-4 py-2 text-left text-gray-600">Delivered at</th>
+                    <th class="px-4 py-2 text-left text-gray-600">
+                        Paid in batch <x-help-tip text="The monthly payout batch that swept the award to the bank. Blank while it is still in the wallet — not yet due, or held." />
+                    </th>
                     <th class="px-4 py-2"></th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
                 @foreach($milestones as $milestone)
                 @php
-                $sc = ['pending' => 'bg-amber-100 text-amber-700', 'delivered' => 'bg-green-100 text-green-700', 'cancelled' => 'bg-red-100 text-red-700'];
-                $threshold = $milestone->tranche;
-                $releasable = $milestone->isReleasable();
+                $sc = ['pending' => 'bg-amber-100 text-amber-700', 'credited' => 'bg-green-100 text-green-700', 'delivered' => 'bg-gray-100 text-gray-700', 'cancelled' => 'bg-red-100 text-red-700'];
+                $labels = ['pending' => 'Pending', 'credited' => 'Credited', 'delivered' => 'Delivered (merchandise)', 'cancelled' => 'Withdrawn'];
+                $batch = $milestone->walletCredit?->sweptByBatch;
+                $withdrawable = in_array($milestone->status, ['pending', 'credited'], true) && $batch === null;
                 @endphp
                 <tr class="hover:bg-gray-50">
                     <td class="px-4 py-2 text-gray-500 tabular-nums">{{ $milestones->firstItem() + $loop->index }}</td>
+                    <td class="px-4 py-2 text-gray-800">{{ $milestone->distributor?->user?->full_name ?? '—' }}</td>
                     <td class="px-4 py-2 font-mono">{{ $milestone->distributor?->adn ?? '—' }}</td>
                     <td class="px-4 py-2">
                         <span class="inline-flex px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-medium">
                             {{ $rankNames[$milestone->rank_number] ?? 'Rank '.$milestone->rank_number }}
                         </span>
                     </td>
-                    <td class="px-4 py-2 text-center font-semibold text-gray-800">{{ $milestone->trancheLetter() }}</td>
-                    <td class="px-4 py-2 text-gray-600">{{ $milestone->triggered_month->format('M Y') }}</td>
+                    <td class="px-4 py-2 text-gray-600">{{ ($milestone->achieved_month ?? $milestone->triggered_month)->format('M Y') }}</td>
+                    <td class="px-4 py-2 text-right font-semibold text-gray-800 tabular-nums">{{ $rupees($milestone->amount_paise) }}</td>
                     <td class="px-4 py-2 text-center">
-                        <span class="inline-flex items-center gap-1 text-xs font-semibold {{ $releasable ? 'text-green-700' : 'text-amber-700' }}">
-                            {{ $milestone->qualification_count }} / {{ $threshold }}
-                            @if($releasable)
-                            <span class="text-green-600" title="Releasable">{{ svg('lucide-circle-check', 'w-4 h-4 inline-block', ['aria-hidden' => 'true']) }}</span>
-                            @endif
-                        </span>
-                        @if($milestone->released_rule_changed_at)
-                        <div class="mt-1">
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium"
-                                  title="This tranche became releasable under the per-tranche release rule (the client, 2026-10-09); under the old rule it needed more qualifications.">
-                                {{ svg('lucide-info', 'w-3 h-3 inline-block', ['aria-hidden' => 'true']) }}
-                                Release rule changed on {{ $milestone->released_rule_changed_at->format('d M Y') }}
-                            </span>
-                        </div>
-                        @endif
-                    </td>
-                    <td class="px-4 py-2 text-gray-700">
-                        @php $rc = $catalog[$milestone->rank_number] ?? ['budget_paise' => 0, 'rewards' => []]; @endphp
-                        <div class="font-semibold text-gray-800">{{ $rupees($milestone->amount_paise) }} <span class="font-normal text-gray-600">tranche {{ $milestone->trancheLetter() }} of {{ $rupees($rc['budget_paise']) }}</span></div>
-                        @if(!empty($rc['rewards']))
-                        <ul class="mt-1 space-y-0.5 text-[11px] text-gray-600 list-disc list-inside">
-                            @foreach($rc['rewards'] as $reward)
-                            <li>{{ $reward['item'] }} <span class="text-gray-600">— {{ $rupees($reward['worth_paise']) }}</span></li>
-                            @endforeach
-                        </ul>
-                        @else
-                        <span class="text-[11px] text-gray-600">{{ $milestone->award_description }}</span>
-                        @endif
-                    </td>
-                    <td class="px-4 py-2 text-center">
-                        <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $sc[$milestone->status] ?? 'bg-gray-100 text-gray-600' }}">
-                            {{ ucfirst($milestone->status) }}
+                        <span class="inline-flex px-2 py-0.5 rounded text-[10px] font-medium {{ $sc[$milestone->status] ?? 'bg-gray-100 text-gray-600' }}"
+                              @if($milestone->status === 'cancelled' && $milestone->notes) title="{{ $milestone->notes }}" @endif>
+                            {{ $labels[$milestone->status] ?? ucfirst($milestone->status) }}
                         </span>
                     </td>
                     <td class="px-4 py-2 text-gray-600">
-                        {{ $milestone->delivered_at ? $milestone->delivered_at->format('d M Y') : '—' }}
+                        {{ $batch ? '#'.$batch->id.' — '.$batch->batch_date->format('d M Y') : '—' }}
                     </td>
                     <td class="px-4 py-2">
-                        @if($milestone->status === 'pending')
-                            @if($releasable)
-                            <form method="POST" action="{{ route('admin.lifetime-awards.deliver', $milestone->id) }}"
-                                  data-confirm-title="Mark award as delivered"
-                                  data-confirm="Mark tranche {{ $milestone->trancheLetter() }} of this lifetime award as delivered?"
-                                  data-confirm-impact="Impact: the tranche is recorded as handed over in merchandise. Nothing is credited to the distributor's wallet — awards are never paid in cash.">
-                                @csrf
-                                <button type="submit"
-                                        class="px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 text-[10px] font-medium">
-                                    Mark Delivered
-                                </button>
-                            </form>
-                            @else
-                            <span class="text-[10px] text-amber-700 font-medium">
-                                Awaiting {{ $threshold - $milestone->qualification_count }} more re-qual{{ $threshold - $milestone->qualification_count > 1 ? 's' : '' }}
-                            </span>
-                            @endif
+                        @if($withdrawable)
                             @can('compliance.discipline')
-                            <form method="POST" action="{{ route('admin.lifetime-awards.withdraw', $milestone->id) }}" class="mt-1 flex items-center gap-1"
-                                  data-confirm-title="Withdraw award part"
-                                  data-confirm="Withdraw part {{ $milestone->trancheLetter() }} of this lifetime award? It will not be handed over."
-                                  data-confirm-impact="Impact: the part is recorded as withdrawn and the distributor sees it as Withdrawn, with the route to Grievance Redressal. Use it only for a termination, a proven breach or a correction — the reason is kept on the audit log.">
+                            <form method="POST" action="{{ route('admin.lifetime-awards.withdraw', $milestone->id) }}" class="flex items-center gap-1"
+                                  data-confirm-title="Withdraw award"
+                                  data-confirm="Withdraw this Lifetime Award? It will not be paid."
+                                  data-confirm-impact="Impact: the award's wallet credit is reversed and the partner sees it as Withdrawn, with your reason and the route to Grievance Redressal. Use it only for a termination, a proven breach or a correction — the reason is kept on the audit log.">
                                 @csrf
                                 <input type="text" name="reason" required maxlength="500" placeholder="Reason"
                                        class="w-28 rounded border border-gray-300 px-1.5 py-0.5 text-[10px]">

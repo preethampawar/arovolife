@@ -39,6 +39,7 @@ final class PayoutService
         private readonly PayoutGatewaySettings $payoutSettings,
         private readonly EngineRunContext $engineRunContext,
         private readonly PayoutBuildFailureRecorder $buildFailures,
+        private readonly LifetimeAwardService $awards,
     ) {}
 
     /**
@@ -79,7 +80,8 @@ final class PayoutService
     ];
 
     /**
-     * The credit types a monthly batch settles: Groups B and D.
+     * The credit types a monthly batch settles: Groups B and D, and the
+     * Lifetime Awards (client 2026-11-10 — TDS only, outside the cap).
      *
      * @return list<string>
      */
@@ -88,6 +90,7 @@ final class PayoutService
         return array_merge(
             CompensationPlanSettingsService::GROUP_B_TYPES,
             CompensationPlanSettingsService::GROUP_D_TYPES,
+            CompensationPlanSettingsService::AWARD_TYPES,
         );
     }
 
@@ -264,13 +267,18 @@ final class PayoutService
     }
 
     /**
-     * Monthly payout batch (Groups B/D: GBB, Rank, Fortune, ADC).
+     * Monthly payout batch (Groups B/D: GBB, Rank, Fortune, ADC; and the
+     * Lifetime Awards).
      *
-     * Sweeps all unswept entries for the four monthly bonus streams. Applies the
-     * ₹50L per-distributor rank cap (KP Round-4), the repurchase deduction
-     * remainder not already collected by the month's weekly batches, per-group
-     * admin charges (each capped at ₹25k), and TDS (5% on payable). Deduction
-     * order: gross → repurchase → admin charge → TDS.
+     * Sweeps all unswept entries for the four monthly bonus streams and the
+     * cash awards. Applies the combined monthly income cap (KP Round-4), the
+     * repurchase deduction remainder not already collected by the month's
+     * weekly batches, per-group admin charges (each capped at ₹25k), and TDS
+     * (5% on payable). Deduction order: gross → repurchase → admin charge →
+     * TDS. A Lifetime Award (client 2026-11-10) is outside the cap, the
+     * repurchase deduction and the admin charge, and is inside the one TDS
+     * calculation; an award whose rank qualification no longer stands is left
+     * unswept ({@see LifetimeAwardService::milestonesNoLongerQualified()}).
      */
     public function runMonthlyBatch(Carbon $month): PayoutBatch
     {
@@ -621,9 +629,19 @@ final class PayoutService
                 ->lockForUpdate()
                 ->get();
 
+            // R7 (compliance): an award is paid only while the rank
+            // qualification it was earned on still stands. One that no
+            // longer does stays unswept in the wallet, re-checked by every
+            // later batch, and is surfaced on the Action Center.
+            $entries = $this->withoutUnqualifiedAwards($entries, $batch, $distributorId);
+
             if ($entries->isEmpty()) {
                 return;
             }
+
+            // Lifetime Awards: outside the income cap, the repurchase
+            // deduction and the admin charge; inside TDS (client 2026-11-10).
+            $grossAwards = (int) $entries->whereIn('type', CompensationPlanSettingsService::AWARD_TYPES)->sum('amount_paise');
 
             // Group B: GBB + Rank + Fortune — all five cash bonuses share
             // the combined ₹50L cap of the month each credit was EARNED
@@ -648,7 +666,8 @@ final class PayoutService
             $grossD = (int) $entries->where('type', 'adc_credit')->sum('amount_paise');
             $grossAdc = $grossD;
 
-            $gross = $grossB + $grossD;
+            $grossBD = $grossB + $grossD;
+            $gross = $grossBD + $grossAwards;
 
             // Repurchase was deducted at credit time for Group B bonuses
             // (GBB, Rank, Fortune). Sweep their repurchase_transfer debits
@@ -687,19 +706,23 @@ final class PayoutService
             ], $adminRateBp, $adminCapPaise);
             $adminCharge = $adminB + $adminD;
 
-            $effectiveGross = max(0, $gross - $repurchase);
+            // The award is never part of the repurchase or admin-charge base.
+            $effectiveBD = max(0, $grossBD - $repurchase);
 
             // Clamped to what is actually left in the wallet — see the
             // matching note in runWeeklyBatch(). The per-group figures are
             // scaled down with it so they still add up to what was taken,
             // which is what the result-row backfill apportions.
-            if ($adminCharge > $effectiveGross) {
-                [$adminB, $adminD] = $this->apportion($effectiveGross, [$adminB, $adminD]);
+            if ($adminCharge > $effectiveBD) {
+                [$adminB, $adminD] = $this->apportion($effectiveBD, [$adminB, $adminD]);
                 $adminCharge = $adminB + $adminD;
             }
 
+            $effectiveGross = $effectiveBD + $grossAwards;
             $payable = $effectiveGross - $adminCharge;
 
+            // One TDS calculation over the bonuses and the award together, at
+            // the bonus rate (user decision 2026-11-11, A3).
             // min(): see runWeeklyBatch() — never tax past what is payable.
             $tds = min($payable, (int) round($payable * $tdsRateBp / 10_000));
             $net = $payable - $tds;
@@ -713,6 +736,7 @@ final class PayoutService
                     'repurchase_deduction_paise' => $repurchase,
                     'admin_charge_paise' => $adminCharge,
                     'tds_paise' => $tds,
+                    'awards_gross_paise' => $grossAwards,
                     'net_transferred_paise' => max(0, $net),
                     'status' => PayoutLineItem::STATUS_BELOW_MINIMUM,
                 ]);
@@ -736,6 +760,7 @@ final class PayoutService
                 'repurchase_deduction_paise' => $repurchase,
                 'admin_charge_paise' => $adminCharge,
                 'tds_paise' => $tds,
+                'awards_gross_paise' => $grossAwards,
                 'net_transferred_paise' => $net,
                 'bank_account_last4' => $bankLast4,
                 'status' => PayoutLineItem::STATUS_PENDING,
@@ -759,6 +784,58 @@ final class PayoutService
                 'the part of the balance above the combined monthly income cap of the month it was earned for is forfeited, not carried forward',
             );
         });
+    }
+
+    /**
+     * The swept set without the cash awards that must not be paid (R7): a
+     * withdrawn award (milestone no longer `credited`), or one whose rank
+     * qualification no longer stands. The entries arrive locked FOR UPDATE,
+     * the same row LifetimeAwardService::withdraw() locks, so a withdrawal
+     * and this sweep serialise. Each one held back gets a warning log and an
+     * audit_log row naming the batch; the award itself stays unswept and is
+     * re-checked by the next batch.
+     *
+     * @param  EloquentCollection<int, WalletLedgerEntry>  $entries
+     * @return EloquentCollection<int, WalletLedgerEntry>
+     */
+    private function withoutUnqualifiedAwards(EloquentCollection $entries, PayoutBatch $batch, int $distributorId): EloquentCollection
+    {
+        $awardMilestoneIds = $entries
+            ->whereIn('type', CompensationPlanSettingsService::AWARD_TYPES)
+            ->pluck('reference_id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+
+        if ($awardMilestoneIds === []) {
+            return $entries;
+        }
+
+        $unqualified = $this->awards->milestonesNoLongerQualified($awardMilestoneIds);
+
+        if ($unqualified === []) {
+            return $entries;
+        }
+
+        $details = [
+            'payout_batch_id' => (int) $batch->id,
+            'distributor_id' => $distributorId,
+            'milestone_ids' => $unqualified,
+            'reason' => 'the award is withdrawn, or the rank qualification it was earned on no longer stands — award left unswept',
+        ];
+
+        Log::warning('payout.award.requalification_check', $details);
+
+        AuditLog::create([
+            'actor_id' => $this->batchCreatorId(),
+            'action' => 'payout.award.requalification_check',
+            'subject_type' => 'distributor',
+            'subject_id' => $distributorId,
+            'details' => $details,
+        ]);
+
+        return $entries->reject(fn (WalletLedgerEntry $entry): bool => in_array($entry->type, CompensationPlanSettingsService::AWARD_TYPES, true)
+            && in_array((int) $entry->reference_id, $unqualified, true))->values();
     }
 
     /**
@@ -795,8 +872,11 @@ final class PayoutService
      * credits rather than line items — change it alongside this method.
      * `PayoutsBankDetailsMissingProvider` covers web_only → kyc_pending →
      * no_bank_account; `PayoutsBankUndecryptableProvider` covers the last rung.
+     *
+     * Public so the partner's Awards page states the hold as it stands now,
+     * not as an old batch recorded it.
      */
-    private function holdStatusFor(int $distributorId): ?string
+    public function holdStatusFor(int $distributorId): ?string
     {
         if ($this->bvLedger->totalPersonalBvPaise($distributorId) < $this->plan->neftMinBvPaise()) {
             return PayoutLineItem::STATUS_WEB_ONLY;
@@ -992,6 +1072,12 @@ final class PayoutService
 
         $repurchase = abs((int) $this->unsweptRepurchaseTransfers($distributorId, $repurchaseRefTypes, $earnedOnOrBefore, $earnedForMonthOrBefore)->sum('amount_paise'));
 
+        // The cash award part of the held figure, for the statement's own
+        // line (client 2026-11-10). Zero on a weekly line.
+        $awards = array_intersect($creditTypes, CompensationPlanSettingsService::AWARD_TYPES) === []
+            ? 0
+            : $this->wallet->sumUnsweptByTypes($distributorId, CompensationPlanSettingsService::AWARD_TYPES, $earnedOnOrBefore, $earnedForMonthOrBefore);
+
         PayoutLineItem::create([
             'payout_batch_id' => $batch->id,
             'distributor_id' => $distributorId,
@@ -1000,6 +1086,7 @@ final class PayoutService
             'repurchase_deduction_paise' => $repurchase,
             'admin_charge_paise' => 0,
             'tds_paise' => 0,
+            'awards_gross_paise' => $awards,
             'net_transferred_paise' => 0,
             'status' => $status,
             'failure_reason' => $failureReason,

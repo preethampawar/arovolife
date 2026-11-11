@@ -10,6 +10,7 @@ use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\MentorshipBonusFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use Illuminate\Support\Carbon;
@@ -65,6 +66,8 @@ final class IncomeOverviewService
                 'tip' => 'Monthly matrix bonus based on your Genos Sales Bonus activity.'],
             ['type' => 'adc_credit', 'label' => 'ADC Bonus', 'route' => 'income.adc-bonus', 'active' => AdcBonusVisibility::forCurrentUser(),
                 'tip' => 'Arete Development Center bonus on BV served by your approved center.'],
+            ['type' => 'awards_credit', 'label' => 'Lifetime Awards', 'route' => 'income.awards', 'active' => Feature::for(null)->active(LifetimeAwardsFeature::class),
+                'tip' => 'A fixed award paid once for each rank, the first time you achieve it, with the monthly payout on the 8th.'],
         ];
 
         $summary = [];
@@ -124,7 +127,8 @@ final class IncomeOverviewService
         $hasMonthlyBonuses = Feature::for(null)->active(GrowthBoosterBonusFeature::class)
             || Feature::for(null)->active(RankBonusFeature::class)
             || Feature::for(null)->active(FortuneBonusFeature::class)
-            || Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class);
+            || Feature::for(null)->active(AreteDevelopmentCenterBonusFeature::class)
+            || Feature::for(null)->active(LifetimeAwardsFeature::class);
 
         return [
             'nextCutoff' => $nextCutoff,

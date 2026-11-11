@@ -20,6 +20,14 @@ function narrowAwardsCreditWalletTypeMigration(): mixed
     );
 }
 
+/** 2026_11_11_100000 widens the enum back (cash awards, client 2026-11-10) — every test that narrows restores it. */
+function addAwardsCreditWalletTypeMigration(): mixed
+{
+    return require base_path(
+        'app/Modules/Compensation/Database/Migrations/2026_11_11_100000_add_awards_credit_type_to_wallet_ledger_entries.php'
+    );
+}
+
 function narrowRankRepurchaseHeldStatusMigration(): mixed
 {
     return require base_path(
@@ -62,7 +70,8 @@ const NARROWED_WALLET_TYPE_ENUM = "enum('gsb_credit','mb_credit','gbb_credit','r
 const NARROWED_RANK_STATUS_ENUM = "enum('pending','credited','reversed','requalification_held','repurchase_wallet_blocked')";
 
 it('refuses to drop awards_credit while a ledger row still carries it, and changes nothing', function (): void {
-    // RefreshDatabase already narrowed the enum; widen it so a legacy row can exist.
+    // RefreshDatabase ran 2026_11_11_100000 after the narrowing, so the
+    // enum is already wide; down() is a no-op widening kept for clarity.
     narrowAwardsCreditWalletTypeMigration()->down();
     $before = staleEnumColumnType('wallet_ledger_entries', 'type');
     $auditBefore = AuditLog::where('action', 'plan.migration.narrow_awards_credit_wallet_type')->count();
@@ -78,34 +87,51 @@ it('refuses to drop awards_credit while a ledger row still carries it, and chang
             ->and(AuditLog::where('action', 'plan.migration.narrow_awards_credit_wallet_type')->count())->toBe($auditBefore);
     } finally {
         DB::table('wallet_ledger_entries')->where('id', $id)->delete();
-        narrowAwardsCreditWalletTypeMigration()->up();
+        // The DDL commits on MySQL and is never rolled back: put the schema
+        // back to the final (widened) state for every later test.
+        addAwardsCreditWalletTypeMigration()->up();
     }
 });
 
 it('drops awards_credit from the ledger type enum when no row carries it and records the run', function (): void {
     narrowAwardsCreditWalletTypeMigration()->down();
 
-    narrowAwardsCreditWalletTypeMigration()->up();
+    try {
+        narrowAwardsCreditWalletTypeMigration()->up();
 
-    $audit = (array) AuditLog::query()
-        ->where('action', 'plan.migration.narrow_awards_credit_wallet_type')
-        ->orderByDesc('id')
-        ->firstOrFail()
-        ->details;
+        $audit = (array) AuditLog::query()
+            ->where('action', 'plan.migration.narrow_awards_credit_wallet_type')
+            ->orderByDesc('id')
+            ->firstOrFail()
+            ->details;
 
-    expect($audit)->toMatchArray([
-        'migration' => '2026_10_09_101300_narrow_awards_credit_wallet_type',
-        'driver' => DB::getDriverName(),
-        'wallet_ledger_entries' => ['column' => 'type', 'removed' => ['awards_credit'], 'rows_carrying' => 0],
-    ])->and($audit['reason'])->toContain('merchandise only');
+        expect($audit)->toMatchArray([
+            'migration' => '2026_10_09_101300_narrow_awards_credit_wallet_type',
+            'driver' => DB::getDriverName(),
+            'wallet_ledger_entries' => ['column' => 'type', 'removed' => ['awards_credit'], 'rows_carrying' => 0],
+        ])->and($audit['reason'])->toContain('merchandise only');
 
-    if (DB::getDriverName() === 'mysql') {
-        expect(staleEnumColumnType('wallet_ledger_entries', 'type'))->toBe(NARROWED_WALLET_TYPE_ENUM);
+        if (DB::getDriverName() === 'mysql') {
+            expect(staleEnumColumnType('wallet_ledger_entries', 'type'))->toBe(NARROWED_WALLET_TYPE_ENUM);
 
-        // Strict mode: MySQL now refuses the retired value outright.
-        expect(fn () => DB::table('wallet_ledger_entries')->insert(staleEnumWalletRow('awards_credit')))
-            ->toThrow(QueryException::class);
+            // Strict mode: MySQL now refuses the retired value outright.
+            expect(fn () => DB::table('wallet_ledger_entries')->insert(staleEnumWalletRow('awards_credit')))
+                ->toThrow(QueryException::class);
+        }
+    } finally {
+        // DDL is never rolled back: restore the final (widened) schema.
+        addAwardsCreditWalletTypeMigration()->up();
     }
+});
+
+it('leaves the migrated ledger type enum accepting awards_credit for cash Lifetime Awards', function (): void {
+    if (DB::getDriverName() === 'mysql') {
+        expect(staleEnumColumnType('wallet_ledger_entries', 'type'))->toContain("'awards_credit'");
+    }
+
+    $id = DB::table('wallet_ledger_entries')->insertGetId(staleEnumWalletRow('awards_credit'));
+
+    expect(DB::table('wallet_ledger_entries')->where('id', $id)->value('type'))->toBe('awards_credit');
 });
 
 it('refuses to drop the rank repurchase_held status while a row still carries it, and changes nothing', function (): void {

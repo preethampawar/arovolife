@@ -219,8 +219,8 @@ final class BonusCalculationSnapshots
      * awards are funded from comp.awards.fund_rate_bp (20 %) of each month's
      * company BV — read through GsbDailyPoolService::companyBvPaiseBetween(),
      * the BV every other pool uses. Each month adds its share; the award worth
-     * earned that month (the tranche amounts frozen on its non-cancelled
-     * milestones) is set against it; the balance carries forward.
+     * earned that month (the amounts frozen on its non-cancelled milestones)
+     * is set against it; the balance carries forward.
      *
      * A report, never a gate (user decision 2026-10-09): an earned award is
      * released whatever the balance, and a negative balance is shown, not
@@ -278,14 +278,14 @@ final class BonusCalculationSnapshots
     }
 
     /**
-     * Per-month Lifetime Awards aggregate, one line per rank: milestones
-     * triggered, delivered, cash gross / TDS / net, next to the rank's CURRENT
-     * award budget from the rank ladder.
+     * Per-month Lifetime Awards aggregate, one line per rank: awards earned,
+     * credited to the wallet, and their amount, next to the rank's CURRENT
+     * award amount from the rank ladder.
      *
      * @param  array<int, string>  $monthStarts  Y-m-d
      * @return array<string, array{
-     *     milestones: int, delivered: int, amount_paise: int, computed_at: ?Carbon,
-     *     ranks: list<array{rank: int, name: string, tranche: int, milestones: int, delivered: int, budget_paise: int, amount_paise: int}>
+     *     milestones: int, credited: int, amount_paise: int, computed_at: ?Carbon,
+     *     ranks: list<array{rank: int, name: string, milestones: int, credited: int, budget_paise: int, amount_paise: int}>
      * }>
      */
     public function awRwMonths(array $monthStarts): array
@@ -294,19 +294,18 @@ final class BonusCalculationSnapshots
             return [];
         }
 
-        // One line per rank and tranche (client 2026-10-09); amount_paise is
-        // the Σ of the tranche amounts frozen on the milestones. Awards are
-        // merchandise only, so there is no cash, gross, TDS or net here.
+        // One line per rank (client 2026-11-10: one cash award per rank);
+        // amount_paise is the Σ of the amounts frozen on the milestones. TDS
+        // is taken on the payout line, not here.
         $rows = DB::table('lifetime_award_milestones')
             ->whereIn('triggered_month', $monthStarts)
-            ->selectRaw('triggered_month, rank_number, tranche')
+            ->selectRaw('triggered_month, rank_number')
             ->selectRaw('COUNT(*) as milestones')
-            ->selectRaw("SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered")
+            ->selectRaw("SUM(CASE WHEN status = 'credited' THEN 1 ELSE 0 END) as credited")
             ->selectRaw('COALESCE(SUM(amount_paise), 0) as amount_paise')
             ->selectRaw('MAX(created_at) as computed_at')
-            ->groupBy('triggered_month', 'rank_number', 'tranche')
+            ->groupBy('triggered_month', 'rank_number')
             ->orderBy('rank_number')
-            ->orderBy('tranche')
             ->get();
 
         $out = [];
@@ -315,9 +314,9 @@ final class BonusCalculationSnapshots
             $rank = (int) $row->rank_number;
             $computedAt = $row->computed_at !== null ? Carbon::parse((string) $row->computed_at) : null;
 
-            $agg = $out[$key] ?? ['milestones' => 0, 'delivered' => 0, 'amount_paise' => 0, 'computed_at' => null, 'ranks' => []];
+            $agg = $out[$key] ?? ['milestones' => 0, 'credited' => 0, 'amount_paise' => 0, 'computed_at' => null, 'ranks' => []];
             $agg['milestones'] += (int) $row->milestones;
-            $agg['delivered'] += (int) $row->delivered;
+            $agg['credited'] += (int) $row->credited;
             $agg['amount_paise'] += (int) $row->amount_paise;
             if ($computedAt !== null && ($agg['computed_at'] === null || $computedAt->greaterThan($agg['computed_at']))) {
                 $agg['computed_at'] = $computedAt;
@@ -325,9 +324,8 @@ final class BonusCalculationSnapshots
             $agg['ranks'][] = [
                 'rank' => $rank,
                 'name' => $this->plan->rankName($rank),
-                'tranche' => (int) $row->tranche,
                 'milestones' => (int) $row->milestones,
-                'delivered' => (int) $row->delivered,
+                'credited' => (int) $row->credited,
                 'budget_paise' => $this->plan->lifetimeAwardBudgetPaise($rank),
                 'amount_paise' => (int) $row->amount_paise,
             ];

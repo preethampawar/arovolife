@@ -93,6 +93,7 @@ final class SettingsSeeder extends Seeder
             'comp.gbb.point_value_cap_paise' => '24000',    // ₹240 ceiling per Growth Booster point (client 2026-10-09)
             'comp.rank.envelope_bp' => '2000',              // 20% of company BV funds the Rank Bonus (one pool, two passes)
             'comp.awards.fund_rate_bp' => '2000',           // 20% of company BV funds the Lifetime Awards (client 2026-10-09; reported, never blocks)
+            'comp.awards.cash_effective_month' => '',       // first YYYY-MM paid a cash Lifetime Award; blank = none (set on the flag's first switch-on; Q3 2026-11-11)
             'comp.rank.pay_highest_rank_only' => 'true',    // exclusive rank pools (plan text); false = cumulative
             'comp.rank.aogo_points' => '36',                // AO-GO points per grant, pass 1 (client 2026-10-05)
             'comp.rank.aogo_lifetime_max' => '3',           // AO-GO uses per distributor, lifetime

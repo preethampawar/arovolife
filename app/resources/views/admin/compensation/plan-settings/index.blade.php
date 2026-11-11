@@ -264,25 +264,24 @@
 
     <div class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
         <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
-            <li>Lifetime Awards are <strong>merchandise milestones</strong>, not a pool: each rank's award is split into tranches (A, B, C) whose amounts sum to the rank's <strong>lifetime award budget</strong>; the catalogue lists the merchandise per tranche.</li>
-            <li>Tranche A is released on a distributor's <strong>1st</strong> qualification at the rank, B on the <strong>2nd</strong>, C on the <strong>3rd</strong>. Ranks 1–2 have one tranche, ranks 3–5 two, ranks 6–9 three (the client, 2026-10-09).</li>
-            <li>Awards are <strong>merchandise only, never cash</strong>: no admin charge, no TDS, no wallet credit.</li>
-            <li>Each tranche is awarded <strong>once per lifetime</strong> — there is no monthly recurrence.</li>
+            <li>Each rank carries a fixed <strong>Lifetime Award</strong> amount (the rank's <strong>lifetime award budget</strong>), paid in cash <strong>once per lifetime</strong>, the first time the partner achieves the rank (the client, 2026-11-10).</li>
+            <li>Only the month's <strong>highest payable Rank Bonus rank</strong> earns an award, and only if it is above every rank already awarded — ranks skipped by a jump are never paid.</li>
+            <li>It is credited on the 1st with the Rank Bonus and paid with the <strong>monthly payout on the 8th</strong>: TDS at the bonus rate, no admin charge, no repurchase deduction, outside the ₹1 crore cap. A KYC, bank or web-only hold keeps it in the wallet until a later 8th.</li>
+            <li>Only qualification months from the <strong>cash effective month</strong> setting are paid; earlier months never are.</li>
         </ol>
     </div>
 
     <div class="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-900">
-        <p class="font-semibold mb-1">Worked example — an Emerald (Rank 3) milestone</p>
+        <p class="font-semibold mb-1">Worked example — an Emerald (Rank 3) award</p>
         <p class="mb-1 text-[11px] text-blue-700">Illustrative only — not an earnings projection.</p>
         <p>
-            Rank 3 carries a budget of <strong>₹1,08,000</strong> in two tranches. A distributor's first Rank 3
-            qualification opens tranche A (<strong>₹48,600</strong> of merchandise), releasable at once. Their second
-            Rank 3 qualification opens tranche B (<strong>₹59,400</strong>) — until then only tranche A can be delivered.
+            A partner first achieves Rank 3 in March. On 1 April the Rank 3 award amount is credited to their
+            wallet, and the payout on 8 April pays it with TDS deducted. Achieving Rank 3 again later pays nothing.
         </p>
     </div>
 
     <p class="mt-3 text-[11px] text-gray-600">
-        Per-rank budgets are the Rank Tiers table below; the reward catalogue and pending milestones are managed under
+        Per-rank award amounts are the Rank Tiers table below; the awards earned are listed under
         <a href="{{ route('admin.lifetime-awards.index') }}" class="underline">Lifetime Awards</a>, with the
         <a href="{{ route('admin.compensation.aw-rw-calculation.index') }}" class="underline">Awards &amp; Rewards</a> report alongside.
     </p>
@@ -478,7 +477,7 @@
                     <span class="text-[11px] text-gray-600">{{ $bv($row->repurchase_bv_paise) }}</span>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Lifetime award budget (paise) <x-help-tip text="Per-rank Lifetime Awards budget (non-cash). Stored in paise (₹ × 100). The itemised reward worths (Lifetime Awards → Reward catalog) reconcile to this. KP: R1 ₹15,000 … R9 ₹2.25Cr." /></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Lifetime award budget (paise) <x-help-tip text="Per-rank Lifetime Award amount, paid once in cash the first time a partner achieves the rank. Stored in paise (₹ × 100). 0 = the rank has no award. An award already earned keeps the amount it was earned at." /></label>
                     <input type="number" name="lifetime_award_budget_paise" data-field-label="Lifetime award budget (paise)" value="{{ $row->lifetime_award_budget_paise }}" required min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                     <span class="text-[11px] text-gray-600">{{ $rupees($row->lifetime_award_budget_paise) }}</span>

@@ -66,49 +66,64 @@ function awRwReportDistributor(string $adn, string $name): int
     return $id;
 }
 
-it('shows the month header and how an award is valued, with the month\'s per-rank, per-tranche figures', function (): void {
+it('shows the month header and how an award is valued, with the month\'s per-rank figures', function (): void {
     $alice = awRwReportDistributor('AWRAAA', 'Alice');
     $bob = awRwReportDistributor('AWRBBB', 'Bob');
 
-    LifetimeAwardMilestone::create([
-        'distributor_id' => $alice,
-        'rank_number' => 3,
-        'tranche' => 1,
-        'amount_paise' => 4_860_000,
-        'triggered_month' => '2026-07-01',
-        'qualification_count' => 1,
-        'award_description' => 'Emerald Partner — tranche A, merchandise per plan',
-        'status' => LifetimeAwardMilestone::STATUS_PENDING,
-    ]);
-    LifetimeAwardMilestone::create([
-        'distributor_id' => $bob,
-        'rank_number' => 3,
-        'tranche' => 2,
-        'amount_paise' => 5_940_000,
-        'triggered_month' => '2026-07-01',
-        'qualification_count' => 2,
-        'award_description' => 'Emerald Partner — tranche B, merchandise per plan',
-        'status' => LifetimeAwardMilestone::STATUS_DELIVERED,
-        'delivered_at' => now(),
-    ]);
+    foreach ([[$alice, 4_860_000], [$bob, 5_940_000]] as [$distributorId, $amount]) {
+        LifetimeAwardMilestone::create([
+            'distributor_id' => $distributorId,
+            'rank_number' => 3,
+            'tranche' => 1,
+            'amount_paise' => $amount,
+            'triggered_month' => '2026-07-01',
+            'achieved_month' => '2026-07-01',
+            'qualification_count' => 1,
+            'award_description' => 'Emerald Partner Lifetime Award',
+            'status' => LifetimeAwardMilestone::STATUS_CREDITED,
+            'credited_at' => now(),
+        ]);
+    }
 
     $res = $this->actingAs(awRwReportAdmin())
         ->get(route('admin.compensation.aw-rw-calculation.index', ['month' => '2026-07']))
         ->assertOk();
 
     $res->assertSee('July 2026');
-    $res->assertSee('Milestones triggered');
+    $res->assertSee('Awards earned');
     $res->assertSee('How an award is valued');
-    $res->assertSee('Merchandise only — never paid in cash');
-    $res->assertSee('Tranche');
+    $res->assertSee('Cash with the monthly payout on the 8th');
     $res->assertSee('₹48,600');
     $res->assertSee('₹59,400');
-    // Σ of the two rows' tranche amounts.
+    // Σ of the two awards' amounts.
     $res->assertSee('₹1,08,000');
     $res->assertSee('AWRAAA');
     $res->assertSee('AWRBBB');
-    $res->assertDontSee('Cash reward');
-    $res->assertDontSee('Cash (Rewards)');
+    $res->assertDontSee('Tranche');
+    $res->assertDontSee('Merchandise only');
+});
+
+it('exports one row per award with the month, rank, amount, TDS rate and status', function (): void {
+    $alice = awRwReportDistributor('AWREXP', 'Alice Export');
+    LifetimeAwardMilestone::create([
+        'distributor_id' => $alice,
+        'rank_number' => 3,
+        'tranche' => 1,
+        'amount_paise' => 4_860_000,
+        'triggered_month' => '2026-07-01',
+        'achieved_month' => '2026-07-01',
+        'qualification_count' => 1,
+        'award_description' => 'Emerald Partner Lifetime Award',
+        'status' => LifetimeAwardMilestone::STATUS_CREDITED,
+    ]);
+
+    $csv = $this->actingAs(awRwReportAdmin())
+        ->get(route('admin.compensation.aw-rw-calculation.export', ['format' => 'csv']))
+        ->assertOk()
+        ->streamedContent();
+
+    expect($csv)->toContain('S.No.,Month,ADN,Name,Rank,"Amount (Rs)","TDS rate",Status')
+        ->and($csv)->toContain('1,2026-07,AWREXP,"Alice Export","Emerald Partner",48600,5%,credited');
 });
 
 it('has no cash/goods type filter: a type query is ignored', function (): void {

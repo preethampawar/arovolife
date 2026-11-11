@@ -589,3 +589,41 @@ it('keeps a grant an order has already consumed, so the replay cannot hand the d
     expect(DB::table('purchase_offer_grants')->pluck('id')->all())->toBe([$consumed])
         ->and(DB::table('purchase_offer_grants')->find($unused))->toBeNull();
 });
+
+it('keeps a cash award from before the window and a withdrawn one inside it, and rebuilds a credited one inside it', function (): void {
+    // Cash Lifetime Awards (client 2026-11-10). July's award milestone sits
+    // before the window; its credit row is stamped inside it (16 August), and
+    // survives because the milestone it references survives the wipe. An
+    // August milestone still credited is re-derived by the replay, so it goes
+    // with its credit; one withdrawn in August is a decision, so it stays with
+    // its credit and reversal and is never re-paid.
+    $dist = Distributor::factory()->create();
+
+    $milestone = fn (string $month, int $rank, string $status): int => DB::table('lifetime_award_milestones')->insertGetId([
+        'distributor_id' => $dist->id, 'rank_number' => $rank, 'tranche' => 1, 'amount_paise' => 1_000_000,
+        'triggered_month' => $month, 'achieved_month' => $month, 'qualification_count' => 1,
+        'award_description' => 'Cash award', 'status' => $status,
+        'created_at' => '2026-08-01 00:30:00', 'updated_at' => '2026-08-01 00:30:00',
+    ]);
+
+    $july = $milestone('2026-07-01', 1, 'credited');
+    $augustCredited = $milestone('2026-08-01', 2, 'credited');
+    $augustWithdrawn = $milestone('2026-08-01', 3, 'cancelled');
+
+    $entry = fn (string $type, int $amount, int $referenceId, string $at): array => [
+        'distributor_id' => $dist->id, 'type' => $type, 'amount_paise' => $amount,
+        'reference_id' => $referenceId, 'reference_type' => 'lifetime_award_milestone', 'created_at' => $at,
+    ];
+
+    DB::table('wallet_ledger_entries')->insert([
+        $entry('awards_credit', 1_000_000, $july, '2026-08-16 00:30:00'),
+        $entry('awards_credit', 1_000_000, $augustCredited, '2026-08-20 00:30:00'),
+        $entry('awards_credit', 1_000_000, $augustWithdrawn, '2026-08-20 00:30:00'),
+        $entry('reversal', -1_000_000, $augustWithdrawn, '2026-08-21 10:00:00'),
+    ]);
+
+    app(WindowedStateWiper::class)->wipe(Carbon::parse('2026-08-15'));
+
+    expect(DB::table('lifetime_award_milestones')->orderBy('id')->pluck('id')->all())->toBe([$july, $augustWithdrawn])
+        ->and(DB::table('wallet_ledger_entries')->orderBy('id')->pluck('reference_id')->all())->toBe([$july, $augustWithdrawn, $augustWithdrawn]);
+});

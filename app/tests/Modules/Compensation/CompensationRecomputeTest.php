@@ -6,7 +6,10 @@ use App\Console\Actions\PurchaseDataResetAction;
 use App\Modules\Compensation\Jobs\RecomputeAllJob;
 use App\Modules\Compensation\Models\EngineRun;
 use App\Modules\Compensation\Models\GsbCutoffResult;
+use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\DTOs\RecomputeReport;
+use App\Modules\Compensation\Services\LifetimeAwardService;
 use App\Modules\Compensation\Services\Recompute\CompensationRecomputeRunner;
 use App\Modules\Compensation\Services\Recompute\CompensationStateWiper;
 use App\Modules\Compensation\Services\Recompute\EngineReplayService;
@@ -20,6 +23,7 @@ use App\Modules\Compensation\Support\EngineRegistry;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -267,6 +271,43 @@ it('previews the row counts it would destroy without destroying them', function 
 
     expect($preview['gbb_monthly_pools'])->toBe(1);
     expect(DB::table('gbb_monthly_pools')->count())->toBe(1);
+});
+
+it('keeps a withdrawn award through a full wipe, so the replay never pays it again', function (): void {
+    // Fix 2 (2026-11-11): withdrawn and delivered awards are decisions, not
+    // engine output. A credited award goes, and the replay re-derives it.
+    Feature::for(null)->activate(LifetimeAwardsFeature::class);
+    DB::table('settings')->updateOrInsert(['key' => 'comp.awards.cash_effective_month'], ['value' => '2026-06', 'version' => 1, 'updated_at' => now()]);
+    $withdrawn = Distributor::factory()->create();
+    $credited = Distributor::factory()->create();
+
+    $milestone = fn (int $distributorId, string $status): int => DB::table('lifetime_award_milestones')->insertGetId([
+        'distributor_id' => $distributorId, 'rank_number' => 1, 'tranche' => 1, 'amount_paise' => 1_540_000,
+        'triggered_month' => '2026-06-01', 'achieved_month' => '2026-06-01', 'qualification_count' => 1,
+        'award_description' => 'Silver Partner Lifetime Award', 'status' => $status,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $withdrawnId = $milestone($withdrawn->id, 'cancelled');
+    $milestone($credited->id, 'credited');
+
+    expect(app(CompensationStateWiper::class)->preview()['lifetime_award_milestones'])->toBe(1);
+
+    app(CompensationStateWiper::class)->wipe();
+
+    expect(DB::table('lifetime_award_milestones')->pluck('id')->all())->toBe([$withdrawnId]);
+
+    // The replayed June close: the withdrawn partner is on the roster again
+    // and still gets nothing.
+    RankQualification::create([
+        'distributor_id' => $withdrawn->id, 'rank_number' => 1, 'month_start' => '2026-06-01',
+        'occurrence_in_month' => 1, 'is_carry_forward' => false, 'status' => RankQualification::STATUS_QUALIFIED,
+    ]);
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+    $awards = app(LifetimeAwardService::class);
+    $plan = $awards->planForMonth(Carbon::parse('2026-06-01'), [$withdrawn->id => [1]]);
+
+    expect($plan->awards)->toBe([])
+        ->and(DB::table('wallet_ledger_entries')->where('type', 'awards_credit')->count())->toBe(0);
 });
 
 /*

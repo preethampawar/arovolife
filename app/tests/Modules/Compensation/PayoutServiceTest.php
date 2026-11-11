@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Jobs\DispatchRazorpayPayoutsJob;
+use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compensation\Services\WalletService;
@@ -1945,4 +1947,201 @@ it('lets the ordinary sweep back into a batch it has reopened', function (): voi
 
     expect($rerun->id)->toBe($batch->id)
         ->and($rerun->status)->not->toBe(PayoutBatch::STATUS_FAILED);
+});
+
+// ── Lifetime Awards in the MONTHLY batch (client 2026-11-10) ─────────────────
+
+/**
+ * A credited cash award as the Rank Bonus credit step leaves it: the rank
+ * qualification it was earned on, its milestone, and the awards_credit row.
+ * `$stillQualified = false` voids the qualification afterwards, as a rebuild
+ * or refund re-run would.
+ */
+function creditPayoutAward(Distributor $dist, int $amountPaise, Carbon $month, int $rank = 1, bool $stillQualified = true): LifetimeAwardMilestone
+{
+    $qualification = RankQualification::create([
+        'distributor_id' => $dist->id,
+        'rank_number' => $rank,
+        'month_start' => $month->copy()->startOfMonth()->toDateString(),
+        'occurrence_in_month' => 1,
+        'is_carry_forward' => false,
+        'status' => $stillQualified ? RankQualification::STATUS_QUALIFIED : RankQualification::STATUS_VOIDED,
+    ]);
+
+    $milestone = LifetimeAwardMilestone::create([
+        'distributor_id' => $dist->id,
+        'rank_number' => $rank,
+        'tranche' => 1,
+        'amount_paise' => $amountPaise,
+        'triggered_month' => $month->copy()->startOfMonth()->toDateString(),
+        'achieved_month' => $month->copy()->startOfMonth()->toDateString(),
+        'rank_qualification_id' => $qualification->id,
+        'qualification_count' => 1,
+        'award_description' => 'Rank '.$rank.' Lifetime Award',
+        'status' => LifetimeAwardMilestone::STATUS_CREDITED,
+        'credited_at' => now(),
+    ]);
+
+    app(WalletService::class)->credit(
+        $dist->id, $amountPaise, 'awards_credit', $milestone->id, 'lifetime_award_milestone',
+        'Lifetime Award', bonusMonth: $month,
+    );
+
+    return $milestone;
+}
+
+it('monthly batch: pays an award-only line with TDS and nothing else deducted', function (): void {
+    // ₹50,000 award → TDS 5% ₹2,500 → net ₹47,500. No admin charge, no repurchase.
+    $dist = makePayoutEligibleDistributor();
+    $july = Carbon::create(2026, 7, 1);
+    creditPayoutAward($dist, 5_000_000, $july);
+
+    $batch = app(PayoutService::class)->runMonthlyBatch($july);
+
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_PENDING)
+        ->and($line->gross_paise)->toBe(5_000_000)
+        ->and($line->awards_gross_paise)->toBe(5_000_000)
+        ->and($line->repurchase_deduction_paise)->toBe(0)
+        ->and($line->admin_charge_paise)->toBe(0)
+        ->and($line->tds_paise)->toBe(250_000)
+        ->and($line->net_transferred_paise)->toBe(4_750_000)
+        ->and($line->wallet_balance_paise)->toBe(5_000_000)
+        ->and(app(WalletService::class)->balancePaise($dist->id))->toBe(0);
+
+    // One TDS debit for the whole line, the award's tax inside it.
+    expect((int) WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'tds_debit')->sum('amount_paise'))->toBe(-250_000);
+});
+
+it('monthly batch: an award beside a Rank Bonus is outside the admin charge and repurchase, inside one TDS', function (): void {
+    // Worked example (plan §5.4, A3): award ₹50,000 + Rank Bonus ₹20,000.
+    // Repurchase 10% of ₹20,000 at credit = ₹2,000; admin 3% of ₹20,000 = ₹600;
+    // payable = ₹17,400 + ₹50,000 = ₹67,400; TDS 5% = ₹3,370; net ₹64,030.
+    $dist = makePayoutEligibleDistributor();
+    $july = Carbon::create(2026, 7, 1);
+    creditPayoutAward($dist, 5_000_000, $july);
+    app(WalletService::class)->creditWithRepurchaseDeduction(
+        distributorId: $dist->id,
+        grossPaise: 2_000_000,
+        bonusType: 'rank_credit',
+        referenceId: walletRef(),
+        referenceType: 'rank_bonus_result',
+        bonusMonth: $july,
+    );
+
+    $batch = app(PayoutService::class)->runMonthlyBatch($july);
+
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole();
+    expect($line->gross_paise)->toBe(7_000_000)
+        ->and($line->awards_gross_paise)->toBe(5_000_000)
+        ->and($line->repurchase_deduction_paise)->toBe(200_000)
+        ->and($line->admin_charge_paise)->toBe(60_000)
+        ->and($line->tds_paise)->toBe(337_000)
+        ->and($line->net_transferred_paise)->toBe(6_403_000)
+        ->and($line->wallet_balance_paise)->toBe(6_800_000)
+        ->and(app(WalletService::class)->balancePaise($dist->id))->toBe(0);
+});
+
+it('monthly batch: an award is outside the monthly income cap and still paid when the cap forfeits all of Group B', function (): void {
+    setPayoutSetting('comp.monthly_income_cap_paise', '500000'); // ₹5,000 cap
+    $dist = makePayoutEligibleDistributor();
+    $wallet = app(WalletService::class);
+    $july = Carbon::create(2026, 7, 1);
+
+    // July's weekly batch consumes the whole ₹5,000 ceiling …
+    $wallet->credit($dist->id, 500_000, 'gsb_credit', walletRef(), 'test_reference', null, $july, earnedOn: earnedForBatch(Carbon::create(2026, 7, 14)));
+    app(PayoutService::class)->runWeeklyBatch(Carbon::create(2026, 7, 14));
+
+    // … so the ₹3,000 Rank Bonus is forfeited in full, and the ₹10,000 award is not.
+    $wallet->credit($dist->id, 300_000, 'rank_credit', walletRef(), 'test_reference', null, $july);
+    creditPayoutAward($dist, 1_000_000, $july);
+
+    $batch = app(PayoutService::class)->runMonthlyBatch($july);
+
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_PENDING)
+        ->and($line->gross_paise)->toBe(1_000_000)
+        ->and($line->awards_gross_paise)->toBe(1_000_000)
+        ->and($line->admin_charge_paise)->toBe(0)
+        ->and($line->tds_paise)->toBe(50_000)
+        ->and($line->net_transferred_paise)->toBe(950_000);
+
+    expect((int) WalletLedgerEntry::where('distributor_id', $dist->id)->where('type', 'income_cap_forfeit')->sum('amount_paise'))->toBe(-300_000)
+        ->and($wallet->balancePaise($dist->id))->toBe(0);
+});
+
+it('monthly batch: a KYC hold keeps the award in the wallet and the batch after approval pays it', function (): void {
+    $dist = makePayoutEligibleDistributor();
+    $dist->user->update(['status' => 'pending']);
+    $july = Carbon::create(2026, 7, 1);
+    creditPayoutAward($dist, 5_000_000, $july);
+
+    $held = app(PayoutService::class)->runMonthlyBatch($july);
+
+    $line = PayoutLineItem::where('payout_batch_id', $held->id)->where('distributor_id', $dist->id)->sole();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_KYC_PENDING)
+        ->and($line->gross_paise)->toBe(5_000_000)
+        ->and($line->awards_gross_paise)->toBe(5_000_000)
+        ->and(app(WalletService::class)->balancePaise($dist->id))->toBe(5_000_000);
+
+    // Never forfeited: KYC approved, the next monthly batch pays it in full.
+    $dist->user->update(['status' => 'active']);
+    $next = app(PayoutService::class)->runMonthlyBatch(Carbon::create(2026, 8, 1));
+
+    $paid = PayoutLineItem::where('payout_batch_id', $next->id)->where('distributor_id', $dist->id)->sole();
+    expect($paid->status)->toBe(PayoutLineItem::STATUS_PENDING)
+        ->and($paid->awards_gross_paise)->toBe(5_000_000)
+        ->and($paid->net_transferred_paise)->toBe(4_750_000);
+});
+
+it('monthly batch: an award held for no bank account is released into the same batch once details arrive', function (): void {
+    setPayoutSetting('payout.gateway', 'manual_neft');
+    $dist = makePayoutEligibleDistributor();
+    $dist->update(['bank_account_enc' => null]);
+    $july = Carbon::create(2026, 7, 1);
+    creditPayoutAward($dist, 5_000_000, $july);
+
+    $batch = app(PayoutService::class)->runMonthlyBatch($july);
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole()->status)
+        ->toBe(PayoutLineItem::STATUS_NO_BANK_ACCOUNT);
+
+    $dist->update(['bank_account_enc' => 'stub']);
+    app(PayoutService::class)->approve($batch->fresh(), User::factory()->create()->id);
+
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole();
+    expect($line->status)->toBe(PayoutLineItem::STATUS_PENDING)
+        ->and($line->awards_gross_paise)->toBe(5_000_000)
+        ->and($line->net_transferred_paise)->toBe(4_750_000);
+});
+
+it('monthly batch: leaves an award unswept when its rank qualification no longer stands, and pays the rest', function (): void {
+    // R7: re-checked before payment. A voided qualification holds the award
+    // back; the Rank Bonus beside it is paid as usual.
+    $dist = makePayoutEligibleDistributor();
+    $july = Carbon::create(2026, 7, 1);
+    $milestone = creditPayoutAward($dist, 5_000_000, $july, stillQualified: false);
+    app(WalletService::class)->credit($dist->id, 100_000, 'adc_credit', walletRef(), 'test_reference', bonusMonth: $july);
+
+    $batch = app(PayoutService::class)->runMonthlyBatch($july);
+
+    $line = PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->sole();
+    expect($line->gross_paise)->toBe(100_000)
+        ->and($line->awards_gross_paise)->toBe(0);
+
+    $award = WalletLedgerEntry::where('type', 'awards_credit')->where('reference_id', $milestone->id)->sole();
+    expect($award->swept_by_payout_batch_id)->toBeNull()
+        ->and(app(WalletService::class)->balancePaise($dist->id))->toBe(5_000_000);
+});
+
+it('monthly batch: never sweeps a withdrawn award, even when its wallet reversal is missing', function (): void {
+    // Fix 1: the payout pays only milestones still `credited`.
+    $dist = makePayoutEligibleDistributor();
+    $july = Carbon::create(2026, 7, 1);
+    $milestone = creditPayoutAward($dist, 5_000_000, $july);
+    $milestone->update(['status' => LifetimeAwardMilestone::STATUS_CANCELLED]);
+
+    $batch = app(PayoutService::class)->runMonthlyBatch($july);
+
+    expect(PayoutLineItem::where('payout_batch_id', $batch->id)->where('distributor_id', $dist->id)->exists())->toBeFalse()
+        ->and(WalletLedgerEntry::where('type', 'awards_credit')->where('reference_id', $milestone->id)->value('swept_by_payout_batch_id'))->toBeNull();
 });

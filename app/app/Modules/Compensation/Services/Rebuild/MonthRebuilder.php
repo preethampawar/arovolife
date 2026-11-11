@@ -49,8 +49,9 @@ use Illuminate\Support\Carbon;
  *
  *  - a purchase-offer grant an order has already consumed (F124 — re-deriving
  *    it would let the same order's discount be taken twice);
- *  - a lifetime-award milestone already delivered or cancelled (a hand-released
- *    award, not an engine output);
+ *  - a lifetime-award milestone already delivered or cancelled (merchandise
+ *    handed over under the retired goods plan, or an award withdrawn — a
+ *    withdrawal is a decision, and re-deriving it would pay it again);
  *  - a legacy `is_carry_forward` rank qualification written by an EARLIER
  *    month's check, which belongs to that month and not to this one.
  */
@@ -58,15 +59,15 @@ final class MonthRebuilder
 {
     /**
      * The wallet rows a monthly credit consists of: the gross, and the two
-     * halves of the credit-time repurchase deduction.
-     *
-     * Lifetime awards have no wallet row — they are merchandise released by
-     * hand, not by an engine, and a rebuild does not take one back.
+     * halves of the credit-time repurchase deduction. A cash Lifetime Award
+     * (client 2026-11-10) is one awards_credit row referencing its milestone;
+     * the rank engine re-derives both, and a swept one refuses the rebuild
+     * like any other paid credit.
      *
      * @var list<string>
      */
     private const WALLET_TYPES = [
-        'gbb_credit', 'rank_credit', 'fortune_credit', 'adc_credit',
+        'gbb_credit', 'rank_credit', 'fortune_credit', 'adc_credit', 'awards_credit',
         'repurchase_transfer', 'repurchase_deduction',
     ];
 
@@ -104,7 +105,7 @@ final class MonthRebuilder
             'rank_monthly_pools' => $this->rankPools($month)->count(),
             'rank_monthly_passes' => $this->rankPasses($month)->count(),
             'rank_qualifications' => $this->rankQualifications($month)->count(),
-            'lifetime_award_milestones' => $this->pendingMilestones($month)->count(),
+            'lifetime_award_milestones' => $this->rebuildableMilestones($month)->count(),
             'gbb_monthly_results' => $this->gbbResults($month)->count(),
             'gbb_monthly_pools' => $this->gbbPools($month)->count(),
             'fortune_bonus_results' => $this->fortuneResults($month)->count(),
@@ -188,7 +189,7 @@ final class MonthRebuilder
                 // The pass rows are part of the frozen month (F-10).
                 'rank_monthly_passes' => $this->rankPasses($month)->delete(),
                 'rank_qualifications' => $this->rankQualifications($month)->delete(),
-                'lifetime_award_milestones' => $this->pendingMilestones($month)->delete(),
+                'lifetime_award_milestones' => $this->rebuildableMilestones($month)->delete(),
                 'gbb_monthly_results' => $this->gbbResults($month)->delete(),
                 'gbb_monthly_pools' => $this->gbbPools($month)->delete(),
                 'fortune_bonus_results' => $this->fortuneResults($month)->delete(),
@@ -452,6 +453,7 @@ final class MonthRebuilder
             'rank_bonus_result' => $this->ids($this->rankResults($month)),
             'fortune_bonus_result' => $this->ids($this->fortuneResults($month)),
             'adc_bonus_result' => $this->ids($this->adcResults($month)),
+            'lifetime_award_milestone' => $this->ids($this->rebuildableMilestones($month)),
         ];
     }
 
@@ -549,12 +551,17 @@ final class MonthRebuilder
             ->where('is_carry_forward', false);
     }
 
-    /** @return Builder<LifetimeAwardMilestone> */
-    private function pendingMilestones(Carbon $month): Builder
+    /**
+     * The month's engine-written award milestones — pending or credited — which
+     * the rank engine re-derives. Delivered and cancelled ones survive.
+     *
+     * @return Builder<LifetimeAwardMilestone>
+     */
+    private function rebuildableMilestones(Carbon $month): Builder
     {
         return LifetimeAwardMilestone::query()
             ->whereDate('triggered_month', $month->toDateString())
-            ->where('status', LifetimeAwardMilestone::STATUS_PENDING);
+            ->whereIn('status', [LifetimeAwardMilestone::STATUS_PENDING, LifetimeAwardMilestone::STATUS_CREDITED]);
     }
 
     /** @return Builder<GbbMonthlyResult> */

@@ -33,11 +33,12 @@ class WalletService
      * own list, because a bonus type added later and missed here would make
      * the company look more profitable than it is, silently and forever.
      *
-     * Note this is deliberately WIDER than the six rows
+     * Note this is deliberately WIDER than the seven rows
      * IncomeOverviewService::bonusSummaryFromTotals() shows a distributor:
      * that list is a feature-gated display of the bonuses they can earn, while
      * this is every rupee that left the company as commission — franchise
-     * payouts and manual credits included.
+     * payouts, cash Lifetime Awards (client 2026-11-10) and manual credits
+     * included.
      */
     public const BONUS_CREDIT_TYPES = [
         'gsb_credit',
@@ -46,6 +47,7 @@ class WalletService
         'rank_credit',
         'fortune_credit',
         'adc_credit',
+        'awards_credit',
         'franchise_credit',
         'manual_credit',
     ];
@@ -207,6 +209,9 @@ class WalletService
             CompensationPlanSettingsService::GROUP_A_TYPES,
             CompensationPlanSettingsService::GROUP_B_TYPES,
             CompensationPlanSettingsService::GROUP_D_TYPES,
+            // A Lifetime Award references its milestone, which names the rank
+            // qualification it was earned on (R-128).
+            CompensationPlanSettingsService::AWARD_TYPES,
         );
 
         if (in_array($type, $saleDerived, true) && ($referenceId === null || $referenceType === null)) {

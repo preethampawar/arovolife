@@ -37,12 +37,6 @@ parameters:
 			path: app/Modules/Admin/Http/Controllers/AdminKycController.php
 
 		-
-			message: '#^Parameter \$actorId of class App\\Modules\\Compensation\\Events\\LifetimeAwardReleased constructor expects int\|null, int\|string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Modules/Admin/Http/Controllers/AdminLifetimeAwardsController.php
-
-		-
 			message: '#^Using nullsafe property access "\?\-\>full_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -3531,7 +3525,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 4
+			count: 5
 			path: tests/Modules/Compensation/AdminAwRwCalculationTest.php
 
 		-
@@ -3711,7 +3705,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 3
+			count: 8
 			path: tests/Modules/Compensation/AdminLifetimeAwardsTest.php
 
 		-
@@ -4005,7 +3999,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 51
+			count: 62
 			path: tests/Modules/Compensation/IncomeControllerTest.php
 
 		-
@@ -5585,3 +5579,15 @@ parameters:
 			identifier: property.notFound
 			count: 1
 			path: tests/Unit/RetiredServiceWorkerTest.php
+
+		-
+			message: '#^Access to an undefined property Pest\\PendingCalls\\TestCall\:\:\$provider\.$#'
+			identifier: property.notFound
+			count: 4
+			path: tests/Feature/ActionCenter/AwardRequalificationCheckProviderTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$user\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Modules/Compensation/AdminLifetimeAwardsTest.php

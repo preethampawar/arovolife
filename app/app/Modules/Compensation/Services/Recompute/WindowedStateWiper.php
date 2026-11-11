@@ -68,6 +68,7 @@ final class WindowedStateWiper
         'rank_bonus_result' => 'rank_bonus_results',
         'fortune_bonus_result' => 'fortune_bonus_results',
         'adc_bonus_result' => 'adc_bonus_results',
+        'lifetime_award_milestone' => 'lifetime_award_milestones',
     ];
 
     /**
@@ -196,6 +197,7 @@ final class WindowedStateWiper
 
                 $removed[$table] = $this->db->table($table)
                     ->whereDate($filter['column'], '>=', $boundary->toDateString())
+                    ->when($table === 'lifetime_award_milestones', fn ($query) => $query->whereIn('status', DerivedTables::REBUILDABLE_AWARD_STATUSES))
                     ->delete();
             }
             $removed['wallet_ledger_entries'] = $this->deleteOrphanedWalletEntries($dayStart);
@@ -262,6 +264,7 @@ final class WindowedStateWiper
                 ? (int) $this->regrantableGrants($monthStart)->count()
                 : (int) $this->db->table($table)
                     ->whereDate($filter['column'], '>=', $boundary->toDateString())
+                    ->when($table === 'lifetime_award_milestones', fn ($query) => $query->whereIn('status', DerivedTables::REBUILDABLE_AWARD_STATUSES))
                     ->count();
 
             if ($count > 0) {

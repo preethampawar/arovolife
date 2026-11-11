@@ -362,7 +362,7 @@ final class EngineRegistry
             new EngineDefinition(
                 key: 'rank.bonus',
                 label: 'Rank Bonus',
-                description: "Prices the month's Rank Bonus pool and credits each qualified distributor their share of the month's rank points, including any AO/GO grants. Impact: writes the Rank Bonus results and wallet credits. Idempotent — distributors already credited for the month are skipped. It pays only distributors the Rank Qualification Check has already recorded.",
+                description: "Prices the month's Rank Bonus pool and credits each qualified distributor their share of the month's rank points, including any AO/GO grants. Impact: writes the Rank Bonus results and wallet credits. Idempotent — distributors already credited for the month are skipped. It pays only distributors the Rank Qualification Check has already recorded. With Lifetime Awards on, it also credits each first-time rank achiever's cash Lifetime Award (the month's highest payable rank only), paid with the monthly payout on the 8th.",
                 periodType: EnginePeriodType::Month,
                 commandClass: RankBonusRunCommand::class,
                 commandSignature: 'rank:monthly-run',

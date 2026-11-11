@@ -2,12 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Modules\Commerce\Models\BvLedgerEntry;
 use App\Modules\Compensation\Models\AreteCenter;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\PayoutLineItem;
+use App\Modules\Compensation\Models\RankQualification;
+use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\IncomeOverviewService;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Features\AreteDevelopmentCenterBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
@@ -1389,19 +1393,29 @@ it('shows the ADC Bonus tab, card and page to the owner of a centre', function (
     $this->actingAs($user)->get(route('income.adc-bonus'))->assertOk();
 });
 
-function incomeAwardPart(int $distributorId, int $rank, int $tranche, string $description, string $status = LifetimeAwardMilestone::STATUS_PENDING): LifetimeAwardMilestone
+/** A cash award as the rank close leaves it (client 2026-11-10): credited, with its wallet row. */
+function incomeAward(int $distributorId, int $rank, string $description, string $status = LifetimeAwardMilestone::STATUS_CREDITED, ?string $notes = null): LifetimeAwardMilestone
 {
-    return LifetimeAwardMilestone::create([
+    $milestone = LifetimeAwardMilestone::create([
         'distributor_id' => $distributorId,
         'rank_number' => $rank,
-        'tranche' => $tranche,
+        'tranche' => 1,
         'amount_paise' => 1_540_000,
         'triggered_month' => '2026-09-01',
-        'qualification_count' => $tranche,
+        'achieved_month' => '2026-09-01',
+        'qualification_count' => 1,
         'award_description' => $description,
         'status' => $status,
-        'delivered_at' => $status === LifetimeAwardMilestone::STATUS_DELIVERED ? '2026-10-05 11:00:00' : null,
+        'notes' => $notes,
     ]);
+
+    if ($status === LifetimeAwardMilestone::STATUS_CREDITED) {
+        // The qualification it was earned on, still standing (R7 re-check).
+        RankQualification::create(['distributor_id' => $distributorId, 'rank_number' => $rank, 'month_start' => '2026-09-01', 'occurrence_in_month' => 1, 'is_carry_forward' => false, 'status' => RankQualification::STATUS_QUALIFIED]);
+        app(WalletService::class)->credit($distributorId, 1_540_000, 'awards_credit', $milestone->id, 'lifetime_award_milestone', $description, bonusMonth: Carbon::parse('2026-09-01'));
+    }
+
+    return $milestone;
 }
 
 it('hides the Awards & Rewards tab and page while the Lifetime Awards flag is off', function (): void {
@@ -1412,34 +1426,104 @@ it('hides the Awards & Rewards tab and page while the Lifetime Awards flag is of
     $this->actingAs($user)->get(route('income.awards'))->assertNotFound();
 });
 
-it('shows a distributor their own award parts and nobody else\'s', function (): void {
+it('shows a distributor their own awards, paid and to be paid, and nobody else\'s', function (): void {
     Feature::for(null)->activate(LifetimeAwardsFeature::class);
     ['user' => $user, 'distributorId' => $id] = incomeDistributor();
     ['distributorId' => $otherId] = incomeDistributor();
 
-    incomeAwardPart($id, 1, 1, 'Silver gift hamper');
-    incomeAwardPart($id, 3, 1, 'Emerald kitchen set', LifetimeAwardMilestone::STATUS_DELIVERED);
-    incomeAwardPart($otherId, 2, 1, 'Someone else\'s Pearl award');
+    incomeGivePersonalBv($id);
+    incomeAward($id, 1, 'Silver Partner Lifetime Award');
+    $paid = incomeAward($id, 3, 'Emerald Partner Lifetime Award');
+    incomeAward($otherId, 2, 'Someone else\'s Pearl award');
+
+    $batch = PayoutBatch::create(['batch_type' => PayoutBatch::TYPE_MONTHLY, 'batch_date' => '2026-09-01', 'status' => PayoutBatch::STATUS_COMPLETED, 'approved_at' => '2026-10-08 11:00:00']);
+    WalletLedgerEntry::where('type', 'awards_credit')->where('reference_id', $paid->id)->update(['swept_by_payout_batch_id' => $batch->id]);
+    PayoutLineItem::create(['payout_batch_id' => $batch->id, 'distributor_id' => $id, 'gross_paise' => 1_540_000, 'awards_gross_paise' => 1_540_000, 'tds_paise' => 77_000, 'wallet_balance_paise' => 1_540_000, 'net_transferred_paise' => 1_463_000, 'status' => PayoutLineItem::STATUS_TRANSFERRED]);
 
     $this->actingAs($user)->get(route('income.dashboard'))->assertOk()->assertSee('Awards & Rewards')->assertDontSee('Coming soon');
 
     $this->actingAs($user)->get(route('income.awards'))
         ->assertOk()
-        ->assertSee('Silver gift hamper')
-        ->assertSee('Part A')
-        ->assertSee('Awaiting hand-over')
-        ->assertSee('Emerald kitchen set')
-        ->assertSee('Handed over on 5 Oct 2026')
+        ->assertSee('Silver Partner Lifetime Award')
+        ->assertSee('To be paid with the payout on the 8th')
+        ->assertSee('Emerald Partner Lifetime Award')
+        ->assertSee('Paid on 8 Oct 2026')
         ->assertSee('September 2026')
-        ->assertSee('merchandise only — never cash')
+        ->assertSee('paid to your bank account with the monthly payout on the 8th')
+        ->assertDontSee('merchandise')
+        ->assertDontSee('Part A')
         ->assertDontSee('Someone else\'s Pearl award');
 });
 
-it('says plainly when a distributor has no award parts recorded', function (): void {
+/** Lifetime personal BV, so the payout's web-only rung (3,000 BV) is cleared. */
+function incomeGivePersonalBv(int $distributorId, int $bvPaise = 300_000): void
+{
+    // A stand-in order id: the BV row is what the ladder reads, not the order.
+    disableTestForeignKeys();
+    try {
+        BvLedgerEntry::create(['distributor_id' => $distributorId, 'order_id' => 870_000 + $distributorId, 'bv_paise' => $bvPaise, 'type' => 'accrual', 'effective_at' => now()]);
+    } finally {
+        enableTestForeignKeys();
+    }
+}
+
+it('says why an award is on hold, in the words of the hold as it stands now', function (): void {
+    Feature::for(null)->activate(LifetimeAwardsFeature::class);
+    ['user' => $user, 'distributorId' => $id] = incomeDistributor();
+    incomeAward($id, 1, 'Silver Partner Lifetime Award');
+
+    // No personal BV yet: the web-only rung.
+    $this->actingAs($user)->get(route('income.awards'))->assertOk()
+        ->assertSee('Held: the Compensation Plan pays to a bank account once your own purchases reach 3,000 BV (§8)');
+
+    incomeGivePersonalBv($id);
+    DB::table('distributors')->where('id', $id)->update(['bank_account_enc' => null]);
+    $this->actingAs($user)->get(route('income.awards'))->assertOk()->assertSee('On hold — add your bank details');
+
+    DB::table('distributors')->where('id', $id)->update(['bank_account_enc' => 'stub']);
+    $user->update(['status' => 'pending']);
+    $this->actingAs($user->fresh())->get(route('income.awards'))->assertOk()->assertSee('On hold — complete your KYC and bank details');
+
+    // KYC rung while the account itself is closed: never "complete your KYC".
+    $user->update(['status' => 'frozen']);
+    $this->actingAs($user->fresh())->get(route('income.awards'))->assertOk()
+        ->assertSee('On hold — your account is not active')
+        ->assertDontSee('complete your KYC');
+});
+
+it('never shows an old batch\'s hold on an award once the hold has cleared', function (): void {
+    Feature::for(null)->activate(LifetimeAwardsFeature::class);
+    ['user' => $user, 'distributorId' => $id] = incomeDistributor();
+    incomeGivePersonalBv($id);
+
+    // Held for KYC in July's batch; verified since.
+    $july = PayoutBatch::create(['batch_type' => PayoutBatch::TYPE_MONTHLY, 'batch_date' => '2026-07-01', 'status' => PayoutBatch::STATUS_COMPLETED]);
+    PayoutLineItem::create(['payout_batch_id' => $july->id, 'distributor_id' => $id, 'gross_paise' => 100_000, 'wallet_balance_paise' => 100_000, 'net_transferred_paise' => 0, 'status' => PayoutLineItem::STATUS_KYC_PENDING]);
+
+    incomeAward($id, 1, 'Silver Partner Lifetime Award');
+
+    $this->actingAs($user)->get(route('income.awards'))->assertOk()
+        ->assertSee('To be paid with the payout on the 8th')
+        ->assertDontSee('complete your KYC');
+});
+
+it('shows a withdrawn award with its reason and the grievance route', function (): void {
+    Feature::for(null)->activate(LifetimeAwardsFeature::class);
+    ['user' => $user, 'distributorId' => $id] = incomeDistributor();
+    incomeAward($id, 1, 'Silver Partner Lifetime Award', LifetimeAwardMilestone::STATUS_CANCELLED, 'Cooling-off cancellation.');
+
+    $this->actingAs($user)->get(route('income.awards'))
+        ->assertOk()
+        ->assertSee('Withdrawn')
+        ->assertSee('Reason: Cooling-off cancellation.')
+        ->assertSee('Grievance Redressal');
+});
+
+it('says plainly when a distributor has no awards recorded', function (): void {
     Feature::for(null)->activate(LifetimeAwardsFeature::class);
     ['user' => $user] = incomeDistributor();
 
     $this->actingAs($user)->get(route('income.awards'))
         ->assertOk()
-        ->assertSee('No award parts recorded.');
+        ->assertSee('No awards recorded.');
 });

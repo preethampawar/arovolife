@@ -102,9 +102,9 @@ it('records deleted false when the applies_to_awards setting is already absent',
 });
 
 it('refuses to retire the awards cash path while an unswept awards_credit ledger row exists', function (): void {
-    // RefreshDatabase already ran 2026_10_09_101300, which drops awards_credit
-    // from the MySQL enum; widen it back so a legacy row can exist. The DDL
-    // commits the test transaction on MySQL, so the row is removed by hand.
+    // RefreshDatabase ran 2026_10_09_101300 and then 2026_11_11_100000, so the
+    // enum already carries awards_credit; down() is a no-op widening. The row
+    // is removed by hand because DDL commits the test transaction on MySQL.
     $narrowAwardsCredit = require base_path(
         'app/Modules/Compensation/Database/Migrations/2026_10_09_101300_narrow_awards_credit_wallet_type.php'
     );
@@ -144,7 +144,8 @@ it('refuses to retire the awards cash path while an unswept awards_credit ledger
             ->toMatchArray(['deleted' => true, 'awards_credit_ledger_rows' => 1, 'awards_credit_unswept' => 0]);
     } finally {
         WalletLedgerEntry::whereKey($stranded->id)->delete();
-        $narrowAwardsCredit->up();
+        // Not narrowed again: the DDL would never roll back, and the final
+        // schema (2026_11_11_100000) carries awards_credit.
     }
 });
 

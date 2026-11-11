@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
+use App\Modules\Compensation\Models\PayoutBatch;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Notifications\LifetimeAwardWithdrawnNotification;
+use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
@@ -12,8 +14,9 @@ use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Route;
 use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class);
@@ -39,69 +42,59 @@ function lifetimeAwardsAdmin(): User
     return $user;
 }
 
-/** @param  array<string, mixed>  $overrides */
+/**
+ * A credited cash award with its wallet row, as the Rank Bonus close leaves it.
+ *
+ * @param  array<string, mixed>  $overrides
+ */
 function lifetimeAwardMilestone(array $overrides = []): LifetimeAwardMilestone
 {
-    return LifetimeAwardMilestone::create(array_merge([
+    $milestone = LifetimeAwardMilestone::create(array_merge([
         'distributor_id' => Distributor::factory()->create()->id,
         'rank_number' => 6,
-        'tranche' => 2,
+        'tranche' => 1,
         'amount_paise' => 93_240_000,
         'triggered_month' => '2026-08-01',
-        'qualification_count' => 2,
-        'award_description' => 'Blue Diamond Partner — tranche B, merchandise per plan',
-        'status' => LifetimeAwardMilestone::STATUS_PENDING,
+        'achieved_month' => '2026-08-01',
+        'qualification_count' => 1,
+        'award_description' => 'Blue Diamond Partner Lifetime Award',
+        'status' => LifetimeAwardMilestone::STATUS_CREDITED,
+        'credited_at' => now(),
     ], $overrides));
+
+    if ($milestone->status === LifetimeAwardMilestone::STATUS_CREDITED) {
+        app(WalletService::class)->credit(
+            $milestone->distributor_id, $milestone->amount_paise, 'awards_credit', $milestone->id,
+            'lifetime_award_milestone', 'Lifetime Award', bonusMonth: Carbon::parse('2026-08-01'),
+        );
+    }
+
+    return $milestone;
 }
 
-it('marks a releasable tranche delivered as merchandise and never credits the wallet', function (): void {
-    $milestone = lifetimeAwardMilestone();
-
-    $this->actingAs(lifetimeAwardsAdmin())
-        ->withoutMiddleware(PreventRequestForgery::class)
-        // A stale form that still posts the retired cash option changes nothing.
-        ->post(route('admin.lifetime-awards.deliver', $milestone->id), ['disbursement_type' => 'cash', 'notes' => 'Handed over'])
-        ->assertRedirect(route('admin.lifetime-awards.index'));
-
-    $milestone->refresh();
-    expect($milestone->status)->toBe(LifetimeAwardMilestone::STATUS_DELIVERED)
-        ->and($milestone->delivered_at)->not->toBeNull()
-        ->and($milestone->notes)->toBe('Handed over')
-        ->and($milestone->amount_paise)->toBe(93_240_000)
-        // The cash columns are gone (2026_10_09_101000).
-        ->and(Schema::hasColumn('lifetime_award_milestones', 'disbursement_type'))->toBeFalse()
-        ->and(Schema::hasColumn('lifetime_award_milestones', 'gross_paise'))->toBeFalse()
-        ->and(WalletLedgerEntry::where('distributor_id', $milestone->distributor_id)->count())->toBe(0);
-
-    $audit = AuditLog::query()->where('action', 'admin.lifetime_award.delivered')->where('subject_id', $milestone->id)->firstOrFail();
-    expect($audit->details['amount_paise'])->toBe(93_240_000)
-        ->and($audit->details)->not->toHaveKey('disbursement_type');
-});
-
-it('refuses to deliver a tranche the rank has not been qualified for enough times', function (): void {
-    $milestone = lifetimeAwardMilestone(['tranche' => 3, 'qualification_count' => 2]);
-
-    $this->actingAs(lifetimeAwardsAdmin())
-        ->withoutMiddleware(PreventRequestForgery::class)
-        ->post(route('admin.lifetime-awards.deliver', $milestone->id))
-        ->assertStatus(422);
-
-    expect($milestone->refresh()->status)->toBe(LifetimeAwardMilestone::STATUS_PENDING);
-});
-
-it('lists the tranche, its amount and the release-rule-changed flag, with no cash option', function (): void {
-    lifetimeAwardMilestone(['released_rule_changed_at' => '2026-10-09 10:00:00']);
+it('lists each award with its amount, the month it was earned for and the batch that paid it', function (): void {
+    $paid = lifetimeAwardMilestone();
+    $batch = PayoutBatch::create(['batch_type' => PayoutBatch::TYPE_MONTHLY, 'batch_date' => '2026-09-01', 'status' => PayoutBatch::STATUS_COMPLETED]);
+    WalletLedgerEntry::where('reference_id', $paid->id)->where('type', 'awards_credit')->update(['swept_by_payout_batch_id' => $batch->id]);
 
     $this->actingAs(lifetimeAwardsAdmin())
         ->get(route('admin.lifetime-awards.index'))
         ->assertOk()
-        ->assertSee('Tranche')
         ->assertSee('₹9,32,400')
-        ->assertSee('Release rule changed on 09 Oct 2026')
-        ->assertDontSee('<option value="cash">', false);
+        ->assertSee('Aug 2026')
+        ->assertSee('#'.$batch->id.' — 01 Sep 2026')
+        ->assertSee('TDS only')
+        ->assertDontSee('Tranche')
+        ->assertDontSee('Mark Delivered');
 });
 
-it('withdraws a pending award part with a reason, audited, so the distributor sees it Withdrawn', function (): void {
+it('has no delivery or reward-catalogue routes any more', function (): void {
+    expect(Route::has('admin.lifetime-awards.deliver'))->toBeFalse()
+        ->and(Route::has('admin.lifetime-awards.catalog'))->toBeFalse()
+        ->and(Route::has('admin.lifetime-awards.catalog.update'))->toBeFalse();
+});
+
+it('withdraws an unpaid credited award with a reason: wallet credit reversed, audited, partner told', function (): void {
     Notification::fake();
     $milestone = lifetimeAwardMilestone();
 
@@ -114,33 +107,62 @@ it('withdraws a pending award part with a reason, audited, so the distributor se
 
     $milestone->refresh();
     expect($milestone->status)->toBe(LifetimeAwardMilestone::STATUS_CANCELLED)
-        ->and($milestone->notes)->toBe('Terminated for breach of the Code of Ethics.');
+        ->and($milestone->notes)->toBe('Terminated for breach of the Code of Ethics.')
+        ->and(app(WalletService::class)->balancePaise($milestone->distributor_id))->toBe(0);
 
     $audit = AuditLog::query()->where('action', 'admin.lifetime_award.withdrawn')->where('subject_id', $milestone->id)->firstOrFail();
-    expect($audit->details['reason'])->toBe('Terminated for breach of the Code of Ethics.');
+    expect($audit->details['reason'])->toBe('Terminated for breach of the Code of Ethics.')
+        ->and($audit->details['wallet_reversed'])->toBeTrue()
+        ->and($audit->before_hash)->not->toBeNull()
+        ->and($audit->after_hash)->not->toBeNull();
 
     // An adverse decision is told, never left to be found: reason + grievance route.
     $user = $milestone->distributor->user;
     if ($user !== null) {
         Notification::assertSentTo($user, LifetimeAwardWithdrawnNotification::class,
-            fn (LifetimeAwardWithdrawnNotification $n): bool => $n->reason === 'Terminated for breach of the Code of Ethics.' && $n->part === 'B');
+            fn (LifetimeAwardWithdrawnNotification $n): bool => $n->reason === 'Terminated for breach of the Code of Ethics.');
     }
 });
 
-it('never withdraws a part already handed over, and needs a reason', function (): void {
+it('withdraws a pending award that was never credited', function (): void {
+    $milestone = lifetimeAwardMilestone(['status' => LifetimeAwardMilestone::STATUS_PENDING, 'credited_at' => null]);
+
+    $this->actingAs(lifetimeAwardsAdmin())
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.lifetime-awards.withdraw', $milestone->id), ['reason' => 'Correction'])
+        ->assertRedirect(route('admin.lifetime-awards.index'));
+
+    expect($milestone->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_CANCELLED);
+});
+
+it('refuses to withdraw an award the payout has already swept', function (): void {
+    $milestone = lifetimeAwardMilestone();
+    $batch = PayoutBatch::create(['batch_type' => PayoutBatch::TYPE_MONTHLY, 'batch_date' => '2026-09-01', 'status' => PayoutBatch::STATUS_PENDING]);
+    WalletLedgerEntry::where('reference_id', $milestone->id)->where('type', 'awards_credit')->update(['swept_by_payout_batch_id' => $batch->id]);
+
+    $this->actingAs(lifetimeAwardsAdmin())
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.lifetime-awards.withdraw', $milestone->id), ['reason' => 'x'])
+        ->assertStatus(409)
+        ->assertSee('This award has already been paid.');
+
+    expect($milestone->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_CREDITED);
+});
+
+it('never withdraws merchandise already handed over, and needs a reason', function (): void {
     $delivered = lifetimeAwardMilestone(['status' => LifetimeAwardMilestone::STATUS_DELIVERED, 'delivered_at' => now()]);
-    $pending = lifetimeAwardMilestone();
+    $credited = lifetimeAwardMilestone();
     $admin = lifetimeAwardsAdmin();
 
     $this->actingAs($admin)->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('admin.lifetime-awards.withdraw', $delivered->id), ['reason' => 'x'])
         ->assertSessionHas('error');
     $this->actingAs($admin)->withoutMiddleware(PreventRequestForgery::class)
-        ->post(route('admin.lifetime-awards.withdraw', $pending->id), [])
+        ->post(route('admin.lifetime-awards.withdraw', $credited->id), [])
         ->assertSessionHasErrors('reason');
 
     expect($delivered->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_DELIVERED)
-        ->and($pending->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_PENDING);
+        ->and($credited->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_CREDITED);
 });
 
 it('keeps withdrawing an award out of the finance role', function (): void {
@@ -152,17 +174,5 @@ it('keeps withdrawing an award out of the finance role', function (): void {
         ->post(route('admin.lifetime-awards.withdraw', $milestone->id), ['reason' => 'x'])
         ->assertForbidden();
 
-    expect($milestone->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_PENDING);
-});
-
-it('never marks a withdrawn award part delivered', function (): void {
-    $milestone = lifetimeAwardMilestone(['status' => LifetimeAwardMilestone::STATUS_CANCELLED, 'notes' => 'Terminated']);
-
-    $this->actingAs(lifetimeAwardsAdmin())
-        ->withoutMiddleware(PreventRequestForgery::class)
-        ->post(route('admin.lifetime-awards.deliver', $milestone->id), ['notes' => 'x'])
-        ->assertStatus(409);
-
-    expect($milestone->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_CANCELLED)
-        ->and($milestone->fresh()->delivered_at)->toBeNull();
+    expect($milestone->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_CREDITED);
 });

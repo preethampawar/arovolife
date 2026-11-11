@@ -21,13 +21,16 @@ use App\Modules\Compensation\Models\RankMonthlyPass;
 use App\Modules\Compensation\Models\RankMonthlyPool;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
+use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\EngineStatusService;
+use App\Modules\Compensation\Services\LifetimeAwardService;
 use App\Modules\Compensation\Services\Rebuild\RebuildKind;
 use App\Modules\Compensation\Services\Rebuild\RebuildPlanner;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Kernel;
@@ -36,6 +39,7 @@ use Illuminate\Foundation\Testing\WithConsoleEvents;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Laravel\Pennant\Feature;
 
 uses(RefreshDatabase::class, WithConsoleEvents::class);
 
@@ -566,4 +570,95 @@ it('records how much credited income the wipe removed', function (): void {
     expect($wiped->details['wallet_totals']['rank_credit']['count'])->toBe(1);
     expect($wiped->details['wallet_totals']['rank_credit']['paise'])->toBe(100_000);
     expect($wiped->details['wallet_totals']['gbb_credit']['paise'])->toBe(50_000);
+});
+
+/** A cash award the month's rank close credited (client 2026-11-10), with its wallet row. */
+function seedCreditedAward(Distributor $distributor, string $status = LifetimeAwardMilestone::STATUS_CREDITED): LifetimeAwardMilestone
+{
+    $milestone = LifetimeAwardMilestone::create([
+        'distributor_id' => $distributor->id, 'rank_number' => 3, 'triggered_month' => REBUILD_MONTH_START,
+        'achieved_month' => REBUILD_MONTH_START, 'amount_paise' => 2_000_000,
+        'award_description' => 'Cash award', 'status' => $status,
+    ]);
+
+    app(WalletService::class)->credit(
+        distributorId: $distributor->id,
+        amountPaise: 2_000_000,
+        type: 'awards_credit',
+        referenceId: $milestone->id,
+        referenceType: 'lifetime_award_milestone',
+        bonusMonth: Carbon::parse(REBUILD_MONTH_START),
+    );
+
+    return $milestone;
+}
+
+it('takes a credited, unswept award and its wallet credit with the month, for the close to re-derive once', function (): void {
+    [$distributor] = seedCreditingMonth();
+    seedCreditedAward($distributor);
+    $developer = monthRebuildDeveloper();
+
+    expect(Artisan::call('compensation:rebuild-month', [
+        '--month' => REBUILD_MONTH,
+        '--actor' => $developer->id,
+        '--yes' => true,
+    ]))->toBe(0);
+
+    expect(LifetimeAwardMilestone::where('status', LifetimeAwardMilestone::STATUS_CREDITED)->exists())->toBeFalse()
+        ->and(WalletLedgerEntry::where('type', 'awards_credit')->exists())->toBeFalse();
+
+    // The close re-derives it (stubbed above, so done here through the same
+    // service the Rank Bonus credit step calls): the month's qualification
+    // comes back, and two re-runs still leave exactly one award.
+    Feature::for(null)->activate(LifetimeAwardsFeature::class);
+    DB::table('settings')->updateOrInsert(['key' => 'comp.awards.cash_effective_month'], ['value' => '2026-08', 'version' => 1, 'updated_at' => now()]);
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+    app()->forgetInstance(LifetimeAwardService::class);
+    RankQualification::create([
+        'distributor_id' => $distributor->id, 'rank_number' => 3, 'month_start' => REBUILD_MONTH_START,
+        'occurrence_in_month' => 1, 'is_carry_forward' => false, 'status' => RankQualification::STATUS_QUALIFIED,
+    ]);
+
+    foreach ([1, 2] as $run) {
+        $awards = app(LifetimeAwardService::class);
+        $plan = $awards->planForMonth(Carbon::parse(REBUILD_MONTH_START), [$distributor->id => [3]]);
+        DB::transaction(fn () => $awards->creditPlan($plan));
+    }
+
+    expect(LifetimeAwardMilestone::where('distributor_id', $distributor->id)->where('rank_number', 3)->count())->toBe(1)
+        ->and(WalletLedgerEntry::where('type', 'awards_credit')->count())->toBe(1);
+});
+
+it('refuses a month whose award has already been paid', function (): void {
+    [$distributor] = seedCreditingMonth();
+    $milestone = seedCreditedAward($distributor);
+
+    $frozen = PayoutBatch::create([
+        'batch_type' => PayoutBatch::TYPE_MONTHLY,
+        'batch_date' => '2026-09-01',
+        'status' => PayoutBatch::STATUS_COMPLETED,
+    ]);
+    WalletLedgerEntry::where('type', 'awards_credit')->where('reference_id', $milestone->id)
+        ->update(['swept_by_payout_batch_id' => $frozen->id]);
+
+    $plan = app(RebuildPlanner::class)->plan(RebuildKind::Month, Carbon::parse(REBUILD_MONTH_START));
+
+    expect($plan->isRefused())->toBeTrue()
+        ->and(implode("\n", $plan->refusals))->toContain('money that left cannot be recomputed');
+});
+
+it('keeps a withdrawn award, its credit and its reversal through a rebuild, so it is never re-paid', function (): void {
+    [$distributor] = seedCreditingMonth();
+    $milestone = seedCreditedAward($distributor, LifetimeAwardMilestone::STATUS_CANCELLED);
+    app(WalletService::class)->reverseBonusCredit($distributor->id, 2_000_000, 0, $milestone->id, 'lifetime_award_milestone', Carbon::parse(REBUILD_MONTH_START));
+    $developer = monthRebuildDeveloper();
+
+    expect(Artisan::call('compensation:rebuild-month', [
+        '--month' => REBUILD_MONTH,
+        '--actor' => $developer->id,
+        '--yes' => true,
+    ]))->toBe(0);
+
+    expect(LifetimeAwardMilestone::whereKey($milestone->id)->value('status'))->toBe(LifetimeAwardMilestone::STATUS_CANCELLED)
+        ->and(WalletLedgerEntry::where('reference_type', 'lifetime_award_milestone')->where('reference_id', $milestone->id)->count())->toBe(2);
 });

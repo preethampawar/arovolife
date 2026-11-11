@@ -171,6 +171,16 @@ final class DerivedTables
     public const PRESERVED_WALLET_TYPES = ['repurchase_wallet_used'];
 
     /**
+     * The `lifetime_award_milestones` statuses an engine writes and a wipe may
+     * remove. A cancelled (withdrawn) or delivered (merchandise, retired plan)
+     * milestone is a decision, not an engine output: both wipers keep it, so a
+     * replay never re-pays a withdrawn award (it still blocks its rank).
+     *
+     * @var list<string>
+     */
+    public const REBUILDABLE_AWARD_STATUSES = ['pending', 'credited'];
+
+    /**
      * `redeem_point_entries.reference_type` for the accrual a redeem-points
      * grant writes. Those accruals are the only derived rows in that ledger:
      * redemptions and their refunds record what a distributor spent at

@@ -936,10 +936,7 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     // Lifetime Awards (Phase 5)
     Route::prefix('lifetime-awards')->name('lifetime-awards.')->group(function (): void {
         Route::get('/', [AdminLifetimeAwardsController::class, 'index'])->name('index');
-        Route::post('/{milestone}/deliver', [AdminLifetimeAwardsController::class, 'markDelivered'])->name('deliver')->whereNumber('milestone');
         Route::post('/{milestone}/withdraw', [AdminLifetimeAwardsController::class, 'withdraw'])->middleware('can:compliance.discipline')->name('withdraw')->whereNumber('milestone');
-        Route::get('/catalog', [AdminLifetimeAwardsController::class, 'catalog'])->name('catalog');
-        Route::post('/catalog/{reward}', [AdminLifetimeAwardsController::class, 'updateReward'])->middleware('can:finance.record')->name('catalog.update')->whereNumber('reward');
     });
 
     // Commerce — coupons / discounts (Epic 3)

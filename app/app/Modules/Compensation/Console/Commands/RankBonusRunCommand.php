@@ -114,6 +114,10 @@ final class RankBonusRunCommand extends Command
         $this->line('Company turnover: ₹'.Number::format($result['turnover_paise'] / 100, 2));
         $this->line('Distributors credited: '.$result['credited']);
 
+        if (($result['awards_credited'] ?? 0) > 0) {
+            $this->line('Lifetime Awards credited: '.$result['awards_credited'].' (₹'.Number::format($result['awards_paise'] / 100, 2).')');
+        }
+
         if (($result['qualified_after_freeze'] ?? 0) > 0) {
             $this->warn(
                 'Qualified after the pool was frozen: '.$result['qualified_after_freeze']

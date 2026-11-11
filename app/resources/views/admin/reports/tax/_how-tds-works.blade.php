@@ -28,8 +28,9 @@
         <p>
             <strong>TDS is {{ $tds_rate }} of the payable shown.</strong> Payable here is
             <em>gross − repurchase deduction − admin charge</em>, on weekly and monthly batches alike,
-            rounded to the paisa and never more than the payable itself. Lifetime Awards are
-            merchandise only and never reach a payout, so nothing is left out of the base.
+            rounded to the paisa and never more than the payable itself. A Lifetime Award on a
+            monthly line is in the payable in full — it carries no repurchase deduction or admin
+            charge — and is taxed at the same rate, inside the same TDS figure.
         </p>
         <p>
             <strong>PAN is masked, and only masked.</strong> The register reads the last four digits

@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
  * @property int $gross_paise
  * @property int $admin_charge_paise
  * @property int $tds_paise
+ * @property int $awards_gross_paise
  * @property int $wallet_balance_paise
  * @property int $repurchase_deduction_paise
  * @property int $net_transferred_paise
@@ -84,7 +85,7 @@ final class PayoutLineItem extends Model
 
     protected $fillable = [
         'payout_batch_id', 'distributor_id',
-        'gross_paise', 'admin_charge_paise', 'tds_paise',
+        'gross_paise', 'admin_charge_paise', 'tds_paise', 'awards_gross_paise',
         'wallet_balance_paise', 'repurchase_deduction_paise', 'net_transferred_paise',
         'bank_account_last4', 'utr_number', 'status', 'failure_reason',
         'razorpay_payout_id', 'razorpay_contact_id', 'razorpay_fund_account_id',
@@ -97,6 +98,7 @@ final class PayoutLineItem extends Model
             'gross_paise' => 'integer',
             'admin_charge_paise' => 'integer',
             'tds_paise' => 'integer',
+            'awards_gross_paise' => 'integer',
             'wallet_balance_paise' => 'integer',
             'repurchase_deduction_paise' => 'integer',
             'net_transferred_paise' => 'integer',

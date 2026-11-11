@@ -21,6 +21,7 @@ use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\GenosBvLedgerService;
 use App\Modules\Compensation\Services\GsbSlabProgressService;
 use App\Modules\Compensation\Services\IncomeOverviewService;
+use App\Modules\Compensation\Services\LifetimeAwardService;
 use App\Modules\Compensation\Services\PayoutService;
 use App\Modules\Compensation\Services\PersonalBvTitleService;
 use App\Modules\Compensation\Services\RankStatusService;
@@ -29,6 +30,7 @@ use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Compensation\Support\AdcBonusVisibility;
 use App\Modules\Compensation\Support\IncomeFilterDefaults;
 use App\Modules\Compensation\Support\RepurchaseWalletStatus;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Shared\Features\FortuneBonusFeature;
 use App\Modules\Shared\Features\GenosSalesBonusFeature;
 use App\Modules\Shared\Features\GrowthBoosterBonusFeature;
@@ -462,9 +464,16 @@ final class IncomeController extends Controller
     }
 
     /**
-     * The distributor's own Lifetime Award parts — merchandise, never cash.
-     * Historical facts only: parts already earned and their hand-over state,
-     * never a part still to come (hard rule 3).
+     * The distributor's own Lifetime Awards — one cash award per rank, paid
+     * with the monthly payout on the 8th (the client, 2026-11-10). Historical
+     * facts only: awards already earned and where each one stands, never an
+     * award still to come, an amount for a rank not reached or what is needed
+     * to reach one (hard rule 3).
+     *
+     * Each award's state: `paid` (its payout line transferred), `to_be_paid`
+     * (credited, due on the next 8th, or in a batch not yet settled), a
+     * `held:<reason>` while the payout keeps it in the wallet, `withdrawn`, or
+     * `delivered` (merchandise under the retired plan).
      */
     public function awards(Request $request): View
     {
@@ -475,25 +484,95 @@ final class IncomeController extends Controller
 
         try {
             $rows = LifetimeAwardMilestone::where('distributor_id', $distributor->id)
+                ->with('walletCredit.sweptByBatch')
+                ->orderByDesc('achieved_month')
                 ->orderByDesc('triggered_month')
                 ->orderByDesc('rank_number')
-                ->orderBy('tranche')
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
 
-            $counts = LifetimeAwardMilestone::where('distributor_id', $distributor->id)
-                ->selectRaw('status, COUNT(*) as n')
-                ->groupBy('status')
-                ->pluck('n', 'status');
+            $states = $this->awardStates($distributor->id, collect($rows->items()));
+
+            $all = LifetimeAwardMilestone::where('distributor_id', $distributor->id)
+                ->with('walletCredit.sweptByBatch')
+                ->get();
+            $allStates = $this->awardStates($distributor->id, $all);
+            $counts = [
+                'earned' => $all->where('status', '!=', LifetimeAwardMilestone::STATUS_CANCELLED)->count(),
+                'paid' => collect($allStates)->filter(fn (array $state): bool => in_array($state['key'], ['paid', 'delivered'], true))->count(),
+            ];
+            $counts['to_be_paid'] = $counts['earned'] - $counts['paid'];
 
             $rankNames = collect(app(CompensationPlanSettingsService::class)->rankNames());
+            $neftMinBvPaise = app(CompensationPlanSettingsService::class)->neftMinBvPaise();
         } catch (QueryException) {
             $rows = collect();
-            $counts = collect();
+            $states = [];
+            $counts = ['earned' => 0, 'paid' => 0, 'to_be_paid' => 0];
             $rankNames = collect();
+            $neftMinBvPaise = 0;
         }
 
-        return view('income.awards', compact('distributor', 'rows', 'counts', 'rankNames'));
+        return view('income.awards', compact('distributor', 'rows', 'states', 'counts', 'rankNames', 'neftMinBvPaise'));
+    }
+
+    /**
+     * Where each award stands, for the Awards page.
+     *
+     * @param  Collection<int, LifetimeAwardMilestone>  $milestones
+     * @return array<int, array{key: string, date: Carbon|null}> milestone id → state
+     */
+    private function awardStates(int $distributorId, Collection $milestones): array
+    {
+        $sweptBatchIds = $milestones
+            ->map(fn (LifetimeAwardMilestone $m): ?int => $m->walletCredit?->swept_by_payout_batch_id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $linesByBatch = $sweptBatchIds === [] ? collect() : PayoutLineItem::where('distributor_id', $distributorId)
+            ->whereIn('payout_batch_id', $sweptBatchIds)
+            ->get(['payout_batch_id', 'status'])
+            ->keyBy('payout_batch_id');
+
+        $unswept = $milestones->filter(fn (LifetimeAwardMilestone $m): bool => $m->status === LifetimeAwardMilestone::STATUS_CREDITED
+            && $m->walletCredit !== null
+            && $m->walletCredit->swept_by_payout_batch_id === null);
+
+        $requalification = $unswept->isEmpty() ? [] : app(LifetimeAwardService::class)->milestonesNoLongerQualified(
+            $unswept->pluck('id')->map(fn ($id): int => (int) $id)->values()->all(),
+        );
+
+        // The hold as it stands now, from the payout's own ladder — not what an
+        // old batch recorded: a partner held in July and verified since must
+        // not be told their new award is held for KYC.
+        $hold = $unswept->isEmpty() ? null : app(PayoutService::class)->holdStatusFor($distributorId);
+
+        // isKycVerified() needs users.status = active: an account that is not
+        // pending KYC but closed, frozen or terminated must never be told to
+        // complete its KYC (R8).
+        if ($hold === PayoutLineItem::STATUS_KYC_PENDING
+            && ! in_array(Distributor::find($distributorId)?->user?->status, ['pending', 'active'], true)) {
+            $hold = 'account_inactive';
+        }
+
+        $states = [];
+
+        foreach ($milestones as $milestone) {
+            $batch = $milestone->walletCredit?->sweptByBatch;
+
+            $states[$milestone->id] = match (true) {
+                $milestone->status === LifetimeAwardMilestone::STATUS_CANCELLED => ['key' => 'withdrawn', 'date' => null],
+                $milestone->status === LifetimeAwardMilestone::STATUS_DELIVERED => ['key' => 'delivered', 'date' => $milestone->delivered_at],
+                $batch !== null && ($linesByBatch[$batch->id]->status ?? null) === PayoutLineItem::STATUS_TRANSFERRED => ['key' => 'paid', 'date' => $batch->approved_at ?? $batch->processed_at],
+                in_array($milestone->id, $requalification, true) => ['key' => 'held:award_requalification_check', 'date' => null],
+                $batch === null && $hold !== null && $milestone->status === LifetimeAwardMilestone::STATUS_CREDITED => ['key' => 'held:'.$hold, 'date' => null],
+                default => ['key' => 'to_be_paid', 'date' => null],
+            };
+        }
+
+        return $states;
     }
 
     public function wallet(Request $request): View

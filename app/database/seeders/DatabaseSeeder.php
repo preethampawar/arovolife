@@ -21,7 +21,6 @@ class DatabaseSeeder extends Seeder
             RankTiersSeeder::class,
             FortuneBonusLevelsSeeder::class,
             FortuneBonusTiersSeeder::class,
-            LifetimeAwardTranchesSeeder::class,
             LifetimeAwardRewardsSeeder::class,
         ]);
     }

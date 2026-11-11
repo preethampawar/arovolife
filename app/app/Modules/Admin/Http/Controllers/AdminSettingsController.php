@@ -1118,7 +1118,7 @@ final class AdminSettingsController extends Controller
             'comp.admin_charge.rate_bp' => [
                 'group' => 'compensation_plan',
                 'label' => 'Admin charge rate (basis points)',
-                'description' => 'Admin charge applied to the six cash bonus streams (GSB, Mentorship, Rank, Growth Booster, Fortune, ADC) — per the applies-to toggles below. Lifetime Awards are merchandise only and carry no admin charge. 300 = 3%. Stored in basis points (100 bp = 1%).',
+                'description' => 'Admin charge applied to the six cash bonus streams (GSB, Mentorship, Rank, Growth Booster, Fortune, ADC) — per the applies-to toggles below. Lifetime Awards carry no admin charge (TDS only, client 2026-11-10). 300 = 3%. Stored in basis points (100 bp = 1%).',
                 'impact' => 'Raising this reduces every distributor\'s net bonus. Takes effect from the next engine run.',
                 'type' => 'int',
                 'min' => 0,
@@ -1342,6 +1342,17 @@ final class AdminSettingsController extends Controller
                 'min' => 0,
                 'max' => 10000,
                 'default' => '2000',
+            ],
+            'comp.awards.cash_effective_month' => [
+                'group' => 'compensation_plan',
+                'owner' => 'developer',
+                'feature' => LifetimeAwardsFeature::class,
+                'label' => 'Lifetime Awards cash effective month',
+                'description' => 'The first month (YYYY-MM) in which a rank achievement earns a cash Lifetime Award. Earlier months are never paid — switching the flag on is no catch-up. Blank = no award is created. Set automatically to the current month the first time the Lifetime Awards flag is switched on while this is blank.',
+                'impact' => 'Moving it earlier makes rank achievements in the months in between earn an award at the next monthly close; moving it later stops awards for the months in between. Awards already credited are unchanged.',
+                'type' => 'string',
+                'format' => 'month',
+                'default' => '',
             ],
             'comp.rank.envelope_bp' => [
                 'group' => 'compensation_plan',
@@ -1995,6 +2006,14 @@ final class AdminSettingsController extends Controller
                     $error = "{$meta['label']} must be a valid email address (or left blank).";
 
                     return '';
+                }
+                if ($raw !== '' && $format === 'month') {
+                    $parsed = \DateTimeImmutable::createFromFormat('!Y-m', $raw);
+                    if ($parsed === false || $parsed->format('Y-m') !== $raw) {
+                        $error = "{$meta['label']} must be a month in YYYY-MM format (or left blank).";
+
+                        return '';
+                    }
                 }
                 if ($raw !== '' && $format === 'date') {
                     // Reject anything Carbon would silently coerce ("next

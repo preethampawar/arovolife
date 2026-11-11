@@ -14,9 +14,9 @@ use App\Modules\Compensation\Models\RepurchaseCycle;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\RankBonusService;
-use App\Modules\Compensation\Services\Rebuild\MonthRebuilder;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use App\Modules\Shared\Features\RankBonusFeature;
 use App\Modules\Shared\Features\RepurchaseEngineFeature;
 use Illuminate\Console\Command;
@@ -665,8 +665,8 @@ it('freezes past a stray legacy pending row, reports it and never credits it', f
 
 it('traces a stray pending row that appears after the freeze and never lets its rank refuse the run', function (): void {
     // A hand-made `pending` row written AFTER the freeze: freezeMonth() never
-    // runs again, so only the credit loop sees it. Its rank having no tranche
-    // rows must not refuse a run that will never sync it an award.
+    // runs again, so only the credit loop sees it. It is never paid and never
+    // earns a Lifetime Award.
     $m = '2026-06-01';
     // A kept premature freeze with one rank-1 roster row still pending — it
     // must still be credited below.
@@ -687,7 +687,7 @@ it('traces a stray pending row that appears after the freeze and never lets its 
         'status' => RankBonusResult::STATUS_PENDING,
     ]);
 
-    DB::table('lifetime_award_tranches')->where('rank_number', 7)->delete();
+    rankEnableCashAwards('2026-06');
     app()->forgetInstance(CompensationPlanSettingsService::class);
     app()->forgetInstance(RankBonusService::class);
 
@@ -737,13 +737,74 @@ it('refuses a pending verdict before replacing an uncredited premature freeze', 
         ->and(AuditLog::where('action', 'rank.pool.refrozen')->count())->toBe(0);
 });
 
-/**
- * The count used to be an unconditional increment fired once per run for every
- * payable distributor. A row whose gross floors to ₹0 never reaches `credited`,
- * so the credited-guard never short-circuited it and three re-runs of one month
- * counted three qualifications.
- */
-it('counts one lifetime qualification across three runs even when the gross floors to zero', function (): void {
+/** Lifetime Awards ON, paid in cash for qualification months from `$effectiveMonth` (Q3). */
+function rankEnableCashAwards(string $effectiveMonth): void
+{
+    Feature::for(null)->activate(LifetimeAwardsFeature::class);
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'comp.awards.cash_effective_month'],
+        ['value' => $effectiveMonth, 'version' => 1, 'updated_at' => now()],
+    );
+}
+
+it('credits a first-time achiever\'s cash Lifetime Award with the Rank Bonus close', function (): void {
+    rankEnableCashAwards('2026-06');
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
+    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
+
+    $result = app(RankBonusService::class)->runForMonth($month);
+
+    $budget = app(CompensationPlanSettingsService::class)->lifetimeAwardBudgetPaise(1);
+    $milestone = LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole();
+
+    expect($result['awards_credited'])->toBe(1)
+        ->and($result['awards_paise'])->toBe($budget)
+        ->and($milestone->rank_number)->toBe(1)
+        ->and($milestone->status)->toBe(LifetimeAwardMilestone::STATUS_CREDITED)
+        ->and($milestone->amount_paise)->toBe($budget)
+        ->and($milestone->achieved_month->toDateString())->toBe('2026-06-01')
+        ->and($milestone->rank_qualification_id)->toBe(RankQualification::where('distributor_id', $dist->id)->value('id'))
+        ->and($milestone->award_description)->toContain('Silver Partner');
+
+    // One cash credit, earned for June, so the 8 July payout sweeps it.
+    $credit = WalletLedgerEntry::where('type', 'awards_credit')->where('reference_id', $milestone->id)->sole();
+    expect($credit->reference_type)->toBe('lifetime_award_milestone')
+        ->and($credit->amount_paise)->toBe($budget)
+        ->and($credit->bonus_month->toDateString())->toBe('2026-06-01');
+});
+
+it('writes no award while Lifetime Awards is off', function (): void {
+    $dist = Distributor::factory()->create();
+    $month = Carbon::parse('2026-06-01');
+
+    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
+    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
+
+    $result = app(RankBonusService::class)->runForMonth($month);
+
+    expect($result['credited'])->toBe(1)
+        ->and($result['awards_credited'])->toBe(0)
+        ->and(LifetimeAwardMilestone::count())->toBe(0)
+        ->and(WalletLedgerEntry::where('type', 'awards_credit')->count())->toBe(0);
+});
+
+it('pays no award for a month before the cash effective month — no catch-up', function (): void {
+    rankEnableCashAwards('2026-07');
+    $dist = Distributor::factory()->create();
+
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-06-06'));
+    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
+
+    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    expect(LifetimeAwardMilestone::count())->toBe(0);
+});
+
+it('writes one award across three runs, even for a roster row whose gross floors to zero', function (): void {
+    rankEnableCashAwards('2026-06');
     $dist = Distributor::factory()->create();
     $month = Carbon::parse('2026-06-01');
 
@@ -756,217 +817,92 @@ it('counts one lifetime qualification across three runs even when the gross floo
     $svc->runForMonth($month);
     $svc->runForMonth($month);
 
-    expect((int) RankMonthlyPass::where('month_start', '2026-06-01')->where('pass', 1)->value('pool_paise'))
-        ->toBe(6_000)
-        ->and((int) RankMonthlyPool::where('month_start', '2026-06-01')->where('rank_number', 1)->value('pool_paise'))
-        ->toBe(0);
-
     $row = RankBonusResult::where('distributor_id', $dist->id)->firstOrFail();
     expect((int) $row->gross_paise)->toBe(0)
         ->and($row->status)->toBe(RankBonusResult::STATUS_PENDING);
 
-    expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->where('rank_number', 1)->count())->toBe(1)
-        ->and(LifetimeAwardMilestone::where('distributor_id', $dist->id)->value('qualification_count'))->toBe(1);
-    expect(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(0);
+    // The award is a fixed amount, not a share of the pool: still paid once.
+    expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->count())->toBe(1)
+        ->and(WalletLedgerEntry::where('type', 'awards_credit')->count())->toBe(1)
+        ->and(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(0);
 });
 
-it('creates a LifetimeAwardMilestone on first rank achievement', function (): void {
+it('never pays a rank\'s award a second time when the rank is achieved again', function (): void {
+    rankEnableCashAwards('2026-06');
     $dist = Distributor::factory()->create();
-    $month = Carbon::parse('2026-06-01');
-    $monthStart = '2026-06-01';
 
+    foreach (['2026-06-01', '2026-07-01'] as $m) {
+        seedRankCompanyBv(100_000_000, Carbon::parse($m)->addDays(5));
+        seedRankQualification($dist->id, rank: 1, monthStart: $m);
+    }
+    // July is a 2nd lifetime qualification — meet the §8 requalification
+    // conditions so it is on July's payable roster.
+    seedRankMonthlyBv($dist->id, 100_000, '2026-07-10');
+
+    $svc = app(RankBonusService::class);
+    $svc->runForMonth(Carbon::parse('2026-06-01'));
+    $svc->runForMonth(Carbon::parse('2026-07-01'));
+
+    expect(RankBonusResult::where('distributor_id', $dist->id)->where('status', RankBonusResult::STATUS_CREDITED)->count())->toBe(2)
+        ->and(LifetimeAwardMilestone::where('distributor_id', $dist->id)->count())->toBe(1)
+        ->and(WalletLedgerEntry::where('type', 'awards_credit')->count())->toBe(1);
+});
+
+it('awards only the highest rank of the month a partner cleared several ranks in', function (): void {
+    rankEnableCashAwards('2026-06');
+    $dist = Distributor::factory()->create();
+
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-06-06'));
+    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
+    seedRankQualification($dist->id, rank: 2, monthStart: '2026-06-01');
+
+    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
+
+    expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->pluck('rank_number')->all())->toBe([2]);
+});
+
+it('gives a partner who qualifies after the freeze no award', function (): void {
+    // Q2: the award follows the month\'s payable Rank Bonus roster.
+    rankEnableCashAwards('2026-06');
+    $month = Carbon::parse('2026-06-01');
     seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
-    seedRankQualification($dist->id, rank: 1, monthStart: $monthStart, occurrence: 1);
+    seedRankQualification(Distributor::factory()->create()->id, rank: 1, monthStart: '2026-06-01');
 
     $svc = app(RankBonusService::class);
     $svc->runForMonth($month);
 
-    $milestone = LifetimeAwardMilestone::where('distributor_id', $dist->id)
-        ->where('rank_number', 1)
-        ->first();
-
-    expect($milestone)->not->toBeNull();
-    expect($milestone->status)->toBe(LifetimeAwardMilestone::STATUS_PENDING);
-    expect($milestone->award_description)->toContain('Silver Partner');
-});
-
-it('does not create a duplicate LifetimeAwardMilestone on second qualification', function (): void {
-    $dist = Distributor::factory()->create();
-    $month1 = Carbon::parse('2026-06-01');
-    $month2 = Carbon::parse('2026-07-01');
-
-    seedRankCompanyBv(100_000_000, $month1->copy()->addDays(5));
-    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01', occurrence: 1);
-
-    seedRankCompanyBv(100_000_000, $month2->copy()->addDays(5));
-    seedRankQualification($dist->id, rank: 1, monthStart: '2026-07-01', occurrence: 1);
-    // July is a 2nd lifetime qualification — meet the §8 requalification
-    // conditions (1,000 BV personal purchase) so it credits and increments.
-    seedRankMonthlyBv($dist->id, 100_000, '2026-07-10');
-
-    $svc = app(RankBonusService::class);
-    $svc->runForMonth($month1);
-    $svc->runForMonth($month2);
-
-    expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->where('rank_number', 1)->count())->toBe(1);
-    expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->where('rank_number', 1)->value('qualification_count'))->toBe(2);
-});
-
-/**
- * Rank 3 qualified in July and August: tranche A opens in July, tranche B in
- * August (the client, 2026-10-09 — A on the 1st qualification, B on the 2nd).
- * August is a 2nd lifetime qualification, so it carries the §8 requalification
- * purchase (rank 3 = 1,200 BV).
- */
-function qualifyRankThreeInJulyAndAugust(int $distributorId): void
-{
-    foreach (['2026-07-01', '2026-08-01'] as $m) {
-        seedRankCompanyBv(10_000_000_00, Carbon::parse($m)->addDays(5));
-        seedRankQualification($distributorId, 3, $m);
-        if ($m === '2026-08-01') {
-            seedRankMonthlyBv($distributorId, 120_000, '2026-08-10');
-        }
-        app(RankBonusService::class)->runForMonth(Carbon::parse($m));
-    }
-}
-
-it('opens award tranche A on the first qualification and tranche B on the second (rank 3)', function (): void {
-    $d = Distributor::factory()->create()->id;
-
-    foreach (['2026-07-01', '2026-08-01'] as $i => $m) {
-        seedRankCompanyBv(10_000_000_00, Carbon::parse($m)->addDays(5));
-        seedRankQualification($d, 3, $m);
-        if ($i === 1) {
-            seedRankMonthlyBv($d, 120_000, '2026-08-10');
-        }
-        app(RankBonusService::class)->runForMonth(Carbon::parse($m));
-
-        expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->pluck('tranche')->sort()->values()->all())
-            ->toBe(range(1, $i + 1));
-    }
-
-    $a = LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->where('tranche', 1)->firstOrFail();
-    $b = LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->where('tranche', 2)->firstOrFail();
-
-    expect($a->amount_paise)->toBe(4_860_000)
-        ->and($a->qualification_count)->toBe(2)
-        ->and($a->triggered_month->toDateString())->toBe('2026-07-01')
-        ->and($a->award_description)->toContain('tranche A');
-    expect($b->amount_paise)->toBe(5_940_000)
-        ->and($b->isReleasable())->toBeTrue()
-        ->and($b->triggered_month->toDateString())->toBe('2026-08-01')
-        ->and($b->award_description)->toContain('tranche B');
-});
-
-it('releases a tranche once the rank has been qualified at least tranche times', function (): void {
-    $milestone = new LifetimeAwardMilestone(['tranche' => 3, 'qualification_count' => 2]);
-    expect($milestone->isReleasable())->toBeFalse();
-
-    $milestone->qualification_count = 3;
-    expect($milestone->isReleasable())->toBeTrue();
-});
-
-it('refuses before any write when a rank with an achiever has no award tranche rows', function (): void {
-    $dist = Distributor::factory()->create();
-    $month = Carbon::parse('2026-06-01');
-
-    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
-    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
-    DB::table('lifetime_award_tranches')->where('rank_number', 1)->delete();
-
-    expect(fn () => app(RankBonusService::class)->runForMonth($month))
-        ->toThrow(RuntimeException::class, 'lifetime_award_tranches has no rows for rank 1');
-
-    expect(RankMonthlyPool::count())->toBe(0)
-        ->and(RankBonusResult::count())->toBe(0)
-        ->and(LifetimeAwardMilestone::count())->toBe(0)
-        ->and(WalletLedgerEntry::where('type', 'rank_credit')->count())->toBe(0);
-});
-
-it('refuses a re-run of a frozen, credited month before any write when the rank lost its tranche rows', function (): void {
-    $dist = Distributor::factory()->create();
-    $month = Carbon::parse('2026-06-01');
-
-    seedRankCompanyBv(100_000_000, $month->copy()->addDays(5));
-    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
-    app(RankBonusService::class)->runForMonth($month);
-
-    expect(RankBonusResult::where('distributor_id', $dist->id)->value('status'))->toBe(RankBonusResult::STATUS_CREDITED);
-
-    // A late qualifier: the re-run would write a qualified_after_freeze audit row
-    // if it got that far.
     $late = Distributor::factory()->create();
     seedRankQualification($late->id, rank: 1, monthStart: '2026-06-01');
+    $svc->runForMonth($month);
 
-    DB::table('lifetime_award_tranches')->where('rank_number', 1)->delete();
-    // Drop any resolved plan cache so the re-run reads the table as it now is.
-    app()->forgetInstance(CompensationPlanSettingsService::class);
-    app()->forgetInstance(RankBonusService::class);
-
-    $milestones = LifetimeAwardMilestone::count();
-    $results = RankBonusResult::count();
-    $lateAudits = AuditLog::where('action', 'rank.result.qualified_after_freeze')->count();
-    $credits = WalletLedgerEntry::count();
-
-    expect(fn () => app(RankBonusService::class)->runForMonth($month))
-        ->toThrow(RuntimeException::class, 'lifetime_award_tranches has no rows for rank 1');
-
-    expect(LifetimeAwardMilestone::count())->toBe($milestones)
-        ->and(RankBonusResult::count())->toBe($results)
-        ->and(AuditLog::where('action', 'rank.result.qualified_after_freeze')->count())->toBe($lateAudits)
-        ->and(WalletLedgerEntry::count())->toBe($credits);
+    expect(LifetimeAwardMilestone::count())->toBe(1)
+        ->and(LifetimeAwardMilestone::where('distributor_id', $late->id)->exists())->toBeFalse();
 });
 
-it('removes a pending tranche the rank no longer earns, with an audit row, and keeps tranche A', function (): void {
-    $d = Distributor::factory()->create()->id;
-    qualifyRankThreeInJulyAndAugust($d);
+it('gives an AO-GO grantee no award — the offer holds no rank', function (): void {
+    rankEnableCashAwards('2026-06');
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-06-06'));
+    [$grantee] = seedAogoGrants(1, '2026-06-01');
 
-    // August's roster is gone (as a rebuild that re-derives it without the
-    // distributor would leave it) while tranche B, written by August, survives.
-    RankBonusResult::where('month_start', '2026-08-01')->delete();
-    expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('tranche', 2)->exists())->toBeTrue();
+    $result = app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01'));
 
-    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-07-01'));
-
-    expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->pluck('tranche')->all())->toBe([1]);
-    $a = LifetimeAwardMilestone::where('distributor_id', $d)->where('tranche', 1)->firstOrFail();
-    expect($a->status)->toBe(LifetimeAwardMilestone::STATUS_PENDING)
-        ->and($a->qualification_count)->toBe(1);
-
-    $audit = AuditLog::where('action', 'awards.tranche.unearned_pending_removed')->where('subject_id', $d)->firstOrFail();
-    expect($audit->details['rank'])->toBe(3)
-        ->and($audit->details['qualification_count'])->toBe(1)
-        ->and(array_column($audit->details['removed'], 'tranche'))->toBe([2]);
+    expect($result['credited'])->toBe(1)
+        ->and(LifetimeAwardMilestone::where('distributor_id', $grantee)->exists())->toBeFalse();
 });
 
-it('never removes a delivered tranche the rank no longer earns', function (): void {
-    $d = Distributor::factory()->create()->id;
-    qualifyRankThreeInJulyAndAugust($d);
+it('refuses before any credit when the cash effective month is not a month', function (): void {
+    // R2: the award plan is read before the Rank Bonus credit transaction, so
+    // an award problem stops the run before money moves, never rolls it back.
+    rankEnableCashAwards('June 2026');
+    $dist = Distributor::factory()->create();
+    seedRankCompanyBv(100_000_000, Carbon::parse('2026-06-06'));
+    seedRankQualification($dist->id, rank: 1, monthStart: '2026-06-01');
 
-    LifetimeAwardMilestone::where('distributor_id', $d)->where('tranche', 2)
-        ->update(['status' => LifetimeAwardMilestone::STATUS_DELIVERED, 'delivered_at' => now()]);
-    RankBonusResult::where('month_start', '2026-08-01')->delete();
+    expect(fn () => app(RankBonusService::class)->runForMonth(Carbon::parse('2026-06-01')))
+        ->toThrow(RuntimeException::class, 'comp.awards.cash_effective_month must be a YYYY-MM month');
 
-    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-07-01'));
-
-    expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->orderBy('tranche')->pluck('tranche')->all())->toBe([1, 2])
-        ->and(AuditLog::where('action', 'awards.tranche.unearned_pending_removed')->exists())->toBeFalse();
-});
-
-it('a month rebuild of August takes tranche B with it and a July re-run leaves tranche A pending', function (): void {
-    $d = Distributor::factory()->create()->id;
-    qualifyRankThreeInJulyAndAugust($d);
-
-    // MonthRebuilder::pendingMilestones() matches tranche B by its triggered
-    // month, so the wipe removes it before the engine ever sees it as orphaned.
-    app(MonthRebuilder::class)->wipe(Carbon::parse('2026-08-01'), 1, fn (string $line) => null, fn () => null);
-
-    expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('tranche', 2)->exists())->toBeFalse();
-
-    app(RankBonusService::class)->runForMonth(Carbon::parse('2026-07-01'));
-
-    expect(LifetimeAwardMilestone::where('distributor_id', $d)->where('rank_number', 3)->pluck('tranche')->all())->toBe([1])
-        ->and(LifetimeAwardMilestone::where('distributor_id', $d)->where('tranche', 1)->value('status'))->toBe(LifetimeAwardMilestone::STATUS_PENDING);
+    expect(WalletLedgerEntry::count())->toBe(0)
+        ->and(LifetimeAwardMilestone::count())->toBe(0);
 });
 
 it('divides pass 1 by points — 3 achievers × 72 + 2 AO-GO × 36 = 288 points, ₹100 per point', function (): void {

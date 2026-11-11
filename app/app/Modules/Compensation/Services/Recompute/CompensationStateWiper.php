@@ -72,8 +72,17 @@ final class CompensationStateWiper
                         }
                     }
 
-                    $count = (int) $this->db->table($table)->count();
-                    $this->db->table($table)->truncate();
+                    if ($table === 'lifetime_award_milestones') {
+                        // Withdrawn and delivered awards are decisions, not
+                        // engine output: kept, so the replay never re-pays a
+                        // withdrawn award (DerivedTables::REBUILDABLE_AWARD_STATUSES).
+                        $count = (int) $this->db->table($table)
+                            ->whereIn('status', DerivedTables::REBUILDABLE_AWARD_STATUSES)
+                            ->delete();
+                    } else {
+                        $count = (int) $this->db->table($table)->count();
+                        $this->db->table($table)->truncate();
+                    }
                     $removed[$table] = $count;
                 }
 
@@ -124,7 +133,9 @@ final class CompensationStateWiper
                 continue;
             }
 
-            $count = (int) $this->db->table($table)->count();
+            $count = (int) $this->db->table($table)
+                ->when($table === 'lifetime_award_milestones', fn ($query) => $query->whereIn('status', DerivedTables::REBUILDABLE_AWARD_STATUSES))
+                ->count();
             if ($count > 0) {
                 $counts[$table] = $count;
             }

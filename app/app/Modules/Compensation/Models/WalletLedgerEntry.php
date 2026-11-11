@@ -73,6 +73,7 @@ final class WalletLedgerEntry extends Model
             'rank_credit' => 'Rank Bonus',
             'fortune_credit' => 'Fortune Bonus',
             'adc_credit' => 'ADC Bonus',
+            'awards_credit' => 'Lifetime Award',
             'payout_debit' => 'Payout to bank',
             'admin_charge_debit' => 'Admin charge',
             'tds_debit' => 'TDS (Tax Deducted at Source)',
@@ -195,6 +196,17 @@ final class WalletLedgerEntry extends Model
                         ->where('created_at', '<=', $monthEnd);
                 });
         });
+    }
+
+    /**
+     * The payout batch that swept this entry to the bank, or null while it is
+     * still in the wallet.
+     *
+     * @return BelongsTo<PayoutBatch, $this>
+     */
+    public function sweptByBatch(): BelongsTo
+    {
+        return $this->belongsTo(PayoutBatch::class, 'swept_by_payout_batch_id');
     }
 
     /**

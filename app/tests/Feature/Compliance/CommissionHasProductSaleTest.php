@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Compliance;
 
+use App\Modules\Compensation\Models\LifetimeAwardMilestone;
+use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
+use App\Modules\Compensation\Services\LifetimeAwardService;
 use App\Modules\Compensation\Services\WalletService;
 use App\Modules\Identity\Models\Distributor;
+use App\Modules\Shared\Features\LifetimeAwardsFeature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Laravel\Pennant\Feature;
 use Tests\TestCase;
 
 /**
@@ -57,6 +63,10 @@ final class CommissionHasProductSaleTest extends TestCase
         'rank_credit' => 'rank_bonus_results → rank qualification, itself a BV threshold',
         'fortune_credit' => 'fortune_bonus_results → the month\'s BV pool',
         'adc_credit' => 'adc_monthly_results → centre BV (orders collected at the centre)',
+        // A fixed amount, not a share of a sale (R-128): the trace is the
+        // evidence chain recorded on the milestone and re-checked before
+        // payment.
+        'awards_credit' => 'lifetime_award_milestones → rank_qualifications (personal and Genos BV) → bv_ledger_entries.order_id',
     ];
 
     /**
@@ -137,6 +147,7 @@ final class CommissionHasProductSaleTest extends TestCase
             CompensationPlanSettingsService::GROUP_A_TYPES,
             CompensationPlanSettingsService::GROUP_B_TYPES,
             CompensationPlanSettingsService::GROUP_D_TYPES,
+            CompensationPlanSettingsService::AWARD_TYPES,
         );
 
         sort($declared);
@@ -344,5 +355,43 @@ final class CommissionHasProductSaleTest extends TestCase
         $this->assertTrue(Schema::hasColumn('order_items', 'order_id'));
         $this->assertTrue(Schema::hasColumn('order_items', 'product_variant_id'));
         $this->assertTrue(Schema::hasColumn('orders', 'paid_at'));
+    }
+
+    /**
+     * HR2-05 (R-128): every cash Lifetime Award the engine credits carries its
+     * evidence chain — the rank_qualifications row it was earned on and the
+     * BV snapshot taken from it. Legacy merchandise rows (delivered/cancelled
+     * under the retired plan) are not `credited` and are out of scope.
+     */
+    public function test_hr2_05_every_credited_award_names_its_qualification_and_bv_snapshot(): void
+    {
+        seedCompensationPlanTables();
+        Feature::for(null)->activate(LifetimeAwardsFeature::class);
+        DB::table('settings')->updateOrInsert(['key' => 'comp.awards.cash_effective_month'], ['value' => '2026-06', 'version' => 1, 'updated_at' => now()]);
+
+        disableTestForeignKeys();
+        try {
+            $distributor = Distributor::factory()->create();
+        } finally {
+            enableTestForeignKeys();
+        }
+        RankQualification::create([
+            'distributor_id' => $distributor->id, 'rank_number' => 1, 'month_start' => '2026-06-01',
+            'left_genos_bv_paise' => 1_500_000, 'right_genos_bv_paise' => 1_500_000,
+            'occurrence_in_month' => 1, 'is_carry_forward' => false, 'status' => RankQualification::STATUS_QUALIFIED,
+        ]);
+
+        $awards = app(LifetimeAwardService::class);
+        $plan = $awards->planForMonth(Carbon::parse('2026-06-01'), [$distributor->id => [1]]);
+        DB::transaction(fn () => $awards->creditPlan($plan));
+
+        $credited = LifetimeAwardMilestone::where('status', LifetimeAwardMilestone::STATUS_CREDITED);
+
+        $this->assertGreaterThan(0, (clone $credited)->count());
+        $this->assertSame(
+            0,
+            (clone $credited)->where(fn ($q) => $q->whereNull('rank_qualification_id')->orWhereNull('personal_bv_paise'))->count(),
+            'A credited Lifetime Award has no rank qualification or BV snapshot: its link to product sales is not recorded (R-128).',
+        );
     }
 }

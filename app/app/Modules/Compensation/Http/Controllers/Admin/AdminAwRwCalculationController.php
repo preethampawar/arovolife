@@ -35,7 +35,7 @@ final class AdminAwRwCalculationController extends Controller
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
-            'status' => ['nullable', 'in:pending,delivered,cancelled'],
+            'status' => ['nullable', 'in:credited,cancelled,delivered'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));
@@ -75,7 +75,7 @@ final class AdminAwRwCalculationController extends Controller
         $request->validate([
             'q' => ['nullable', 'string', 'max:64'],
             'month' => ['nullable', 'date_format:Y-m'],
-            'status' => ['nullable', 'in:pending,delivered,cancelled'],
+            'status' => ['nullable', 'in:credited,cancelled,delivered'],
         ]);
 
         $q = trim((string) ($request->query('q') ?? ''));
@@ -84,35 +84,30 @@ final class AdminAwRwCalculationController extends Controller
 
         $rows = $this->buildQuery($q, $month, $status)->get();
 
-        $distributorIds = $rows->pluck('distributor_id')->unique()->values()->all();
-        $personalBvMap = $this->batchPersonalBvPaise($distributorIds);
+        // One TDS rate for the award and the bonuses (user decision
+        // 2026-11-11, A3); the tax itself is on the payout line.
+        $tdsRate = rtrim(rtrim(number_format($this->plan->tdsRateBp() / 100, 2), '0'), '.').'%';
 
         $columns = [
-            ['key' => 'sno',    'label' => 'SNo'],
+            ['key' => 'sno',    'label' => 'S.No.'],
+            ['key' => 'month', 'label' => 'Month'],
             ['key' => 'adn',   'label' => 'ADN'],
             ['key' => 'name',  'label' => 'Name'],
-            ['key' => 'title', 'label' => 'Title'],
             ['key' => 'rank',  'label' => 'Rank'],
-            ['key' => 'month', 'label' => 'Month'],
-            ['key' => 'tranche', 'label' => 'Tranche'],
-            ['key' => 'award', 'label' => 'Award Description'],
-            ['key' => 'amount', 'label' => 'Tranche Amount (Rs)'],
+            ['key' => 'amount', 'label' => 'Amount (Rs)'],
+            ['key' => 'tds_rate', 'label' => 'TDS rate'],
             ['key' => 'status', 'label' => 'Status'],
         ];
 
-        $out = $rows->values()->map(function ($row, int $i) use ($personalBvMap): array {
-            $title = $this->titleService->forBvPaise($personalBvMap[$row->distributor_id] ?? 0)->title ?? '';
-
+        $out = $rows->values()->map(function ($row, int $i) use ($tdsRate): array {
             return [
                 'sno' => $i + 1,
+                'month' => Carbon::parse($row->achieved_month ?? $row->triggered_month)->format('Y-m'),
                 'adn' => (string) $row->adn,
                 'name' => (string) ($row->full_name ?? ''),
-                'title' => $title,
                 'rank' => (string) ($row->rank_name ?? 'Rank '.$row->rank_number),
-                'month' => Carbon::parse($row->triggered_month)->format('Y-m'),
-                'tranche' => chr(64 + (int) $row->tranche),
-                'award' => (string) ($row->award_description ?? '—'),
                 'amount' => (int) $row->amount_paise / 100,
+                'tds_rate' => $tdsRate,
                 'status' => (string) $row->status,
             ];
         })->all();
@@ -136,9 +131,9 @@ final class AdminAwRwCalculationController extends Controller
                 'lam.id',
                 'lam.distributor_id',
                 'lam.rank_number',
-                'lam.tranche',
                 'lam.amount_paise',
                 'lam.triggered_month',
+                'lam.achieved_month',
                 'lam.award_description',
                 'lam.status',
                 'rt.rank_name',
@@ -147,7 +142,6 @@ final class AdminAwRwCalculationController extends Controller
             )
             ->orderByDesc('lam.triggered_month')
             ->orderBy('lam.rank_number')
-            ->orderBy('lam.tranche')
             ->orderByDesc('lam.id');
     }
 

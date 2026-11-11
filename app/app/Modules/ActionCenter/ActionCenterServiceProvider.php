@@ -12,6 +12,7 @@ use App\Modules\ActionCenter\Providers\Compliance\GrievanceSensitiveThirdPartyOv
 use App\Modules\ActionCenter\Providers\Compliance\GrievanceSlaDueOrBreachedProvider;
 use App\Modules\ActionCenter\Providers\Compliance\GrievanceThirdPartyOverdueProvider;
 use App\Modules\ActionCenter\Providers\Compliance\MessagingReportedPendingProvider;
+use App\Modules\ActionCenter\Providers\Money\AwardRequalificationCheckProvider;
 use App\Modules\ActionCenter\Providers\Money\GsbReversalAwaitingApprovalProvider;
 use App\Modules\ActionCenter\Providers\Money\PaymentsUnreconciledProvider;
 use App\Modules\ActionCenter\Providers\Money\PayoutBatchAwaitingApprovalProvider;
@@ -93,6 +94,7 @@ final class ActionCenterServiceProvider extends ServiceProvider
         PayoutBatchAwaitingApprovalProvider::class,
         GsbReversalAwaitingApprovalProvider::class,
         UnpayableManualCreditProvider::class,
+        AwardRequalificationCheckProvider::class,
         PayoutBatchPartiallyFailedProvider::class,
         PayoutBuildFailuresProvider::class,
         PayoutsAwaitingBankConfirmationProvider::class,

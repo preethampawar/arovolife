@@ -33,6 +33,7 @@ use App\Modules\Shared\Features\ShiprocketFulfilmentFeature;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
 
@@ -128,7 +129,7 @@ final class AdminFeatureFlagController extends Controller
                 'class' => LifetimeAwardsFeature::class,
                 'label' => 'Lifetime Awards & Rewards (Phase 5)',
                 'requires' => ['compensation.rank_bonus'],
-                'description' => 'Non-cash rewards triggered on rank achievement (32% of turnover, non-cash). Tracks award delivery workflow for cars, insurance, trips. Requires perquisite tax verification before release.',
+                'description' => 'A fixed cash award per rank, paid once the first time a partner achieves that rank (only the month\'s highest payable Rank Bonus rank, and only above every rank already awarded). Credited on the 1st with the Rank Bonus and paid with the monthly payout on the 8th: TDS only, no admin charge, no repurchase deduction, outside the ₹1 crore cap. The first switch-on sets the cash effective month to the current month when it is blank — earlier months are never paid. OFF: no award is written and no Awards page, statement column or admin page shows.',
                 'owner' => 'developer',
             ],
 
@@ -317,6 +318,63 @@ final class AdminFeatureFlagController extends Controller
             'ip' => $request->ip(),
         ]);
 
+        if ($class === LifetimeAwardsFeature::class && ! $before && $after) {
+            $this->stampAwardsCashEffectiveMonth($request);
+        }
+
         return back()->with('status', sprintf('Feature %s set to %s.', $key, $after ? 'active' : 'inactive'));
+    }
+
+    /**
+     * The first switch-on of Lifetime Awards sets comp.awards.cash_effective_month
+     * to the current month while it is still blank (user decision 2026-11-11,
+     * Q3): awards are paid only for rank achievements from that month, never
+     * retrospectively. A month already set — by a developer or an earlier
+     * switch-on — is never moved.
+     */
+    private function stampAwardsCashEffectiveMonth(Request $request): void
+    {
+        $key = 'comp.awards.cash_effective_month';
+        $existing = DB::table('settings')->where('key', $key)->first();
+
+        if ($existing !== null && trim((string) $existing->value) !== '') {
+            return;
+        }
+
+        $month = now()->format('Y-m');
+
+        if ($existing === null) {
+            DB::table('settings')->insert([
+                'key' => $key,
+                'value' => $month,
+                'version' => 1,
+                'updated_by' => auth()->id(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } else {
+            DB::table('settings')->where('key', $key)->update([
+                'value' => $month,
+                'version' => ((int) ($existing->version ?? 0)) + 1,
+                'updated_by' => auth()->id(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        AuditLog::create([
+            'actor_id' => auth()->id(),
+            'action' => 'admin.settings.changed',
+            'subject_type' => 'settings',
+            'subject_id' => null,
+            'before_hash' => AuditDigests::of([$key => $existing->value ?? null]),
+            'after_hash' => AuditDigests::of([$key => $month]),
+            'details' => [
+                'key' => $key,
+                'before' => $existing->value ?? null,
+                'after' => $month,
+                'reason' => 'Lifetime Awards switched on for the first time while the cash effective month was blank.',
+            ],
+            'ip' => $request->ip(),
+        ]);
     }
 }

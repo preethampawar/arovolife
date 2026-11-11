@@ -155,6 +155,7 @@ final class PayoutsBankUndecryptableProvider extends AbstractProvider
             CompensationPlanSettingsService::GROUP_A_TYPES,
             CompensationPlanSettingsService::GROUP_B_TYPES,
             CompensationPlanSettingsService::GROUP_D_TYPES,
+            CompensationPlanSettingsService::AWARD_TYPES,
         );
 
         $query = WalletLedgerEntry::query()

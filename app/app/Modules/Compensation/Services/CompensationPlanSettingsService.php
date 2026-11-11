@@ -27,8 +27,8 @@ final class CompensationPlanSettingsService
     /**
      * Wallet ledger entry types belonging to each payout admin-charge group.
      * Each group has its own ₹25,000/cycle ceiling (KP 2026-06-30 Round-5).
-     * There is no Group C: Lifetime Awards are merchandise only and never
-     * reach the wallet (client 2026-10-09).
+     * There is no Group C: Lifetime Awards carry no admin charge at all — see
+     * AWARD_TYPES.
      * ADC is Group D — separate ceiling from the five cash bonuses.
      */
     public const GROUP_A_TYPES = ['gsb_credit', 'mb_credit'];
@@ -36,6 +36,13 @@ final class CompensationPlanSettingsService
     public const GROUP_B_TYPES = ['gbb_credit', 'rank_credit', 'fortune_credit'];
 
     public const GROUP_D_TYPES = ['adc_credit'];
+
+    /**
+     * Lifetime Awards (client 2026-11-10): paid in cash with the monthly
+     * payout on the 8th, TDS at the bonus rate only — no admin charge, no
+     * repurchase deduction, outside the ₹1 crore monthly income cap.
+     */
+    public const AWARD_TYPES = ['awards_credit'];
 
     /**
      * All five cash-bonus types that count toward the ₹1 crore monthly gross cap
@@ -60,7 +67,7 @@ final class CompensationPlanSettingsService
         // ADC and Awards are excluded from this cap.
         'comp.monthly_income_cap_paise' => 1_000_000_000,
         // Admin charge scope flags, ON for the six cash bonuses. Lifetime
-        // Awards are merchandise only and carry no admin charge or TDS.
+        // Awards carry no admin charge (TDS only — client 2026-11-10).
         'comp.admin_charge.applies_to_gsb' => true,
         'comp.admin_charge.applies_to_mb' => true,
         'comp.admin_charge.applies_to_rank' => true,
@@ -115,6 +122,12 @@ final class CompensationPlanSettingsService
         // company BV the awards are funded from. 2000 bp = 20%. Tracked and
         // reported only — an earned award is never delayed by it.
         'comp.awards.fund_rate_bp' => 2_000,
+        // The first qualification month (YYYY-MM) a Lifetime Award is paid in
+        // cash for (user decision 2026-11-11, Q3): earlier months are never
+        // paid, so switching the flag on is no retrospective catch-up. Blank
+        // = no award is created; the flag's first switch-on sets it to the
+        // current month when it is still blank.
+        'comp.awards.cash_effective_month' => '',
         // AO-GO offer (client 2026-08-05; 36 points per the client's 2026-10-05
         // Rank Income Point System): points a degraded ex-rank-holder earns in
         // pass 1 on the Rank-1 row, and the lifetime cap on how many times the
@@ -166,12 +179,6 @@ final class CompensationPlanSettingsService
     /** @var array<int, array<string, mixed>>|null rank_tiers keyed by rank_number. */
     private ?array $rankTierCache = null;
 
-    /** @var array<int, list<array{item: string, worth_paise: int}>>|null lifetime award items keyed by rank. */
-    private ?array $lifetimeAwardCache = null;
-
-    /** @var array<int, list<array{tranche: int, amount_paise: int}>>|null lifetime award tranches keyed by rank. */
-    private ?array $lifetimeAwardTrancheCache = null;
-
     /** @var array<int, int>|null fortune matrix depth → points_per_member. */
     private ?array $fortunePointsCache = null;
 
@@ -219,6 +226,31 @@ final class CompensationPlanSettingsService
     public function tdsRateBp(): int
     {
         return $this->scalarInt('comp.tds.rate_bp');
+    }
+
+    /**
+     * The first qualification month a Lifetime Award is paid in cash for, or
+     * null while the setting is blank (no award is created). A value that is
+     * not a YYYY-MM month is refused rather than read as "no awards".
+     *
+     * @throws \RuntimeException
+     */
+    public function awardsCashEffectiveMonth(): ?Carbon
+    {
+        $raw = trim((string) ($this->scalar('comp.awards.cash_effective_month')
+            ?? self::SCALAR_DEFAULTS['comp.awards.cash_effective_month']));
+
+        if ($raw === '') {
+            return null;
+        }
+
+        $parsed = \DateTimeImmutable::createFromFormat('!Y-m', $raw);
+
+        if ($parsed === false || $parsed->format('Y-m') !== $raw) {
+            throw new \RuntimeException("comp.awards.cash_effective_month must be a YYYY-MM month, got '{$raw}'");
+        }
+
+        return Carbon::parse($raw.'-01')->startOfMonth();
     }
 
     public function gsbPowerCfCapPaise(): int
@@ -429,48 +461,6 @@ final class CompensationPlanSettingsService
     public function lifetimeAwardBudgetPaise(int $rank): int
     {
         return (int) ($this->rankTiers()[$rank]['lifetime_award_budget_paise'] ?? 0);
-    }
-
-    /**
-     * The itemised Lifetime Awards reward catalogue for a rank, ordered, from
-     * the admin-editable lifetime_award_rewards table.
-     *
-     * @return list<array{item: string, worth_paise: int}>
-     */
-    public function lifetimeAwardRewards(int $rank): array
-    {
-        if ($this->lifetimeAwardCache === null) {
-            $this->lifetimeAwardCache = [];
-            foreach (DB::table('lifetime_award_rewards')->orderBy('rank_number')->orderBy('sort_order')->get() as $row) {
-                $this->lifetimeAwardCache[(int) $row->rank_number][] = [
-                    'item' => (string) $row->item,
-                    'worth_paise' => (int) $row->worth_paise,
-                ];
-            }
-        }
-
-        return $this->lifetimeAwardCache[$rank] ?? [];
-    }
-
-    /**
-     * The rank's Lifetime Award tranches from lifetime_award_tranches: A is
-     * released on the 1st qualification, B on the 2nd, C on the 3rd.
-     *
-     * @return list<array{tranche: int, amount_paise: int}> ordered by tranche (client 2026-10-09).
-     */
-    public function lifetimeAwardTranches(int $rank): array
-    {
-        if ($this->lifetimeAwardTrancheCache === null) {
-            $this->lifetimeAwardTrancheCache = [];
-            foreach (DB::table('lifetime_award_tranches')->orderBy('rank_number')->orderBy('tranche')->get() as $row) {
-                $this->lifetimeAwardTrancheCache[(int) $row->rank_number][] = [
-                    'tranche' => (int) $row->tranche,
-                    'amount_paise' => (int) $row->amount_paise,
-                ];
-            }
-        }
-
-        return $this->lifetimeAwardTrancheCache[$rank] ?? [];
     }
 
     public function minPayoutPaise(): int

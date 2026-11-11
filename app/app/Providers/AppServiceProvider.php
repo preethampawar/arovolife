@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Console\Commands\DeployCommand;
 use App\Console\Commands\ResetAdnsCommand;
 use App\Modules\Admin\Console\Commands\CreateStaffUserCommand;
+use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
 use App\Modules\Commerce\Console\Commands\PurgeOfflinePaymentProofsCommand;
 use App\Modules\Commerce\Events\OrderStatusChanged;
@@ -46,7 +47,9 @@ use App\Modules\Compensation\Listeners\PropagateGroupBvOnOrderPaid;
 use App\Modules\Compensation\Listeners\RecordEngineRun;
 use App\Modules\Compensation\Listeners\RecordSkippedOrchestratorRun;
 use App\Modules\Compensation\Listeners\ReverseGroupBvOnOrderReversal;
+use App\Modules\Compensation\Listeners\WithdrawLifetimeAwardsOnExit;
 use App\Modules\Compensation\Support\EngineRunContext;
+use App\Modules\Compliance\Events\CoolingOffCancelled;
 use App\Modules\Identity\Models\User;
 use App\Modules\Payments\Console\Commands\ExpireUnpaidOrdersCommand;
 use App\Modules\Payments\Console\Commands\PaymentsReconcileCommand;
@@ -128,6 +131,10 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(OrderStatusChanged::class, PropagateGroupBvOnOrderPaid::class);
         Event::listen(OrderStatusChanged::class, ReverseGroupBvOnOrderReversal::class);
         Event::listen(OrderRefundApproved::class, ReverseGroupBvOnOrderReversal::class);
+        // Q1 (2026-11-11): an exit before payment withdraws the unpaid
+        // Lifetime Awards.
+        Event::listen(CoolingOffCancelled::class, WithdrawLifetimeAwardsOnExit::class);
+        Event::listen(DistributorTerminated::class, WithdrawLifetimeAwardsOnExit::class);
 
         // Run log for the ten compensation engines. Listening to the console
         // events (rather than refactoring the commands) means cron runs,

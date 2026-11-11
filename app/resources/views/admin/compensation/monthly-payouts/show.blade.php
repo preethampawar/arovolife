@@ -273,6 +273,7 @@
     @else
     <div class="overflow-x-auto">
         <table class="w-full text-xs">
+            @php $awardsOn = \Laravel\Pennant\Feature::for(null)->active(\App\Modules\Shared\Features\LifetimeAwardsFeature::class); @endphp
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-3 py-2 text-left text-gray-600 w-12">S.No.</th>
@@ -284,6 +285,11 @@
                     <th class="px-3 py-2 text-right text-gray-600">
                         Gross <x-help-tip text="Bonus income swept into this batch, before any deduction." />
                     </th>
+                    @if($awardsOn)
+                    <th class="px-3 py-2 text-right text-gray-600">
+                        Awards <x-help-tip text="The Lifetime Award part of the gross. TDS only: no repurchase deduction, no admin charge, outside the monthly income cap. Its TDS is inside the TDS column." />
+                    </th>
+                    @endif
                     <th class="px-3 py-2 text-right text-gray-600">
                         Repurchase deduction <x-help-tip text="10% of each bonus, capped ₹10,000 per calendar month. Already taken at credit time — shown so the row reconciles." />
                     </th>
@@ -328,6 +334,11 @@
                     </td>
                     <td class="px-3 py-2 text-right">{{ $rupees($line->wallet_balance_paise) }}</td>
                     <td class="px-3 py-2 text-right text-gray-700">{{ $rupees($line->gross_paise) }}</td>
+                    @if($awardsOn)
+                    <td class="px-3 py-2 text-right text-gray-600">
+                        {{ $line->awards_gross_paise > 0 ? $rupees($line->awards_gross_paise) : '—' }}
+                    </td>
+                    @endif
                     <td class="px-3 py-2 text-right text-gray-600">
                         {{ $line->repurchase_deduction_paise > 0 ? $rupees($line->repurchase_deduction_paise) : '—' }}
                     </td>
