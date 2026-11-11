@@ -1211,11 +1211,11 @@ final class AdminSettingsController extends Controller
             'comp.tds.rate_bp' => [
                 'group' => 'compensation_plan',
                 'label' => 'TDS rate (basis points)',
-                'description' => 'Tax deducted at source on bonuses. 500 = 5%. Verify the current Income Tax rate before changing.',
+                'description' => 'Tax deducted at source on bonuses, applied at payout. 200 = 2% (2026-11-11; was 5%). Developer-owned; admins can see it. Verify the current Income Tax section and rate with the CA before changing.',
                 'type' => 'int',
                 'min' => 0,
                 'max' => 10000,
-                'default' => '500',
+                'default' => '200',
             ],
             'comp.gsb.pool_rate_bp' => [
                 'group' => 'compensation_plan',

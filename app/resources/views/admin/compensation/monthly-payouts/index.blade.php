@@ -6,7 +6,7 @@
 
 @developer
 <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-    Monthly batches run on the 8th at 04:00 IST — a week after the crediting engines close the month on the 1st, so an incomplete month can be caught before it reaches a bank — covering GBB, Rank Bonus, Fortune Bonus, Lifetime Awards (cash), and ADC Bonus. Each batch shows total gross, deductions (admin charge 3% + TDS 5%), and net transferred. Minimum payout is ₹{{ $minPayout }} — below-minimum wallets roll over.
+    Monthly batches run on the 8th at 04:00 IST — a week after the crediting engines close the month on the 1st, so an incomplete month can be caught before it reaches a bank — covering GBB, Rank Bonus, Fortune Bonus, Lifetime Awards (cash), and ADC Bonus. Each batch shows total gross, deductions (admin charge 3% + TDS {{ $tdsRateLabel }}), and net transferred. Minimum payout is ₹{{ $minPayout }} — below-minimum wallets roll over.
 </div>
 @enddeveloper
 
@@ -32,7 +32,7 @@
                         Total gross <x-help-tip text="Sum of bonus credits across every line in the batch, held lines included, before deductions." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-600">
-                        Deductions <x-help-tip text="Repurchase deduction (10% per credit, monthly cap ₹10,000, already moved to the repurchase wallet at credit time) + admin charge (3% of gross, capped ₹25,000 per group) + TDS (5% of payable). Held lines carry only the repurchase part." />
+                        Deductions <x-help-tip text="Repurchase deduction (10% per credit, monthly cap ₹10,000, already moved to the repurchase wallet at credit time) + admin charge (3% of gross, capped ₹25,000 per group) + TDS ({{ $tdsRateLabel }} of payable). Held lines carry only the repurchase part." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-600">Net transferred</th>
                     <th class="px-4 py-2 text-center text-gray-600">Status</th>

@@ -16,7 +16,7 @@
                 <th class="px-3 py-2 text-right text-gray-600">Wallet balance <x-help-tip text="Wallet balance at time of payout." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Repurchase deduction <x-help-tip text="Deducted from bonus credits at earn time (10% per credit, monthly cap ₹10,000). Swept to the repurchase wallet." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Admin 3% <x-help-tip text="3% of gross income, capped ₹25,000 per bonus group." /></th>
-                <th class="px-3 py-2 text-right text-gray-600">TDS 5% <x-help-tip text="5% of payable (after repurchase and admin deduction)." /></th>
+                <th class="px-3 py-2 text-right text-gray-600">TDS {{ $tdsRateLabel }} <x-help-tip text="{{ $tdsRateLabel }} of payable (after repurchase and admin deduction)." /></th>
                 <th class="px-3 py-2 text-right text-gray-600">Net transferred</th>
                 <th class="px-3 py-2 text-left text-gray-600">UTR</th>
                 <th class="px-3 py-2 text-center text-gray-600">Status</th>

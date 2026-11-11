@@ -296,7 +296,7 @@
                         Admin charge <x-help-tip text="3% of gross, capped at ₹25,000 per bonus group per cycle." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">
-                        TDS <x-help-tip text="5% of payable (gross − repurchase − admin charge)." />
+                        TDS <x-help-tip text="{{ $tdsRateLabel }} of payable (gross − repurchase − admin charge)." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">Net to transfer</th>
                     <th class="px-3 py-2 text-left text-gray-600">

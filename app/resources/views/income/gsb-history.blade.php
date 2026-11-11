@@ -10,7 +10,7 @@
     {{-- Page note --}}
     @developer
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        Your Genos Sales Bonus (GSB) is calculated at 23:59 every day based on the BV your Genos groups generated. When a bonus is credited, 10% of it (up to ₹10,000 per calendar month) moves to your repurchase wallet; the rest lands in your main wallet. The 3% admin charge (max ₹25,000 per weekly batch) and 5% TDS (Tax Deducted at Source) are taken later, at payout, and appear on your payout statement. Each row below is one daily cut-off result.
+        Your Genos Sales Bonus (GSB) is calculated at 23:59 every day based on the BV your Genos groups generated. When a bonus is credited, 10% of it (up to ₹10,000 per calendar month) moves to your repurchase wallet; the rest lands in your main wallet. The 3% admin charge (max ₹25,000 per weekly batch) and {{ $tdsRateLabel }} TDS (Tax Deducted at Source) are taken later, at payout, and appear on your payout statement. Each row below is one daily cut-off result.
     </div>
     @enddeveloper
 

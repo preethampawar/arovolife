@@ -24,5 +24,5 @@
 </th>
 @endif
 <th class="{{ $thClass }}">
-    <span class="flex items-center justify-end gap-1">{{ $creditedLabel }} <x-help-tip text="{{ $repurchase ? 'Gross minus the repurchase deduction — what landed in the main wallet.' : 'What landed in the main wallet.' }} The 3% admin charge and 5% TDS are taken later, at payout, and appear on the payout statement." /></span>
+    <span class="flex items-center justify-end gap-1">{{ $creditedLabel }} <x-help-tip text="{{ $repurchase ? 'Gross minus the repurchase deduction — what landed in the main wallet.' : 'What landed in the main wallet.' }} The 3% admin charge and {{ $tdsRateLabel }} TDS are taken later, at payout, and appear on the payout statement." /></span>
 </th>

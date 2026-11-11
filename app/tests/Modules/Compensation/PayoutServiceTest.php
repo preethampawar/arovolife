@@ -23,6 +23,9 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     disableTestForeignKeys();
+    // The worked examples in this file were built on 5% TDS; the default is
+    // 2% since 2026-11-11 (CompensationPlanSettingsServiceTest covers it).
+    setPayoutSetting('comp.tds.rate_bp', '500');
 });
 
 /** Set a plan/settings scalar so the payout batch reads it (overrides the registry default). */

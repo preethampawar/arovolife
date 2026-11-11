@@ -36,7 +36,7 @@
                         Total gross <x-help-tip text="Sum of bonus credits across every line in the batch, held lines included, before deductions." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-600">
-                        Deductions <x-help-tip text="Repurchase deduction (10% per credit, monthly cap ₹10,000, already moved to the repurchase wallet at credit time) + admin charge (3%) + TDS (5%). Held lines carry only the repurchase part." />
+                        Deductions <x-help-tip text="Repurchase deduction (10% per credit, monthly cap ₹10,000, already moved to the repurchase wallet at credit time) + admin charge (3%) + TDS ({{ $tdsRateLabel }}). Held lines carry only the repurchase part." />
                     </th>
                     <th class="px-4 py-2 text-right text-gray-600">Net transferred</th>
                     <th class="px-4 py-2 text-center text-gray-600">Status</th>

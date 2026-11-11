@@ -67,7 +67,8 @@ final class CompensationPlanSettingsService
         'comp.admin_charge.applies_to_gbb' => true,
         'comp.admin_charge.applies_to_fortune' => true,
         'comp.admin_charge.applies_to_adc' => true,
-        'comp.tds.rate_bp' => 500,
+        // 200 bp = 2% (user decision 2026-11-11, pending CA confirmation of the section; was 5%).
+        'comp.tds.rate_bp' => 200,
         'comp.gsb.power_cf_cap_paise' => 45_000_000,
         'comp.gsb.min_bv_paise' => 60_000,
         // Daily GSB pool for the pro-rated slabs 3–7 (KP 2026-07-29): share of

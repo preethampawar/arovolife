@@ -228,7 +228,7 @@
     </x-ui.card>
     <x-ui.card padding="p-4">
         <p class="text-xs font-medium text-gray-600 uppercase tracking-wider flex items-center gap-1">
-            Deductions <x-help-tip text="Repurchase deduction + admin charge (3% of gross, capped ₹25,000 per group) + TDS (5% of payable) across all line items." />
+            Deductions <x-help-tip text="Repurchase deduction + admin charge (3% of gross, capped ₹25,000 per group) + TDS ({{ $tdsRateLabel }} of payable) across all line items." />
         </p>
         <p class="mt-1 text-lg font-bold text-red-600">{{ $rupees($batch->total_deductions_paise) }}</p>
         <dl class="mt-2 space-y-0.5 text-[11px] text-gray-600">
@@ -291,7 +291,7 @@
                         Admin charge <x-help-tip text="3% of gross, capped at ₹25,000 per bonus group per cycle." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">
-                        TDS <x-help-tip text="5% of payable (gross − repurchase − admin charge)." />
+                        TDS <x-help-tip text="{{ $tdsRateLabel }} of payable (gross − repurchase − admin charge)." />
                     </th>
                     <th class="px-3 py-2 text-right text-gray-600">Net to transfer</th>
                     <th class="px-3 py-2 text-left text-gray-600">
