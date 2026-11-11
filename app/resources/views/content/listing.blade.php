@@ -16,7 +16,7 @@
 
     <main class="max-w-6xl mx-auto px-6 py-12 sm:py-16">
         <div class="text-center mb-10 sm:mb-12 max-w-2xl mx-auto">
-            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">arovolife</p>
+            <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">arovolife</p>
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-3">{{ $heading }}</h1>
             @isset($intro)
                 <p class="text-base text-gray-600 leading-relaxed">{{ $intro }}</p>

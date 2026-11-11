@@ -44,7 +44,7 @@
 
         <div class="max-w-6xl mx-auto px-6 py-16 md:py-24 grid md:grid-cols-2 items-center gap-12 lg:gap-16 relative">
             <div data-reveal>
-                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">About arovolife</p>
+                <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">About arovolife</p>
                 <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.05] mb-6">
                     A new chapter in the <span class="text-brand-700">direct selling industry</span>.
                 </h1>
@@ -108,7 +108,7 @@
                 <img src="https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?w=900&q=80&auto=format&fit=crop" alt="A team building together" class="w-full h-full object-cover" loading="lazy">
             </div>
             <div class="md:col-span-3" data-reveal data-reveal-delay="200">
-                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Our story</p>
+                <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Our story</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
                     Built from day one for the decade ahead.
                 </h2>
@@ -153,7 +153,7 @@
     <section class="py-20">
         <div class="max-w-6xl mx-auto px-6">
             <div class="text-center mb-12 max-w-2xl mx-auto" data-reveal>
-                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Our philosophy</p>
+                <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Our philosophy</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 leading-tight">
                     Customer first. Always.
                 </h2>
@@ -195,7 +195,7 @@
     <section class="bg-[#f4f7f6] py-20">
         <div class="max-w-6xl mx-auto px-6">
             <div class="text-center mb-12 max-w-2xl mx-auto" data-reveal>
-                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Our products</p>
+                <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Our products</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 leading-tight">
                     Best-in-class across every category.
                 </h2>
@@ -244,7 +244,7 @@
     <section class="py-20">
         <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-start">
             <div data-reveal>
-                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Compliance & trust</p>
+                <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Compliance & trust</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
                     The law isn't a checklist for us. It's the floor we stand on.
                 </h2>
@@ -283,7 +283,7 @@
 
         <div class="max-w-6xl mx-auto px-6 relative">
             <div class="text-center mb-12 max-w-3xl mx-auto" data-reveal>
-                <p class="text-sm font-medium text-brand-100 uppercase tracking-wider mb-3">For aspiring distributors</p>
+                <p class="text-sm font-bold text-brand-100 uppercase tracking-wider mb-3">For aspiring distributors</p>
                 <h2 class="text-3xl md:text-4xl font-bold mb-4 leading-tight">
                     The fairest direct selling company in India.
                 </h2>
@@ -330,7 +330,7 @@
                     <img src="https://images.unsplash.com/photo-1573164574572-cb89e39749b4?w=900&q=80&auto=format&fit=crop" alt="Growth pathway" class="w-full h-full object-cover" loading="lazy">
                 </div>
                 <div data-reveal data-reveal-delay="200">
-                    <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Growth pathway</p>
+                    <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Growth pathway</p>
                     <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
                         From your first step to leadership — we walk it with you.
                     </h2>
@@ -369,7 +369,7 @@
     <section class="bg-white border-y border-gray-100 py-20">
         <div class="max-w-6xl mx-auto px-6">
             <div class="text-center mb-12 max-w-2xl mx-auto" data-reveal>
-                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Our values</p>
+                <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Our values</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-3 leading-tight">
                     What we won't compromise on.
                 </h2>
@@ -411,7 +411,7 @@
         <div class="max-w-6xl mx-auto px-6">
             <div class="grid md:grid-cols-2 gap-12 items-start">
                 <div data-reveal>
-                    <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Why now, why arovolife</p>
+                    <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Why now, why arovolife</p>
                     <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-5 leading-tight">
                         India's direct selling market is just getting started.
                     </h2>
@@ -478,7 +478,7 @@
         <div class="absolute -bottom-20 left-1/4 w-[300px] h-[300px] bg-leaf-200/40 rounded-full blur-3xl pointer-events-none"></div>
 
         <div class="max-w-4xl mx-auto px-6 relative text-center" data-reveal>
-            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Register with us</p>
+            <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Register with us</p>
             <h2 class="text-4xl md:text-5xl font-bold text-gray-900 leading-[1.1] mb-5">
                 Two paths in. <br class="hidden sm:inline">One promise of <span class="text-brand-700">trust</span>.
             </h2>

@@ -18,7 +18,7 @@
     <div class="max-w-6xl mx-auto px-6 py-12 sm:py-16">
 
         <div class="text-center mb-8 lift-in" style="animation-delay: 60ms;">
-            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Get in touch</p>
+            <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Get in touch</p>
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
                 Talk to <span class="text-brand-700">arovolife</span>.
             </h1>

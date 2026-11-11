@@ -14,7 +14,7 @@
         Each rank's achievers earn that rank's Rank Achievement Points (RAP) and each AO-GO grantee the offer's points; the lower ranks and AO-GO are priced first, the higher ranks from what remains, and a point's value is capped.
         Your income is your points × the point value of your rank's pass.
         Re-qualifying a rank you already achieved requires that month's repurchase BV for the rank from your own purchases.
-        When credited, 10% of the bonus (up to ₹10,000 per calendar month) moves to your repurchase wallet. The admin charge (3%, capped) and 5% TDS are taken at payout. Credited on the 1st of the following month.
+        When credited, 10% of the bonus (up to ₹10,000 per calendar month) moves to your repurchase wallet. The admin charge (3%, capped) and {{ $tdsRateLabel }} TDS are taken at payout. Credited on the 1st of the following month.
     </div>
     @enddeveloper
 

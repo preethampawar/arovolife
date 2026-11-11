@@ -20,7 +20,7 @@
     <div class="max-w-2xl mx-auto px-6 py-12 sm:py-16">
 
         <div class="text-center mb-8 lift-in" style="animation-delay: 60ms;">
-            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Grievance redressal</p>
+            <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Grievance redressal</p>
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
                 Raise a grievance
             </h1>

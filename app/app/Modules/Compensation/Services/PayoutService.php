@@ -151,7 +151,7 @@ final class PayoutService
      *
      * Deductions, in order: repurchase (already deducted at credit time and held
      * in the repurchase wallet), Group-A admin charge (3%, capped at ₹25k),
-     * TDS (5% of payable).
+     * TDS (comp.tds.rate_bp of payable).
      */
     public function runWeeklyBatch(Carbon $cycleEnd): PayoutBatch
     {
@@ -274,7 +274,7 @@ final class PayoutService
      * cash awards. Applies the combined monthly income cap (KP Round-4), the
      * repurchase deduction remainder not already collected by the month's
      * weekly batches, per-group admin charges (each capped at ₹25k), and TDS
-     * (5% on payable). Deduction order: gross → repurchase → admin charge →
+     * (comp.tds.rate_bp on payable). Deduction order: gross → repurchase → admin charge →
      * TDS. A Lifetime Award (client 2026-11-10) is outside the cap, the
      * repurchase deduction and the admin charge, and is inside the one TDS
      * calculation; an award whose rank qualification no longer stands is left

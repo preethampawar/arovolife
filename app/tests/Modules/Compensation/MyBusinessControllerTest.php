@@ -155,7 +155,7 @@ it('renders all four my business groups with the flag-gated menu tiles hidden', 
         ->assertDontSee('from-indigo-600 to-purple-600', false)
         ->assertSee('Personal BV (lifetime)')
         ->assertSee('No title yet')
-        ->assertSee('Already net of the repurchase deduction. Transferred after 3% admin charge + 5% TDS.')
+        ->assertSee('Already net of the repurchase deduction. Transferred after 3% admin charge + 2% TDS.')
         // The card's amount is the whole CURRENT wallet balance, including days
         // the next batch will not pay, so the visible copy labels it as such
         // and the earning week it covers lives in the help tip instead.

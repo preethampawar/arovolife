@@ -80,7 +80,7 @@ final class SettingsSeeder extends Seeder
             'comp.admin_charge.applies_to_gbb' => 'true',
             'comp.admin_charge.applies_to_fortune' => 'true',
             'comp.admin_charge.applies_to_adc' => 'true',
-            'comp.tds.rate_bp' => '500',                    // 5%
+            'comp.tds.rate_bp' => '200',                    // 2% (2026-11-11; was 5%)
             'comp.gsb.power_cf_cap_paise' => '45000000',    // 4,50,000 BV
             'comp.gsb.pool_rate_bp' => '4200',              // 42% daily GSB pool (client 2026-11-04)
             'comp.gsb.min_bv_paise' => '60000',             // 600 BV personal minimum before income accrues

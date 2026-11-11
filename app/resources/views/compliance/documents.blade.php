@@ -17,7 +17,7 @@
 
     <div class="max-w-3xl mx-auto px-6 py-12 sm:py-16">
         <div class="text-center mb-10">
-            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Transparency</p>
+            <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Transparency</p>
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-3">Compliance Documents</h1>
             <p class="text-base text-gray-600 max-w-prose mx-auto">
                 Our statutory registrations, policies and certifications — published openly for anyone to view and download.

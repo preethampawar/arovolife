@@ -123,7 +123,7 @@ it('exports one row per award with the month, rank, amount, TDS rate and status'
         ->streamedContent();
 
     expect($csv)->toContain('S.No.,Month,ADN,Name,Rank,"Amount (Rs)","TDS rate",Status')
-        ->and($csv)->toContain('1,2026-07,AWREXP,"Alice Export","Emerald Partner",48600,5%,credited');
+        ->and($csv)->toContain('1,2026-07,AWREXP,"Alice Export","Emerald Partner",48600,2%,credited');
 });
 
 it('has no cash/goods type filter: a type query is ignored', function (): void {

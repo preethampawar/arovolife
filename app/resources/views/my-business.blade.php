@@ -117,11 +117,11 @@
                 <x-help-tip :text="($payoutCadencePublished
                     ? 'Weekly income for each Wednesday-to-Tuesday earning week is paid on the following Tuesday (03:00 IST), so the '.$nextPayout->format('d M Y').' transfer covers earnings through '.\App\Modules\Compensation\Models\PayoutBatch::weeklyEarningWindow($nextPayout)['end']->format('d M Y').'; monthly bonus income transfers in the monthly payout on the 8th.'
                     : 'Weekly income is transferred in the Tuesday payout run (03:00 IST); monthly bonus income transfers in the monthly payout run.')
-                    .' This is the balance sitting in your wallet right now, not a forecast. The repurchase deduction was already taken when each bonus was credited; at payout the balance is transferred after the 3% admin charge and 5% TDS; a balance below the minimum payout amount is not transferred and simply stays in your wallet for the following payout.'" />
+                    .' This is the balance sitting in your wallet right now, not a forecast. The repurchase deduction was already taken when each bonus was credited; at payout the balance is transferred after the 3% admin charge and '.$tdsRateLabel.' TDS; a balance below the minimum payout amount is not transferred and simply stays in your wallet for the following payout.'" />
             </div>
             <p class="text-[11px] uppercase tracking-wider font-semibold text-gray-600">Next payout — Tuesday, {{ $nextPayout->format('d M Y') }}</p>
             <p class="mt-1 text-xl sm:text-2xl font-bold text-brand-800 leading-tight">₹{{ $walletBalancePaise !== null ? Number::format($walletBalancePaise / 100, 2) : '—' }}</p>
-            <p class="mt-1 text-[11px] text-gray-600 leading-snug">Already net of the repurchase deduction. Transferred after 3% admin charge + 5% TDS.</p>
+            <p class="mt-1 text-[11px] text-gray-600 leading-snug">Already net of the repurchase deduction. Transferred after 3% admin charge + {{ $tdsRateLabel }} TDS.</p>
             <p class="mt-0.5 text-[11px] text-gray-500 leading-snug">Current wallet balance</p>
         </div>
     </div>

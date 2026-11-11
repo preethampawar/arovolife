@@ -261,7 +261,7 @@
                             <span class="flex items-center justify-end gap-1">Admin charge <x-help-tip text="3% of the gross for this payout period, capped at ₹25,000 per bonus group." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
-                            <span class="flex items-center justify-end gap-1">TDS <x-help-tip text="Tax Deducted at Source at 5% of the payable amount (gross minus repurchase minus admin charge)." /></span>
+                            <span class="flex items-center justify-end gap-1">TDS <x-help-tip text="Tax Deducted at Source at {{ $tdsRateLabel }} of the payable amount (gross minus repurchase minus admin charge)." /></span>
                         </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             <span class="flex items-center justify-end gap-1">Net transferred <x-help-tip text="Amount actually sent to your bank account after all deductions." /></span>

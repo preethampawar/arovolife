@@ -24,7 +24,7 @@ it('falls back to the registry default when a scalar setting is absent', functio
     // No settings rows seeded → defaults apply.
     $plan = app(CompensationPlanSettingsService::class);
 
-    expect($plan->tdsRateBp())->toBe(500);                 // 5%
+    expect($plan->tdsRateBp())->toBe(200);                 // 2% (2026-11-11; was 5%)
     expect($plan->adminChargeRateBp())->toBe(300);          // 3%
     expect($plan->adminChargeWeeklyCapPaise())->toBe(2_500_000);  // ₹25,000 (KP Round-5)
     expect($plan->adminChargeMonthlyCapPaise())->toBe(2_500_000); // ₹25,000 (KP Round-5)
@@ -154,7 +154,7 @@ it('returns a pass-1 rank ceiling inside 1–9 as stored', function (string $val
 it('computes TDS as a basis-point share of the supplied base', function () {
     $plan = app(CompensationPlanSettingsService::class);
 
-    expect($plan->tds(174_600))->toBe(8_730); // 5% of 174,600
+    expect($plan->tds(174_600))->toBe(3_492); // 2% of 174,600
 });
 
 // ── Tabular lookups ─────────────────────────────────────────────────────────

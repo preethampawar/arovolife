@@ -26,7 +26,7 @@
                     <x-lucide-heart class="w-6 h-6" />
                 </div>
                 <div>
-                    <h2 class="text-lg font-semibold text-gray-900 mb-1">Health Services</h2>
+                    <h2 class="text-lg font-bold text-gray-900 mb-1">Health Services</h2>
                     <p class="text-sm text-gray-600">Wellness solutions for you and your family.</p>
                 </div>
             </a>
@@ -37,7 +37,7 @@
                     <x-lucide-users-round class="w-6 h-6" />
                 </div>
                 <div>
-                    <h2 class="text-lg font-semibold text-gray-900 mb-1">Social Contribution</h2>
+                    <h2 class="text-lg font-bold text-gray-900 mb-1">Social Contribution</h2>
                     <p class="text-sm text-gray-600">Our commitment to community and the environment.</p>
                 </div>
             </a>
@@ -48,7 +48,7 @@
                     <x-lucide-shopping-bag class="w-6 h-6" />
                 </div>
                 <div>
-                    <h2 class="text-lg font-semibold text-gray-900 mb-1">Online Shopping</h2>
+                    <h2 class="text-lg font-bold text-gray-900 mb-1">Online Shopping</h2>
                     <p class="text-sm text-gray-600">Browse our full range of products.</p>
                 </div>
             </a>
@@ -59,7 +59,7 @@
                     <x-lucide-graduation-cap class="w-6 h-6" />
                 </div>
                 <div>
-                    <h2 class="text-lg font-semibold text-gray-900 mb-1">Online Courses</h2>
+                    <h2 class="text-lg font-bold text-gray-900 mb-1">Online Courses</h2>
                     <p class="text-sm text-gray-600">Skill-building programs to support your journey.</p>
                 </div>
             </a>
