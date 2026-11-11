@@ -65,7 +65,7 @@
                     {{ $listing['label'] }}
                 </a>
             @else
-                <p class="no-print text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">arovolife</p>
+                <p class="no-print text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">arovolife</p>
             @endif
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">{{ $page->title }}</h1>
             @if($page->published_at)

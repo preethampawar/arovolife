@@ -5,7 +5,7 @@
 @section('content')
 <div class="max-w-xl mx-auto">
     <div class="mb-7 lift-in" style="animation-delay: 80ms;">
-        <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Genos placement</p>
+        <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Genos placement</p>
         <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight mb-4">
             Your <span class="text-brand-700">placement</span> is locked.
         </h1>

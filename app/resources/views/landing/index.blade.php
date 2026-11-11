@@ -76,7 +76,7 @@
                      role="group" aria-roledescription="slide" aria-label="Slide {{ $i + 1 }} of {{ count($slides) }}"
                      @if($i !== 0) inert @endif
                      class="hero-slide-text">
-                    <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">{{ $s['eyebrow'] }}</p>
+                    <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">{{ $s['eyebrow'] }}</p>
                     <h1 class="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-5">
                         {{ $s['title_plain'] }}
                         @if($s['title_accent'])
@@ -410,7 +410,7 @@
         <div class="absolute -bottom-24 -right-24 w-[400px] h-[400px] bg-sunrise-200/40 rounded-full blur-3xl pointer-events-none"></div>
         <div class="max-w-7xl mx-auto px-6 relative">
             <div class="text-center mb-10">
-                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-2">Why arovolife</p>
+                <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-2">Why arovolife</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Compliant by design — <span class="text-brand-700">customer-first</span> by belief.</h2>
                 <p class="text-lg text-gray-700 font-semibold mb-3">Purpose at Heart. People at the Centre. Progress with Integrity.</p>
                 <div class="max-w-3xl mx-auto space-y-3 mb-3">
@@ -475,7 +475,7 @@
         <div class="absolute top-1/2 -right-32 -translate-y-1/2 w-[300px] h-[300px] bg-leaf-100/60 rounded-full blur-3xl pointer-events-none"></div>
         <div class="max-w-7xl mx-auto px-6 relative">
             <div class="text-center mb-12">
-                <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-2">How to register</p>
+                <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-2">How to register</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Five quick steps. <span class="text-leaf-600">Fifteen minutes</span> start to finish.</h2>
                 <p class="text-lg text-gray-700 font-semibold mb-3">Simple to Start. Clear at Every Step.</p>
                 <p class="text-gray-800 max-w-3xl mx-auto mb-3">Joining arovolife is designed to be easy, transparent and convenient. With a simple referral-based registration process, new applicants can complete the essential steps, verify their details and begin their arovolife journey with confidence.</p>
@@ -536,7 +536,7 @@
         <div class="absolute top-0 left-1/3 w-[400px] h-[400px] bg-leaf-100/50 rounded-full blur-3xl pointer-events-none"></div>
         <div class="max-w-7xl mx-auto px-6 relative">
             <div class="text-center mb-10 max-w-2xl mx-auto">
-                <p class="text-sm font-medium text-leaf-600 uppercase tracking-wider mb-2">Our products</p>
+                <p class="text-sm font-bold text-leaf-600 uppercase tracking-wider mb-2">Our products</p>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2"><span class="text-brand-700">Best-in-class.</span> <span class="text-leaf-600">Best for life.</span></h2>
                 <p class="text-gray-800 mb-3">A small range, deeply considered — wellness essentials and personal care that stand on their own quality.</p>
                 <p class="text-gray-800 mb-3">At arovolife, our products are created with one clear purpose: to bring meaningful value to everyday life. We focus on categories that support health, self-care, cleaner living and better lifestyles—with quality, responsibility and trust at the centre of everything we offer.</p>

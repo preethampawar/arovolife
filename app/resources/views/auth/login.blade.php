@@ -20,7 +20,7 @@
         {{-- Header matches the homepage hero slider: small-caps eyebrow,
              bold sans headline, accent in solid brand colour. --}}
         <div class="text-center mb-8 lift-in" style="animation-delay: 60ms;">
-            <p class="text-sm font-medium text-brand-700 uppercase tracking-wider mb-3">Welcome back</p>
+            <p class="text-sm font-bold text-brand-700 uppercase tracking-wider mb-3">Welcome back</p>
             <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
                 Sign in to your <span class="text-brand-700">arovolife</span> account.
             </h1>
