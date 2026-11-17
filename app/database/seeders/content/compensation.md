@@ -201,7 +201,7 @@ The administrative charge and Tax Deducted at Source are applied to bonuses at t
 
 The repurchase-wallet amount is credited to your repurchase wallet and applied automatically against your own product purchases at checkout; it is not withdrawable as cash. The ₹10,000 ceiling is counted per month of income earned, not per payment: deductions taken from bonuses earned for the same month are added together and stop once that month's ₹10,000 has been reached.
 
-Non-cash awards are not subject to the administrative charge. Applicable tax on non-cash awards is dealt with separately at the time of release. TDS rates are those in force on the date of payment.
+Merchandise awards are not subject to the administrative charge. Applicable tax on merchandise awards is dealt with separately at the time of release. TDS rates are those in force on the date of payment.
 
 ## 9. Payment
 
@@ -307,7 +307,7 @@ The bonus is calculated after the month has closed and **may be ₹0** in a mont
 
 ### 11.5 Lifetime Awards & Rewards
 
-Each rank carries a Lifetime Award, given as **merchandise only — never cash**. There is no cash alternative, and an award cannot be exchanged, transferred or converted to money.
+Each rank carries a Lifetime Award, given as **merchandise**. An award cannot be exchanged or transferred.
 
 Awards are funded from 20% of the BV of Company product sales. Every part traces to a rank qualification that was itself earned only from product sales.
 
