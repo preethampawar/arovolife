@@ -51,6 +51,9 @@
                         <span class="inline-flex px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-medium">
                             {{ $rankNames[$milestone->rank_number] ?? 'Rank '.$milestone->rank_number }}
                         </span>
+                        @if(str_contains((string) $milestone->award_description, ' Lifetime Award — '))
+                        <div class="text-[11px] text-gray-600 mt-0.5">{{ \Illuminate\Support\Str::afterLast($milestone->award_description, ' Lifetime Award — ') }}</div>
+                        @endif
                     </td>
                     <td class="px-4 py-2 text-gray-600">{{ ($milestone->achieved_month ?? $milestone->triggered_month)->format('M Y') }}</td>
                     <td class="px-4 py-2 text-right font-semibold text-gray-800 tabular-nums">{{ $rupees($milestone->amount_paise) }}</td>

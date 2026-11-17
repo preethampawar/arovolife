@@ -44,7 +44,10 @@
                             <x-help-tip text="The month in which you first achieved the rank." />
                         </th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Rank</th>
-                        <th class="text-left px-4 py-3 font-semibold text-gray-600">Award</th>
+                        <th class="text-left px-4 py-3 font-semibold text-gray-600">
+                            Award
+                            <x-help-tip text="Where an award is named after an item, the name only describes it. It is paid in cash, the amount shown, not as the item." />
+                        </th>
                         <th class="text-right px-4 py-3 font-semibold text-gray-600">
                             Award amount
                             <x-help-tip text="The award amount for this rank when you earned it. TDS is deducted when it is paid." />

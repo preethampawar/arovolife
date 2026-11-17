@@ -464,6 +464,15 @@ final class CompensationPlanSettingsService
         return (int) ($this->rankTiers()[$rank]['lifetime_award_budget_paise'] ?? 0);
     }
 
+    /**
+     * The item a rank's cash Lifetime Award is announced as (e.g. a phone or a
+     * tour), admin-set on rank_tiers; null when left blank.
+     */
+    public function lifetimeAwardName(int $rank): ?string
+    {
+        return $this->rankTiers()[$rank]['lifetime_award_name'] ?? null;
+    }
+
     public function minPayoutPaise(): int
     {
         return $this->scalarInt('payout.min_threshold_paise');
@@ -637,6 +646,7 @@ final class CompensationPlanSettingsService
                     'structural_qualifiers_per_side' => $row->structural_qualifiers_per_side !== null ? (int) $row->structural_qualifiers_per_side : null,
                     'repurchase_bv_paise' => (int) ($row->repurchase_bv_paise ?? 0),
                     'lifetime_award_budget_paise' => (int) ($row->lifetime_award_budget_paise ?? 0),
+                    'lifetime_award_name' => filled($row->lifetime_award_name ?? null) ? (string) $row->lifetime_award_name : null,
                     'is_active' => (bool) $row->is_active,
                 ];
             }

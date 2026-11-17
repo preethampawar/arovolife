@@ -225,6 +225,36 @@ it('saves a rank tier RAP edit with no pool % field (client 2026-10-05 two-pass 
     expect((int) DB::table('rank_tiers')->where('rank_number', 4)->value('rap_points'))->toBe(1200);
 });
 
+it('saves, trims and clears a rank tier award name', function () {
+    $admin = planAdmin('developer');
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.rank-tier.update', 4), rankTierPayload(['lifetime_award_name' => '  iPhone 17  ']))
+        ->assertSessionHasNoErrors();
+
+    expect(DB::table('rank_tiers')->where('rank_number', 4)->value('lifetime_award_name'))->toBe('iPhone 17');
+
+    $this->actingAs($admin)
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.rank-tier.update', 4), rankTierPayload(['lifetime_award_name' => '']))
+        ->assertSessionHasNoErrors();
+
+    expect(DB::table('rank_tiers')->where('rank_number', 4)->value('lifetime_award_name'))->toBeNull();
+});
+
+it('accepts a 100-character rank tier award name and rejects 101', function () {
+    $this->actingAs(planAdmin('developer'))
+        ->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('admin.compensation.plan-settings.rank-tier.update', 4), rankTierPayload(['lifetime_award_name' => str_repeat('a', 100)]))
+        ->assertSessionHasNoErrors();
+
+    $this->post(route('admin.compensation.plan-settings.rank-tier.update', 4), rankTierPayload(['lifetime_award_name' => str_repeat('b', 101)]))
+        ->assertSessionHasErrors('lifetime_award_name');
+
+    expect(DB::table('rank_tiers')->where('rank_number', 4)->value('lifetime_award_name'))->toBe(str_repeat('a', 100));
+});
+
 it('rejects a rank tier edit with RAP points missing or zero', function (array $overrides) {
     $this->actingAs(planAdmin('developer'))
         ->withoutMiddleware(PreventRequestForgery::class)

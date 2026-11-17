@@ -172,7 +172,7 @@ final class LifetimeAwardService
                     'left_genos_bv_paise' => $award['left_genos_bv_paise'],
                     'right_genos_bv_paise' => $award['right_genos_bv_paise'],
                     'qualification_count' => 1,
-                    'award_description' => $this->plan->rankName($award['rank_number']).' Lifetime Award',
+                    'award_description' => $this->awardDescription($award['rank_number']),
                     'status' => LifetimeAwardMilestone::STATUS_PENDING,
                 ],
             );
@@ -426,5 +426,18 @@ final class LifetimeAwardService
         }
 
         return $candidates;
+    }
+
+    /**
+     * The award's text, fixed when it is earned: the admin-set award name
+     * (the client, 2026-11-17) after the rank's default label, or the label
+     * alone while no name is set.
+     */
+    private function awardDescription(int $rank): string
+    {
+        $label = $this->plan->rankName($rank).' Lifetime Award';
+        $name = $this->plan->lifetimeAwardName($rank);
+
+        return $name !== null ? $label.' — '.$name : $label;
     }
 }

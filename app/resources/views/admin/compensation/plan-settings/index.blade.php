@@ -482,6 +482,11 @@
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                     <span class="text-[11px] text-gray-600">{{ $rupees($row->lifetime_award_budget_paise) }}</span>
                 </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Award name <x-help-tip text="The item this rank's cash award is announced as, e.g. a phone, a flight ticket or a tour. Optional, up to 100 characters. Name only an item the award amount covers: the partner is paid the amount, not the item. Shown with the award on the partner's and admin Awards pages. An award already earned keeps the name it was earned with." /></label>
+                    <input type="text" name="lifetime_award_name" data-field-label="Award name" value="{{ $row->lifetime_award_name }}" maxlength="100" placeholder="e.g. iPhone 17"
+                           class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
+                </div>
                 <label class="flex items-center gap-2 text-xs text-gray-600 mt-5">
                     <input type="checkbox" name="is_active" data-field-label="Active" value="1" @checked($row->is_active)>
                     Active <x-help-tip text="When off, this rank is skipped by the Rank Bonus engine." />

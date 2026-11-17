@@ -95,6 +95,32 @@ it('credits a first-time Rank 1 award at the rank amount with its evidence snaps
         ->and(AuditLog::where('action', 'awards.milestone.credited')->where('subject_id', $milestone->id)->count())->toBe(1);
 });
 
+it('records the rank award name when the award is earned, and keeps it after a rename', function (): void {
+    DB::table('rank_tiers')->where('rank_number', 1)->update(['lifetime_award_name' => 'iPhone 17']);
+    app()->forgetInstance(CompensationPlanSettingsService::class);
+    app()->forgetInstance(LifetimeAwardService::class);
+    $dist = Distributor::factory()->create();
+    awardQualify($dist->id, 1, '2026-03-01', leftBv: 1_500_000, rightBv: 1_600_000);
+
+    awardClose('2026-03-01', [$dist->id => [1]]);
+    DB::table('rank_tiers')->where('rank_number', 1)->update(['lifetime_award_name' => 'Goa trip']);
+
+    $rankName = app(CompensationPlanSettingsService::class)->rankName(1);
+    expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole()->award_description)
+        ->toBe($rankName.' Lifetime Award — iPhone 17');
+});
+
+it('uses the default award text while no award name is set', function (): void {
+    $dist = Distributor::factory()->create();
+    awardQualify($dist->id, 1, '2026-03-01', leftBv: 1_500_000, rightBv: 1_600_000);
+
+    awardClose('2026-03-01', [$dist->id => [1]]);
+
+    $rankName = app(CompensationPlanSettingsService::class)->rankName(1);
+    expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole()->award_description)
+        ->toBe($rankName.' Lifetime Award');
+});
+
 it('pays only the rank reached on a jump — skipped ranks are never paid', function (): void {
     $dist = Distributor::factory()->create();
     awardQualify($dist->id, 2, '2026-03-01');

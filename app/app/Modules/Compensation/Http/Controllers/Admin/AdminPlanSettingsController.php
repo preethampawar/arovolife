@@ -151,6 +151,7 @@ final class AdminPlanSettingsController extends Controller
             'structural_qualifiers_per_side' => ['nullable', 'integer', 'min:0', 'max:50'],
             'repurchase_bv_paise' => ['required', 'integer', 'min:0', 'max:1000000000'],
             'lifetime_award_budget_paise' => ['required', 'integer', 'min:0', 'max:100000000000'],
+            'lifetime_award_name' => ['nullable', 'string', 'max:100'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -164,6 +165,7 @@ final class AdminPlanSettingsController extends Controller
             'structural_qualifiers_per_side' => $data['structural_qualifiers_per_side'] !== null ? (int) $data['structural_qualifiers_per_side'] : null,
             'repurchase_bv_paise' => (int) $data['repurchase_bv_paise'],
             'lifetime_award_budget_paise' => (int) $data['lifetime_award_budget_paise'],
+            'lifetime_award_name' => filled($data['lifetime_award_name'] ?? null) ? trim((string) $data['lifetime_award_name']) : null,
             'is_active' => $request->boolean('is_active'),
         ];
 

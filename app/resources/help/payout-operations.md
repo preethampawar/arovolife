@@ -622,8 +622,9 @@ window; neither is wrong.
 **TDS is the plan's TDS rate (a Plan setting) applied to the payable shown.**
 Payable is *gross − repurchase deduction − admin charge*, on weekly and monthly
 batches alike, rounded to the paisa and never more than the payable itself.
-Lifetime Awards are merchandise only and never reach a payout, so nothing is
-left out of the base.
+Lifetime Awards are paid in cash on the monthly batch and carry TDS at the same
+rate; they take no repurchase deduction and no admin charge, so the award part of
+the line is taxed on its full amount.
 
 **PAN is masked and only masked** — the last four digits, read from the
 distributor record. The full number for a filing comes from the KYC documents in
