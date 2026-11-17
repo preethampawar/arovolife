@@ -383,9 +383,10 @@ final class LifetimeAwardService
 
     /**
      * Of `$distributorIds`, those whose highest roster rank this month may be
-     * awarded: the rank not achieved in any earlier month (first time only),
-     * no milestone at that rank (any month, any status — once per lifetime),
-     * and none at that rank or above from an EARLIER month. A later
+     * awarded. Two blockers: (1) a rank at or above it achieved in an earlier
+     * month (first time only — milestone or not); (2) a milestone at that rank
+     * (any month, any status — once per lifetime) or one above it from an
+     * EARLIER month. A later
      * month's milestone never blocks — a rebuild replays months out of order.
      *
      * @param  list<int>  $distributorIds
@@ -414,7 +415,11 @@ final class LifetimeAwardService
         foreach ($distributorIds as $distributorId) {
             $rank = $highest[$distributorId];
 
-            $blocked = in_array($rank, $achievedBefore->get($distributorId, []), true)
+            // A rank achieved earlier blocks it and every rank below it: a
+            // jump to Rank 3 means Ranks 1-2 are never paid, then or later —
+            // even when the jump came before the cash effective month and so
+            // left no milestone (user decision 2026-11-17).
+            $blocked = max([0, ...$achievedBefore->get($distributorId, [])]) >= $rank
                 || $existing->get($distributorId, collect())->contains(
                     fn (LifetimeAwardMilestone $milestone): bool => $milestone->rank_number === $rank
                         || ($milestone->rank_number > $rank && ($milestone->achieved_month ?? $milestone->triggered_month)->lt($monthStart)),

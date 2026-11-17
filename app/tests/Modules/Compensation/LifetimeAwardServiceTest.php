@@ -331,6 +331,22 @@ it('pays a rank only the first time it is achieved, even when the first time was
         ->and(awardedRanks($dist->id))->toBe([2]);
 });
 
+it('pays no lower-rank award after a higher rank was reached before the cash effective month', function (): void {
+    // User decision 2026-11-17: Rank 3 reached in an unpaid month, no milestone.
+    awardSetting('comp.awards.cash_effective_month', '2026-04');
+    $dist = Distributor::factory()->create();
+    awardQualify($dist->id, 3, '2026-02-01');
+
+    awardQualify($dist->id, 2, '2026-05-01');
+    expect(awardClose('2026-05-01', [$dist->id => [2]]))->toBe(0)
+        ->and(awardedRanks($dist->id))->toBe([]);
+
+    // A rank above the earlier one is still paid.
+    awardQualify($dist->id, 4, '2026-06-01');
+    expect(awardClose('2026-06-01', [$dist->id => [4]]))->toBe(1)
+        ->and(awardedRanks($dist->id))->toBe([4]);
+});
+
 it('writes no award for a month that has not closed (an --in-flight run)', function (): void {
     $dist = Distributor::factory()->create();
     $thisMonth = Carbon::now('Asia/Kolkata')->startOfMonth()->toDateString();
