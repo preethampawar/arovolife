@@ -201,7 +201,7 @@ The administrative charge and Tax Deducted at Source are applied to bonuses at t
 
 The repurchase-wallet amount is credited to your repurchase wallet and applied automatically against your own product purchases at checkout; it is not withdrawable as cash. The ₹10,000 ceiling is counted per month of income earned, not per payment: deductions taken from bonuses earned for the same month are added together and stop once that month's ₹10,000 has been reached.
 
-Merchandise awards are not subject to the administrative charge. Applicable tax on merchandise awards is dealt with separately at the time of release. TDS rates are those in force on the date of payment.
+Lifetime Awards (§11.5) carry no administrative charge; TDS is deducted from them as from other bonuses. TDS rates are those in force on the date of payment.
 
 ## 9. Payment
 
@@ -307,27 +307,35 @@ The bonus is calculated after the month has closed and **may be ₹0** in a mont
 
 ### 11.5 Lifetime Awards & Rewards
 
-Each rank carries a Lifetime Award, given as **merchandise**. An award cannot be exchanged or transferred.
+Each rank carries a Lifetime Award: **one fixed cash amount**, paid **once per lifetime** for that rank. Once a rank's award has been paid, it is never paid again.
 
-Awards are funded from 20% of the BV of Company product sales. Every part traces to a rank qualification that was itself earned only from product sales.
+Awards are funded from 20% of the BV of Company product sales. Every award traces to a rank qualification that was itself earned only from product sales. An award is paid in full, whatever that share comes to in the month.
 
-**How it is earned.** An award is earned in parts. A part is earned each time the Distributor qualifies for that rank for a month and is on that month's Rank Bonus roster under §11.2 (not held under the qualifying-again condition), whether or not the pool pays anything that month: Part A on the first such month, Part B on the second, Part C on the third. A part is recorded on the 1st of the following month and handed over as merchandise.
+**How it is earned.** An award is earned for a month in which the Distributor is on that month's Rank Bonus roster under §11.2 (not held under the qualifying-again condition), whether or not the pool pays anything that month. Only the **highest** rank the Distributor achieves that month earns an award, and only if that rank's award has not been taken before.
+
+- A lower rank whose award has not been taken is not paid in the month a higher rank is achieved. It is paid in a later month in which it is the highest rank the Distributor achieves, with no time limit.
+- Ranks 3 to 9 open only after the rank below has been achieved the required number of times (§11.2).
+- An award that is withdrawn before payment does not count as taken. It may be earned again in a later month in which that rank is the highest rank achieved. An award withdrawn because the Distributor cancelled during the cooling-off period or was terminated is not earned again.
+
+**When it is paid.** An award is recorded on the 1st of the month after the month it is earned for, and paid to the Distributor's bank account with the monthly payout on the 8th. It is subject to the same payout conditions as other bonuses (§9); an award held under those conditions is kept in the web account and is not forfeited. An award that a later correction shows was not earned is withdrawn before it is paid.
 
 No Distributor is assured of reaching any rank. The figures below describe the plan; they are not a statement of what any Distributor will receive, and the Company makes no representation about how many Distributors will reach any rank.
 
-| Rank | Part A (1st) | Part B (2nd) | Part C (3rd) |
-|---|---|---|---|
-| 1 Silver Partner | ₹15,400 | — | — |
-| 2 Pearl Partner | ₹36,000 | — | — |
-| 3 Emerald Partner | ₹48,600 | ₹59,400 | — |
-| 4 Gold Partner | ₹1,45,800 | ₹1,78,200 | — |
-| 5 Diamond Partner | ₹4,37,400 | ₹5,34,600 | — |
-| 6 Blue Diamond Partner | ₹8,47,800 | ₹9,32,400 | ₹10,45,800 |
-| 7 Royal Diamond Partner | ₹24,52,500 | ₹26,97,300 | ₹30,24,900 |
-| 8 Crown Diamond Partner | ₹71,11,800 | ₹78,22,800 | ₹87,71,400 |
-| 9 Elite Diamond Partner | ₹91,86,300 | ₹95,60,700 | ₹5,00,00,400 |
+| Rank | Lifetime Award (paid once) |
+|---|---|
+| 1 Silver Partner | ₹15,400 |
+| 2 Pearl Partner | ₹36,000 |
+| 3 Emerald Partner | ₹1,08,000 |
+| 4 Gold Partner | ₹3,24,000 |
+| 5 Diamond Partner | ₹9,72,000 |
+| 6 Blue Diamond Partner | ₹28,26,000 |
+| 7 Royal Diamond Partner | ₹81,74,700 |
+| 8 Crown Diamond Partner | ₹2,37,06,000 |
+| 9 Elite Diamond Partner | ₹6,87,47,400 |
 
-The figures are the value of the merchandise for each part, not money owed. The items are chosen by the Company. A part that a later correction shows was not earned is withdrawn before it is handed over. Awards carry no repurchase-wallet deduction and no administrative charge. Tax under section 194R of the Income-tax Act 1961 applies to awards in kind and is settled before release at the rate then in force (§8).
+**Award names.** The Company may describe a rank's award by the name of an item, such as a phone or a trip. The name only describes the award: the award is paid as the cash amount shown above, no item is handed over, and there is no claim to the item or to its market price.
+
+**Deductions.** TDS is deducted at the rate that applies to bonuses (§8). Awards carry no repurchase-wallet deduction and no administrative charge, and do not count towards the cap in §10.
 
 > Lifetime Awards & Rewards are operative from the **plan start date** (§12).
 
