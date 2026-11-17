@@ -10,7 +10,7 @@
         <x-lucide-chevron-right class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform group-open:rotate-90" aria-hidden="true" />
         <span class="font-semibold text-gray-800">{{ \Illuminate\Support\Carbon::parse($monthStart)->format('F Y') }}</span>
         <span class="text-gray-500">Awards earned <strong class="text-gray-700">{{ $num($aw['milestones']) }}</strong>
-            <x-help-tip text="One award per partner per rank, earned in the month the partner first achieved the rank — the month's highest payable Rank Bonus rank only." /></span>
+            <x-help-tip text="One award per partner per rank, earned in a month where it is the partner's highest payable Rank Bonus rank and its award was never taken." /></span>
         <span class="text-gray-500">Credited <strong class="text-gray-700">{{ $num($aw['credited']) }}</strong></span>
         <span class="text-gray-500">Award amount <strong class="text-gray-700">{{ $inr($aw['amount_paise'], 0) }}</strong>
             <x-help-tip text="Σ of the award amounts recorded on this month's awards when they were earned." /></span>
@@ -22,7 +22,7 @@
         <div>
             <p class="font-semibold text-gray-800 mb-2">How an award is valued</p>
             <ol class="space-y-1.5 font-mono text-gray-700">
-                <li><span class="text-gray-500">1.</span> One award per rank, once per lifetime <span class="font-sans text-gray-500">(the month's highest payable Rank Bonus rank, only above every rank already awarded)</span></li>
+                <li><span class="text-gray-500">1.</span> One award per rank, once per lifetime <span class="font-sans text-gray-500">(the month's highest payable Rank Bonus rank, only if that rank's award was never taken)</span></li>
                 <li><span class="text-gray-500">2.</span> Award amount = the rank's amount, frozen when earned <span class="font-sans text-gray-500">(rank ladder)</span></li>
                 <li><span class="text-gray-500">3.</span> Cash with the monthly payout on the 8th <span class="font-sans text-gray-500">(TDS at the bonus rate; no admin charge, no repurchase deduction, outside the ₹1 crore cap)</span></li>
                 <li><span class="text-gray-500">4.</span> Funded from the awards fund <span class="font-sans text-gray-500">(a share of each month's BV, client 2026-10-09 — see Awards fund above; report only, an award is never delayed by the fund)</span></li>

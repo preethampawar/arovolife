@@ -6,6 +6,7 @@ namespace App\Modules\Compensation\Services;
 
 use App\Modules\Commerce\Services\BvLedgerService;
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
+use App\Modules\Identity\Models\Distributor;
 use App\Modules\Compensation\Models\RankQualification;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Services\DTOs\LifetimeAwardPlan;
@@ -33,12 +34,16 @@ use Laravel\Pennant\Feature;
  *  - only a partner on M's payable Rank Bonus roster — the same conditions as
  *    that month's Rank Bonus (Q2): not held by the qualifying-again condition,
  *    not an AO-GO grant, not a late qualifier after the freeze;
- *  - only for M's HIGHEST roster rank r, and only if r is above every rank the
- *    partner holds a milestone for from an earlier month, in any status
- *    (A1/A2). Ranks skipped by a jump are never paid, now or later (D1);
- *  - only the FIRST time r is achieved (user decision 2026-11-11 (a)): an
- *    achieved() qualification of r in any earlier month — including months
- *    before the cash effective month — means it is not paid now;
+ *  - only for M's HIGHEST roster rank r (a lower rank met in the same month
+ *    stays available for a later month where it is the highest);
+ *  - only if the partner holds no live milestone for r, in any month — an
+ *    award once taken is never granted again; a withdrawn one is re-granted
+ *    in a later month (never in its own month, so a rebuild cannot undo it)
+ *    (user decision 2026-11-17, replacing the 2026-11-11 "first time only" and
+ *    the "above every rank already awarded" rules): a partner paid Rank 2 who
+ *    later has Rank 1 as their highest is paid Rank 1 then, in any later
+ *    month, and a rank first achieved before the cash effective month is paid
+ *    the first time it is the highest from that month on;
  *  - never for a month still open (OpenMonthGuard), so an --in-flight run
  *    credits nothing;
  *  - only when M is on or after comp.awards.cash_effective_month (Q3); blank
@@ -161,23 +166,9 @@ final class LifetimeAwardService
         $monthStart = $plan->month->toDateString();
 
         foreach ($plan->awards as $award) {
-            $milestone = LifetimeAwardMilestone::firstOrCreate(
-                ['distributor_id' => $award['distributor_id'], 'rank_number' => $award['rank_number'], 'tranche' => 1],
-                [
-                    'amount_paise' => $award['amount_paise'],
-                    'triggered_month' => $monthStart,
-                    'achieved_month' => $monthStart,
-                    'rank_qualification_id' => $award['rank_qualification_id'],
-                    'personal_bv_paise' => $award['personal_bv_paise'],
-                    'left_genos_bv_paise' => $award['left_genos_bv_paise'],
-                    'right_genos_bv_paise' => $award['right_genos_bv_paise'],
-                    'qualification_count' => 1,
-                    'award_description' => $this->awardDescription($award['rank_number']),
-                    'status' => LifetimeAwardMilestone::STATUS_PENDING,
-                ],
-            );
+            $milestone = $this->milestoneToCredit($award, $monthStart);
 
-            if (! $milestone->wasRecentlyCreated && $milestone->status !== LifetimeAwardMilestone::STATUS_PENDING) {
+            if ($milestone === null) {
                 continue;
             }
 
@@ -383,11 +374,11 @@ final class LifetimeAwardService
 
     /**
      * Of `$distributorIds`, those whose highest roster rank this month may be
-     * awarded. Two blockers: (1) a rank at or above it achieved in an earlier
-     * month (first time only — milestone or not); (2) a milestone at that rank
-     * (any month, any status — once per lifetime) or one above it from an
-     * EARLIER month. A later
-     * month's milestone never blocks — a rebuild replays months out of order.
+     * awarded: no live milestone at that rank in any month — once taken,
+     * never again (user decision 2026-11-17). A withdrawn award does not use
+     * the rank up for a later month; in its own month or an earlier one it
+     * still blocks, so a rebuild never undoes or overtakes a withdrawal. Neither an earlier higher rank nor an earlier achievement
+     * of the same rank blocks it.
      *
      * @param  list<int>  $distributorIds
      * @param  array<int, int>  $highest  distributor id → highest roster rank
@@ -395,18 +386,23 @@ final class LifetimeAwardService
      */
     private function candidatesWithoutBlockingMilestone(Carbon $monthStart, array $distributorIds, array $highest): array
     {
-        $existing = LifetimeAwardMilestone::query()
-            ->whereIn('distributor_id', $distributorIds)
-            ->get(['distributor_id', 'rank_number', 'achieved_month', 'triggered_month'])
-            ->groupBy('distributor_id');
+        // A partner who has left (cooling-off cancellation or termination —
+        // both end as users.status 'terminated') is never awarded again: the
+        // exit withdrawal is final, not the re-grantable kind (R-128).
+        $exited = Distributor::query()
+            ->whereIn('distributors.id', $distributorIds)
+            ->join('users', 'users.id', '=', 'distributors.user_id')
+            ->where('users.status', 'terminated')
+            ->pluck('distributors.id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+        $distributorIds = array_values(array_diff($distributorIds, $exited));
 
-        // First time only (2026-11-11 (a)): the ranks each partner already
-        // achieved in an earlier month, whether or not an award was paid.
-        $achievedBefore = RankQualification::query()->achieved()
+        $blocking = LifetimeAwardMilestone::query()
             ->whereIn('distributor_id', $distributorIds)
-            ->where('month_start', '<', $monthStart->toDateString())
-            ->distinct()
-            ->get(['distributor_id', 'rank_number'])
+            ->get(['distributor_id', 'rank_number', 'status', 'achieved_month', 'triggered_month'])
+            ->filter(fn (LifetimeAwardMilestone $m): bool => $m->status !== LifetimeAwardMilestone::STATUS_CANCELLED
+                || ($m->achieved_month ?? $m->triggered_month)->toDateString() >= $monthStart->toDateString())
             ->groupBy('distributor_id')
             ->map(fn ($rows): array => $rows->pluck('rank_number')->map(fn ($rank): int => (int) $rank)->all());
 
@@ -415,22 +411,62 @@ final class LifetimeAwardService
         foreach ($distributorIds as $distributorId) {
             $rank = $highest[$distributorId];
 
-            // A rank achieved earlier blocks it and every rank below it: a
-            // jump to Rank 3 means Ranks 1-2 are never paid, then or later —
-            // even when the jump came before the cash effective month and so
-            // left no milestone (user decision 2026-11-17).
-            $blocked = max([0, ...$achievedBefore->get($distributorId, [])]) >= $rank
-                || $existing->get($distributorId, collect())->contains(
-                    fn (LifetimeAwardMilestone $milestone): bool => $milestone->rank_number === $rank
-                        || ($milestone->rank_number > $rank && ($milestone->achieved_month ?? $milestone->triggered_month)->lt($monthStart)),
-                );
-
-            if (! $blocked) {
+            if (! in_array($rank, $blocking->get($distributorId, []), true)) {
                 $candidates[$distributorId] = $rank;
             }
         }
 
         return $candidates;
+    }
+
+    /**
+     * The milestone to credit for one planned award, or null when there is
+     * nothing to write. A live (not withdrawn) milestone at the rank is
+     * reused only while still `pending` — a re-run after a crash between the
+     * insert and the credit; one already credited is skipped. A withdrawal
+     * does not use the rank up (user decision 2026-11-17): a later month
+     * re-grants it as a new row with the next tranche number, leaving the
+     * withdrawn row as history. A withdrawal in this month or a later one
+     * still stands, so a rebuild of that month, or of an earlier one, never
+     * grants the rank again ahead of the withdrawal.
+     *
+     * @param  array{distributor_id: int, rank_number: int, amount_paise: int, rank_qualification_id: int, personal_bv_paise: int, left_genos_bv_paise: int, right_genos_bv_paise: int}  $award
+     */
+    private function milestoneToCredit(array $award, string $monthStart): ?LifetimeAwardMilestone
+    {
+        $existing = LifetimeAwardMilestone::query()
+            ->where('distributor_id', $award['distributor_id'])
+            ->where('rank_number', $award['rank_number'])
+            ->lockForUpdate()
+            ->get();
+
+        $live = $existing->first(fn (LifetimeAwardMilestone $m): bool => $m->status !== LifetimeAwardMilestone::STATUS_CANCELLED);
+
+        // Guard only: the candidate filter already drops a live row, so this is
+        // reached by a re-run after a crash between the insert and the credit.
+        if ($live !== null) {
+            return $live->status === LifetimeAwardMilestone::STATUS_PENDING ? $live : null;
+        }
+
+        if ($existing->contains(fn (LifetimeAwardMilestone $m): bool => ($m->achieved_month ?? $m->triggered_month)->toDateString() >= $monthStart)) {
+            return null;
+        }
+
+        return LifetimeAwardMilestone::create([
+            'distributor_id' => $award['distributor_id'],
+            'rank_number' => $award['rank_number'],
+            'tranche' => ((int) $existing->max('tranche')) + 1,
+            'amount_paise' => $award['amount_paise'],
+            'triggered_month' => $monthStart,
+            'achieved_month' => $monthStart,
+            'rank_qualification_id' => $award['rank_qualification_id'],
+            'personal_bv_paise' => $award['personal_bv_paise'],
+            'left_genos_bv_paise' => $award['left_genos_bv_paise'],
+            'right_genos_bv_paise' => $award['right_genos_bv_paise'],
+            'qualification_count' => 1,
+            'award_description' => $this->awardDescription($award['rank_number']),
+            'status' => LifetimeAwardMilestone::STATUS_PENDING,
+        ]);
     }
 
     /**

@@ -129,7 +129,7 @@ final class AdminFeatureFlagController extends Controller
                 'class' => LifetimeAwardsFeature::class,
                 'label' => 'Lifetime Awards & Rewards (Phase 5)',
                 'requires' => ['compensation.rank_bonus'],
-                'description' => 'A fixed cash award per rank, paid once the first time a partner achieves that rank (only the month\'s highest payable Rank Bonus rank, and only above every rank already awarded). Credited on the 1st with the Rank Bonus and paid with the monthly payout on the 8th: TDS only, no admin charge, no repurchase deduction, outside the ₹1 crore cap. The first switch-on sets the cash effective month to the current month when it is blank — earlier months are never paid. OFF: no award is written and no Awards page, statement column or admin page shows.',
+                'description' => 'A fixed cash award per rank, paid once per lifetime (only the month\'s highest payable Rank Bonus rank, and only if that rank\'s award was never taken; a lower rank not yet awarded is paid in a later month where it is the highest). Credited on the 1st with the Rank Bonus and paid with the monthly payout on the 8th: TDS only, no admin charge, no repurchase deduction, outside the ₹1 crore cap. The first switch-on sets the cash effective month to the current month when it is blank — earlier months are never paid. OFF: no award is written and no Awards page, statement column or admin page shows.',
                 'owner' => 'developer',
             ],
 

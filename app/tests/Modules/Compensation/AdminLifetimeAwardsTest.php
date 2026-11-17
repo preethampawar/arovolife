@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
 use App\Modules\Compensation\Models\PayoutBatch;
+use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Models\WalletLedgerEntry;
 use App\Modules\Compensation\Notifications\LifetimeAwardWithdrawnNotification;
 use App\Modules\Compensation\Services\WalletService;
@@ -86,6 +87,31 @@ it('lists each award with its amount, the month it was earned for and the batch 
         ->assertSee('TDS only')
         ->assertDontSee('Tranche')
         ->assertDontSee('Mark Delivered');
+});
+
+it('shows an award as Paid only once its payout line was transferred, and as in payout before that', function (): void {
+    $credited = lifetimeAwardMilestone(['rank_number' => 1]);
+    $inPayout = lifetimeAwardMilestone(['rank_number' => 2]);
+    $paid = lifetimeAwardMilestone(['rank_number' => 3]);
+    $batch = PayoutBatch::create(['batch_type' => PayoutBatch::TYPE_MONTHLY, 'batch_date' => '2026-09-01', 'status' => PayoutBatch::STATUS_PROCESSING]);
+
+    foreach ([[$inPayout, PayoutLineItem::STATUS_PENDING], [$paid, PayoutLineItem::STATUS_TRANSFERRED]] as [$milestone, $lineStatus]) {
+        WalletLedgerEntry::where('reference_id', $milestone->id)->where('type', 'awards_credit')->update(['swept_by_payout_batch_id' => $batch->id]);
+        PayoutLineItem::create([
+            'payout_batch_id' => $batch->id, 'distributor_id' => $milestone->distributor_id,
+            'gross_paise' => $milestone->amount_paise, 'admin_charge_paise' => 0, 'tds_paise' => 0,
+            'wallet_balance_paise' => 0, 'repurchase_deduction_paise' => 0, 'retry_count' => 0,
+            'net_transferred_paise' => $milestone->amount_paise, 'status' => $lineStatus,
+        ]);
+    }
+
+    $this->actingAs(lifetimeAwardsAdmin())
+        ->get(route('admin.lifetime-awards.index'))
+        ->assertOk()
+        // Rows run rank 1 → 3; the status cell comes before the batch cell.
+        ->assertSeeInOrder(['Paid in batch', 'Credited', 'In payout — awaiting bank', '#'.$batch->id, 'Paid', '#'.$batch->id]);
+
+    expect($credited->fresh()->status)->toBe(LifetimeAwardMilestone::STATUS_CREDITED);
 });
 
 it('has no delivery or reward-catalogue routes any more', function (): void {

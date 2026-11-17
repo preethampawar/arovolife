@@ -264,8 +264,8 @@
 
     <div class="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3">
         <ol class="list-decimal list-inside space-y-1 text-xs text-gray-600">
-            <li>Each rank carries a fixed <strong>Lifetime Award</strong> amount (the rank's <strong>lifetime award budget</strong>), paid in cash <strong>once per lifetime</strong>, the first time the partner achieves the rank (the client, 2026-11-10).</li>
-            <li>Only the month's <strong>highest payable Rank Bonus rank</strong> earns an award, and only if it is above every rank already awarded — ranks skipped by a jump are never paid.</li>
+            <li>Each rank carries a fixed <strong>Lifetime Award</strong> amount (the rank's <strong>lifetime award budget</strong>), paid in cash <strong>once per lifetime</strong> — once taken, never granted again (the client, 2026-11-10; 2026-11-17).</li>
+            <li>Only the month's <strong>highest payable Rank Bonus rank</strong> earns an award, and only if that rank's award was never taken. A lower rank whose award was not taken is paid in a later month where it is the highest.</li>
             <li>It is credited on the 1st with the Rank Bonus and paid with the <strong>monthly payout on the 8th</strong>: TDS at the bonus rate, no admin charge, no repurchase deduction, outside the ₹1 crore cap. A KYC, bank or web-only hold keeps it in the wallet until a later 8th.</li>
             <li>Only qualification months from the <strong>cash effective month</strong> setting are paid; earlier months never are.</li>
         </ol>
@@ -477,7 +477,7 @@
                     <span class="text-[11px] text-gray-600">{{ $bv($row->repurchase_bv_paise) }}</span>
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Lifetime award budget (paise) <x-help-tip text="Per-rank Lifetime Award amount, paid once in cash the first time a partner achieves the rank. Stored in paise (₹ × 100). 0 = the rank has no award. An award already earned keeps the amount it was earned at." /></label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Lifetime award budget (paise) <x-help-tip text="Per-rank Lifetime Award amount, paid once in cash, in a month where it is the partner's highest payable rank and its award was never taken. Stored in paise (₹ × 100). 0 = the rank has no award. An award already earned keeps the amount it was earned at." /></label>
                     <input type="number" name="lifetime_award_budget_paise" data-field-label="Lifetime award budget (paise)" value="{{ $row->lifetime_award_budget_paise }}" required min="0"
                            class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:ring-2 focus:ring-brand-400 focus:outline-none disabled:bg-gray-100 disabled:text-gray-600">
                     <span class="text-[11px] text-gray-600">{{ $rupees($row->lifetime_award_budget_paise) }}</span>

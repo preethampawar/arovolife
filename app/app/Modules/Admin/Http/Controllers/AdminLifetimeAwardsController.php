@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Compensation\Models\LifetimeAwardMilestone;
+use App\Modules\Compensation\Models\PayoutLineItem;
 use App\Modules\Compensation\Notifications\LifetimeAwardWithdrawnNotification;
 use App\Modules\Compensation\Services\CompensationPlanSettingsService;
 use App\Modules\Compensation\Services\LifetimeAwardService;
@@ -82,7 +83,23 @@ final class AdminLifetimeAwardsController extends Controller
             ->paginate(50)
             ->withQueryString();
 
-        return view('admin.lifetime-awards.index', compact('milestones', 'rankNames', 'filters'));
+        // Paid = the partner's line in the batch that swept the award was
+        // transferred (the bank response came back paid) — the same test the
+        // partner's Awards page uses. The milestone itself stays `credited`.
+        $sweptPairs = $milestones->getCollection()
+            ->filter(fn (LifetimeAwardMilestone $m): bool => $m->walletCredit?->swept_by_payout_batch_id !== null)
+            ->map(fn (LifetimeAwardMilestone $m): array => [(int) $m->distributor_id, (int) $m->walletCredit->swept_by_payout_batch_id]);
+
+        $paidKeys = $sweptPairs->isEmpty() ? [] : PayoutLineItem::query()
+            ->where('status', PayoutLineItem::STATUS_TRANSFERRED)
+            ->whereIn('payout_batch_id', $sweptPairs->pluck(1)->unique()->values()->all())
+            ->whereIn('distributor_id', $sweptPairs->pluck(0)->unique()->values()->all())
+            ->get(['payout_batch_id', 'distributor_id'])
+            ->map(fn (PayoutLineItem $line): string => $line->payout_batch_id.':'.$line->distributor_id)
+            ->flip()
+            ->all();
+
+        return view('admin.lifetime-awards.index', compact('milestones', 'rankNames', 'filters', 'paidKeys'));
     }
 
     /**

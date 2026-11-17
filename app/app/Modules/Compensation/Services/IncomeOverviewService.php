@@ -67,7 +67,7 @@ final class IncomeOverviewService
             ['type' => 'adc_credit', 'label' => 'ADC Bonus', 'route' => 'income.adc-bonus', 'active' => AdcBonusVisibility::forCurrentUser(),
                 'tip' => 'Arete Development Center bonus on BV served by your approved center.'],
             ['type' => 'awards_credit', 'label' => 'Lifetime Awards', 'route' => 'income.awards', 'active' => Feature::for(null)->active(LifetimeAwardsFeature::class),
-                'tip' => 'A fixed award paid once for each rank, the first time you achieve it, with the monthly payout on the 8th.'],
+                'tip' => 'A fixed award paid once for each rank, in a month where it is the highest rank you achieve, with the monthly payout on the 8th.'],
         ];
 
         $summary = [];

@@ -6,7 +6,7 @@
 
 @developer
 <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-    Global Lifetime Awards table — one row per award. Each rank's award is a fixed cash amount, paid once, the first time a partner achieves the rank (the client, 2026-11-10),
+    Global Lifetime Awards table — one row per award. Each rank's award is a fixed cash amount, paid once per lifetime, in a month where it is the partner's highest payable rank (the client, 2026-11-10; 2026-11-17),
     credited on the 1st and paid with the monthly payout on the 8th with TDS only.
 </div>
 @enddeveloper

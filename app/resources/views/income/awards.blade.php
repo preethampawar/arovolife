@@ -9,7 +9,7 @@
 
     {{-- Page note: what an award is, in plan terms. Historical facts only — no award still to come is shown. --}}
     <div class="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 mb-6">
-        A Lifetime Award is paid once for each rank, the first time you achieve it. It is recorded on the 1st of the following month and paid to your bank account with the monthly payout on the 8th. TDS is deducted; no admin charge and no repurchase deduction apply.
+        A Lifetime Award is paid once for each rank: in a month where it is the highest rank you achieve, if you have not had that rank's award before (an award that was withdrawn does not count). It is recorded on the 1st of the following month and paid to your bank account with the monthly payout on the 8th. TDS is deducted; no admin charge and no repurchase deduction apply.
     </div>
 
     {{-- Summary cards --}}
@@ -31,7 +31,7 @@
     @if($rows->isEmpty())
         <div class="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <p class="text-gray-600 font-medium">No awards recorded.</p>
-            <p class="text-sm text-gray-600 mt-1">An award is recorded here on the 1st of the month after the month in which you first achieve a rank.</p>
+            <p class="text-sm text-gray-600 mt-1">An award is recorded here on the 1st of the month after a month in which that rank is the highest you achieve and you have not had its award before.</p>
         </div>
     @else
         <div class="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
@@ -41,7 +41,7 @@
                         <th class="text-left px-4 py-3 font-semibold text-gray-600 w-12">S.No.</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">
                             Earned for
-                            <x-help-tip text="The month in which you first achieved the rank." />
+                            <x-help-tip text="The month in which you achieved the rank as your highest rank." />
                         </th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">Rank</th>
                         <th class="text-left px-4 py-3 font-semibold text-gray-600">

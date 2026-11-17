@@ -121,19 +121,29 @@ it('uses the default award text while no award name is set', function (): void {
         ->toBe($rankName.' Lifetime Award');
 });
 
-it('pays only the rank reached on a jump — skipped ranks are never paid', function (): void {
+it('pays a lower rank later when it is the month\'s highest and its award was never taken', function (): void {
+    // User decision 2026-11-17: Rank 2 first, Rank 1 in any later month.
     $dist = Distributor::factory()->create();
     awardQualify($dist->id, 2, '2026-03-01');
-
     awardClose('2026-03-01', [$dist->id => [2]]);
 
     expect(awardedRanks($dist->id))->toBe([2]);
 
-    // Rank 1 later is below an award already paid: nothing, ever.
-    awardQualify($dist->id, 1, '2026-06-01');
-    awardClose('2026-06-01', [$dist->id => [1]]);
+    awardQualify($dist->id, 1, '2026-09-01');
+    awardClose('2026-09-01', [$dist->id => [1]]);
 
-    expect(awardedRanks($dist->id))->toBe([2]);
+    expect(awardedRanks($dist->id))->toBe([1, 2]);
+});
+
+it('never grants an award already taken, whichever rank it is', function (): void {
+    $dist = Distributor::factory()->create();
+    foreach (['2026-01-01' => 1, '2026-02-01' => 2, '2026-03-01' => 1, '2026-04-01' => 2] as $month => $rank) {
+        awardQualify($dist->id, $rank, $month);
+        awardClose($month, [$dist->id => [$rank]]);
+    }
+
+    expect(awardedRanks($dist->id))->toBe([1, 2])
+        ->and(LifetimeAwardMilestone::where('distributor_id', $dist->id)->count())->toBe(2);
 });
 
 it('pays Rank 1 in one month and Rank 2 in a later one', function (): void {
@@ -156,6 +166,41 @@ it('takes the highest of several roster ranks in one month', function (): void {
     awardClose('2026-03-01', [$dist->id => [1, 2]]);
 
     expect(awardedRanks($dist->id))->toBe([2]);
+});
+
+it('pays a lower rank met beside a higher one later, when it is the highest', function (): void {
+    $dist = Distributor::factory()->create();
+    awardQualify($dist->id, 1, '2026-03-01');
+    awardQualify($dist->id, 2, '2026-03-01');
+    awardClose('2026-03-01', [$dist->id => [1, 2]]);
+
+    awardQualify($dist->id, 1, '2026-04-01');
+    awardClose('2026-04-01', [$dist->id => [1]]);
+
+    expect(awardedRanks($dist->id))->toBe([1, 2]);
+});
+
+it('lets a lower rank be paid while a higher one is withdrawn', function (): void {
+    $dist = Distributor::factory()->create();
+    awardQualify($dist->id, 2, '2026-03-01');
+    awardClose('2026-03-01', [$dist->id => [2]]);
+    app(LifetimeAwardService::class)->withdraw(LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole(), 'Correction', null, 'admin.lifetime_award.withdrawn');
+
+    awardQualify($dist->id, 1, '2026-05-01');
+    awardClose('2026-05-01', [$dist->id => [1]]);
+
+    expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->where('rank_number', 1)->sole()->status)->toBe(LifetimeAwardMilestone::STATUS_CREDITED);
+});
+
+it('never duplicates a rank on a rebuild of an earlier month when a later month holds it', function (): void {
+    $dist = Distributor::factory()->create();
+    awardQualify($dist->id, 1, '2026-01-01');
+    awardQualify($dist->id, 1, '2026-03-01');
+    awardClose('2026-03-01', [$dist->id => [1]]);
+
+    awardClose('2026-01-01', [$dist->id => [1]]);
+
+    expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->count())->toBe(1);
 });
 
 it('writes nothing when the same month is closed twice', function (): void {
@@ -194,19 +239,90 @@ it('skips a rank whose award amount is ₹0', function (): void {
         ->and(LifetimeAwardMilestone::count())->toBe(0);
 });
 
-it('never re-creates a withdrawn award', function (): void {
+it('re-grants a withdrawn award in a later month as a new row, keeping the withdrawn one', function (): void {
+    // User decision 2026-11-17: a withdrawal does not use the rank up.
     $dist = Distributor::factory()->create();
     awardQualify($dist->id, 1, '2026-03-01');
     awardClose('2026-03-01', [$dist->id => [1]]);
 
     $milestone = LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole();
-    app(LifetimeAwardService::class)->withdraw($milestone, 'Terminated', null, 'admin.lifetime_award.withdrawn');
+    app(LifetimeAwardService::class)->withdraw($milestone, 'Correction', null, 'admin.lifetime_award.withdrawn');
 
+    awardQualify($dist->id, 1, '2026-04-01');
+    expect(awardClose('2026-04-01', [$dist->id => [1]]))->toBe(1);
+
+    $rows = LifetimeAwardMilestone::where('distributor_id', $dist->id)->orderBy('tranche')->get();
+    expect($rows->pluck('status')->all())->toBe([LifetimeAwardMilestone::STATUS_CANCELLED, LifetimeAwardMilestone::STATUS_CREDITED])
+        ->and($rows->pluck('tranche')->all())->toBe([1, 2])
+        ->and($rows[1]->achieved_month->toDateString())->toBe('2026-04-01')
+        ->and(WalletLedgerEntry::where('type', 'awards_credit')->where('reference_id', $rows[1]->id)->count())->toBe(1);
+
+    // Once re-granted and credited, it is taken: never a third time.
+    awardQualify($dist->id, 1, '2026-05-01');
+    expect(awardClose('2026-05-01', [$dist->id => [1]]))->toBe(0);
+});
+
+it('never undoes a withdrawal when its own month is closed again', function (): void {
+    $dist = Distributor::factory()->create();
+    awardQualify($dist->id, 1, '2026-03-01');
+    awardClose('2026-03-01', [$dist->id => [1]]);
+    app(LifetimeAwardService::class)->withdraw(LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole(), 'Breach', null, 'admin.lifetime_award.withdrawn');
+
+    expect(awardClose('2026-03-01', [$dist->id => [1]]))->toBe(0)
+        ->and(LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole()->status)->toBe(LifetimeAwardMilestone::STATUS_CANCELLED);
+});
+
+it('never re-grants a withdrawn award in an earlier month rebuilt after the withdrawal', function (): void {
+    // "Re-granted in a later month": a rebuild of an earlier month must not
+    // put the award back ahead of the withdrawal.
+    $dist = Distributor::factory()->create();
+    awardQualify($dist->id, 1, '2026-02-01');
+    awardQualify($dist->id, 1, '2026-03-01');
+    awardClose('2026-03-01', [$dist->id => [1]]);
+    app(LifetimeAwardService::class)->withdraw(LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole(), 'Correction', null, 'admin.lifetime_award.withdrawn');
+
+    expect(awardClose('2026-02-01', [$dist->id => [1]]))->toBe(0)
+        ->and(LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole()->status)->toBe(LifetimeAwardMilestone::STATUS_CANCELLED);
+});
+
+it('re-creates a re-grant when its month is rebuilt, and a rebuild of the withdrawn month adds nothing', function (): void {
+    $dist = Distributor::factory()->create();
+    awardQualify($dist->id, 1, '2026-03-01');
+    awardClose('2026-03-01', [$dist->id => [1]]);
+    app(LifetimeAwardService::class)->withdraw(LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole(), 'Correction', null, 'admin.lifetime_award.withdrawn');
     awardQualify($dist->id, 1, '2026-04-01');
     awardClose('2026-04-01', [$dist->id => [1]]);
 
-    expect(LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole()->status)->toBe(LifetimeAwardMilestone::STATUS_CANCELLED);
+    // A rebuild of April deletes its live award and wallet credit, as MonthRebuilder does.
+    $regrant = LifetimeAwardMilestone::where('distributor_id', $dist->id)->where('status', LifetimeAwardMilestone::STATUS_CREDITED)->sole();
+    WalletLedgerEntry::where('type', 'awards_credit')->where('reference_id', $regrant->id)->delete();
+    $regrant->delete();
+
+    expect(awardClose('2026-04-01', [$dist->id => [1]]))->toBe(1)
+        ->and(awardClose('2026-03-01', [$dist->id => [1]]))->toBe(0);
+
+    $rows = LifetimeAwardMilestone::where('distributor_id', $dist->id)->orderBy('tranche')->get();
+    expect($rows->pluck('status')->all())->toBe([LifetimeAwardMilestone::STATUS_CANCELLED, LifetimeAwardMilestone::STATUS_CREDITED])
+        ->and($rows->pluck('tranche')->all())->toBe([1, 2])
+        ->and(WalletLedgerEntry::where('type', 'awards_credit')->count())->toBe(2);
 });
+
+it('never re-grants an award to a partner who has left', function (string $exit): void {
+    // Cooling-off cancellation and termination both end as users.status
+    // 'terminated': their exit withdrawal is final.
+    $dist = Distributor::factory()->create();
+    awardQualify($dist->id, 1, '2026-03-01');
+    awardClose('2026-03-01', [$dist->id => [1]]);
+    app(LifetimeAwardService::class)->withdraw(LifetimeAwardMilestone::where('distributor_id', $dist->id)->sole(), $exit, null, 'awards.milestone.withdrawn_termination');
+    User::whereKey($dist->user_id)->update(['status' => 'terminated']);
+
+    awardQualify($dist->id, 1, '2026-04-01');
+    awardQualify($dist->id, 2, '2026-05-01');
+
+    expect(awardClose('2026-04-01', [$dist->id => [1]]))->toBe(0)
+        ->and(awardClose('2026-05-01', [$dist->id => [2]]))->toBe(0)
+        ->and(LifetimeAwardMilestone::where('distributor_id', $dist->id)->count())->toBe(1);
+})->with(['Cooling-off cancellation.', 'Account terminated.']);
 
 it('keeps the amount frozen when the rank amount changes afterwards', function (): void {
     $dist = Distributor::factory()->create();
@@ -316,35 +432,26 @@ it('withdraws an unpaid award when the account is terminated', function (): void
         ->and(AuditLog::where('action', 'awards.milestone.withdrawn_termination')->sole()->details['reason'])->toBe('Account terminated: Breach of the Code of Ethics');
 });
 
-it('pays a rank only the first time it is achieved, even when the first time was before the cash effective month', function (): void {
-    // User decision 2026-11-11 (a).
+it('pays a rank first achieved before the cash effective month the next time it is the highest', function (): void {
+    // User decision 2026-11-17, replacing 2026-11-11 (a) "first time only".
     awardSetting('comp.awards.cash_effective_month', '2026-04');
     $dist = Distributor::factory()->create();
     awardQualify($dist->id, 1, '2026-02-01');
+    expect(awardClose('2026-02-01', [$dist->id => [1]]))->toBe(0);
+
     awardQualify($dist->id, 1, '2026-05-01');
-
-    expect(awardClose('2026-05-01', [$dist->id => [1]]))->toBe(0);
-
-    // A rank not reached before is still paid.
-    awardQualify($dist->id, 2, '2026-06-01');
-    expect(awardClose('2026-06-01', [$dist->id => [2]]))->toBe(1)
-        ->and(awardedRanks($dist->id))->toBe([2]);
+    expect(awardClose('2026-05-01', [$dist->id => [1]]))->toBe(1)
+        ->and(awardedRanks($dist->id))->toBe([1]);
 });
 
-it('pays no lower-rank award after a higher rank was reached before the cash effective month', function (): void {
-    // User decision 2026-11-17: Rank 3 reached in an unpaid month, no milestone.
+it('pays a lower rank after a higher one reached before the cash effective month', function (): void {
     awardSetting('comp.awards.cash_effective_month', '2026-04');
     $dist = Distributor::factory()->create();
     awardQualify($dist->id, 3, '2026-02-01');
 
     awardQualify($dist->id, 2, '2026-05-01');
-    expect(awardClose('2026-05-01', [$dist->id => [2]]))->toBe(0)
-        ->and(awardedRanks($dist->id))->toBe([]);
-
-    // A rank above the earlier one is still paid.
-    awardQualify($dist->id, 4, '2026-06-01');
-    expect(awardClose('2026-06-01', [$dist->id => [4]]))->toBe(1)
-        ->and(awardedRanks($dist->id))->toBe([4]);
+    expect(awardClose('2026-05-01', [$dist->id => [2]]))->toBe(1)
+        ->and(awardedRanks($dist->id))->toBe([2]);
 });
 
 it('writes no award for a month that has not closed (an --in-flight run)', function (): void {
