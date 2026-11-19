@@ -32,7 +32,8 @@ use SplQueue;
 final class VerifyAuditLogCommand extends Command
 {
     protected $signature = 'compliance:verify-audit-log
-        {--head= : Expected head hash (hex) from your last verification}';
+        {--head= : Expected head hash (hex) from your last verification}
+        {--anchor= : An "Anchor" line from an earlier verification; checks that the log up to that row is unchanged}';
 
     protected $description = 'Verify the audit-log hash chain and print its head';
 
@@ -52,13 +53,17 @@ final class VerifyAuditLogCommand extends Command
         $broken = null;
         $reason = '';
         $sawCurrentVersion = false;
+        $hashed = 0;
+        $firstCurrentId = 0;
+        $anchorHash = strtolower(explode(':', (string) ($this->option('anchor') ?? ''))[0]);
+        $anchorFound = null;
 
         $window = [];
         $order = new SplQueue;
 
         AuditLog::query()
             ->orderBy('id')
-            ->chunk(self::CHUNK, function ($entries) use (&$previousHash, &$head, &$checked, &$skipped, &$concurrent, &$legacyUnverifiable, &$broken, &$reason, &$window, &$sawCurrentVersion, $order): bool {
+            ->chunk(self::CHUNK, function ($entries) use (&$previousHash, &$head, &$checked, &$skipped, &$concurrent, &$legacyUnverifiable, &$broken, &$reason, &$window, &$sawCurrentVersion, &$hashed, &$firstCurrentId, &$anchorFound, $anchorHash, $order): bool {
                 foreach ($entries as $entry) {
                     // Rows written before the chain existed carry no hash.
                     // Counted and skipped rather than failed: back-filling them
@@ -111,6 +116,9 @@ final class VerifyAuditLogCommand extends Command
                     );
 
                     if ($isCurrent) {
+                        if (! $sawCurrentVersion) {
+                            $firstCurrentId = (int) $entry->id;
+                        }
                         $sawCurrentVersion = true;
 
                         if (! $matches) {
@@ -134,6 +142,11 @@ final class VerifyAuditLogCommand extends Command
 
                     $previousHash = $rowHash;
                     $head = $rowHash;
+
+                    $hashed++;
+                    if ($anchorHash !== '' && $anchorFound === null && bin2hex($rowHash) === $anchorHash) {
+                        $anchorFound = bin2hex($rowHash).':'.$hashed.':'.$firstCurrentId;
+                    }
                 }
 
                 return true;
@@ -170,6 +183,37 @@ final class VerifyAuditLogCommand extends Command
         }
 
         $this->line("Head: {$head}");
+
+        // The head alone does not move when a row is slipped in beside another
+        // or every later row is relabelled as first-method. The anchor adds
+        // how many sealed rows lead up to the head and where the current
+        // method begins, so a copy kept outside the database pins all three.
+        if ($hashed > 0) {
+            $this->line("Anchor: {$head}:{$hashed}:{$firstCurrentId}");
+        }
+
+        $anchor = strtolower(trim((string) ($this->option('anchor') ?? '')));
+
+        if ($anchor !== '') {
+            if ($anchorFound === null) {
+                $this->error('The anchored row is no longer in the log.');
+
+                return self::FAILURE;
+            }
+
+            if (! hash_equals($anchorFound, $anchor)) {
+                $this->error('The log up to the anchored row has changed.');
+                $this->line("  recorded: {$anchor}");
+                $this->line("  now:      {$anchorFound}");
+                $this->line('The parts are hash : sealed rows up to it : id where the current method begins.');
+                $this->line('A different row count means rows were added or removed before that point; a');
+                $this->line('different last part means rows were relabelled as sealed by the first method.');
+
+                return self::FAILURE;
+            }
+
+            $this->info('Anchor matches: the log up to that row is unchanged.');
+        }
 
         $claimed = (string) ($this->option('head') ?? '');
 
