@@ -22,6 +22,7 @@ declare(strict_types=1);
  * ALC-15: an anchor still matches after more rows are written
  * ALC-16: a row slipped in beside another before the anchor is caught
  * ALC-17: relabelling every row as first-method is caught by the anchor
+ * ALC-18: editing a first-method row after the anchor was taken is caught
  */
 
 use App\Modules\Compliance\Models\AuditLog;
@@ -280,7 +281,7 @@ it('ALC-15: an anchor still matches after more rows are written', function () {
     $anchor = alcAnchor();
     alcEntry('settings.changed');
 
-    expect($anchor)->toEndWith(':2:'.AuditLog::query()->min('id'));
+    expect($anchor)->toContain(':2:'.AuditLog::query()->min('id').':');
 
     $this->artisan('compliance:verify-audit-log', ['--anchor' => $anchor])
         ->expectsOutputToContain('Anchor matches')
@@ -324,6 +325,22 @@ it('ALC-17: relabelling every row as first-method is caught by the anchor', func
     $anchor = alcAnchor();
 
     DB::table('audit_log')->update(['hash_version' => null, 'details' => json_encode(['edited' => true])]);
+
+    $this->artisan('compliance:verify-audit-log')->assertExitCode(0);
+    $this->artisan('compliance:verify-audit-log', ['--anchor' => $anchor])
+        ->expectsOutputToContain('The log up to the anchored row has changed.')
+        ->assertExitCode(1);
+});
+
+it('ALC-18: editing a first-method row after the anchor was taken is caught', function () {
+    alcEntry('kyc.approved', ['note' => 'original']);
+    alcEntry('distributor.frozen');
+
+    // First-method rows: their own hash cannot vouch for their content.
+    DB::table('audit_log')->update(['hash_version' => null]);
+    $anchor = alcAnchor();
+
+    DB::table('audit_log')->orderBy('id')->limit(1)->update(['details' => json_encode(['note' => 'edited'])]);
 
     $this->artisan('compliance:verify-audit-log')->assertExitCode(0);
     $this->artisan('compliance:verify-audit-log', ['--anchor' => $anchor])
