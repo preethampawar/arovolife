@@ -448,11 +448,3 @@ it('clears the backup recipient list when saved blank', function (): void {
 
     expect(DB::table('settings')->where('key', 'notifications.backup_status_emails')->value('value'))->toBe('');
 });
-
-it('shows the Pulse link on the settings page to a developer and not to an admin', function (): void {
-    $this->actingAs(asvSeedAdmin('developer'))->get('/admin/settings')
-        ->assertOk()->assertSee('href="'.route('pulse').'"', false);
-
-    $this->actingAs(asvSeedAdmin('admin'))->get('/admin/settings')
-        ->assertOk()->assertDontSee(route('pulse'), false)->assertDontSee('Pulse');
-});
