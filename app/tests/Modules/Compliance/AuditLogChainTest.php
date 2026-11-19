@@ -13,6 +13,12 @@ declare(strict_types=1);
  * ALC-06: a rewritten chain is caught by the recorded head
  * ALC-07: before/after digests are stored as 32 raw bytes, hex or not
  * ALC-08: a row created under `migrate --pretend` stays printable and unwritten
+ * ALC-09: details keys in any order still verify after MySQL reorders them
+ * ALC-10: two rows written at the same moment share a predecessor without failing
+ * ALC-11: first-method rows are link-checked only; version-2 rows are content-checked
+ * ALC-12: a row pointing at a hash no row has fails
+ * ALC-13: new rows carry hash version 2
+ * ALC-14: an edited row cannot be passed off as legacy by clearing its hash version
  */
 
 use App\Modules\Compliance\Models\AuditLog;
@@ -164,4 +170,94 @@ it('ALC-08: a row created under migrate --pretend stays printable and unwritten'
 
     expect($queries)->not->toBeEmpty()
         ->and(AuditLog::query()->count())->toBe(1);
+});
+
+it('ALC-09: verifies details whose keys are not in sorted order after MySQL reorders them', function () {
+    // The regression: MySQL's JSON column reorders object keys on storage, so
+    // hashing the caller's key order could never be recomputed from a read.
+    alcEntry('kyc.approved', [
+        'side' => 'L', 'depth' => 7,
+        'after' => ['status' => 'x', 'city' => 'y'],
+        'ids' => [3, 1, 2],
+    ]);
+    alcEntry('settings.changed', ['zeta' => 1, 'alpha' => ['b' => 1, 'a' => 2]]);
+
+    $this->artisan('compliance:verify-audit-log')
+        ->expectsOutputToContain('Audit log intact — 2 rows verified.')
+        ->assertExitCode(0);
+});
+
+it('ALC-10: two rows sharing a predecessor verify and are reported', function () {
+    $a = alcEntry('kyc.approved');
+    alcEntry('distributor.frozen');
+    $c = alcEntry('settings.changed');
+
+    // A concurrent writer read the same latest hash as B did.
+    $row = AuditLog::query()->find($c->id);
+    $row->prev_hash = $a->row_hash;
+    DB::table('audit_log')->where('id', $c->id)->update([
+        'prev_hash' => $a->row_hash,
+        'row_hash' => AuditLog::computeRowHash($row, $a->row_hash),
+    ]);
+
+    $this->artisan('compliance:verify-audit-log')
+        ->expectsOutputToContain('Audit log intact — 3 rows verified.')
+        ->expectsOutputToContain('share a predecessor.')
+        ->assertExitCode(0);
+});
+
+it('ALC-11: a first-method row is not failed on content, but a version-2 row after it is', function () {
+    // Legacy rows can only sit at the start of the chain; see ALC-14.
+    DB::table('audit_log')->insert([
+        'actor_id' => null, 'action' => 'legacy.sealed', 'subject_type' => 'distributor',
+        'subject_id' => 1, 'details' => json_encode(['b' => 1, 'a' => 2]), 'ip' => '127.0.0.1',
+        'created_at' => now(), 'hash_version' => null,
+        'row_hash' => str_repeat('x', 32), 'prev_hash' => null,
+    ]);
+    alcEntry('kyc.approved');
+    $c = alcEntry('settings.changed', ['k' => 'v']);
+
+    $this->artisan('compliance:verify-audit-log')
+        ->expectsOutputToContain('sealed by the first hashing method')
+        ->assertExitCode(0);
+
+    DB::table('audit_log')->where('id', $c->id)->update(['details' => json_encode(['k' => 'tampered'])]);
+
+    $this->artisan('compliance:verify-audit-log')
+        ->expectsOutputToContain('content does not match its hash')
+        ->assertExitCode(1);
+});
+
+it('ALC-12: a row pointing at a hash no row has fails', function () {
+    alcEntry('kyc.approved');
+    $middle = alcEntry('distributor.frozen');
+    alcEntry('settings.changed');
+
+    DB::table('audit_log')->where('id', $middle->id)->delete();
+
+    $this->artisan('compliance:verify-audit-log')
+        ->expectsOutputToContain('its link to an earlier row is missing')
+        ->assertExitCode(1);
+});
+
+it('ALC-13: new rows carry hash version 2', function () {
+    $entry = alcEntry('kyc.approved');
+
+    expect($entry->hash_version)->toBe(AuditLog::HASH_VERSION)
+        ->and((int) DB::table('audit_log')->where('id', $entry->id)->value('hash_version'))->toBe(2);
+});
+
+it('ALC-14: an edited row cannot hide as a first-method row by clearing its hash version', function () {
+    alcEntry('kyc.approved');
+    $target = alcEntry('distributor.frozen', ['k' => 'v']);
+    alcEntry('settings.changed');
+
+    DB::table('audit_log')->where('id', $target->id)->update([
+        'details' => json_encode(['k' => 'tampered']),
+        'hash_version' => null,
+    ]);
+
+    $this->artisan('compliance:verify-audit-log')
+        ->expectsOutputToContain('sealed by the old method after the new method began')
+        ->assertExitCode(1);
 });

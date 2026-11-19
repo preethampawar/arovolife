@@ -164,6 +164,7 @@ final class AuditLogArchiveService
                         'after_hash' => $this->hex($row->after_hash),
                         'row_hash' => $this->hex($row->row_hash),
                         'prev_hash' => $this->hex($row->prev_hash),
+                        'hash_version' => $row->hash_version === null ? null : (int) $row->hash_version,
                         'details' => $row->details === null ? null : json_decode((string) $row->details, false, 512, JSON_THROW_ON_ERROR),
                         'ip' => $row->ip,
                         'created_at' => $row->created_at,

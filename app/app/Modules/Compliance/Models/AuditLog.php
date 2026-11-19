@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $after_hash
  * @property string|null $row_hash
  * @property string|null $prev_hash
+ * @property int|null $hash_version
  * @property Carbon $created_at
  *
  * Tamper-evident by hash chain (T-6.1 finding M-1). Every row carries a
@@ -38,6 +39,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class AuditLog extends Model
 {
+    /** Version 2 hashes details with sorted keys; NULL rows used the caller's key order. */
+    public const HASH_VERSION = 2;
+
     public $timestamps = false;
 
     protected $table = 'audit_log';
@@ -66,6 +70,7 @@ final class AuditLog extends Model
             'created_at' => 'datetime',
             'details' => 'array',
             'subject_id' => 'integer',
+            'hash_version' => 'integer',
         ];
     }
 
@@ -105,6 +110,14 @@ final class AuditLog extends Model
 
             $entry->created_at ??= Carbon::now();
 
+            // Migrations dated before the hash_version column exists also write
+            // audit rows through this model (a fresh database runs them first).
+            // They have nowhere to store a version, so they are sealed by the
+            // first method, which is what a NULL version means.
+            if (static::hasHashVersionColumn($entry)) {
+                $entry->hash_version = self::HASH_VERSION;
+            }
+
             $previous = static::query()
                 ->whereNotNull('row_hash')
                 ->orderByDesc('id')
@@ -113,6 +126,19 @@ final class AuditLog extends Model
             $entry->prev_hash = $previous;
             $entry->row_hash = static::computeRowHash($entry, $previous);
         });
+    }
+
+    private static function hasHashVersionColumn(self $entry): bool
+    {
+        static $present = false;
+
+        // Only a positive answer is remembered: the migration that adds the
+        // column may run after the first row is written.
+        if (! $present) {
+            $present = $entry->getConnection()->getSchemaBuilder()->hasColumn($entry->getTable(), 'hash_version');
+        }
+
+        return $present;
     }
 
     /**
@@ -155,13 +181,44 @@ final class AuditLog extends Model
             (string) $entry->action,
             (string) ($entry->subject_type ?? ''),
             (string) ($entry->subject_id ?? ''),
-            json_encode($entry->details ?? [], JSON_THROW_ON_ERROR),
+            $entry->hash_version === self::HASH_VERSION
+                ? self::canonicalDetails($entry->details)
+                : json_encode($entry->details ?? [], JSON_THROW_ON_ERROR),
             (string) ($entry->ip ?? ''),
             $entry->created_at->format('Y-m-d H:i:s.v'),
             $previousHash === null ? '' : bin2hex($previousHash),
         ]);
 
         return hash('sha256', $payload, true);
+    }
+
+    /**
+     * The details as one stable JSON string, whatever order the keys arrive in.
+     *
+     * `details` is a MySQL JSON column, which reorders object keys on storage,
+     * so the string hashed at insert time can never be rebuilt from a read-back
+     * row unless the keys are sorted first. The encode/decode round trip comes
+     * before the sort so an empty object and an empty array hash the same
+     * before and after storage.
+     */
+    public static function canonicalDetails(mixed $details): string
+    {
+        $decoded = json_decode(json_encode($details ?? [], JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+
+        return json_encode(self::sortKeys($decoded), JSON_THROW_ON_ERROR);
+    }
+
+    private static function sortKeys(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        if (! array_is_list($value)) {
+            ksort($value, SORT_STRING);
+        }
+
+        return array_map(static fn (mixed $item): mixed => self::sortKeys($item), $value);
     }
 
     public function actor(): BelongsTo
