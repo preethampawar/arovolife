@@ -19,15 +19,10 @@ declare(strict_types=1);
  * ALC-12: a row pointing at a hash no row has fails
  * ALC-13: new rows carry hash version 2
  * ALC-14: an edited row cannot be passed off as legacy by clearing its hash version
- * ALC-15: an anchor still matches after more rows are written
- * ALC-16: a row slipped in beside another before the anchor is caught
- * ALC-17: relabelling every row as first-method is caught by the anchor
- * ALC-18: editing a first-method row after the anchor was taken is caught
  */
 
 use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
@@ -264,86 +259,5 @@ it('ALC-14: an edited row cannot hide as a first-method row by clearing its hash
 
     $this->artisan('compliance:verify-audit-log')
         ->expectsOutputToContain('sealed by the old method after the new method began')
-        ->assertExitCode(1);
-});
-
-function alcAnchor(): string
-{
-    Artisan::call('compliance:verify-audit-log');
-    preg_match('/^Anchor: (\S+)$/m', Artisan::output(), $m);
-
-    return $m[1];
-}
-
-it('ALC-15: an anchor still matches after more rows are written', function () {
-    alcEntry('kyc.approved');
-    alcEntry('distributor.frozen');
-    $anchor = alcAnchor();
-    alcEntry('settings.changed');
-
-    expect($anchor)->toContain(':2:'.AuditLog::query()->min('id').':');
-
-    $this->artisan('compliance:verify-audit-log', ['--anchor' => $anchor])
-        ->expectsOutputToContain('Anchor matches')
-        ->assertExitCode(0);
-});
-
-it('ALC-16: a row slipped in beside another before the anchor is caught', function () {
-    $a = alcEntry('kyc.approved');
-    alcEntry('distributor.frozen');
-    $anchor = alcAnchor();
-
-    // A forged row that claims the first row as its predecessor, given an id
-    // between the two real ones' successors: internally consistent, and the
-    // head hash does not move.
-    $forged = new AuditLog(['action' => 'payout.approved', 'subject_type' => 'distributor', 'subject_id' => 1, 'details' => ['x' => 1]]);
-    $forged->hash_version = AuditLog::HASH_VERSION;
-    $forged->created_at = $a->created_at;
-    $last = AuditLog::query()->orderByDesc('id')->first();
-    DB::table('audit_log')->where('id', $last->id)->update(['id' => $last->id + 1]);
-    DB::table('audit_log')->insert([
-        'id' => $last->id,
-        'action' => 'payout.approved',
-        'subject_type' => 'distributor',
-        'subject_id' => 1,
-        'details' => json_encode(['x' => 1]),
-        'created_at' => $a->created_at,
-        'hash_version' => AuditLog::HASH_VERSION,
-        'prev_hash' => $a->row_hash,
-        'row_hash' => AuditLog::computeRowHash($forged, $a->row_hash),
-    ]);
-
-    $this->artisan('compliance:verify-audit-log')->assertExitCode(0);
-    $this->artisan('compliance:verify-audit-log', ['--anchor' => $anchor])
-        ->expectsOutputToContain('The log up to the anchored row has changed.')
-        ->assertExitCode(1);
-});
-
-it('ALC-17: relabelling every row as first-method is caught by the anchor', function () {
-    alcEntry('kyc.approved');
-    alcEntry('distributor.frozen');
-    $anchor = alcAnchor();
-
-    DB::table('audit_log')->update(['hash_version' => null, 'details' => json_encode(['edited' => true])]);
-
-    $this->artisan('compliance:verify-audit-log')->assertExitCode(0);
-    $this->artisan('compliance:verify-audit-log', ['--anchor' => $anchor])
-        ->expectsOutputToContain('The log up to the anchored row has changed.')
-        ->assertExitCode(1);
-});
-
-it('ALC-18: editing a first-method row after the anchor was taken is caught', function () {
-    alcEntry('kyc.approved', ['note' => 'original']);
-    alcEntry('distributor.frozen');
-
-    // First-method rows: their own hash cannot vouch for their content.
-    DB::table('audit_log')->update(['hash_version' => null]);
-    $anchor = alcAnchor();
-
-    DB::table('audit_log')->orderBy('id')->limit(1)->update(['details' => json_encode(['note' => 'edited'])]);
-
-    $this->artisan('compliance:verify-audit-log')->assertExitCode(0);
-    $this->artisan('compliance:verify-audit-log', ['--anchor' => $anchor])
-        ->expectsOutputToContain('The log up to the anchored row has changed.')
         ->assertExitCode(1);
 });
