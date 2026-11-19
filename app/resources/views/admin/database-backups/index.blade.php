@@ -12,6 +12,7 @@
 @section('content')
 
 <p class="text-sm text-gray-600 mb-2 max-w-3xl">A compressed copy of the whole database is taken every day at 11:45 PM IST and kept for {{ config('db_backup.retention_days') }} days. Each backup can be downloaded{{ $canRestore ? ' or restored' : '' }}. Every download{{ $canRestore ? ' and restore' : '' }} is audit-logged.</p>
+<p class="text-xs text-gray-500 mb-5 max-w-3xl">{{ $extraRecipients !== [] ? 'The daily result email also goes to: '.implode(', ', $extraRecipients).'.' : 'Other addresses can receive the daily result email.' }} <a href="{{ route('admin.settings') }}" class="text-brand-600 hover:underline">Change in Settings</a></p>
 @if($canRestore)
 <p class="text-xs text-gray-500 mb-5 max-w-3xl">After a restore: if the code is newer than the backup, run <code class="font-mono">php artisan migrate</code>. Cached values may be stale for a few minutes.</p>
 @endif

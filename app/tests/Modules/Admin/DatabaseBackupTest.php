@@ -19,9 +19,11 @@ use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
@@ -348,6 +350,101 @@ it('mails nobody for a manual run or with --no-mail', function (array $options):
     'manual trigger' => [['--trigger' => 'manual']],
     'no mail' => [['--no-mail' => true]],
 ]);
+
+function dbBackupExtraRecipients(string $value): void
+{
+    DB::table('settings')->updateOrInsert(
+        ['key' => 'notifications.backup_status_emails'],
+        ['value' => $value, 'version' => 1, 'updated_at' => now()],
+    );
+}
+
+it('also mails the extra addresses on a scheduled run, lowercased, alongside the staff', function (): void {
+    dbBackupFakeDump();
+    Notification::fake();
+    $admin = dbBackupStaff('admin');
+    $developer = dbBackupStaff('developer');
+    dbBackupExtraRecipients('ops@example.com, Second@Example.com');
+
+    $this->artisan('db:backup:run')->assertSuccessful();
+
+    foreach (['ops@example.com', 'second@example.com'] as $address) {
+        Notification::assertSentOnDemand(DatabaseBackupStatusNotification::class, fn (DatabaseBackupStatusNotification $n, array $channels, object $notifiable): bool => $notifiable->routes['mail'] === $address);
+    }
+    Notification::assertSentTo([$admin, $developer], DatabaseBackupStatusNotification::class);
+    Notification::assertSentTimes(DatabaseBackupStatusNotification::class, 4);
+});
+
+it('sends no second copy to an extra address that belongs to an active admin', function (): void {
+    dbBackupFakeDump();
+    Notification::fake();
+    $admin = dbBackupStaff('admin');
+    dbBackupExtraRecipients(strtoupper((string) $admin->email).', other@example.com');
+
+    $this->artisan('db:backup:run')->assertSuccessful();
+
+    Notification::assertSentTo($admin, DatabaseBackupStatusNotification::class);
+    Notification::assertSentOnDemand(DatabaseBackupStatusNotification::class, fn (DatabaseBackupStatusNotification $n, array $channels, object $notifiable): bool => $notifiable->routes['mail'] === 'other@example.com');
+    Notification::assertSentTimes(DatabaseBackupStatusNotification::class, 2);
+});
+
+it('mails only the valid addresses when the stored extra list holds junk', function (): void {
+    dbBackupFakeDump();
+    Notification::fake();
+    dbBackupExtraRecipients('not-an-email, ok@example.com');
+
+    $this->artisan('db:backup:run')->assertSuccessful();
+
+    Notification::assertSentOnDemand(DatabaseBackupStatusNotification::class, fn (DatabaseBackupStatusNotification $n, array $channels, object $notifiable): bool => $notifiable->routes['mail'] === 'ok@example.com');
+    Notification::assertSentTimes(DatabaseBackupStatusNotification::class, 1);
+});
+
+it('mails no extra address for a manual run or with --no-mail', function (array $options): void {
+    dbBackupFakeDump();
+    Notification::fake();
+    dbBackupExtraRecipients('ops@example.com');
+
+    $this->artisan('db:backup:run', $options)->assertSuccessful();
+
+    Notification::assertNothingSent();
+})->with([
+    'manual trigger' => [['--trigger' => 'manual']],
+    'no mail' => [['--no-mail' => true]],
+]);
+
+it('gives an extra address a mail with no button and no mention of the developer role', function (bool $succeeded): void {
+    $notification = new DatabaseBackupStatusNotification(
+        succeeded: $succeeded,
+        environment: 'production',
+        takenAt: '19 Nov 2026, 11:45 PM',
+        file: $succeeded ? 'arovolife-production-20261119-234500-scheduled.sql.gz' : null,
+        bytes: $succeeded ? 1_048_576 : null,
+        durationSeconds: 12.3,
+        heldCount: 30,
+        prunedCount: 1,
+        error: $succeeded ? null : 'mysqldump exited with code 2',
+    );
+
+    $mail = $notification->toMail(new AnonymousNotifiable);
+
+    expect($mail->actionUrl)->toBeNull()
+        ->and(strtolower($mail->subject.' '.implode(' ', $mail->introLines).' '.implode(' ', $mail->outroLines).' '.(string) $mail->render()))->not->toContain('developer');
+})->with(['succeeded' => true, 'failed' => false]);
+
+it('shows the stored extra recipients on the backups page for an admin', function (): void {
+    dbBackupExtraRecipients('ops@example.com, second@example.com');
+
+    $this->actingAs(dbBackupStaff('admin'))->get(route('admin.database-backups.index'))
+        ->assertOk()
+        ->assertSee('The daily result email also goes to: ops@example.com, second@example.com.')
+        ->assertSee('Change in Settings');
+});
+
+it('invites other addresses on the backups page when none are set', function (): void {
+    $this->actingAs(dbBackupStaff('admin'))->get(route('admin.database-backups.index'))
+        ->assertOk()
+        ->assertSee('Other addresses can receive the daily result email.');
+});
 
 it('links the backups page in the mail for admin and developer', function (bool $succeeded): void {
     $notification = new DatabaseBackupStatusNotification(

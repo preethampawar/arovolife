@@ -410,3 +410,41 @@ it('AS-24: the supply-from state is a vocabulary, not free text', function (): v
 
     expect(DB::table('settings')->where('key', 'tax.seller_state')->value('value'))->toBe('MH');
 });
+
+it('lets an admin see and save the backup result extra recipients, normalised, without any developer-owned key', function (): void {
+    $this->actingAs(asvSeedAdmin('admin'))->withoutMiddleware(PreventRequestForgery::class);
+
+    $this->get('/admin/settings')
+        ->assertOk()
+        ->assertSee('Backup result email – extra recipients')
+        ->assertDontSee('Engine health digest email');
+
+    $this->post('/admin/settings/notifications.backup_status_emails', ['value' => ' Ops@Example.com;second@example.com  ops@example.com '])
+        ->assertRedirect(route('admin.settings'));
+
+    expect(DB::table('settings')->where('key', 'notifications.backup_status_emails')->value('value'))
+        ->toBe('ops@example.com, second@example.com');
+    expect(AuditLog::where('action', 'admin.settings.changed')->count())->toBe(1);
+});
+
+it('refuses an invalid or oversized backup recipient list and stores nothing', function (string $value): void {
+    $this->actingAs(asvSeedAdmin('admin'))->withoutMiddleware(PreventRequestForgery::class);
+
+    $this->post('/admin/settings/notifications.backup_status_emails', ['value' => $value])
+        ->assertSessionHasErrors('value');
+
+    expect(DB::table('settings')->where('key', 'notifications.backup_status_emails')->exists())->toBeFalse();
+})->with([
+    'invalid address' => ['ok@example.com, not-an-email'],
+    'eleven addresses' => [implode(', ', array_map(fn (int $i): string => "user{$i}@example.com", range(1, 11)))],
+]);
+
+it('clears the backup recipient list when saved blank', function (): void {
+    $this->actingAs(asvSeedAdmin('admin'))->withoutMiddleware(PreventRequestForgery::class);
+    asvSeedSetting('notifications.backup_status_emails', 'ops@example.com');
+
+    $this->post('/admin/settings/notifications.backup_status_emails', ['value' => ''])
+        ->assertRedirect(route('admin.settings'));
+
+    expect(DB::table('settings')->where('key', 'notifications.backup_status_emails')->value('value'))->toBe('');
+});

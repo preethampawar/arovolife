@@ -24,7 +24,7 @@ backups, because a restore would roll that table back too.
     a file is copied when it is missing there or its size changed; nothing is
     ever deleted from either side, and the files are never pruned.
 - Every active `admin` and `developer` account gets one mail with the result and
-  the compressed size, and a link to the backups page. Manual runs and `--no-mail` send nothing.
+  the compressed size, and a link to the backups page. The admin setting `notifications.backup_status_emails` (up to 10 addresses, comma-separated) adds plain mailboxes that get the same mail without the link. Manual runs and `--no-mail` send nothing.
 - Files live under `db-backups/<APP_ENV>/` in the bucket, named
   `arovolife-{env}-{Ymd-His}-{scheduled|manual|pre-restore}.sql.gz` (IST). One
   environment never sees another's backups.
@@ -72,7 +72,8 @@ Set `AUDIT_ARCHIVE_DISK` only to point the disk elsewhere.
 **Format:** gzip, one JSON object per line. Line 1 is the manifest:
 `{"manifest":true,"environment","month","timezone":"Asia/Kolkata","rows","first_id","last_id","first_prev_hash","last_row_hash","generated_at"}`.
 Every following line is one row in id order: `id, actor_id, action, subject_type,
-subject_id, before_hash, after_hash, row_hash, prev_hash` (hex), `details` (JSON),
+subject_id, before_hash, after_hash, row_hash, prev_hash` (hex), `hash_version`
+(integer, null for rows sealed by the first hashing method), `details` (JSON),
 `ip`, `created_at`. A month with no rows is a manifest-only file. A file is
 uploaded only after it has been read back and the line count and last id match.
 

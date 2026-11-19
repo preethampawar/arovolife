@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Admin\Services\BackupMailRecipients;
 use App\Modules\Compensation\Events\CompensationPlanChanged;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Compliance\Support\AuditDigests;
@@ -1021,6 +1022,16 @@ final class AdminSettingsController extends Controller
                 // Developer-only: explicit even though the group default already says so.
                 'owner' => 'developer',
             ],
+            'notifications.backup_status_emails' => [
+                'group' => 'notifications',
+                'label' => 'Backup result email – extra recipients',
+                'description' => 'Extra mailboxes that receive the daily backup result (what was saved and the sizes). Separate addresses with commas, up to 10. Every admin account already receives it; these addresses get it without the link to the backups page. Leave blank for none.',
+                'type' => 'string',
+                'format' => 'email_list',
+                'max' => 500,
+                'default' => '',
+                'owner' => 'admin',
+            ],
 
             // ── Payout configuration ───────────────────────────────────────
             'payout.min_threshold_paise' => [
@@ -2006,6 +2017,29 @@ final class AdminSettingsController extends Controller
                     $error = "{$meta['label']} must be a valid email address (or left blank).";
 
                     return '';
+                }
+                if ($raw !== '' && $format === 'email_list') {
+                    $addresses = BackupMailRecipients::parse($raw);
+                    $bad = BackupMailRecipients::invalid($addresses);
+                    if ($bad !== []) {
+                        $error = "{$meta['label']}: {$bad[0]} is not a valid email address.";
+
+                        return '';
+                    }
+                    if (count($addresses) > BackupMailRecipients::MAX) {
+                        $error = "{$meta['label']}: enter at most ".BackupMailRecipients::MAX.' addresses.';
+
+                        return '';
+                    }
+
+                    $joined = implode(', ', $addresses);
+                    if (mb_strlen($joined) > (int) ($meta['max'] ?? 255)) {
+                        $error = "{$meta['label']}: the list is too long.";
+
+                        return '';
+                    }
+
+                    return $joined;
                 }
                 if ($raw !== '' && $format === 'month') {
                     $parsed = \DateTimeImmutable::createFromFormat('!Y-m', $raw);

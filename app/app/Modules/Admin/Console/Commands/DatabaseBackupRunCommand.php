@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Console\Commands;
 
 use App\Modules\Admin\Notifications\DatabaseBackupStatusNotification;
 use App\Modules\Admin\Services\AuditLogArchiveService;
+use App\Modules\Admin\Services\BackupMailRecipients;
 use App\Modules\Admin\Services\DatabaseBackupService;
 use App\Modules\Admin\Services\DTOs\UploadedFilesMirrorResult;
 use App\Modules\Admin\Services\SettingsFileBackupService;
@@ -15,6 +16,7 @@ use App\Modules\Identity\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Number;
 use Throwable;
 
@@ -26,7 +28,8 @@ use Throwable;
  * same lock, the password-protected settings-file copy and the uploaded-files
  * mirror each run on their own: a failure of either is logged and reported
  * but never fails or undoes the database backup. The scheduled run mails every
- * active admin and developer the result, one mail each.
+ * active admin and developer the result, one mail each, and the extra
+ * addresses from the admin setting.
  */
 final class DatabaseBackupRunCommand extends Command
 {
@@ -157,8 +160,9 @@ final class DatabaseBackupRunCommand extends Command
     }
 
     /**
-     * One mail per recipient, never a shared To line. A failure here (the
-     * database may be what broke) is logged and never changes the exit code.
+     * One mail per recipient (admins and developers, then the extra addresses),
+     * never a shared To line. A failure here (the database may be what broke)
+     * is logged and never changes the exit code.
      */
     private function notify(string $trigger, DatabaseBackupStatusNotification $notification): void
     {
@@ -174,6 +178,13 @@ final class DatabaseBackupRunCommand extends Command
 
             foreach ($recipients as $recipient) {
                 $recipient->notify($notification);
+            }
+
+            $notified = $recipients->map(fn (User $u): string => mb_strtolower((string) $u->email))->all();
+            foreach (app(BackupMailRecipients::class)->extra() as $address) {
+                if (! in_array($address, $notified, true)) {
+                    Notification::route('mail', $address)->notify($notification);
+                }
             }
         } catch (Throwable $e) {
             Log::critical('db_backup.notify_failed', ['error' => $e->getMessage()]);

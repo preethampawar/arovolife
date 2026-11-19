@@ -172,6 +172,8 @@ Open **Settings → Database backups**.
 - A backup of the whole database is taken automatically every day at
   **11:45 PM IST** and kept for **30 days**. **Back up now** takes one on demand.
 - A daily email reports whether the backup worked and how large it is.
+  To send it to more addresses, add them under **Settings → Notifications → Backup
+  result email – extra recipients** (comma-separated, up to 10).
 - Each backup, and the password-protected copy of the server settings file, can
   be downloaded from the page. The settings-file copy needs the backup password
   the owner keeps.

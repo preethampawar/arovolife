@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Admin\Services\AuditLogArchiveService;
+use App\Modules\Admin\Services\BackupMailRecipients;
 use App\Modules\Admin\Services\DatabaseBackupService;
 use App\Modules\Admin\Services\SettingsFileBackupService;
 use App\Modules\Compliance\Models\AuditLog;
@@ -35,6 +36,7 @@ final class AdminDatabaseBackupController extends Controller
         private readonly DatabaseBackupService $backups,
         private readonly SettingsFileBackupService $settingsCopies,
         private readonly AuditLogArchiveService $auditArchives,
+        private readonly BackupMailRecipients $recipients,
     ) {}
 
     public function index(Request $request): View
@@ -51,6 +53,7 @@ final class AdminDatabaseBackupController extends Controller
             'status' => $status,
             'running' => ($status['state'] ?? null) === 'running',
             'canRestore' => $request->user()->hasRole('developer'),
+            'extraRecipients' => $this->recipients->extra(),
         ]);
     }
 
