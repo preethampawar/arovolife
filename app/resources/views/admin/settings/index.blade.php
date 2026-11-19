@@ -41,6 +41,16 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
         </span>
         <x-lucide-chevron-right class="w-4 h-4 text-gray-400" />
     </a>
+    <a href="{{ route('pulse') }}" class="mt-3 flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-5 py-4 hover:bg-gray-50 transition-colors">
+        <span class="flex items-center gap-3">
+            <x-lucide-activity class="w-5 h-5 text-gray-500" />
+            <span>
+                <span class="block text-base font-semibold text-gray-900">Pulse</span>
+                <span class="block text-xs text-gray-500 mt-0.5">Server load, slow requests and queries, slow jobs, exceptions and queue activity.</span>
+            </span>
+        </span>
+        <x-lucide-chevron-right class="w-4 h-4 text-gray-400" />
+    </a>
 </div>
 @endif
 
