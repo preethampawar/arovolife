@@ -165,6 +165,22 @@ table in full.
 
 ---
 
+## Database backups
+
+Open **Settings → Database backups**.
+
+- A backup of the whole database is taken automatically every day at
+  **11:45 PM IST** and kept for **30 days**. **Back up now** takes one on demand.
+- A daily email reports whether the backup worked and how large it is.
+- Each backup, and the password-protected copy of the server settings file, can
+  be downloaded from the page. The settings-file copy needs the backup password
+  the owner keeps.
+- Every download is recorded in the **audit log**.
+- These files contain personal data. Do not share them, and do not store them on
+  personal devices.
+
+---
+
 ## Always
 
 - Enter a **clear, specific reason** on every action — it's permanent in the audit log.

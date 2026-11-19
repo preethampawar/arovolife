@@ -44,6 +44,21 @@ $formatSettingDisplay = static function (string $rawValue, array $meta): ?string
 </div>
 @endif
 
+@if(auth()->user()?->hasAnyRole(['admin', 'developer']))
+<div class="max-w-3xl mb-6">
+    <a href="{{ route('admin.database-backups.index') }}" class="flex items-center justify-between rounded-2xl border border-gray-200 bg-white px-5 py-4 hover:bg-gray-50 transition-colors">
+        <span class="flex items-center gap-3">
+            <x-lucide-database-backup class="w-5 h-5 text-gray-500" />
+            <span>
+                <span class="block text-base font-semibold text-gray-900">Database backups</span>
+                <span class="block text-xs text-gray-500 mt-0.5">{{ auth()->user()->hasRole('developer') ? 'Daily database backups: download one, take one now, or restore one.' : 'Daily database backups: download one or take one now.' }}</span>
+            </span>
+        </span>
+        <x-lucide-chevron-right class="w-4 h-4 text-gray-400" />
+    </a>
+</div>
+@endif
+
 <div class="max-w-6xl lg:grid lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8 lg:items-start">
 
 {{-- Jump-to index (wide screens) --}}

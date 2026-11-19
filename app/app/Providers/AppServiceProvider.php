@@ -7,6 +7,9 @@ namespace App\Providers;
 use App\Console\Commands\DeployCommand;
 use App\Console\Commands\ResetAdnsCommand;
 use App\Modules\Admin\Console\Commands\CreateStaffUserCommand;
+use App\Modules\Admin\Console\Commands\DatabaseBackupFilesRestoreCommand;
+use App\Modules\Admin\Console\Commands\DatabaseBackupRestoreCommand;
+use App\Modules\Admin\Console\Commands\DatabaseBackupRunCommand;
 use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
 use App\Modules\Commerce\Console\Commands\PurgeOfflinePaymentProofsCommand;
@@ -182,6 +185,9 @@ class AppServiceProvider extends ServiceProvider
                 DeployCommand::class,
                 ResetAdnsCommand::class,
                 CreateStaffUserCommand::class,
+                DatabaseBackupRunCommand::class,
+                DatabaseBackupRestoreCommand::class,
+                DatabaseBackupFilesRestoreCommand::class,
                 GsbDailyCutoffCommand::class,
                 GsbWeeklyPayoutCommand::class,
                 GsbWriteOffDeferralCommand::class,

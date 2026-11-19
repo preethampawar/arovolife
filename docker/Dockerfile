@@ -11,6 +11,7 @@ RUN apk add --no-cache \
         libzip-dev \
         oniguruma-dev \
         mysql-client \
+        mariadb-connector-c \
         linux-headers \
         git \
         unzip \

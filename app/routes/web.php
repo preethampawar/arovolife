@@ -7,6 +7,7 @@ use App\Modules\Admin\Http\Controllers\AdminAuditLogController;
 use App\Modules\Admin\Http\Controllers\AdminContactController;
 use App\Modules\Admin\Http\Controllers\AdminDashboardController;
 use App\Modules\Admin\Http\Controllers\AdminDashboardPanelController;
+use App\Modules\Admin\Http\Controllers\AdminDatabaseBackupController;
 use App\Modules\Admin\Http\Controllers\AdminDistributorController;
 use App\Modules\Admin\Http\Controllers\AdminDistributorCreateController;
 use App\Modules\Admin\Http\Controllers\AdminDistributorEditController;
@@ -20,6 +21,8 @@ use App\Modules\Admin\Http\Controllers\AdminLogController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminStaffUserController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
+use App\Modules\Admin\Services\DatabaseBackupService;
+use App\Modules\Admin\Services\SettingsFileBackupService;
 use App\Modules\Admin\Support\DashboardPanels;
 use App\Modules\Analytics\Http\Controllers\Admin\AdminAnalyticsController;
 use App\Modules\Catalog\Http\Controllers\Admin\AdminBannerController;
@@ -577,6 +580,21 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
         Route::get('/', [AdminLogController::class, 'index'])->name('index');
         Route::get('/{file}', [AdminLogController::class, 'download'])
             ->where('file', '[A-Za-z0-9_-]+\\.log')->name('download');
+    });
+
+    // Settings → Database backups (the db-backups disk). Admin and developer
+    // may list, download and take a backup; restore is developer-only. No
+    // `role:` middleware here on purpose: it answers 403 and would confirm the
+    // page exists, so the controller 404s everyone else (F84).
+    Route::prefix('database-backups')->name('database-backups.')->group(function (): void {
+        Route::get('/', [AdminDatabaseBackupController::class, 'index'])->name('index');
+        Route::post('/', [AdminDatabaseBackupController::class, 'store'])->name('store');
+        Route::get('/{file}/download', [AdminDatabaseBackupController::class, 'download'])
+            ->where('file', DatabaseBackupService::FILE_PATTERN)->name('download');
+        Route::get('/settings/{file}/download', [AdminDatabaseBackupController::class, 'downloadSettings'])
+            ->where('file', SettingsFileBackupService::FILE_PATTERN)->name('settings.download');
+        Route::post('/{file}/restore', [AdminDatabaseBackupController::class, 'restore'])
+            ->where('file', DatabaseBackupService::FILE_PATTERN)->middleware('throttle:5,1')->name('restore');
     });
 
     Route::prefix('payments')->name('payments.')->middleware('can:audit.read')->group(function (): void {

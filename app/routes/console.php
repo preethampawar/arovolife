@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\AppStatusCommand;
+use App\Modules\Admin\Console\Commands\DatabaseBackupRunCommand;
 use App\Modules\Commerce\Console\Commands\PurgeOfflinePaymentProofsCommand;
 use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
 use App\Modules\Compensation\Console\Commands\AutoRetryFailedPayoutsCommand;
@@ -306,6 +307,20 @@ Schedule::command(VerifyStockLedgerCommand::class)
     ->runInBackground();
 
 // ── Ops ──────────────────────────────────────────────────────────────────────
+// Daily database backup at 23:45 IST (owner decision, 2026-11-19) — the day's
+// closing state, taken before the overnight engines start at 00:05, so a bad
+// night's run can be undone by restoring it. Not paused with the engines: a
+// backup is wanted most when something is wrong. Production and
+// staging only: local carries the staging bucket credentials, and a local run
+// would fill that bucket with dev dumps.
+Schedule::command(DatabaseBackupRunCommand::class)
+    ->dailyAt('23:45')
+    ->timezone('Asia/Kolkata')
+    ->environments(['production', 'staging'])
+    ->withoutOverlapping()
+    ->evenInMaintenanceMode()
+    ->runInBackground();
+
 // Every minute: stamp a heartbeat so `app:status` (run at the end of every
 // app:deploy) can prove the schedule:run cron is actually firing. Nothing else
 // on the schedule leaves a timestamp a health check could read.
