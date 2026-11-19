@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Console\Commands;
 
 use App\Modules\Admin\Notifications\DatabaseBackupStatusNotification;
+use App\Modules\Admin\Services\AuditLogArchiveService;
 use App\Modules\Admin\Services\DatabaseBackupService;
 use App\Modules\Admin\Services\DTOs\UploadedFilesMirrorResult;
 use App\Modules\Admin\Services\SettingsFileBackupService;
@@ -35,7 +36,7 @@ final class DatabaseBackupRunCommand extends Command
 
     protected $description = 'Back up the database to the db-backups disk and prune backups past retention';
 
-    public function handle(DatabaseBackupService $backups, SettingsFileBackupService $settingsCopies, UploadedFilesBackupService $files): int
+    public function handle(DatabaseBackupService $backups, SettingsFileBackupService $settingsCopies, UploadedFilesBackupService $files, AuditLogArchiveService $auditArchives): int
     {
         $trigger = (string) $this->option('trigger');
         if (! in_array($trigger, ['scheduled', 'manual'], true)) {
@@ -104,6 +105,7 @@ final class DatabaseBackupRunCommand extends Command
             settingsBytes: $settings['bytes'],
             settingsError: $settings['error'],
             filesLine: $filesLine,
+            auditMonthsPending: $this->auditMonthsPending($auditArchives),
         ));
 
         return self::SUCCESS;
@@ -175,6 +177,16 @@ final class DatabaseBackupRunCommand extends Command
             }
         } catch (Throwable $e) {
             Log::critical('db_backup.notify_failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /** Finished audit-log months with no archive yet; null when that cannot be worked out. */
+    private function auditMonthsPending(AuditLogArchiveService $auditArchives): ?int
+    {
+        try {
+            return count($auditArchives->pendingMonths());
+        } catch (Throwable) {
+            return null;
         }
     }
 

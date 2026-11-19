@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Console\Commands\DeployCommand;
 use App\Console\Commands\ResetAdnsCommand;
+use App\Modules\Admin\Console\Commands\AuditLogArchiveCommand;
 use App\Modules\Admin\Console\Commands\CreateStaffUserCommand;
 use App\Modules\Admin\Console\Commands\DatabaseBackupFilesRestoreCommand;
 use App\Modules\Admin\Console\Commands\DatabaseBackupRestoreCommand;
@@ -185,6 +186,7 @@ class AppServiceProvider extends ServiceProvider
                 DeployCommand::class,
                 ResetAdnsCommand::class,
                 CreateStaffUserCommand::class,
+                AuditLogArchiveCommand::class,
                 DatabaseBackupRunCommand::class,
                 DatabaseBackupRestoreCommand::class,
                 DatabaseBackupFilesRestoreCommand::class,

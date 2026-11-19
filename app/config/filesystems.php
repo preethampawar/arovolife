@@ -172,6 +172,21 @@ return [
             'throw' => true,
         ],
 
+        // Monthly audit-log archives: same bucket and credentials as the backups,
+        // but their own prefix so the daily pruning never sees them.
+        'audit-archives' => [
+            'driver' => 's3',
+            'key' => env('AWS_ACCESS_KEY_ID'),
+            'secret' => env('AWS_SECRET_ACCESS_KEY'),
+            'region' => env('AWS_DEFAULT_REGION', 'ap-south-1'),
+            'bucket' => env('DB_BACKUP_BUCKET', env('AWS_BUCKET')),
+            'root' => 'audit-log-archives/'.env('APP_ENV', 'production'),
+            'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+
         'adc' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

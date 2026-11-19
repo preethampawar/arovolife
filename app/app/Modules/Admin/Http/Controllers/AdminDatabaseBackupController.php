@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Admin\Services\AuditLogArchiveService;
 use App\Modules\Admin\Services\DatabaseBackupService;
 use App\Modules\Admin\Services\SettingsFileBackupService;
 use App\Modules\Compliance\Models\AuditLog;
@@ -33,6 +34,7 @@ final class AdminDatabaseBackupController extends Controller
     public function __construct(
         private readonly DatabaseBackupService $backups,
         private readonly SettingsFileBackupService $settingsCopies,
+        private readonly AuditLogArchiveService $auditArchives,
     ) {}
 
     public function index(Request $request): View
@@ -44,6 +46,7 @@ final class AdminDatabaseBackupController extends Controller
         return view('admin.database-backups.index', [
             'backups' => $this->backups->all(),
             'settingsCopies' => $this->settingsCopies->all(),
+            'auditArchives' => $this->auditArchives->all(),
             'settingsPasswordUsable' => SettingsFileBackupService::passwordIsUsable(),
             'status' => $status,
             'running' => ($status['state'] ?? null) === 'running',
@@ -86,7 +89,7 @@ final class AdminDatabaseBackupController extends Controller
         $disk = Storage::disk((string) config('db_backup.disk'));
 
         if ($disk->providesTemporaryUrls()) {
-            return redirect()->away($disk->temporaryUrl($file, Carbon::now()->addMinutes(5)));
+            return redirect()->away($disk->temporaryUrl($file, Carbon::now()->addHours((int) config('db_backup.download_link_hours'))));
         }
 
         return $disk->download($file);
@@ -113,7 +116,34 @@ final class AdminDatabaseBackupController extends Controller
         $disk = Storage::disk((string) config('db_backup.disk'));
 
         if ($disk->providesTemporaryUrls()) {
-            return redirect()->away($disk->temporaryUrl($file, Carbon::now()->addMinutes(5)));
+            return redirect()->away($disk->temporaryUrl($file, Carbon::now()->addHours((int) config('db_backup.download_link_hours'))));
+        }
+
+        return $disk->download($file);
+    }
+
+    public function downloadAuditArchive(Request $request, string $file): Response
+    {
+        $this->ensureCanView($request);
+
+        $archive = $this->auditArchives->find($file);
+        abort_if($archive === null, 404);
+
+        AuditLog::create([
+            'actor_id' => $request->user()->id,
+            'action' => 'admin.audit_archive_downloaded',
+            'subject_type' => 'database_backup',
+            'subject_id' => null,
+            'before_hash' => AuditLog::digest($file),
+            'after_hash' => AuditLog::digest($file),
+            'details' => ['file' => $file, 'bytes' => $archive->bytes],
+            'ip' => $request->ip(),
+        ]);
+
+        $disk = Storage::disk((string) config('db_backup.audit_archive_disk'));
+
+        if ($disk->providesTemporaryUrls()) {
+            return redirect()->away($disk->temporaryUrl($file, Carbon::now()->addHours((int) config('db_backup.download_link_hours'))));
         }
 
         return $disk->download($file);

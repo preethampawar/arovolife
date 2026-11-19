@@ -175,6 +175,8 @@ Open **Settings → Database backups**.
 - Each backup, and the password-protected copy of the server settings file, can
   be downloaded from the page. The settings-file copy needs the backup password
   the owner keeps.
+- Each finished month of the audit log is also saved as its own file on the first
+  day of the next month, and can be downloaded from the same page.
 - Every download is recorded in the **audit log**.
 - These files contain personal data. Do not share them, and do not store them on
   personal devices.

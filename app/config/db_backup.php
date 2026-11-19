@@ -20,6 +20,15 @@ return [
 
     'retention_days' => 30,
 
+    // Monthly audit-log archives, kept for the long term and never pruned by
+    // the application.
+    'audit_archive_disk' => env('AUDIT_ARCHIVE_DISK', 'audit-archives'),
+
+    // How long the signed S3 address behind a Download click stays usable
+    // (owner decision, 2026-11-19). Anyone holding that address can fetch
+    // the file until then, without signing in.
+    'download_link_hours' => 24,
+
     // The PHP CLI that runs the detached backup / restore. Null resolves it
     // with Symfony's PhpExecutableFinder; under FPM that finds the first
     // `php` on PATH, which on Cloudways is not 8.4 — set /usr/bin/php8.4 there.

@@ -183,4 +183,42 @@
     </div>
 </x-ui.card>
 
+<h2 class="mt-10 mb-2 text-base font-semibold text-gray-900">Audit log archives</h2>
+<p class="text-sm text-gray-600 mb-5 max-w-3xl">Each finished month of the audit log is saved as its own compressed file on the first day of the next month. These files are kept for the long term and are not removed after {{ config('db_backup.retention_days') }} days. Nothing is removed from the audit log on the platform.</p>
+
+<x-ui.card flush>
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase w-12">S.No.</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">File</th>
+                <th class="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase">Month</th>
+                <th class="text-right px-4 py-3 text-xs font-medium text-gray-600 uppercase">Size</th>
+                <th class="px-4 py-3 text-xs font-medium text-gray-600 uppercase">Download</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            @forelse($auditArchives as $archive)
+            <tr class="hover:bg-gray-50 align-top">
+                <td class="px-4 py-3 text-gray-500 tabular-nums">{{ $loop->iteration }}</td>
+                <td class="px-4 py-3 font-mono text-xs text-gray-700 break-all">{{ $archive->file }}</td>
+                <td class="px-4 py-3 text-gray-800 whitespace-nowrap">{{ \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $archive->month.'-01')->format('M Y') }}</td>
+                <td class="px-4 py-3 text-right tabular-nums text-gray-700">{{ \Illuminate\Support\Number::fileSize($archive->bytes, 1) }}</td>
+                <td class="px-4 py-3 text-center">
+                    <a href="{{ route('admin.database-backups.audit.download', $archive->file) }}" class="inline-flex items-center gap-1.5 text-brand-700 font-medium hover:underline">
+                        <x-lucide-download class="w-4 h-4" /> Download
+                    </a>
+                </td>
+            </tr>
+            @empty
+            <tr>
+                <td colspan="5" class="px-4 py-6 text-center text-gray-500">No audit log archives on this environment yet.</td>
+            </tr>
+            @endforelse
+        </tbody>
+    </table>
+    </div>
+</x-ui.card>
+
 @endsection

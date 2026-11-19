@@ -1,6 +1,7 @@
 <?php
 
 use App\Console\Commands\AppStatusCommand;
+use App\Modules\Admin\Console\Commands\AuditLogArchiveCommand;
 use App\Modules\Admin\Console\Commands\DatabaseBackupRunCommand;
 use App\Modules\Commerce\Console\Commands\PurgeOfflinePaymentProofsCommand;
 use App\Modules\Compensation\Console\Commands\AdcPurgeRejectedDocumentsCommand;
@@ -320,6 +321,15 @@ Schedule::command(DatabaseBackupRunCommand::class)
     ->withoutOverlapping()
     ->evenInMaintenanceMode()
     ->runInBackground();
+
+// Monthly audit-log archive at 05:00 IST on the 1st, after the month-start
+// engines: saves the month that just ended as its own file, plus any earlier
+// month that was missed. Export only; nothing is removed from audit_log.
+Schedule::command(AuditLogArchiveCommand::class)
+    ->monthlyOn(1, '05:00')
+    ->timezone('Asia/Kolkata')
+    ->environments(['production', 'staging'])
+    ->withoutOverlapping();
 
 // Every minute: stamp a heartbeat so `app:status` (run at the end of every
 // app:deploy) can prove the schedule:run cron is actually firing. Nothing else

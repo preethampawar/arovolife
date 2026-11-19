@@ -21,6 +21,7 @@ use App\Modules\Admin\Http\Controllers\AdminLogController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminStaffUserController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
+use App\Modules\Admin\Services\AuditLogArchiveService;
 use App\Modules\Admin\Services\DatabaseBackupService;
 use App\Modules\Admin\Services\SettingsFileBackupService;
 use App\Modules\Admin\Support\DashboardPanels;
@@ -589,6 +590,8 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     Route::prefix('database-backups')->name('database-backups.')->group(function (): void {
         Route::get('/', [AdminDatabaseBackupController::class, 'index'])->name('index');
         Route::post('/', [AdminDatabaseBackupController::class, 'store'])->name('store');
+        Route::get('/audit-log/{file}/download', [AdminDatabaseBackupController::class, 'downloadAuditArchive'])
+            ->where('file', AuditLogArchiveService::FILE_PATTERN)->name('audit.download');
         Route::get('/{file}/download', [AdminDatabaseBackupController::class, 'download'])
             ->where('file', DatabaseBackupService::FILE_PATTERN)->name('download');
         Route::get('/settings/{file}/download', [AdminDatabaseBackupController::class, 'downloadSettings'])

@@ -38,6 +38,7 @@ final class DatabaseBackupStatusNotification extends Notification implements Sho
         public readonly ?int $settingsBytes = null,
         public readonly ?string $settingsError = null,
         public readonly ?string $filesLine = null,
+        public readonly ?int $auditMonthsPending = null,
     ) {}
 
     /** @return array<int, string> */
@@ -84,6 +85,10 @@ final class DatabaseBackupStatusNotification extends Notification implements Sho
 
         if ($this->filesLine !== null) {
             $mail->line('Uploaded files: '.$this->filesLine);
+        }
+
+        if ($this->auditMonthsPending !== null && $this->auditMonthsPending > 0) {
+            $mail->line("**Audit log archive: {$this->auditMonthsPending} month(s) not yet archived**");
         }
 
         $mail->line("Duration: {$duration}")

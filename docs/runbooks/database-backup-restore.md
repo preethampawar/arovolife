@@ -40,13 +40,52 @@ backups, because a restore would roll that table back too.
 | `ENV_BACKUP_PASSWORD` | none | Password for the settings-file ZIP. **20+ characters.** Lives only in the server's `.env` — never in the database or the repo. The owner keeps the same password offline. Unset or shorter than 20: no settings copy is made (never an unprotected one), the mail says so, and the page shows an amber notice. |
 | `DB_BACKUP_MYSQLDUMP_BINARY` / `DB_BACKUP_MYSQL_BINARY` | `mysqldump` / `mysql` | Client binaries. |
 
+| `AUDIT_ARCHIVE_DISK` | `audit-archives` | Disk the monthly audit log archives are written to. Leave unset on servers. |
+
 The password is passed only through `MYSQL_PWD`, never on the command line.
+
+Signed download addresses stay usable for 24 hours (config `db_backup.download_link_hours`).
 
 **Local docker stack:** the app image carries `mariadb-connector-c` (see
 `docker/Dockerfile`) so its MariaDB client can log in to the MySQL 8.0 `db`
 container; without that package the dump fails on the missing
 `caching_sha2_password` plugin. Set `DB_BACKUP_DISK=local` to try a backup
 locally without writing to the shared bucket.
+
+## Audit log archives
+
+**What:** each finished calendar month (IST) of the `audit_log` table is exported
+to its own gzipped file. This is export only: nothing is deleted, updated or
+truncated in `audit_log`, and the application never prunes these files.
+
+**When:** `audit-log:archive` runs on the 1st of every month at 05:00 IST
+(production and staging), after the month-start engines. It archives the month
+that just ended plus any earlier finished month that has no file yet. The daily
+backup mail adds a line when months are still waiting.
+
+**Where:** the `audit-archives` disk, in the backup bucket under
+`audit-log-archives/<APP_ENV>/`, one file per month:
+`arovolife-<env>-audit-log-YYYY-MM.jsonl.gz`. Files can also be downloaded from
+**Settings → Database backups → Audit log archives** (each download is audit-logged).
+Set `AUDIT_ARCHIVE_DISK` only to point the disk elsewhere.
+
+**Format:** gzip, one JSON object per line. Line 1 is the manifest:
+`{"manifest":true,"environment","month","timezone":"Asia/Kolkata","rows","first_id","last_id","first_prev_hash","last_row_hash","generated_at"}`.
+Every following line is one row in id order: `id, actor_id, action, subject_type,
+subject_id, before_hash, after_hash, row_hash, prev_hash` (hex), `details` (JSON),
+`ip`, `created_at`. A month with no rows is a manifest-only file. A file is
+uploaded only after it has been read back and the line count and last id match.
+
+**Manual run:**
+
+```
+php artisan audit-log:archive                  # every finished month not yet archived
+php artisan audit-log:archive --month=2026-10  # one month (skipped if the file exists)
+php artisan audit-log:archive --month=2026-10 --force   # rewrite that file
+```
+
+The current month is refused. A failure is logged as `audit_archive.failed`
+(critical) and the command exits non-zero; other months still run.
 
 ## Opening a settings copy
 
