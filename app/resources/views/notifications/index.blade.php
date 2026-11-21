@@ -18,6 +18,7 @@
                 $isUnread = $notification->read_at === null;
                 $title = match ($notification->data['kind'] ?? null) {
                     'order.status_changed' => 'Order update',
+                    'order.payment_received' => 'Payment received',
                     default => 'Notification',
                 };
                 $body = $notification->data['message'] ?? '';

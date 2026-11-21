@@ -6,6 +6,10 @@ use App\Modules\Catalog\Models\InventoryLevel;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductVariant;
 use App\Modules\Commerce\Events\OrderPlaced;
+use App\Modules\Commerce\Events\OrderStatusChanged;
+use App\Modules\Commerce\Listeners\SendOrderPlacedMail;
+use App\Modules\Commerce\Listeners\SendOrderStatusChangedMail;
+use App\Modules\Commerce\Listeners\SendPaymentReceivedMail;
 use App\Modules\Commerce\Models\Cart;
 use App\Modules\Commerce\Models\CartItem;
 use App\Modules\Commerce\Models\Customer;
@@ -14,9 +18,11 @@ use App\Modules\Commerce\Models\OrderItem;
 use App\Modules\Commerce\Notifications\AdminNewOrderNotification;
 use App\Modules\Commerce\Notifications\OrderPlacedNotification;
 use App\Modules\Commerce\Notifications\OrderStatusChangedNotification;
+use App\Modules\Commerce\Notifications\PaymentReceivedNotification;
 use App\Modules\Commerce\Services\CheckoutService;
 use App\Modules\Commerce\Services\OrderStateMachine;
 use App\Modules\Identity\Models\User;
+use App\Modules\Payments\Models\PaymentIntent;
 use Database\Seeders\LedgerAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
@@ -152,5 +158,113 @@ it('does NOT email on a status change when the toggle is OFF', function (): void
 
     app(OrderStateMachine::class)->markShipped($order);
 
+    Notification::assertNotSentTo($user, OrderStatusChangedNotification::class);
+});
+
+it('tells the buyer an unpaid online order is not confirmed until payment', function (): void {
+    Notification::fake();
+    $user = onBuyerUser();
+
+    $order = app(CheckoutService::class)->place(onCart(), onBuyer($user), onAddr(), onAddr(), null, 'direct', Order::PAYMENT_ONLINE, null, $user->id, null);
+
+    Notification::assertSentTo($user, OrderPlacedNotification::class, function (OrderPlacedNotification $n) use ($user, $order): bool {
+        $html = (string) $n->toMail($user)->render();
+
+        return $n->paymentState === OrderPlacedNotification::PAYMENT_AWAITING_ONLINE
+            && $n->subject() === "Order {$order->order_no} placed: payment pending"
+            && $n->payByLabel !== null
+            && str_contains($html, 'Payment pending: your order is not confirmed yet')
+            && str_contains($html, 'Complete payment')
+            && str_contains($html, route('shop.pay', $order->order_no));
+    });
+});
+
+it('confirms the order in the placed email when payment is already in', function (): void {
+    Notification::fake();
+    $user = onBuyerUser();
+    $order = onPaidOrder($user);
+
+    app(SendOrderPlacedMail::class)->handle(new OrderPlaced($order->id));
+
+    Notification::assertSentTo($user, OrderPlacedNotification::class, function (OrderPlacedNotification $n) use ($user, $order): bool {
+        $html = (string) $n->toMail($user)->render();
+
+        return $n->paymentState === OrderPlacedNotification::PAYMENT_PAID
+            && $n->subject() === "Order {$order->order_no} confirmed: payment received"
+            && str_contains($html, 'Your order is confirmed')
+            && ! str_contains($html, 'Payment pending')
+            && ! str_contains($html, 'Complete payment');
+    });
+});
+
+it('tells an offline buyer the order is confirmed once staff record the payment', function (): void {
+    Notification::fake();
+    $user = onBuyerUser();
+    $order = onPaidOrder($user);
+    $order->forceFill(['payment_method' => Order::PAYMENT_OFFLINE, 'status' => Order::STATUS_PLACED, 'paid_at' => null])->save();
+
+    app(SendOrderPlacedMail::class)->handle(new OrderPlaced($order->id));
+
+    Notification::assertSentTo($user, OrderPlacedNotification::class, function (OrderPlacedNotification $n) use ($user): bool {
+        $html = (string) $n->toMail($user)->render();
+
+        return $n->paymentState === OrderPlacedNotification::PAYMENT_AWAITING_OFFLINE
+            && $n->payByLabel === null
+            && str_contains($html, 'once our team records your payment')
+            && ! str_contains($html, 'Complete payment');
+    });
+});
+
+it('emails a payment receipt when an order is paid, even with status emails OFF', function (): void {
+    onSetting('notifications.email_on_status_change', 'false');
+    Notification::fake();
+    $user = onBuyerUser();
+    $order = onPaidOrder($user);
+    PaymentIntent::create([
+        'order_id' => $order->id, 'gateway' => 'razorpay', 'gateway_order_id' => 'order_TEST'.$order->id,
+        'gateway_payment_id' => 'pay_TESTRECEIPT1', 'mode' => 'test', 'method' => 'upi',
+        'amount_paise' => 100000, 'status' => PaymentIntent::STATUS_CAPTURED, 'idempotency_key' => 'pi-'.uniqid(),
+    ]);
+
+    app(SendPaymentReceivedMail::class)->handle(new OrderStatusChanged($order->id, Order::STATUS_PLACED, Order::STATUS_PAID));
+
+    Notification::assertSentTo($user, PaymentReceivedNotification::class, function (PaymentReceivedNotification $n) use ($user, $order): bool {
+        $html = (string) $n->toMail($user)->render();
+
+        return $n->subject() === "Payment received for order {$order->order_no}: your order is confirmed"
+            && str_contains($html, 'Payment receipt')
+            && str_contains($html, '₹1,000.00')
+            && str_contains($html, 'UPI')
+            && str_contains($html, 'pay_TESTRECEIPT1')
+            && str_contains($html, route('orders.invoice', $order->order_no));
+    });
+});
+
+it('shows the points / credit part when an order was paid without cash', function (): void {
+    Notification::fake();
+    $user = onBuyerUser();
+    $order = onPaidOrder($user);
+
+    app(SendPaymentReceivedMail::class)->handle(new OrderStatusChanged($order->id, Order::STATUS_PLACED, Order::STATUS_PAID));
+
+    Notification::assertSentTo($user, PaymentReceivedNotification::class, function (PaymentReceivedNotification $n): bool {
+        $labels = array_column($n->receiptLines, 'value', 'label');
+
+        return ($labels['Paid with points / repurchase credit'] ?? null) === '₹1,000.00'
+            && ($labels['Amount paid'] ?? null) === '₹0.00'
+            && ! isset($labels['Payment method']);
+    });
+});
+
+it('sends no receipt for other status changes, and no duplicate "is now Paid" mail', function (): void {
+    onSetting('notifications.email_on_status_change', 'true');
+    Notification::fake();
+    $user = onBuyerUser();
+    $order = onPaidOrder($user);
+
+    app(SendPaymentReceivedMail::class)->handle(new OrderStatusChanged($order->id, Order::STATUS_PAID, Order::STATUS_SHIPPED));
+    app(SendOrderStatusChangedMail::class)->handle(new OrderStatusChanged($order->id, Order::STATUS_PLACED, Order::STATUS_PAID));
+
+    Notification::assertNotSentTo($user, PaymentReceivedNotification::class);
     Notification::assertNotSentTo($user, OrderStatusChangedNotification::class);
 });

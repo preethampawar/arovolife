@@ -24,7 +24,9 @@ final class SendOrderStatusChangedMail implements ShouldQueue
 
     public function handle(OrderStatusChanged $event): void
     {
-        if (! $this->emailOnStatusChangeEnabled()) {
+        // The paid transition has its own always-on mail with a receipt
+        // (SendPaymentReceivedMail); sending this one too would say it twice.
+        if ($event->newStatus === Order::STATUS_PAID || ! $this->emailOnStatusChangeEnabled()) {
             return;
         }
 

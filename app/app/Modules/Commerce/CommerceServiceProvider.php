@@ -9,6 +9,7 @@ use App\Modules\Commerce\Events\OrderStatusChanged;
 use App\Modules\Commerce\Listeners\SendAdminNewOrderMail;
 use App\Modules\Commerce\Listeners\SendOrderPlacedMail;
 use App\Modules\Commerce\Listeners\SendOrderStatusChangedMail;
+use App\Modules\Commerce\Listeners\SendPaymentReceivedMail;
 use App\Modules\Commerce\Models\Order;
 use App\Modules\Commerce\Policies\OrderPolicy;
 use App\Modules\Commerce\Services\AttributionService;
@@ -52,6 +53,7 @@ final class CommerceServiceProvider extends ServiceProvider
         Event::listen(OrderPlaced::class, SendOrderPlacedMail::class);
         Event::listen(OrderPlaced::class, SendAdminNewOrderMail::class);
         Event::listen(OrderStatusChanged::class, SendOrderStatusChangedMail::class);
+        Event::listen(OrderStatusChanged::class, SendPaymentReceivedMail::class);
 
         // Make the cart item count available to the nav (cart-icon count badge
         // + highlight). Read-only — never creates a cart.
