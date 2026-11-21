@@ -399,7 +399,7 @@ per-row idempotent, and `wallet_ledger_entries` is UNIQUE on
 but it is *blind*: it re-runs an engine chain before anyone has read why it
 stopped, and with tries 3 the first two failures never reach `failed_jobs`
 at all. (R-61 is the separate, concurrent case: two workers on one job.)
-With tries 1 the first failure lands in `failed_jobs`, shows in Pulse, and
+With tries 1 the first failure lands in `failed_jobs`, shows in `app:status`, and
 the run is marked failed on the Engine Runs page, where it is re-triggered
 deliberately once the cause is known; the Ledger column on Run events lists
 what the failed run committed before it stopped. The cost is that a transient blip
@@ -692,7 +692,7 @@ Phase 1 baseline (more in Phase 12 per `phase_1_deferrals.md`):
 | Cloudways server CPU/RAM/Disk | *Server Management → Monitoring* — set 80% thresholds |
 | MySQL slow queries | *Server Management → MySQL → Slow Query Log* |
 | Laravel logs | `tail -F /home/master/applications/ahdhesuhty/public_html/app/storage/logs/laravel.log` |
-| Failed jobs | `/pulse` (see §4.1), or `php artisan queue:failed` |
+| Failed jobs | `php artisan app:status` (Failed jobs row), or `php artisan queue:failed` |
 | Audit log volume spike | Check `audit_log` table count daily; sudden 10× = suspicious |
 
 Set up Cloudways → *Server Management → Monitoring → Alerts* to email
@@ -700,36 +700,14 @@ the on-call when CPU > 80% for 5 min, disk > 85%, or load > 6.
 
 ---
 
-### 4.1 Pulse
+### 4.1 Pulse (removed 2026-11-21)
 
-`/pulse` — queue throughput and wait time, slow jobs, slow queries, slow
-requests, exceptions and cache hit rates. This is the platform's only queue
-observability: before it, a failed job landed in `failed_jobs` and nobody was
-told, which on a bonus-crediting job means a distributor finds the gap before
-we do.
-
-**Access.** Restricted to the `developer` role by the middleware in
-`config/pulse.php`. Admins get 403 — Pulse shows job payloads and exception
-traces, so it is a developer surface like feature flags and plan settings.
-Note that a Gate alone cannot hold it: `AppServiceProvider`'s `Gate::before`
-answers true for every super-staff user before any definition is consulted, so
-the middleware is what actually closes the door. DEV-13/14/15 in
-`DeveloperRoleTest` assert developer 200 / admin 403 / guest redirect — if
-those ever go green-to-red after a middleware change, the dashboard is exposed.
-
-**Storage.** Recorders write to the application database on the default
-`storage` ingest driver, so there is no extra daemon and no Supervisor entry.
-Retention is 7 days, trimmed by lottery on ingest. Deliberately not the
-server's Redis — see §1.5.
-
-**Killswitch.** `PULSE_ENABLED=false` in `.env` then `php artisan config:cache`
-stops all recording without removing the package. Reach for it if ingest write
-volume ever shows up in the MySQL slow log.
-
-**Not wired up.** The `Servers` recorder needs `php artisan pulse:check`
-running as a daemon. It is left unconfigured — a second always-on process for
-host metrics that Cloudways *Server Management → Monitoring* already reports.
-The Servers card on the dashboard stays empty as a result; that is expected.
+Laravel Pulse was installed on 2026-08-29 and removed on 2026-11-21. Recording
+had been switched off on staging and production, and nothing read the
+dashboard. Queue health comes from `php artisan app:status` (worker, backlog
+and failed-job rows), the Engine Runs page and the engine-health digest. The
+migration `2026_11_21_100000_drop_pulse_tables` drops the leftover `pulse_*`
+tables; any `PULSE_ENABLED` line left in a server `.env` is now ignored.
 
 ---
 

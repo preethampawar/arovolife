@@ -2895,7 +2895,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
-			count: 20
+			count: 17
 			path: tests/Modules/Admin/DeveloperRoleTest.php
 
 		-
@@ -2907,7 +2907,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:get\(\)\.$#'
 			identifier: method.notFound
-			count: 15
+			count: 12
 			path: tests/Modules/Admin/DeveloperRoleTest.php
 
 		-
@@ -4699,18 +4699,6 @@ parameters:
 			path: tests/Modules/Genealogy/LineChangeControllerTest.php
 
 		-
-			message: '#^Unable to resolve the template type TFlatMapKey in call to method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:flatMap\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: tests/Modules/Genealogy/LineChangeSchemaTest.php
-
-		-
-			message: '#^Unable to resolve the template type TFlatMapValue in call to method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:flatMap\(\)$#'
-			identifier: argument.templateType
-			count: 1
-			path: tests/Modules/Genealogy/LineChangeSchemaTest.php
-
-		-
 			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:actingAs\(\)\.$#'
 			identifier: method.notFound
 			count: 12
@@ -5891,12 +5879,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Pest.php
-
-		-
-			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
-			identifier: greater.alwaysTrue
-			count: 1
-			path: tests/Support/FortuneBonusOracle.php
 
 		-
 			message: '#^Method Tests\\Support\\FortuneBonusOracle\:\:run\(\) should return array\{pool_paise\: int, guaranteed_total_paise\: int, available_paise\: int, total_points\: int, levels\: array\<int, array\{participants\: int, level_points\: int, point_value_paise\: int, bonus_paise\: int, derived_per_member_paise\: int, capped_per_member_paise\: int, income_per_member_paise\: int, wallet_credit_each_paise\: int, \.\.\.\}\>, incomes\: array\<int, int\>, total_credited_paise\: int, leftover_paise\: int, \.\.\.\} but returns array\<string, mixed\>\.$#'

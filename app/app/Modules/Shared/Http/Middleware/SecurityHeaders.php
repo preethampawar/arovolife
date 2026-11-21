@@ -48,28 +48,6 @@ final class SecurityHeaders
         ."frame-ancestors 'none'";
 
     /**
-     * The Pulse dashboard alone also gets `'unsafe-eval'`. Pulse renders its
-     * cards with Livewire + Alpine, and Alpine compiles every `x-data` /
-     * `wire:init` expression with `new Function()`, which the strict policy
-     * blocks — on staging (2026-08-29) the page loaded but every card stayed
-     * a skeleton, with an EvalError per expression in the console. The
-     * dashboard is developer-only (`role:developer` in config/pulse.php) and
-     * renders nothing user-supplied, so widening it there costs nothing the
-     * site-wide policy is protecting. Everything else in the policy is kept.
-     */
-    private const CSP_PULSE = "default-src 'self'; "
-        ."script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-        ."style-src 'self' 'unsafe-inline'; "
-        ."img-src 'self' data: blob: https:; "
-        ."font-src 'self' data:; "
-        ."connect-src 'self'; "
-        ."media-src 'self'; "
-        ."object-src 'none'; "
-        ."base-uri 'self'; "
-        ."form-action 'self'; "
-        ."frame-ancestors 'none'";
-
-    /**
      * The Razorpay pay page alone. Standard Checkout loads `checkout.js` from
      * Razorpay's origin, opens the payment form in an iframe on
      * `api.razorpay.com`, and talks to it over XHR — every one of which the
@@ -107,7 +85,6 @@ final class SecurityHeaders
         $response = $next($request);
 
         $csp = match (true) {
-            $this->isPulseDashboard($request) => self::CSP_PULSE,
             $this->isPayPage($request) => self::CSP_PAY,
             default => self::CSP,
         };
@@ -165,12 +142,5 @@ final class SecurityHeaders
     private function isPayPage(Request $request): bool
     {
         return $request->route()?->getName() === 'shop.pay';
-    }
-
-    private function isPulseDashboard(Request $request): bool
-    {
-        $path = trim((string) config('pulse.path', 'pulse'), '/');
-
-        return $path !== '' && $request->is($path, $path.'/*');
     }
 }

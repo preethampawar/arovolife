@@ -108,10 +108,6 @@ final class PlatformResetAction
         // The tax-invoice series restarts with the invoices (CGST Rule 46):
         // a surviving counter would open the real series at test number 65.
         'invoice_number_sequences',
-        // Pulse telemetry names users by id, and ids are reused after a wipe.
-        'pulse_entries',
-        'pulse_aggregates',
-        'pulse_values',
         // Tree + main
         'sponsorship',
         'genealogy_closure',

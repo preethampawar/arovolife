@@ -8,8 +8,6 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Laravel\Pulse\Livewire\Queues;
-use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 
 uses(RefreshDatabase::class);
@@ -101,57 +99,13 @@ it('DEV-05: developer can write a developer-owned setting', function () {
     expect(DB::table('settings')->where('key', 'payout.min_threshold_paise')->value('value'))->toBe('15000');
 });
 
-it('DEV-13: developer reaches the Pulse dashboard', function () {
+it('DEV-13: Pulse is gone — /pulse is not a route, even for the developer', function () {
     $this->actingAs(devStaff('developer'));
 
-    $this->get('/pulse')->assertOk();
-});
-
-it('DEV-13c: Pulse cards render when the default cache store refuses to unserialize objects', function () {
-    $this->actingAs(devStaff('developer'));
-
-    // Laravel 13's cache.serializable_classes = false makes every object read
-    // from a serialising store an incomplete object. Pulse memoises card
-    // queries (Collections) through its own cache store, so that store must
-    // be one that never serialises — staging 2026-08-29: every card 500'd on
-    // Redis. The file store enforces the same rule as Redis, so it stands in.
-    config(['cache.default' => 'file', 'cache.serializable_classes' => false]);
-
-    // Pulse cards are lazy: a plain Livewire::test() renders only the
-    // placeholder and never runs the query, so lazy loading is switched off.
-    Livewire::withoutLazyLoading()->test(Queues::class)->assertOk();
-    Livewire::withoutLazyLoading()->test(Queues::class)->assertOk();
-});
-
-it('DEV-13b: the Pulse dashboard alone gets a CSP that lets Alpine evaluate', function () {
-    $this->actingAs(devStaff('developer'));
-
-    // Pulse's cards are Livewire + Alpine; Alpine compiles its expressions with
-    // new Function(), so without 'unsafe-eval' every card stays a skeleton
-    // (staging, 2026-08-29). The widening is confined to the dashboard path.
-    $pulse = (string) $this->get('/pulse')->headers->get('Content-Security-Policy');
-    $site = (string) $this->get('/')->headers->get('Content-Security-Policy');
-
-    expect($pulse)->toContain("'unsafe-eval'")
-        ->and($pulse)->toContain("frame-ancestors 'none'")
-        ->and($site)->not->toContain("'unsafe-eval'");
-});
-
-/**
- * Pulse ships gated on `viewPulse`, which its own default answers with
- * "true if local". A Gate alone cannot hold this surface either way, because
- * AppServiceProvider's Gate::before returns true for every super-staff user
- * before a definition is consulted — so admins would pass. The
- * `role:developer` middleware in config/pulse.php is what actually closes it.
- */
-it('DEV-14: an admin cannot open Pulse', function () {
-    $this->actingAs(devStaff('admin'));
-
-    $this->get('/pulse')->assertForbidden();
-});
-
-it('DEV-15: Pulse is closed to guests', function () {
-    $this->get('/pulse')->assertRedirect();
+    // Pulse was removed on 2026-11-21. Its dashboard was the one page allowed
+    // 'unsafe-eval'; no page may carry it now.
+    $this->get('/pulse')->assertNotFound();
+    expect((string) $this->get('/')->headers->get('Content-Security-Policy'))->not->toContain("'unsafe-eval'");
 });
 
 // ─── Stealth ─────────────────────────────────────────────────────────────────

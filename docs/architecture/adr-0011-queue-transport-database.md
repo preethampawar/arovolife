@@ -78,11 +78,13 @@ and has no free-text command field. Every worker it manages is launched as
    `(type, reference_type, reference_id)`. What an automatic retry does is
    re-run the money path before anyone has read why it stopped, and with
    tries 3 the first two failures never reach `failed_jobs`. A visible
-   failure in `failed_jobs`, Pulse and the Engine Runs page, re-triggered by
+   failure in `failed_jobs`, `app:status` and the Engine Runs page, re-triggered by
    a person once the cause is known, is the intended recovery — resume, not
    revert (ADR-0004: the ledger is append-only).
 6. **Horizon is off the table** with Redis (it is Redis-only). Laravel Pulse
-   provides queue and failed-job visibility instead, developer-role only.
+   provided queue and failed-job visibility instead, developer-role only,
+   until it was removed on 2026-11-21 (recording was off and nothing read it);
+   `app:status` and the Engine Runs page cover that now.
 
 ## Consequences
 
