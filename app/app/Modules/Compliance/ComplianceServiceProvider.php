@@ -10,7 +10,9 @@ use App\Modules\Compliance\Console\Commands\VerifyAuditLogCommand;
 use App\Modules\Compliance\Console\SendCoolingOffRemindersCommand;
 use App\Modules\Compliance\Events\CoolingOffCancelled;
 use App\Modules\Compliance\Listeners\SendCoolingOffCancelledMail;
+use App\Modules\Compliance\Models\AuditLog;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\Events\MigrationsStarted;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,6 +25,7 @@ final class ComplianceServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
 
         Event::listen(CoolingOffCancelled::class, SendCoolingOffCancelledMail::class);
+        Event::listen(MigrationsStarted::class, static fn () => AuditLog::forgetSchemaState());
 
         if ($this->app->runningInConsole()) {
             $this->commands([

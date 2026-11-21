@@ -128,17 +128,29 @@ final class AuditLog extends Model
         });
     }
 
+    /** Remembered "the hash_version column exists"; cleared whenever migrations start. */
+    private static bool $hashVersionColumnPresent = false;
+
     private static function hasHashVersionColumn(self $entry): bool
     {
-        static $present = false;
-
         // Only a positive answer is remembered: the migration that adds the
         // column may run after the first row is written.
-        if (! $present) {
-            $present = $entry->getConnection()->getSchemaBuilder()->hasColumn($entry->getTable(), 'hash_version');
+        if (! self::$hashVersionColumnPresent) {
+            self::$hashVersionColumnPresent = $entry->getConnection()->getSchemaBuilder()->hasColumn($entry->getTable(), 'hash_version');
         }
 
-        return $present;
+        return self::$hashVersionColumnPresent;
+    }
+
+    /**
+     * Forget the remembered column check. A second migrate:fresh or rollback
+     * in the same process (tests, e2e:snapshot) drops the column, and an old
+     * audited migration would otherwise write hash_version into a table that
+     * no longer has it. Called on every MigrationsStarted event.
+     */
+    public static function forgetSchemaState(): void
+    {
+        self::$hashVersionColumnPresent = false;
     }
 
     /**
