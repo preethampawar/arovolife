@@ -40,14 +40,20 @@
         <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs">
             <p>&copy; {{ date('Y') }} @include('partials._legal-entity')</p>
             <div class="flex flex-wrap gap-4">
-                <a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Terms</a>
-                <a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy</a>
+                <a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Direct Seller Agreement</a>
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('policies'))
+                <a href="{{ route('content.show', 'policies') }}" class="hover:text-white">Terms &amp; Conditions</a>
+                @endif
+                <a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy Policy</a>
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('refund'))
+                <a href="{{ route('content.show', 'refund') }}" class="hover:text-white">Refund Policy</a>
+                @endif
                 <a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance</a>
                 @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('returns'))
                 <a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Returns &amp; warranty</a>
                 @endif
                 @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('cancellation'))
-                <a href="{{ route('content.show', 'cancellation') }}" class="hover:text-white">Order cancellation</a>
+                <a href="{{ route('content.show', 'cancellation') }}" class="hover:text-white">Cancellation Policy</a>
                 @endif
                 @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('shipping'))
                 <a href="{{ route('content.show', 'shipping') }}" class="hover:text-white">Shipping</a>
@@ -56,6 +62,7 @@
                 <a href="{{ route('content.show', 'disclaimer') }}" class="hover:text-white">Disclaimer</a>
                 @endif
                 <a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a>
+                <a href="{{ route('contact.show') }}" class="hover:text-white">Contact Us</a>
             </div>
         </div>
         <div class="max-w-7xl mx-auto px-6 mt-4 text-xs text-gray-400">

@@ -131,7 +131,7 @@
                 contact: @json($order->ship_phone_e164),
             },
             notes: @json(\App\Modules\Payments\Services\RazorpayGateway::notesFor($order)),
-            theme: { color: '#0f766e' },
+            theme: { color: '#1E4952' },
             retry: { enabled: false },
             modal: {
                 ondismiss: function () {

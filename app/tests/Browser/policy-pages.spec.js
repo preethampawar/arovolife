@@ -29,6 +29,7 @@ const POLICY_SLUGS = [
     ['disclaimer', 'Disclaimer'],
     ['social-media', 'Social Media Policy'],
     ['policies', 'Policies & Procedures — Website Terms of Use'],
+    ['refund', 'Refund Policy'],
 ];
 
 test.describe('Policy pages: each of the 9 client documents', () => {
@@ -47,7 +48,11 @@ test.describe('Policy pages: Home footer links', () => {
         ['Shipping & delivery', 'shipping'],
         ['Disclaimer', 'disclaimer'],
         ['Social media policy', 'social-media'],
-        ['Website terms of use', 'policies'],
+        // Named exactly as the payment gateway's website review lists them.
+        ['Terms & Conditions', 'policies'],
+        ['Privacy Policy', 'privacy'],
+        ['Refund Policy', 'refund'],
+        ['Cancellation Policy', 'cancellation'],
     ];
 
     for (const [label, slug] of footerLinks) {

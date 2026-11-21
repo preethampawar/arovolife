@@ -529,15 +529,21 @@
         <div class="max-w-7xl mx-auto px-6 text-center">
             <img src="{{ asset('assets/arovolife-logos/arovolife-logo-dark.png') }}" alt="arovolife" class="h-12 w-auto mx-auto mb-4">
             <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs mb-4">
-                <a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Terms</a>
-                <a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy</a>
+                <a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Direct Seller Agreement</a>
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('policies'))
+                <a href="{{ route('content.show', 'policies') }}" class="hover:text-white">Terms &amp; Conditions</a>
+                @endif
+                <a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy Policy</a>
+                @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('refund'))
+                <a href="{{ route('content.show', 'refund') }}" class="hover:text-white">Refund Policy</a>
+                @endif
                 <a href="{{ route('content.show', 'ethics') }}" class="hover:text-white">Code of Ethics</a>
                 <a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance Redressal</a>
                 @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('returns'))
                 <a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Returns &amp; warranty</a>
                 @endif
                 @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('cancellation'))
-                <a href="{{ route('content.show', 'cancellation') }}" class="hover:text-white">Order cancellation</a>
+                <a href="{{ route('content.show', 'cancellation') }}" class="hover:text-white">Cancellation Policy</a>
                 @endif
                 @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('shipping'))
                 <a href="{{ route('content.show', 'shipping') }}" class="hover:text-white">Shipping &amp; delivery</a>
@@ -546,6 +552,7 @@
                 <a href="{{ route('content.show', 'disclaimer') }}" class="hover:text-white">Disclaimer</a>
                 @endif
                 <a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a>
+                <a href="{{ route('contact.show') }}" class="hover:text-white">Contact Us</a>
             </div>
             <p class="text-xs text-gray-400 mb-3 leading-relaxed">
                 Customer Care:

@@ -798,7 +798,13 @@
                     <h4 class="text-white text-sm font-semibold mb-3">Legal</h4>
                     <ul class="space-y-2 text-sm">
                         <li><a href="{{ route('content.show', 'terms') }}" class="hover:text-white">Direct Seller Agreement</a></li>
+                        @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('policies'))
+                        <li><a href="{{ route('content.show', 'policies') }}" class="hover:text-white">Terms &amp; Conditions</a></li>
+                        @endif
                         <li><a href="{{ route('content.show', 'privacy') }}" class="hover:text-white">Privacy Policy</a></li>
+                        @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('refund'))
+                        <li><a href="{{ route('content.show', 'refund') }}" class="hover:text-white">Refund Policy</a></li>
+                        @endif
                         <li><a href="{{ route('content.show', 'grievance') }}" class="hover:text-white">Grievance Redressal</a></li>
                         {{-- Guarded on publication status: a footer link to an
                              unpublished page is a link to a 404. The guard
@@ -808,7 +814,7 @@
                         <li><a href="{{ route('content.show', 'returns') }}" class="hover:text-white">Returns &amp; warranty</a></li>
                         @endif
                         @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('cancellation'))
-                        <li><a href="{{ route('content.show', 'cancellation') }}" class="hover:text-white">Order cancellation</a></li>
+                        <li><a href="{{ route('content.show', 'cancellation') }}" class="hover:text-white">Cancellation Policy</a></li>
                         @endif
                         @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('shipping'))
                         <li><a href="{{ route('content.show', 'shipping') }}" class="hover:text-white">Shipping &amp; delivery</a></li>
@@ -819,9 +825,7 @@
                         @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('social-media'))
                         <li><a href="{{ route('content.show', 'social-media') }}" class="hover:text-white">Social media policy</a></li>
                         @endif
-                        @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('policies'))
-                        <li><a href="{{ route('content.show', 'policies') }}" class="hover:text-white">Website terms of use</a></li>
-                        @endif
+                        <li><a href="{{ route('contact.show') }}" class="hover:text-white">Contact Us</a></li>
                         <li><a href="{{ route('compliance-documents.index') }}" class="hover:text-white">Compliance Documents</a></li>
                     </ul>
                 </div>

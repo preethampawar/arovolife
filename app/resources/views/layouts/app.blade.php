@@ -48,11 +48,21 @@
 
     <footer class="border-t border-gray-200 mt-12 sm:mt-16 px-4 sm:px-6 py-6 text-center text-xs text-gray-700">
         <div class="flex flex-wrap justify-center gap-x-4 gap-y-1">
-            <a href="{{ route('content.show', 'terms') }}" class="hover:text-gray-900">Terms</a>
-            <a href="{{ route('content.show', 'privacy') }}" class="hover:text-gray-900">Privacy</a>
+            <a href="{{ route('content.show', 'terms') }}" class="hover:text-gray-900">Direct Seller Agreement</a>
+            @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('policies'))
+            <a href="{{ route('content.show', 'policies') }}" class="hover:text-gray-900">Terms &amp; Conditions</a>
+            @endif
+            <a href="{{ route('content.show', 'privacy') }}" class="hover:text-gray-900">Privacy Policy</a>
+            @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('refund'))
+            <a href="{{ route('content.show', 'refund') }}" class="hover:text-gray-900">Refund Policy</a>
+            @endif
+            @if(\App\Modules\Content\Models\ContentPage::isSlugPublished('cancellation'))
+            <a href="{{ route('content.show', 'cancellation') }}" class="hover:text-gray-900">Cancellation Policy</a>
+            @endif
             <a href="{{ route('content.show', 'ethics') }}" class="hover:text-gray-900">Code of Ethics</a>
             <a href="{{ route('content.show', 'grievance') }}" class="hover:text-gray-900">Grievance</a>
             <a href="{{ route('compliance-documents.index') }}" class="hover:text-gray-900">Compliance Documents</a>
+            <a href="{{ route('contact.show') }}" class="hover:text-gray-900">Contact Us</a>
         </div>
         <p class="mt-3 text-gray-600">
             Customer Care:

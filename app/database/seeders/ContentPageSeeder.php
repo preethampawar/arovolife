@@ -97,6 +97,11 @@ final class ContentPageSeeder extends Seeder
             'title' => 'Policies & Procedures — Website Terms of Use',
             'meta_description' => 'The terms governing use of the arovolife website — eligibility, registration, intellectual property, payments, cookies, liability and governing law.',
         ],
+        [
+            'slug' => 'refund',
+            'title' => 'Refund Policy',
+            'meta_description' => 'How refunds work at arovolife for cancelled orders, returned products and the 30-day cooling-off period, quoted from our published policies.',
+        ],
     ];
 
     /**

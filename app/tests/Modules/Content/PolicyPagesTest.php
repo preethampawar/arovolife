@@ -8,7 +8,7 @@ declare(strict_types=1);
  *
  *   POL-01  every ContentPageSeeder slug has a markdown source file
  *   POL-02  a blanket seed publishes every slug except compensation
- *   POL-03  ProductionSeeder on an empty table creates all ten policy pages
+ *   POL-03  ProductionSeeder on an empty table creates all eleven policy pages
  *   POL-04  ProductionSeeder never overwrites an existing edited row
  *   POL-05  the privacy body carries Part B, including the message-moderation
  *           disclosure (§4 item 5b — the page never contained the literal
@@ -52,11 +52,11 @@ it('POL-02: a blanket seed publishes every slug except compensation', function (
     }
 });
 
-it('POL-03: ProductionSeeder on an empty table creates all ten policy pages published', function (): void {
+it('POL-03: ProductionSeeder on an empty table creates all eleven policy pages published', function (): void {
     $this->seed(ProductionSeeder::class);
 
     $slugs = array_values(array_diff(ContentPageSeeder::slugs(), ContentPageSeeder::HELD_SLUGS));
-    expect($slugs)->toHaveCount(10);
+    expect($slugs)->toHaveCount(11);
 
     foreach ($slugs as $slug) {
         $page = ContentPage::query()->where('slug', $slug)->first();
@@ -103,4 +103,24 @@ it('POL-06: shipping and returns are properly split', function (): void {
 
     expect($shippingBody)->toContain('mainland India')
         ->and($returnsBody)->not->toContain('## 6. Shipping');
+});
+
+it('POL-07: every refund-page passage is quoted word for word from a published policy', function (): void {
+    $dir = base_path('database/seeders/content/');
+    $sources = implode("\n", array_map(
+        fn (string $slug): string => (string) file_get_contents($dir.$slug.'.md'),
+        ['cancellation', 'returns', 'terms'],
+    ));
+
+    // Everything after the intro paragraph, except the headings and the
+    // italic "From the …" attribution lines, is quoted policy text.
+    $lines = array_slice(explode("\n", (string) file_get_contents($dir.'refund.md')), 1);
+    $quoted = array_filter(array_map('trim', $lines), fn (string $line): bool => $line !== ''
+        && ! str_starts_with($line, '#')
+        && ! str_starts_with($line, '*From the'));
+
+    expect($quoted)->not->toBeEmpty();
+    foreach ($quoted as $line) {
+        expect(str_contains($sources, $line))->toBeTrue("Not found in the source policies: {$line}");
+    }
 });
