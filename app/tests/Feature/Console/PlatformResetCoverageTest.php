@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Console\Actions\PlatformResetAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 uses(RefreshDatabase::class);
@@ -13,7 +14,9 @@ uses(RefreshDatabase::class);
 it('accounts for every table in the schema as either wiped or deliberately kept', function () {
     $accountedFor = [...PlatformResetAction::wipeTables(), ...PlatformResetAction::KEPT_TABLES];
 
-    $unaccounted = collect(Schema::getTableListing(schemaQualified: false))
+    // Scoped to this connection's database: unscoped, the listing also returns
+    // tables from every other schema the MySQL user can see (dev, e2e, perf).
+    $unaccounted = collect(Schema::getTableListing(schema: DB::connection()->getDatabaseName(), schemaQualified: false))
         ->reject(fn (string $table): bool => in_array($table, $accountedFor, true))
         ->values()
         ->all();
