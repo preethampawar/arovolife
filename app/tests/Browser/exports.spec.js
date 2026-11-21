@@ -261,12 +261,12 @@ test.describe('Payout batch: NEFT export stays CSV', () => {
     // gsb-basic paid through the real weekly batch: root's slab-1 GSB earned
     // on 3 June lands in the batch of Tuesday 16 June (earning week 3–9 June),
     // signed off by finance. Net = ₹2,000 gross − ₹200 repurchase (held at
-    // credit) − ₹60 admin charge (3%) − ₹87 TDS (5% of ₹1,740) = ₹1,653.00.
+    // credit) − ₹60 admin charge (3%) − ₹34.80 TDS (2% of ₹1,740) = ₹1,705.20.
     test.use({
         world: { name: 'gsb-basic', asOf: '2026-06-17 06:00:00', weeklyBatch: '2026-06-16', approveAs: 'finance@e2e.test' },
     });
 
-    test('T12: NEFT bank-file download is still .csv and pays root ₹1,653.00', async ({ page, builtWorld }) => {
+    test('T12: NEFT bank-file download is still .csv and pays root ₹1,705.20', async ({ page, builtWorld }) => {
         await loginAsStaff(page, builtWorld, 'finance');
         await page.goto('/admin/compensation/weekly-payouts');
         const batchLink = page.locator('tbody tr').filter({ hasText: /16 Jun 2026/ }).locator('a[href*="/admin/compensation/weekly-payouts/"]').first();
@@ -286,7 +286,7 @@ test.describe('Payout batch: NEFT export stays CSV', () => {
         expect(rows[1]).toContain(root.adn);
         expect(rows[1]).toContain('500000000001');
         expect(rows[1]).toContain('SBIN0000001');
-        expect(rows[1]).toContain('1653.00');
+        expect(rows[1]).toContain('1705.20');
     });
 });
 
@@ -296,12 +296,12 @@ test.describe('Payout batch: monthly NEFT export', () => {
     // earner (12 AGP from one slab-1 GSB cut-off → ₹168 an AGP, under the ₹240
     // cap) so takes ₹2,016. Fortune: position 1, level 0 pays the ₹30 minimum.
     // Gross ₹2,046 − ₹204.60 repurchase (10%, held at credit) − ₹61.38 admin
-    // charge (3% of gross) − ₹89.00 TDS (5% of ₹1,780.02) = ₹1,691.02.
+    // charge (3% of gross) − ₹35.60 TDS (2% of ₹1,780.02) = ₹1,744.42.
     test.use({
         world: { name: 'gsb-basic', asOf: '2026-07-08 06:00:00', monthlyBatch: '2026-06', approveAs: 'finance@e2e.test' },
     });
 
-    test('T12b: monthly NEFT bank file is .csv and pays root ₹1,691.02', async ({ page, builtWorld }) => {
+    test('T12b: monthly NEFT bank file is .csv and pays root ₹1,744.42', async ({ page, builtWorld }) => {
         await loginAsStaff(page, builtWorld, 'finance');
         await page.goto('/admin/compensation/monthly-payouts');
         const batchLink = page.locator('tbody tr').filter({ hasText: /01 Jul 2026/ }).locator('a[href*="/admin/compensation/monthly-payouts/"]').first();
@@ -318,7 +318,7 @@ test.describe('Payout batch: monthly NEFT export', () => {
         expect(rows).toHaveLength(2);
         expect(rows[1]).toContain(builtWorld.partners.root.adn);
         expect(rows[1]).toContain('SBIN0000001');
-        expect(rows[1]).toContain('1691.02');
+        expect(rows[1]).toContain('1744.42');
     });
 });
 
