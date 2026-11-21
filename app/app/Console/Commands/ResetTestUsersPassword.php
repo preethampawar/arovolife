@@ -17,6 +17,12 @@ final class ResetTestUsersPassword extends Command
     {
         $password = $this->argument('password');
 
+        if (! is_string($password) || $password === '') {
+            $this->error('Give the password to set as the first argument.');
+
+            return self::FAILURE;
+        }
+
         // Find test users (emails with test, may2026, mailinator patterns)
         $users = User::where(function ($query) {
             $query->where('email', 'like', '%test%')
