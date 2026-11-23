@@ -52,6 +52,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $terminated_at
  * @property string|null $termination_reason
  * @property Carbon|null $reregistration_allowed_from
+ * @property Carbon|null $erased_at
  * @property string $state
  * @property int|null $spouse_distributor_id
  * @property bool $is_primary_couple
@@ -125,6 +126,7 @@ final class Distributor extends Model
             'inactivity_notice_expires_at' => 'datetime',
             'terminated_at' => 'datetime',
             'reregistration_allowed_from' => 'date',
+            'erased_at' => 'datetime',
             'is_primary_couple' => 'boolean',
             'depth' => 'integer',
             // Encrypted at rest with the dedicated PII key (ADR-0008), not
@@ -165,6 +167,12 @@ final class Distributor extends Model
                 ? 'XXXX XXXX '.$this->aadhaar_last4
                 : null,
         );
+    }
+
+    /** Removed by the developer-only subtree erasure; the row is an anonymised tombstone. */
+    public function isErased(): bool
+    {
+        return $this->erased_at !== null;
     }
 
     public function user(): BelongsTo

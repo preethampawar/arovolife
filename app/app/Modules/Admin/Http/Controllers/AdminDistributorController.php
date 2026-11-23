@@ -57,7 +57,8 @@ final class AdminDistributorController extends Controller
                 'distributors.cooling_off_end_at', 'distributors.state',
                 'distributors.sponsor_id', 'distributors.placement_parent_id',
                 'users.email', 'users.full_name', 'users.status', 'users.phone_e164'
-            );
+            )
+            ->whereNull('distributors.erased_at');
 
         $this->applyRegisterFilters($filters, $query);
 
@@ -68,6 +69,7 @@ final class AdminDistributorController extends Controller
         $statusCounts = DB::table('users')
             ->join('distributors', 'distributors.user_id', '=', 'users.id')
             ->select('users.status', DB::raw('count(*) as cnt'))
+            ->whereNull('distributors.erased_at')
             ->groupBy('users.status')
             ->pluck('cnt', 'status');
 
@@ -145,6 +147,7 @@ final class AdminDistributorController extends Controller
                 'users.email', 'users.full_name', 'users.status', 'users.closure_type',
                 'users.phone_e164', 'users.date_of_birth', 'users.created_at as user_created_at')
             ->where('distributors.id', $id)
+            ->whereNull('distributors.erased_at')
             ->firstOrFail();
 
         // The root distributor carries itself as sponsor_id — a sentinel, not a
@@ -403,6 +406,7 @@ final class AdminDistributorController extends Controller
                 'distributors.spouse_distributor_id',
                 'spouses.adn AS spouse_adn',
             )
+            ->whereNull('distributors.erased_at')
             ->orderBy('distributors.id');
 
         $this->applyRegisterFilters($filters, $query);

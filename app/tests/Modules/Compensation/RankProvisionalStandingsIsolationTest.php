@@ -36,6 +36,9 @@ it('lets only the snapshot\'s builders and its progress views read the provision
         'Modules/Compensation/Http/Controllers/Admin/AdminDistributorCompController.php',
         // Registers the console command — names the class, reads nothing.
         'Providers/AppServiceProvider.php',
+        // Developer partner erasure deletes an erased partner's rows; it never reads them.
+        'Modules/Admin/Services/Erasure/PartnerErasureTableMap.php',
+        'Modules/Admin/Services/Erasure/PartnerErasureService.php',
     ];
 
     $offenders = [];

@@ -2,6 +2,7 @@
 
 use App\Modules\Commerce\Http\Middleware\CaptureAttribution;
 use App\Modules\Identity\Http\Middleware\EnsureRegistrationProgress;
+use App\Modules\Identity\Http\Middleware\LogoutErasedUser;
 use App\Modules\Identity\Http\Middleware\RedirectRejectedToResubmit;
 use App\Modules\Identity\Http\Middleware\RequireKycApproval;
 use App\Modules\Shared\Http\Middleware\SecurityHeaders;
@@ -27,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // (framing, object-src, base-uri, cross-origin form posts).
         $middleware->web(append: [
             SecurityHeaders::class,
+            LogoutErasedUser::class,
         ]);
 
         // Trust the Cloudways load balancer's forwarding headers, so

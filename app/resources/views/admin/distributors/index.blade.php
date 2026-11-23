@@ -39,6 +39,12 @@
     <a href="{{ request()->fullUrlWithQuery(['status' => null, 'page' => null]) }}" class="text-xs text-gray-700 hover:text-gray-900">{{ svg('lucide-x', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Clear</a>
     @endif
     <div class="ml-auto flex items-center gap-2">
+        @developer
+        <a href="{{ route('admin.distributors.erase.form') }}"
+           class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-200 bg-white text-sm text-red-700 hover:bg-red-50">
+            {{ svg('lucide-trash-2', 'w-3.5 h-3.5', ['aria-hidden' => 'true']) }} Delete a partner
+        </a>
+        @enddeveloper
         <x-ui.button href="{{ route('admin.distributors.create') }}">
             {{ svg('lucide-plus', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Add Distributor
         </x-ui.button>
@@ -114,6 +120,10 @@
                     <td class="px-4 py-3">
                         <a href="{{ route('admin.distributors.show', $d->id) }}"
                            class="text-xs text-brand-700 hover:text-brand-800">View {{ svg('lucide-chevron-right', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }}</a>
+                        @developer
+                        <a href="{{ route('admin.distributors.erase.form', ['adn' => $d->adn]) }}"
+                           class="ml-3 text-xs text-red-700 hover:text-red-800">{{ svg('lucide-trash-2', 'w-3.5 h-3.5 inline-block align-[-2px]', ['aria-hidden' => 'true']) }} Delete</a>
+                        @enddeveloper
                     </td>
                 </tr>
                 @empty

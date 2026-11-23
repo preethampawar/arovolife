@@ -190,6 +190,24 @@ it('DESC-03: placement_id deep in own downline is allowed', function () {
         ->and($result->depth)->toBe(2);
 });
 
+it('DESC-04: a stale referral link to an erased partner throws CrossLinePlacementError', function () {
+    $root = seedRootDistributor();
+    $engine = makeEngine();
+    $erased = $engine->place(makeInput(seedUser(), $root, $root, 'L'))->distributorId;
+
+    // As PartnerErasureService leaves it: pointing at itself, out of the tree.
+    DB::table('genealogy_closure')->where('descendant_id', $erased)->delete();
+    DB::table('distributors')->where('id', $erased)->update([
+        'sponsor_id' => $erased,
+        'placement_parent_id' => $erased,
+        'placement_side' => null,
+        'depth' => 0,
+        'erased_at' => now(),
+    ]);
+
+    $engine->place(makeInput(seedUser(), $erased, $erased, 'L'));
+})->throws(CrossLinePlacementError::class);
+
 // ─── AUD — audit trail ───────────────────────────────────────────────────
 
 it('AUD-01: placement creates an audit log row', function () {

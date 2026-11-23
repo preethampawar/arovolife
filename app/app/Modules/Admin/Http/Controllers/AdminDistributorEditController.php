@@ -56,6 +56,7 @@ final class AdminDistributorEditController extends Controller
     public function edit(int $id): View
     {
         $distributor = Distributor::with('user')->findOrFail($id);
+        abort_if($distributor->isErased(), 404);
 
         // Resolve the immutable read-only summary (sponsor ADN, placement
         // parent ADN) in one place so the view stays declarative.

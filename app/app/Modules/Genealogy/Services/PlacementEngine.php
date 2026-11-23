@@ -217,6 +217,19 @@ final class PlacementEngine
             }
             $depth = (int) $parentDepth + 1;
 
+            // A partner erasure holds its rows FOR UPDATE until it commits, so
+            // this shared read waits for it and then sees erased_at. An erased
+            // node points at itself and has no closure rows, which would
+            // otherwise let a stale referral link place a joiner under it.
+            $erased = $this->db->table('distributors')
+                ->whereIn('id', [$parentId, $in->sponsorId])
+                ->whereNotNull('erased_at')
+                ->sharedLock()
+                ->exists();
+            if ($erased) {
+                throw new CrossLinePlacementError('The placement or sponsor no longer exists.');
+            }
+
             try {
                 $distributorId = $this->db->table('distributors')->insertGetId([
                     'user_id' => $in->userId,

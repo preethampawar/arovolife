@@ -223,6 +223,8 @@ final class PayoutService
             ->where('amount_paise', '>', 0)
             ->notReversed()
             ->earnedOnOrBefore($earnedThrough)
+            // An erased partner's unpaid balance is forfeited, never paid out.
+            ->whereNotIn('distributor_id', fn ($q) => $q->select('id')->from('distributors')->whereNotNull('erased_at'))
             ->distinct()
             ->pluck('distributor_id');
 
@@ -350,6 +352,8 @@ final class PayoutService
             ->where('amount_paise', '>', 0)
             ->notReversed()
             ->earnedForMonthOrBefore($month)
+            // An erased partner's unpaid balance is forfeited, never paid out.
+            ->whereNotIn('distributor_id', fn ($q) => $q->select('id')->from('distributors')->whereNotNull('erased_at'))
             ->distinct()
             ->pluck('distributor_id');
 

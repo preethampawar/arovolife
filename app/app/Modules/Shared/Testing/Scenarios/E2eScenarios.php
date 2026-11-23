@@ -39,6 +39,18 @@ final class E2eScenarios
                 self::staff($b);
             },
 
+            // Partner-erasure spec: root has 'target' on the left and 'outsider'
+            // on the right; the target has one partner on each side. No orders.
+            'erasure-tree' => static function (E2eScenarioBuilder $b): void {
+                $b->partner('root', joinedAt: '2026-06-01 09:00:00')
+                    ->partner('target', 'root', 'left', '2026-06-01 09:10:00')
+                    ->partner('outsider', 'root', 'right', '2026-06-01 09:20:00')
+                    ->partner('tleft', 'target', 'left', '2026-06-01 09:30:00')
+                    ->partner('tright', 'target', 'right', '2026-06-01 09:40:00');
+                self::staff($b);
+                $b->staff('plainadmin', 'admin');
+            },
+
             // 25 partners in a balanced Genos under 'root' (keys root, p1 … p24:
             // p{n} sits under p{(n-1) div 2}, odd n left, even n right) plus one
             // paid order for the root — enough for the 20-a-page admin lists to

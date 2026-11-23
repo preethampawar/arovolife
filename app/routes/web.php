@@ -18,6 +18,7 @@ use App\Modules\Admin\Http\Controllers\AdminKycController;
 use App\Modules\Admin\Http\Controllers\AdminLifetimeAwardsController;
 use App\Modules\Admin\Http\Controllers\AdminLineChangeController;
 use App\Modules\Admin\Http\Controllers\AdminLogController;
+use App\Modules\Admin\Http\Controllers\AdminPartnerErasureController;
 use App\Modules\Admin\Http\Controllers\AdminSettingsController;
 use App\Modules\Admin\Http\Controllers\AdminStaffUserController;
 use App\Modules\Admin\Http\Controllers\AdminTreeController;
@@ -307,6 +308,12 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
     });
 
     Route::get('/distributors', [AdminDistributorController::class, 'index'])->name('distributors.index');
+
+    // Developer-only partner erasure. No `role:developer` middleware: it would
+    // answer 403 and confirm the hidden role; the controller answers 404.
+    Route::get('/distributors/erase', [AdminPartnerErasureController::class, 'form'])->name('distributors.erase.form');
+    Route::post('/distributors/erase/preview', [AdminPartnerErasureController::class, 'preview'])->name('distributors.erase.preview')->middleware('throttle:20,1');
+    Route::post('/distributors/erase', [AdminPartnerErasureController::class, 'destroy'])->name('distributors.erase.destroy')->middleware('throttle:10,1');
 
     // Platform staff register + management (super staff only) — the team
     // running the platform, separate from the distributor register.
