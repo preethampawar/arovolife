@@ -23,6 +23,7 @@ use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Process;
@@ -765,3 +766,109 @@ it('shows the amber notice only when the settings password is missing or short',
     'short' => [str_repeat('x', 19), true],
     'long enough' => [str_repeat('x', 20), false],
 ]);
+
+it('lets a developer release a stuck lock and records it', function (): void {
+    $lock = Cache::lock('db-backup:operation', 60);
+    expect($lock->get())->toBeTrue();
+
+    try {
+        app(DatabaseBackupService::class)->markRunning('restore', 'arovolife-testing-20260101-000000-manual.sql.gz');
+
+        $this->actingAs(dbBackupStaff('developer'))
+            ->post(route('admin.database-backups.lock.release'), ['confirm' => 'RELEASE'])
+            ->assertRedirect(route('admin.database-backups.index'))
+            ->assertSessionHas('status', 'Lock released. Backups, restores and partner deletes can run again.');
+
+        $again = Cache::lock('db-backup:operation', 10);
+        expect($again->get())->toBeTrue();
+        $again->release();
+
+        $rows = AuditLog::where('action', 'admin.database_backup_lock_released')->get();
+        expect($rows)->toHaveCount(1)
+            ->and($rows->first()->details['type'])->toBe('restore')
+            ->and(app(DatabaseBackupService::class)->status()['state'])->toBe('failed');
+    } finally {
+        $lock->forceRelease();
+    }
+});
+
+it('refuses the wrong confirmation word and keeps the lock', function (): void {
+    $lock = Cache::lock('db-backup:operation', 60);
+    expect($lock->get())->toBeTrue();
+
+    try {
+        $this->actingAs(dbBackupStaff('developer'))
+            ->post(route('admin.database-backups.lock.release'), ['confirm' => 'release'])
+            ->assertSessionHasErrors('confirm');
+
+        expect(app(DatabaseBackupService::class)->isBusy())->toBeTrue()
+            ->and(AuditLog::where('action', 'admin.database_backup_lock_released')->count())->toBe(0);
+    } finally {
+        $lock->forceRelease();
+    }
+});
+
+it('hides the lock release from an admin', function (): void {
+    $lock = Cache::lock('db-backup:operation', 60);
+    expect($lock->get())->toBeTrue();
+
+    try {
+        $admin = dbBackupStaff('admin');
+
+        $this->actingAs($admin)
+            ->post(route('admin.database-backups.lock.release'), ['confirm' => 'RELEASE'])
+            ->assertNotFound();
+        $this->actingAs($admin)->get(route('admin.database-backups.index'))
+            ->assertOk()
+            ->assertDontSee('Release stuck lock');
+
+        expect(app(DatabaseBackupService::class)->isBusy())->toBeTrue()
+            ->and(AuditLog::where('action', 'admin.database_backup_lock_released')->count())->toBe(0);
+    } finally {
+        $lock->forceRelease();
+    }
+});
+
+it('says there is nothing to release when no lock is held', function (): void {
+    $this->actingAs(dbBackupStaff('developer'))
+        ->post(route('admin.database-backups.lock.release'), ['confirm' => 'RELEASE'])
+        ->assertRedirect(route('admin.database-backups.index'))
+        ->assertSessionHas('status', 'Nothing to release. No backup or restore holds the lock.');
+
+    expect(AuditLog::where('action', 'admin.database_backup_lock_released')->count())->toBe(0);
+});
+
+it('shows a developer the release button only while the lock is held', function (): void {
+    $developer = dbBackupStaff('developer');
+
+    $this->actingAs($developer)->get(route('admin.database-backups.index'))->assertDontSee('Release stuck lock');
+
+    $lock = Cache::lock('db-backup:operation', 60);
+    expect($lock->get())->toBeTrue();
+
+    try {
+        $this->actingAs($developer)->get(route('admin.database-backups.index'))->assertSee('Release stuck lock');
+    } finally {
+        $lock->forceRelease();
+    }
+});
+
+it('keeps refreshing a stuck running backup for a developer without wiping the release field', function (): void {
+    $lock = Cache::lock('db-backup:operation', 60);
+    expect($lock->get())->toBeTrue();
+
+    try {
+        app(DatabaseBackupService::class)->markRunning('backup', null);
+
+        $this->actingAs(dbBackupStaff('developer'))->get(route('admin.database-backups.index'))
+            ->assertOk()
+            ->assertDontSee('http-equiv="refresh"', false)
+            ->assertSee('release-lock-confirm', false)
+            ->assertSee('window.location.reload()', false);
+
+        $this->actingAs(dbBackupStaff('admin'))->get(route('admin.database-backups.index'))
+            ->assertSee('http-equiv="refresh"', false);
+    } finally {
+        $lock->forceRelease();
+    }
+});

@@ -44,6 +44,7 @@ final class AdminDatabaseBackupController extends Controller
         $this->ensureCanView($request);
 
         $status = $this->backups->status();
+        $canRestore = $request->user()->hasRole('developer');
 
         return view('admin.database-backups.index', [
             'backups' => $this->backups->all(),
@@ -52,7 +53,8 @@ final class AdminDatabaseBackupController extends Controller
             'settingsPasswordUsable' => SettingsFileBackupService::passwordIsUsable(),
             'status' => $status,
             'running' => ($status['state'] ?? null) === 'running',
-            'canRestore' => $request->user()->hasRole('developer'),
+            'canRestore' => $canRestore,
+            'locked' => $canRestore && $this->backups->isBusy(),
             'extraRecipients' => $this->recipients->extra(),
         ]);
     }
@@ -190,6 +192,41 @@ final class AdminDatabaseBackupController extends Controller
         $this->backups->startInBackground('db:backup:restore', [$file, '--actor='.$request->user()->id]);
 
         return redirect()->route('admin.database-backups.index')->with('status', "Restore of {$file} started. The site goes into maintenance mode until it finishes.");
+    }
+
+    public function releaseLock(Request $request): RedirectResponse
+    {
+        $this->ensureDeveloper($request);
+
+        $request->validate(
+            ['confirm' => ['required', 'string', 'in:RELEASE']],
+            ['confirm.required' => 'Type RELEASE to confirm.', 'confirm.in' => 'Type RELEASE to confirm.'],
+        );
+
+        $status = $this->backups->status();
+
+        if (! $this->backups->releaseStuckLock()) {
+            return redirect()->route('admin.database-backups.index')->with('status', 'Nothing to release. No backup or restore holds the lock.');
+        }
+
+        $digest = AuditLog::digest((string) json_encode($status));
+
+        AuditLog::create([
+            'actor_id' => $request->user()->id,
+            'action' => 'admin.database_backup_lock_released',
+            'subject_type' => 'database_backup',
+            'subject_id' => null,
+            'before_hash' => $digest,
+            'after_hash' => $digest,
+            'details' => [
+                'type' => $status['type'] ?? null,
+                'file' => $status['file'] ?? null,
+                'started_at' => $status['started_at'] ?? null,
+            ],
+            'ip' => $request->ip(),
+        ]);
+
+        return redirect()->route('admin.database-backups.index')->with('status', 'Lock released. Backups, restores and partner deletes can run again.');
     }
 
     private function ensureCanView(Request $request): void

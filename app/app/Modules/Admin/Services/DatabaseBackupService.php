@@ -269,6 +269,30 @@ final class DatabaseBackupService
     }
 
     /**
+     * Free a lock left behind by a backup or restore the server killed part-way. Releasing it during a live operation lets another one overlap it.
+     */
+    public function releaseStuckLock(): bool
+    {
+        if (! $this->isBusy()) {
+            return false;
+        }
+
+        Cache::lock(self::LOCK_KEY)->forceRelease();
+
+        $cached = Cache::get(self::STATUS_KEY);
+        if (is_array($cached) && ($cached['state'] ?? null) === 'running') {
+            $this->markFinished(
+                (string) ($cached['type'] ?? 'backup'),
+                isset($cached['file']) ? (string) $cached['file'] : null,
+                false,
+                'Stopped by hand: a developer released the lock.',
+            );
+        }
+
+        return true;
+    }
+
+    /**
      * The current or last operation. A `running` status with no lock held for
      * over five minutes is reported as failed — the process died or never
      * started, and the page would otherwise refresh forever.

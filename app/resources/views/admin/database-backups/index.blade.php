@@ -2,10 +2,23 @@
 @section('title', 'Database backups')
 @section('heading', 'Database backups')
 
-@if($running)
+@if($running && ! $locked)
     {{-- Refresh while a backup or restore runs, so the result appears without a click. --}}
     @push('styles')
         <meta http-equiv="refresh" content="10">
+    @endpush
+@elseif($running)
+    {{-- Same refresh, paused while the developer is typing into the release form. --}}
+    @push('scripts')
+        <script>
+            setInterval(() => {
+                const input = document.getElementById('release-lock-confirm');
+                if (input && (input.value !== '' || document.activeElement === input)) {
+                    return;
+                }
+                window.location.reload();
+            }, 10000);
+        </script>
     @endpush
 @endif
 
@@ -44,6 +57,33 @@
             <div>Last {{ strtolower($label) }} failed{{ $finished ? ' at '.$finished.' IST' : '' }}. {{ $status['message'] }}</div>
         </div>
     @endif
+@endif
+
+@if($locked)
+    <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 max-w-3xl">
+        <div class="flex items-start gap-2.5">
+            <x-lucide-triangle-alert class="w-4 h-4 shrink-0 mt-px" />
+            <p>A backup or restore holds the lock, so backups, restores and partner deletes are refused. If none is really running (for example the server restarted part-way through), release it. Releasing it while one is running lets another operation overlap it.</p>
+        </div>
+        <form method="POST" action="{{ route('admin.database-backups.lock.release') }}" class="mt-3 space-y-3"
+              data-confirm="Release the backup and restore lock?"
+              data-confirm-title="Release stuck lock"
+              data-confirm-impact="Nothing checks that the operation has really stopped. If a backup or restore is still running, another one can start and overlap it.">
+            @csrf
+            <label class="block text-xs font-medium text-gray-700">
+                Type RELEASE to confirm
+                <input type="text" id="release-lock-confirm" name="confirm" required autocomplete="off"
+                    class="mt-1 block w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs">
+            </label>
+            @error('confirm')
+                <p class="text-xs text-red-700">{{ $message }}</p>
+            @enderror
+            <button type="submit"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700">
+                <x-lucide-lock-open class="w-4 h-4" /> Release stuck lock
+            </button>
+        </form>
+    </div>
 @endif
 
 <form method="POST" action="{{ route('admin.database-backups.store') }}" class="mb-6"

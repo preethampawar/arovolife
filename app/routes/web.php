@@ -596,6 +596,7 @@ Route::middleware(['auth', 'role:developer|admin|admin-operations|admin-finance|
             ->where('file', DatabaseBackupService::FILE_PATTERN)->name('download');
         Route::get('/settings/{file}/download', [AdminDatabaseBackupController::class, 'downloadSettings'])
             ->where('file', SettingsFileBackupService::FILE_PATTERN)->name('settings.download');
+        Route::post('/lock/release', [AdminDatabaseBackupController::class, 'releaseLock'])->middleware('throttle:5,1')->name('lock.release');
         Route::post('/{file}/restore', [AdminDatabaseBackupController::class, 'restore'])
             ->where('file', DatabaseBackupService::FILE_PATTERN)->middleware('throttle:5,1')->name('restore');
     });
