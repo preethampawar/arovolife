@@ -110,7 +110,7 @@ final class AdminPartnerErasureController extends Controller
                 'preview' => $preview,
                 'refusals' => $messages,
             ]);
-        } catch (\RuntimeException $e) {
+        } catch (\RuntimeException|\LogicException $e) {
             // Backup busy or failed, or the transaction rolled back. Every
             // step that can throw runs before the commit (file removal after
             // it never throws), so nothing was erased.

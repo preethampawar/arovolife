@@ -664,3 +664,42 @@ it('keeps an outsider\'s abuse report and the reported message, and drops the re
         ->and(DB::table('messages')->whereIn('id', [$unreported, $toErased])->count())->toBe(0)
         ->and(DB::table('message_reports')->where('id', $ownReport)->exists())->toBeFalse();
 });
+
+it('refuses on production when the web PHP cannot start the backup, and erases nothing', function (): void {
+    $adn = erasureAdn(erasureTree()['a']);
+    $fingerprint = erasureService()->preview($adn)->fingerprint;
+    Process::fake();
+    config(['db_backup.processes_available' => false]);
+    $env = app()['env'];
+    app()['env'] = 'production';
+
+    try {
+        $preview = erasureService()->preview($adn);
+        expect(collect($preview->blockers)->pluck('code')->all())->toContain('backup_unavailable')
+            ->and($preview->canErase())->toBeFalse()
+            ->and(erasureRefusals(fn () => erasureService()->execute($adn, $fingerprint, erasureDeveloper())))->toBe(['backup_unavailable']);
+    } finally {
+        app()['env'] = $env;
+    }
+
+    Process::assertNothingRan();
+    expect(DB::table('distributors')->whereNotNull('erased_at')->count())->toBe(0)
+        ->and(Storage::disk('db-backups')->allFiles())->toBe([]);
+});
+
+it('lists no backup blocker on production when processes can start, nor elsewhere when they cannot', function (string $env, ?bool $available): void {
+    $adn = erasureAdn(erasureTree()['a']);
+    config(['db_backup.processes_available' => $available]);
+    $realEnv = app()['env'];
+    app()['env'] = $env;
+
+    try {
+        expect(collect(erasureService()->preview($adn)->blockers)->pluck('code')->all())->not->toContain('backup_unavailable');
+    } finally {
+        app()['env'] = $realEnv;
+    }
+})->with([
+    'production, processes available' => ['production', true],
+    'production, detected' => ['production', null],
+    'testing, processes unavailable' => ['testing', false],
+]);

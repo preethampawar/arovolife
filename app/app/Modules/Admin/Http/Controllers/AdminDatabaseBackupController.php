@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
@@ -68,7 +69,11 @@ final class AdminDatabaseBackupController extends Controller
         }
 
         $this->backups->markRunning('backup', null);
-        $this->backups->startInBackground('db:backup:run', ['--trigger=manual']);
+        if ($this->backups->canStartProcesses()) {
+            $this->backups->startInBackground('db:backup:run', ['--trigger=manual']);
+        } else {
+            Artisan::queue('db:backup:run', ['--trigger' => 'manual'])->onQueue('default');
+        }
 
         return redirect()->route('admin.database-backups.index')->with('status', 'Backup started. This page refreshes until it finishes.');
     }
@@ -175,6 +180,10 @@ final class AdminDatabaseBackupController extends Controller
 
         if ($this->backups->isBusy()) {
             return back()->withErrors(['backup' => 'Another backup or restore is already running. Wait for it to finish.']);
+        }
+
+        if (! $this->backups->canStartProcesses()) {
+            return back()->withErrors(['backup' => "This server cannot start a restore from the web page. Run it on the server: php artisan db:backup:restore {$file}"]);
         }
 
         AuditLog::create([

@@ -125,6 +125,12 @@ final class PartnerErasureService
             throw new PartnerErasureRefused([$this->engineWindowBlocker()]);
         }
 
+        // Refused before the backup: without proc_open, create() would throw
+        // long before the blockers are checked again in the transaction.
+        if ($this->backupUnavailable()) {
+            throw new PartnerErasureRefused([$this->backupUnavailableBlocker()]);
+        }
+
         return $this->backups->exclusively(function () use ($adn, $fingerprint): PartnerErasureResult {
             // A backup that throws stops here, before anything is erased.
             $backupFile = app()->isProduction() ? $this->backups->create('manual')->file : null;
@@ -355,6 +361,10 @@ final class PartnerErasureService
             $blockers[] = $this->engineWindowBlocker();
         }
 
+        if ($this->backupUnavailable()) {
+            $blockers[] = $this->backupUnavailableBlocker();
+        }
+
         foreach ($this->foreignBuckets() as $disk => $bucket) {
             $blockers[] = ['code' => 'foreign_bucket', 'message' => "Files would be deleted from the S3 bucket \"{$bucket}\" (disk {$disk}), which is not this environment's own bucket. Point this environment at its own bucket first."];
         }
@@ -455,6 +465,20 @@ final class PartnerErasureService
     private function engineWindowBlocker(): array
     {
         return ['code' => 'engine_window', 'message' => 'The compensation engines run between 00:00 and 05:00 IST. Try again after 05:00.'];
+    }
+
+    /** Production backs up before every erase, and this PHP cannot start mysqldump. */
+    private function backupUnavailable(): bool
+    {
+        return app()->isProduction() && ! $this->backups->canStartProcesses();
+    }
+
+    /**
+     * @return array{code: string, message: string}
+     */
+    private function backupUnavailableBlocker(): array
+    {
+        return ['code' => 'backup_unavailable', 'message' => 'This server cannot take the automatic backup from the web page, so the delete cannot run here. Run it on the server: php artisan partners:erase <APN>'];
     }
 
     /**

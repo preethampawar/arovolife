@@ -34,6 +34,12 @@ return [
     // `php` on PATH, which on Cloudways is not 8.4 — set /usr/bin/php8.4 there.
     'php_binary' => env('DB_BACKUP_PHP_BINARY'),
 
+    // Whether this PHP can start processes. Null detects it with
+    // function_exists('proc_open'): production FPM lists proc_open in
+    // disable_functions while its CLI does not. Tests set false to simulate a
+    // server whose web PHP cannot start processes.
+    'processes_available' => null,
+
     'mysqldump_binary' => env('DB_BACKUP_MYSQLDUMP_BINARY', 'mysqldump'),
 
     'mysql_binary' => env('DB_BACKUP_MYSQL_BINARY', 'mysql'),

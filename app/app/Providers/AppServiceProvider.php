@@ -11,6 +11,7 @@ use App\Modules\Admin\Console\Commands\CreateStaffUserCommand;
 use App\Modules\Admin\Console\Commands\DatabaseBackupFilesRestoreCommand;
 use App\Modules\Admin\Console\Commands\DatabaseBackupRestoreCommand;
 use App\Modules\Admin\Console\Commands\DatabaseBackupRunCommand;
+use App\Modules\Admin\Console\Commands\PartnerEraseCommand;
 use App\Modules\Admin\Events\DistributorTerminated;
 use App\Modules\Commerce\Console\Commands\PurchaseOffersMonthlyRunCommand;
 use App\Modules\Commerce\Console\Commands\PurgeOfflinePaymentProofsCommand;
@@ -181,6 +182,7 @@ class AppServiceProvider extends ServiceProvider
                 CreateStaffUserCommand::class,
                 AuditLogArchiveCommand::class,
                 DatabaseBackupRunCommand::class,
+                PartnerEraseCommand::class,
                 DatabaseBackupRestoreCommand::class,
                 DatabaseBackupFilesRestoreCommand::class,
                 GsbDailyCutoffCommand::class,

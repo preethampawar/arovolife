@@ -17,11 +17,13 @@ use App\Modules\Genealogy\Services\DTOs\PlaceDistributorInput;
 use App\Modules\Genealogy\Services\PlacementEngine;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Services\DistributorRequestService;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 use Spatie\Permission\Models\Role;
@@ -279,4 +281,38 @@ it('signs out a partner who was erased while signed in', function (): void {
         ->assertRedirect(route('login'));
 
     $this->assertGuest();
+});
+
+it('shows the server command and erases nothing on production when the web PHP cannot start the backup', function (): void {
+    $tree = ctrlTree();
+    $adn = ctrlAdn($tree['a']);
+    $fingerprint = ctrlPreviewFingerprint($adn);
+    $developer = ctrlStaff('developer');
+    Process::fake();
+    config(['db_backup.processes_available' => false]);
+    // Outside the testing environment the CSRF check is live again.
+    $this->withoutMiddleware(PreventRequestForgery::class);
+    $env = app()['env'];
+    app()['env'] = 'production';
+
+    try {
+        $this->actingAs($developer)
+            ->post(route('admin.distributors.erase.preview'), ['adn' => $adn])
+            ->assertOk()
+            ->assertSee('This partner cannot be deleted yet.')
+            ->assertSee('php artisan partners:erase');
+
+        $this->actingAs($developer)
+            ->post(route('admin.distributors.erase.destroy'), [
+                'adn' => $adn, 'fingerprint' => $fingerprint, 'confirm_adn' => $adn,
+            ])
+            ->assertOk()
+            ->assertSee('Nothing was deleted.')
+            ->assertSee('php artisan partners:erase');
+    } finally {
+        app()['env'] = $env;
+    }
+
+    Process::assertNothingRan();
+    expect(DB::table('distributors')->whereNotNull('erased_at')->count())->toBe(0);
 });

@@ -351,6 +351,16 @@ final class DatabaseBackupService
     }
 
     /**
+     * Whether this PHP may start a process. Production FPM disables
+     * proc_open, so the web page queues the backup instead (queue workers run
+     * the CLI, which can) and refuses restores and partner deletes.
+     */
+    public function canStartProcesses(): bool
+    {
+        return (bool) (config('db_backup.processes_available') ?? function_exists('proc_open'));
+    }
+
+    /**
      * Start an artisan command detached from this request, so a web request
      * never runs the dump or the import itself (FPM would time it out).
      *

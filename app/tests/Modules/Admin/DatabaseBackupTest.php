@@ -18,6 +18,7 @@ use App\Modules\Admin\Services\UploadedFilesBackupService;
 use App\Modules\Compliance\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Foundation\Console\QueuedCommand;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Process\PendingProcess;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Number;
 use Spatie\Permission\Models\Role;
@@ -260,6 +262,37 @@ it('launches a detached manual backup from the page', function (string $role): v
     Process::assertRan(fn (PendingProcess $process): bool => is_string($process->command)
         && str_contains($process->command, "'db:backup:run' '--trigger=manual'"));
 })->with(['admin', 'developer']);
+
+it('queues the manual backup when the web PHP cannot start processes', function (): void {
+    Process::fake();
+    Queue::fake();
+    config(['db_backup.processes_available' => false]);
+
+    $this->actingAs(dbBackupStaff('admin'))->post(route('admin.database-backups.store'))
+        ->assertRedirect(route('admin.database-backups.index'))
+        ->assertSessionHas('status', 'Backup started. This page refreshes until it finishes.');
+
+    Process::assertNothingRan();
+    Queue::assertPushedOn('default', QueuedCommand::class);
+});
+
+it('starts no restore and points to the server command when the web PHP cannot start processes', function (): void {
+    $file = dbBackupName(Carbon::now()->subDay());
+    dbBackupPut($file);
+    Process::fake();
+    Queue::fake();
+    config(['db_backup.processes_available' => false]);
+
+    $this->actingAs(dbBackupStaff('developer'))
+        ->from(route('admin.database-backups.index'))
+        ->post(route('admin.database-backups.restore', $file), ['confirm_file' => $file, 'password' => 'password'])
+        ->assertRedirect(route('admin.database-backups.index'))
+        ->assertSessionHasErrors(['backup' => "This server cannot start a restore from the web page. Run it on the server: php artisan db:backup:restore {$file}"]);
+
+    Process::assertNothingRan();
+    Queue::assertNothingPushed();
+    expect(AuditLog::where('action', 'admin.database_restore_requested')->count())->toBe(0);
+});
 
 it('stores a verified backup and prunes only matching files past retention', function (): void {
     $old = dbBackupName(Carbon::now()->subDays(31));
