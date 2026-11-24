@@ -681,6 +681,35 @@ mysqldump -u <db-user> -p<db-pass> <db-name> \
 Store off-server (S3) for any production DB dump containing PII —
 DPDP-2023 retention rules apply.
 
+### 3d. Server-only admin commands (production web PHP cannot start processes)
+
+Production's PHP-FPM lists `proc_open` in `disable_functions`; the CLI does
+not. So anything that runs `mysqldump` / `mysql` cannot start from a web page
+on production:
+
+| Page action | On production | Run instead (over SSH) |
+|---|---|---|
+| Delete a partner (developer) | Preview shows the `backup_unavailable` blocker | `php8.4 artisan partners:erase <APN> --actor=<developer email>` |
+| Database backups → Back up now | Queued to the `default` worker automatically — nothing to do | — |
+| Database backups → Restore (developer) | Refused with the command to run | `php8.4 artisan db:backup:restore <file>` |
+
+`partners:erase` uses the same service as the page: same preview (Left/Right
+lists, counts, blockers), same refusals (reserved APNs, engine window
+00:00–05:00 IST, open orders, payouts in flight…), and the same automatic
+database backup before anything is deleted. It asks for the APN again, so
+connect with `ssh -t` for a terminal; without one, pass `--confirm=<APN>`.
+
+```bash
+ssh -t master_hkmtmetvcf@139.59.92.246
+cd /home/master/applications/hrnpvxpkgw/public_html/app
+php8.4 artisan partners:erase 123456789 --actor=<developer-email>
+# prints the preview, then: Type the APN again to confirm
+```
+
+It deletes permanently — there is no undo except restoring the backup it
+names at the end. Treat it as a destructive action: preview first, confirm the
+APN list with the owner, then run.
+
 ---
 
 ## 4. Monitoring & alerts
