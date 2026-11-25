@@ -287,3 +287,26 @@ Owner-accepted risks: R-129 (PAN vs TDS), R-130 (no audit row; grievance tickets
 **Before erasing anyone in production who had TDS deducted:** confirm the current quarter's 26Q has been filed, or export their PAN and TDS rows to the CA first (R-129).
 
 Residuals: database backups and already-generated bank files still contain the erased data until they age out; prod S3 keeps deleted files as noncurrent versions for 30 days (`expire-noncurrent-versions-30d`); a plain partner gets 404 (not 403) on the erase routes by design.
+
+## Staging test (2026-11-23)
+
+Deployed to staging with 4c086fba. Backup taken first: `arovolife-staging-20261123-233930-manual.sql.gz`.
+
+- Built a 3-partner tree under staging APN 150900684 by calling `RegistrationService::finalise` (the wizard's own save code). Each partner had 5 encrypted fake KYC files in a `reg_<40 chars>/` folder, a profile and an Arete membership; T also had a nominee and one file in `user_<id>/` on both the `kyc` and `s3` disks.
+- Deleted T (214088348) through the real page: form → preview (3 partners, 15 KYC documents, 0 orders/invoices/wallet) → retype → Confirm.
+- Results:
+  - All 3 users were anonymised (`erased-<id>@erased.invalid`, terminated, closure `erased`), with PAN, Aadhaar, bank, phone and date of birth cleared.
+  - Their KYC rows, consents, cooling-off, orientation, profile, Arete and nominee rows and all closure rows were deleted. The parent's Genos slot is free again.
+  - All 15 `reg_` files and both `user_326/` files were deleted from `arovolife-staging`. The decoys `user_3260/` and `reg_<T>X/` were kept, so a prefix only matches a whole folder.
+  - No audit row was written, and the other partners and the totals were unchanged.
+- Kept on purpose: `distributors.state`, and the erased rows now point `placement_parent_id` at themselves.
+
+### Re-use after a delete (staging, 2026-11-24/25)
+
+- **Scenario A, new partner in the freed slot: PASSED.** After T was deleted, a new partner ("Rejointest One", APN 424038593) registered in the freed left slot under 150900684.
+- **Scenario B, same PAN rejoins: PASSED.**
+  1. Before the delete, the wizard's PAN check blocked the PAN ending 999V, because 424038593 held it.
+  2. 424038593 was deleted with `php artisan partners:erase 424038593 --actor=<developer> --confirm=424038593`. That run exercised the server command on a real server: 0 below, 5 KYC files deleted, 0 failed.
+  3. Afterwards the PAN check passed and the left slot was open again.
+  4. The same PAN then registered as "Rejointest Two" (APN 644800777): left of 150900684, a closure row to the parent, `pan_last4` 999V.
+- **Conclusion:** a delete frees both the Genos position and the PAN. Hard rule 6 still holds, because only the tombstone remains and it carries no PAN hash.
