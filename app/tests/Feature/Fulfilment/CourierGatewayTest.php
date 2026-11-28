@@ -66,7 +66,7 @@ function aCentre(): AreteCenter
 
     return AreteCenter::create([
         'name' => "Centre {$n}",
-        'type' => AreteCenter::TYPE_COMPANY,
+        'centre_type' => AreteCenter::TYPE_COMPANY,
         'status' => AreteCenter::STATUS_ACTIVE,
         'address_line_1' => '5 Market Street',
         'city' => 'Vijayawada',

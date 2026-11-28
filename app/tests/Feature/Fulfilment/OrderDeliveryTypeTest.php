@@ -53,7 +53,7 @@ function testCentre(): AreteCenter
 
     return AreteCenter::create([
         'name' => "Test Centre {$n}",
-        'type' => AreteCenter::TYPE_COMPANY,
+        'centre_type' => AreteCenter::TYPE_COMPANY,
         'status' => AreteCenter::STATUS_ACTIVE,
         'city' => 'Hyderabad',
         'state' => 'TELANGANA',

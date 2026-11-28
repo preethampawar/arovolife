@@ -64,7 +64,7 @@ function srCentre(): AreteCenter
 {
     $n = random_int(100000, 999999);
     $centre = AreteCenter::create([
-        'name' => "Centre {$n}", 'type' => AreteCenter::TYPE_COMPANY, 'status' => AreteCenter::STATUS_ACTIVE,
+        'name' => "Centre {$n}", 'centre_type' => AreteCenter::TYPE_COMPANY, 'status' => AreteCenter::STATUS_ACTIVE,
         'address_line_1' => '5 Market Street', 'city' => 'Warangal', 'state' => 'TELANGANA',
         'pincode' => '506002', 'contact_number' => '+918888888888', 'is_company_default' => true,
     ]);

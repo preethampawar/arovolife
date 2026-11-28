@@ -64,6 +64,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Events\ScheduledTaskFinished;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Blade;
@@ -99,6 +100,18 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->assertS3IsConfigured();
         $this->warnOnMissingOpsEnv();
+
+        // Eloquent guards on local and in tests only: lazy loading (an N+1
+        // query in a loop) and attributes silently dropped because they are
+        // not in $fillable both throw instead of passing quietly. Staging and
+        // production keep the lenient defaults so a missed case never breaks
+        // a page for a real user. The third strict-mode guard,
+        // preventAccessingMissingAttributes(), stays off: models built in
+        // tests with create() lack the nullable columns the database fills in,
+        // so it fails hundreds of tests that are not app bugs.
+        $strict = $this->app->environment('local', 'testing');
+        Model::preventLazyLoading($strict);
+        Model::preventSilentlyDiscardingAttributes($strict);
 
         // All human-facing numbers (BV, ₹) use Indian digit grouping
         // (24,30,000 not 2,430,000) — every display surface must format via
