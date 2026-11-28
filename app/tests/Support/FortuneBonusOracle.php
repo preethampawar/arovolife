@@ -34,6 +34,32 @@ namespace Tests\Support;
  *   L3: value 3109, income 30,000
  *   L4: value 0, income 30 (min only)
  *   Total credited 11,98,800; undistributed 14,57,570.
+ *
+ * @phpstan-type OracleResult array{
+ *     pool_paise: int,
+ *     guaranteed_total_paise: int,
+ *     available_paise: int,
+ *     total_points: int,
+ *     levels: array<int, array{
+ *       participants: int,
+ *       level_points: int,
+ *       point_value_paise: int,
+ *       bonus_paise: int,
+ *       derived_per_member_paise: int,
+ *       capped_per_member_paise: int,
+ *       income_per_member_paise: int,
+ *       wallet_credit_each_paise: int,
+ *       pool_in_paise: int,
+ *       pool_out_paise: int,
+ *       points_in: int,
+ *       points_out: int,
+ *     }>,
+ *     incomes: array<int, int>,
+ *     total_credited_paise: int,
+ *     leftover_paise: int,
+ *     is_shortfall: bool,
+ *     shortfall_per_head_paise: int|null,
+ *   }
  */
 final class FortuneBonusOracle
 {
@@ -41,31 +67,7 @@ final class FortuneBonusOracle
      * @param  array<int, array{position: int, matrix_level: int}>  $participants
      * @param  array<int, array{cap_paise: int}>  $levelCaps  keyed by absolute matrix level
      * @param  array<int, int>  $pointsByDepth  relative depth (1-9) → points
-     * @return array{
-     *   pool_paise: int,
-     *   guaranteed_total_paise: int,
-     *   available_paise: int,
-     *   total_points: int,
-     *   levels: array<int, array{
-     *     participants: int,
-     *     level_points: int,
-     *     point_value_paise: int,
-     *     bonus_paise: int,
-     *     derived_per_member_paise: int,
-     *     capped_per_member_paise: int,
-     *     income_per_member_paise: int,
-     *     wallet_credit_each_paise: int,
-     *     pool_in_paise: int,
-     *     pool_out_paise: int,
-     *     points_in: int,
-     *     points_out: int,
-     *   }>,
-     *   incomes: array<int, int>,
-     *   total_credited_paise: int,
-     *   leftover_paise: int,
-     *   is_shortfall: bool,
-     *   shortfall_per_head_paise: int|null,
-     * }
+     * @return OracleResult
      */
     public function run(
         array $participants,

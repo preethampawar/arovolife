@@ -17,3 +17,23 @@ parameters:
         - storage
         - bootstrap/cache
     treatPhpDocTypesAsCertain: false
+    stubFiles:
+        - tests/PHPStan/interacts-with-console.stub
+    ignoreErrors:
+        # Chained assertions (expect($x)->toContain('a')->not->…) return the
+        # final class Pest\Mixins\Expectation, which forwards to
+        # Pest\Expectation via @mixin; PHPStan does not carry @property tags
+        # across a mixin. Only Pest's real ->not / ->each are let through, so a
+        # misspelled property is still reported.
+        -
+            identifier: property.notFound
+            message: '#^Access to an undefined property Pest\\Mixins\\Expectation<.+>\:\:\$(not|each)\.$#'
+
+services:
+    # Pest types test closures' $this as TestCall; at runtime it is the test
+    # case. See the class docblock.
+    -
+        class: Tests\PHPStan\PestTestCaseTypeExtension
+        tags:
+            - phpstan.functionParameterClosureThisExtension
+            - phpstan.broker.dynamicFunctionReturnTypeExtension

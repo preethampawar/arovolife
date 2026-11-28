@@ -2,10 +2,56 @@
 
 namespace Tests;
 
+use App\Modules\ActionCenter\Providers\AbstractProvider;
+use App\Modules\ActionCenter\Services\ActionCenterService;
+use App\Modules\Compensation\Services\FortuneDistributionCalculator;
+use App\Modules\Identity\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Carbon;
+use stdClass;
+use Tests\Support\FortuneBonusOracle;
 
+/**
+ * Shared values Pest tests store on $this in beforeEach() and read in the
+ * test. Declared here so PHPStan checks the names and types: a misspelled
+ * name is still an error. Add a line when a test file introduces a new one.
+ * #[AllowDynamicProperties] mirrors the classes Pest generates at runtime,
+ * and PHPStan only reads @property tags on classes that allow them.
+ *
+ * @phpstan-import-type OracleResult from FortuneBonusOracle
+ *
+ * @phpstan-type FortuneAllocation array{
+ *     incomes: array<int, int>,
+ *     levels: array<int, array{payout_mode: string, cap_paise: ?int, participants: int, points: int, point_value_paise: int, paid_paise: int}>,
+ *     guaranteed_total_paise: int,
+ *     leftover_paise: int,
+ *     is_shortfall: bool,
+ *     shortfall_per_head_paise: ?int,
+ * }
+ *
+ * @property AbstractProvider $provider Action Center provider tests
+ * @property ActionCenterService $service Action Center snooze / summary-cache tests
+ * @property User $actor
+ * @property User $operations
+ * @property stdClass $failing PayoutBuildFailureTest
+ * @property FortuneDistributionCalculator $calculator FortuneBonusVerificationTest
+ * @property FortuneBonusOracle $oracle
+ * @property OracleResult $result
+ * @property OracleResult $oracleResult
+ * @property FortuneAllocation $appResult
+ * @property array<string, mixed> $d uiDistributor() fixtures
+ * @property array<string, mixed> $root
+ * @property array<string, mixed> $l1
+ * @property array<string, mixed> $l2
+ * @property array<string, mixed> $r1
+ * @property Carbon $now
+ * @property Carbon $today
+ * @property string $docsRoot PhaseStatusCommandTest
+ * @property string $envFixture DatabaseBackupTest
+ */
+#[\AllowDynamicProperties]
 abstract class TestCase extends BaseTestCase
 {
     /**

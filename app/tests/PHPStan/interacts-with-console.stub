@@ -1,0 +1,19 @@
+<?php
+
+namespace Illuminate\Foundation\Testing\Concerns;
+
+/*
+ * PHPStan stub: artisan() returns int only after withoutMockingConsoleOutput(),
+ * which no test in this suite calls, so it is always a PendingCommand here.
+ * Without this every ->assertSuccessful()/->expectsOutputToContain() chain is
+ * "Cannot call method … on PendingCommand|int".
+ */
+trait InteractsWithConsole
+{
+    /**
+     * @param  string  $command
+     * @param  array<array-key, mixed>  $parameters
+     * @return \Illuminate\Testing\PendingCommand
+     */
+    public function artisan($command, $parameters = []) {}
+}
