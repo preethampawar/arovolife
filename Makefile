@@ -33,8 +33,23 @@ migrate: ## Run pending Laravel migrations against the dev MySQL
 
 # ── Tests / static analysis ────────────────────────────────────────────────
 
-test: ## Run the full Pest suite (SQLite :memory:, dev DB untouched)
-	@$(DOCKER_APP) php artisan test
+# Tests run on the isolated MySQL test DB. The container's OS env points at the
+# dev DB and overrides phpunit.xml, so the -e flags are required, not optional.
+# Pass extra arguments with ARGS, e.g. make test ARGS="--filter=Payout".
+TEST_DB_ENV := -e DB_CONNECTION=mysql -e DB_DATABASE=arovolife_test -e DB_HOST=db \
+	-e DB_PORT=3306 -e DB_USERNAME=arovolife -e DB_PASSWORD=secret
+
+# With no ARGS it also runs the Architecture suite in a second process (see phpunit.xml),
+# even when the main suites fail; make still exits non-zero if either fails.
+test: ## Run the full Pest suite on the arovolife_test MySQL DB (dev DB untouched)
+ifeq ($(strip $(ARGS)),)
+	@status=0; \
+	docker exec $(TEST_DB_ENV) arovolife-app php artisan test --compact || status=$$?; \
+	docker exec $(TEST_DB_ENV) arovolife-app php artisan test --compact --testsuite=Architecture || status=$$?; \
+	exit $$status
+else
+	@docker exec $(TEST_DB_ENV) arovolife-app php artisan test --compact $(ARGS)
+endif
 
 pint: ## Lint PHP files (Laravel Pint)
 	@$(DOCKER_APP) ./vendor/bin/pint

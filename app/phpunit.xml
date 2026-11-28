@@ -3,16 +3,26 @@
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true"
+         defaultTestSuite="Unit,Feature,Modules"
 >
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
+            <exclude>tests/Unit/ArchitectureTest.php</exclude>
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
         <testsuite name="Modules">
             <directory>tests/Modules</directory>
+        </testsuite>
+        <!-- The architecture tests parse every file under app/ and keep about
+             600 MB of parsed code in memory for the rest of the process, which
+             pushes a full serial run past the memory limit. They therefore run
+             as a separate process: `make test` runs this suite after the others,
+             or pass the Architecture testsuite option to artisan test. -->
+        <testsuite name="Architecture">
+            <file>tests/Unit/ArchitectureTest.php</file>
         </testsuite>
     </testsuites>
     <source>
@@ -21,6 +31,8 @@
         </include>
     </source>
     <php>
+        <!-- The architecture tests parse every file under app/; 512M is not enough. -->
+        <ini name="memory_limit" value="1G"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

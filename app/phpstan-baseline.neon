@@ -1213,12 +1213,6 @@ parameters:
 			path: app/Modules/Payments/Models/RefundIntent.php
 
 		-
-			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
-			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 1
-			path: app/Modules/Public/Http/Controllers/ContactController.php
-
-		-
 			message: '#^Method App\\Modules\\Returns\\Models\\BuybackDecision\:\:returnRequest\(\) return type with generic class Illuminate\\Database\\Eloquent\\Relations\\BelongsTo does not specify its types\: TRelatedModel, TDeclaringModel$#'
 			identifier: missingType.generics
 			count: 1

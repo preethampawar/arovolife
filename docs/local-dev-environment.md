@@ -96,10 +96,15 @@ docker exec -e DB_CONNECTION=mysql -e DB_DATABASE=arovolife_test -e DB_HOST=db \
 ```
 Or scoped to one file/filter: add `--filter=TestName tests/Path/To/Test.php`.
 
-Note: the repo-root `Makefile`'s `test` target (`docker exec arovolife-app
-php artisan test`) does **not** include these overrides — its comment
-("SQLite :memory:, dev DB untouched") is misleading; it actually needs the
-`-e` flags above to be safe. Don't rely on bare `make test`.
+The repo-root `Makefile`'s `test` target runs exactly this command, so
+`make test` is safe. Pass extra arguments with `ARGS`, e.g.
+`make test ARGS="--filter=Payout"`.
+
+The architecture tests (`tests/Unit/ArchitectureTest.php`) are their own phpunit
+suite, `Architecture`, left out of a plain `php artisan test`: they hold about
+600 MB of parsed code and would push a full serial run past the memory limit.
+`make test` with no `ARGS` runs them afterwards in a second process; on their own,
+add `--testsuite=Architecture` to the test command.
 
 `tests/TestCase.php::createApplication()` has a hard guard: it throws a
 `RuntimeException` unless the resolved database is `:memory:` or ends in
@@ -130,7 +135,7 @@ cd app && npm run build     # or `make build` from repo root
 |---|---|---|
 | `make pint` | `docker exec arovolife-app ./vendor/bin/pint` | PSR-12 lint/fix |
 | `make stan` | `docker exec arovolife-app ./vendor/bin/phpstan analyse --level=7` | Larastan |
-| `make test` | `docker exec arovolife-app php artisan test` | ⚠️ missing DB overrides, see above — don't use bare |
+| `make test` | the `arovolife_test` command above | full suite on the test DB; `ARGS="..."` for extras |
 | `make build` | `cd app && npm run build` | rebuild Tailwind/Vite assets |
 | `make migrate` | `docker exec arovolife-app php artisan migrate` | dev MySQL, forward-only |
 | `make reset` | `docker exec arovolife-app php artisan platform:reset` | wipes transactional data, rebuilds 31 reserved distributors — interactive/destructive |

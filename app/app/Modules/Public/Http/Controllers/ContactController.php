@@ -117,7 +117,7 @@ final class ContactController extends Controller
         // Route the queued notification to the configured support inbox.
         // We hand only the inquiry ID — the notification re-fetches inside
         // toMail() so PII is never serialised onto the queue payload.
-        $supportEmail = (string) config('mail.support_address', env('SUPPORT_EMAIL', 'support@arovolife.com'));
+        $supportEmail = (string) config('arovolife.support_email');
         Notification::route('mail', $supportEmail)
             ->notify(new NewContactInquiryNotification($inquiry->id));
 
