@@ -232,7 +232,7 @@ it('shows the audit log archives section to admin and developer', function (stri
         ->assertSee(route('admin.database-backups.audit.download', $file), false);
 
     if ($role === 'admin') {
-        expect(strtolower($response->getContent()))->not->toContain('restore')->not->toContain('developer');
+        expect(strtolower((string) $response->getContent()))->not->toContain('restore')->not->toContain('developer');
     }
 })->with(['admin', 'developer']);
 

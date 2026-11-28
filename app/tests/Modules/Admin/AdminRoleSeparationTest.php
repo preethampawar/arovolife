@@ -214,8 +214,8 @@ it('R17-grievance-badge: operations reads a filtered count, so the sensitive tot
     $ops = arsUser('admin-operations');
     $comp = arsUser('admin-compliance');
 
-    $opsBody = $this->actingAs($ops)->get(route('admin.dashboard'))->assertOk()->getContent();
-    $compBody = $this->actingAs($comp)->get(route('admin.dashboard'))->assertOk()->getContent();
+    $opsBody = (string) $this->actingAs($ops)->get(route('admin.dashboard'))->assertOk()->getContent();
+    $compBody = (string) $this->actingAs($comp)->get(route('admin.dashboard'))->assertOk()->getContent();
 
     // Operations holds `grievance.handle`, so the item is there — with only the
     // one non-sensitive ticket counted.

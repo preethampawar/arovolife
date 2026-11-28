@@ -120,7 +120,7 @@ it('BAN-06: the admin banners index renders a status flash exactly once (no dupl
         ->assertOk();
 
     // The layout is the single source of the flash — the view must not echo it again.
-    expect(substr_count($response->getContent(), 'Banner removed.'))->toBe(1);
+    expect(substr_count((string) $response->getContent(), 'Banner removed.'))->toBe(1);
 });
 
 it('CATBAN-01: the category page shows ONLY the category banner — the mall carousel is hidden', function (): void {

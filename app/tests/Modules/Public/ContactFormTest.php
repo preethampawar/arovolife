@@ -22,6 +22,7 @@ use App\Modules\Public\Models\ContactInquiry;
 use App\Modules\Public\Notifications\NewContactInquiryNotification;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -241,6 +242,7 @@ it('CON-005b: throttle error message mentions "Too many submissions"', function 
 
     // Verify the message text via the response's error bag (avoids the raw-array
     // issue with session() helper in the array session driver).
+    assert($response->baseResponse instanceof RedirectResponse);
     $errorBag = $response->baseResponse->getSession()->get('errors');
     $messageErrors = $errorBag->getBag('default')->get('message');
 

@@ -239,7 +239,7 @@ it('surfaces the frozen monthly pool on the GBB month screen', function () {
 it('shows the distributor their own AGP times the frozen point value', function () {
     $distributorId = gbbReportDistributor('GBBAAA', 'Alice');
     makeGbbRow($distributorId, 12, 25_000, 300_000, GbbMonthlyResult::STATUS_CREDITED, '2026-07-01');
-    $user = User::find(DB::table('distributors')->where('id', $distributorId)->value('user_id'));
+    $user = User::findOrFail((int) DB::table('distributors')->where('id', $distributorId)->value('user_id'));
 
     $this->actingAs($user)
         ->get(route('income.growth-booster', ['f' => 1]))

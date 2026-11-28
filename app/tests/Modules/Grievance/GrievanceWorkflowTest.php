@@ -387,7 +387,7 @@ it('GRV-042: the "My grievances" flash banner renders once, not twice (F79)', fu
         ->get(route('my.grievances.index'))
         ->assertOk();
 
-    expect(substr_count($response->getContent(), 'Your grievance has been registered as GRV-TEST-00001.'))->toBe(1);
+    expect(substr_count((string) $response->getContent(), 'Your grievance has been registered as GRV-TEST-00001.'))->toBe(1);
 });
 
 it('GRV-043: a grievance ticket page flash banner renders once, not twice (F79)', function () {
@@ -399,7 +399,7 @@ it('GRV-043: a grievance ticket page flash banner renders once, not twice (F79)'
         ->get(route('my.grievances.show', $ticket->id))
         ->assertOk();
 
-    expect(substr_count($response->getContent(), 'Your reply has been added.'))->toBe(1);
+    expect(substr_count((string) $response->getContent(), 'Your reply has been added.'))->toBe(1);
 });
 
 it('GRV-041: the reply form gets specific confirm-modal copy, not the generic fallback (F79)', function () {

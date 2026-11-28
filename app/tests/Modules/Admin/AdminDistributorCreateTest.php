@@ -276,7 +276,7 @@ it('ADC-07: the create form shows the welcome-letter box ticked by default', fun
         ->assertSee('Send the welcome letter')
         ->assertSeeHtml('<input type="hidden" name="send_welcome_letter" value="0">');
 
-    expect(preg_match('/name="send_welcome_letter" value="1"\\s+checked/', $response->getContent()))->toBe(1);
+    expect(preg_match('/name="send_welcome_letter" value="1"\\s+checked/', (string) $response->getContent()))->toBe(1);
 });
 
 it('ADC-08: the activation email addresses the account holder and always states free joining and cooling-off', function (): void {

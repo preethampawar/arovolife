@@ -9,7 +9,7 @@ uses(RefreshDatabase::class);
 
 it('distributor top bar has a red sign-out pill and no profile dropdown', function () {
     $d = uiDistributor();
-    $html = $this->actingAs($d['user'])->get(route('my-business'))->assertOk()->getContent();
+    $html = (string) $this->actingAs($d['user'])->get(route('my-business'))->assertOk()->getContent();
     expect($html)->not->toContain(' data-profile-menu>')
         ->toContain('data-signout-pill')
         ->toContain('bg-brand-600');
@@ -18,7 +18,7 @@ it('distributor top bar has a red sign-out pill and no profile dropdown', functi
 });
 
 it('guests get a Sign in link in the top strip before Register with us, and no main-nav Sign In button', function () {
-    $guest = $this->get(route('about'))->assertOk()->getContent();
+    $guest = (string) $this->get(route('about'))->assertOk()->getContent();
     expect($guest)->toContain('data-signin-link')->not->toContain('data-signout-pill')
         ->toContain(route('login'))
         ->not->toContain(">\n                Sign In\n            </a>");
@@ -27,7 +27,7 @@ it('guests get a Sign in link in the top strip before Register with us, and no m
 });
 
 it('guests on an upright phone keep Register with us: strip shown below sm, extras trimmed', function () {
-    $guest = $this->get(route('about'))->assertOk()->getContent();
+    $guest = (string) $this->get(route('about'))->assertOk()->getContent();
     expect($guest)->toContain('class=" bg-brand-600 text-white text-xs"')
         ->toContain('data-strip-extras class="hidden sm:contents"')
         ->not->toContain('Indian direct selling industry');
@@ -43,7 +43,7 @@ it('signed-in users keep the utility strip hidden below sm', function () {
 
 it('distributor header chip shows the ADN beside the name, on desktop and in the mobile menu', function () {
     $d = uiDistributor();
-    $html = $this->actingAs($d['user'])->get(route('my-business'))->assertOk()->getContent();
+    $html = (string) $this->actingAs($d['user'])->get(route('my-business'))->assertOk()->getContent();
     expect($html)->toContain('data-header-adn')
         ->toContain('Signed in as');
     expect(substr_count($html, $d['user']->distributor->adn))->toBeGreaterThanOrEqual(2);
@@ -51,7 +51,7 @@ it('distributor header chip shows the ADN beside the name, on desktop and in the
 
 it('sidebar has a My Profile group with Edit Profile, Change Password, My Addresses', function () {
     $d = uiDistributor();
-    $html = $this->actingAs($d['user'])->get(route('profile.password.show'))->assertOk()->getContent();
+    $html = (string) $this->actingAs($d['user'])->get(route('profile.password.show'))->assertOk()->getContent();
     expect($html)->toContain('>My Profile<')
         ->toContain('Edit Profile')->toContain('Change Password')->toContain('My Addresses');
     // On the password page only Change Password is current.

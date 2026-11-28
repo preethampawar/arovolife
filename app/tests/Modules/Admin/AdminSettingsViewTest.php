@@ -83,7 +83,7 @@ it('AS-01b: every group renders open with a search box and a jump-to index', fun
     $this->actingAs(asvSeedAdmin());
     asvSeedSetting('commerce.cooling_off.days', '30');
 
-    $html = $this->get('/admin/settings')
+    $html = (string) $this->get('/admin/settings')
         ->assertOk()
         ->assertSee('data-settings-search', false)
         ->assertSee('Jump to')

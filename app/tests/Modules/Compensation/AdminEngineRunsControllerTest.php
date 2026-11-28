@@ -251,7 +251,7 @@ it('shows the ledger entries a run wrote on the events page', function (): void 
 
     // The second run wrote nothing: only one of the two rows carries a figure,
     // the other falls back to the em-dash placeholder.
-    expect(substr_count($response->getContent(), 'entries ·'))->toBe(1);
+    expect(substr_count((string) $response->getContent(), 'entries ·'))->toBe(1);
 });
 
 it('rejects an events filter for an unknown engine key', function (): void {
@@ -763,7 +763,7 @@ it('renders a flash message exactly once, not once per view that thought it owne
 
     // The admin layout renders session('status') for every page. A view that
     // also renders its own block shows the user the same message twice.
-    expect(substr_count($response->getContent(), 'Full recompute queued.'))->toBe(1);
+    expect(substr_count((string) $response->getContent(), 'Full recompute queued.'))->toBe(1);
 });
 
 /*

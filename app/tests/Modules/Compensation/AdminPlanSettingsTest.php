@@ -137,7 +137,7 @@ it('hides the score inputs for pro-rated slabs 3–7 and shows the pool note', f
 
     // Slabs 3–7 render read-only score displays instead of inputs (KP 2026-07-29).
     $res->assertSee('Variable (pool)');
-    expect(substr_count($res->getContent(), 'name="score_value_paise"'))->toBe(2); // slabs 1–2 only
+    expect(substr_count((string) $res->getContent(), 'name="score_value_paise"'))->toBe(2); // slabs 1–2 only
 });
 
 it('no longer offers an MSB score value field and explains how both pools price', function () {

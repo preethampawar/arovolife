@@ -134,7 +134,7 @@ it('TV-02: distributor /tree shows ONLY own subtree, never an ancestor or siblin
     $leafUser = tvUser('leaf');
     $leafId = tvPlace($middleId, $leafUser);
 
-    $middleUser = User::find(DB::table('distributors')->where('id', $middleId)->value('user_id'));
+    $middleUser = User::findOrFail((int) DB::table('distributors')->where('id', $middleId)->value('user_id'));
 
     // Acting as middle — they MUST see leaf but MUST NOT see sibling or root.
     $response = $this->actingAs($middleUser)->get('/tree');
@@ -231,13 +231,13 @@ it('TV-04b: a re-rooted /tree/{adn} carries no "You" ribbon and names whose plac
 
     // Own tree: exactly one card is ribboned "You", and the banner is first-person.
     $own = $this->actingAs($rootUser->refresh())->get('/tree')->assertOk();
-    expect(substr_count($own->getContent(), '>You</p>'))->toBe(1);
+    expect(substr_count((string) $own->getContent(), '>You</p>'))->toBe(1);
     $own->assertSee('Showing your placement and descendants up to');
 
     // Re-rooted at the downline: no card is "You" — the viewer is an ancestor
     // of this canvas and so is not drawn on it at all.
     $rerooted = $this->actingAs($rootUser->refresh())->get('/tree/'.$middleAdn)->assertOk();
-    expect(substr_count($rerooted->getContent(), '>You</p>'))->toBe(0);
+    expect(substr_count((string) $rerooted->getContent(), '>You</p>'))->toBe(0);
     $rerooted->assertDontSee('Showing your placement and descendants up to');
     $rerooted->assertSee('Showing Middle Member’s placement and descendants up to', false);
 });
@@ -324,7 +324,7 @@ it('TV-09: a long leg is laid out in content-sized columns, never equal halves t
     $l2 = tvPlace($l1, tvUser('l2'), 'L');
     tvPlace($l2, tvUser('l3'), 'L');
 
-    $html = $this->actingAs($rootUser->refresh())->get('/tree?levels=4')->assertOk()->getContent();
+    $html = (string) $this->actingAs($rootUser->refresh())->get('/tree?levels=4')->assertOk()->getContent();
 
     expect(substr_count($html, 'grid-cols-[minmax(5.5rem,max-content)_minmax(5.5rem,max-content)]'))->toBe(4)
         ->and($html)->not->toContain('grid grid-cols-2 gap-0')

@@ -186,7 +186,7 @@ it('SCAT-03: product detail renders sorted rich attributes, gallery, category an
     $response->assertSee('Rich herbal body for the storefront.', false); // sanitized WYSIWYG body
 
     // Sorted: Ingredients appears before Storage in the rendered HTML.
-    $html = $response->getContent();
+    $html = (string) $response->getContent();
     expect(strpos($html, 'Ingredients'))->toBeLessThan(strpos($html, 'Keep cool and dry.'));
 });
 

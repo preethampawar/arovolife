@@ -111,7 +111,7 @@ it('highlights the just-added line on the cart page (and not other lines)', func
 
     DB::table('settings')->updateOrInsert(['key' => 'commerce.storefront.enabled'], ['value' => 'true', 'version' => 1, 'updated_at' => now()]);
 
-    $html = $this->withUnencryptedCookie(AttributionService::ANON_COOKIE, $item->cart->anonymous_key)
+    $html = (string) $this->withUnencryptedCookie(AttributionService::ANON_COOKIE, $item->cart->anonymous_key)
         ->withSession(['added_variant_id' => $item->product_variant_id])
         ->get(route('shop.cart'))
         ->assertOk()

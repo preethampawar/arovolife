@@ -72,7 +72,7 @@ it('a non-blog page does not appear in the /blogs listing', function (): void {
 it('every /p/ page the public top-nav links to exists after the production seeder', function (): void {
     $this->seed(ProductionSeeder::class);
 
-    $html = $this->get('/')->assertOk()->getContent();
+    $html = (string) $this->get('/')->assertOk()->getContent();
     preg_match_all('#href="/p/([a-z0-9-]+)"#', $html, $m);
 
     expect($m[1])->not->toBeEmpty()

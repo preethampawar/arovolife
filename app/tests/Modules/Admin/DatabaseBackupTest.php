@@ -141,7 +141,7 @@ it('shows an admin the page without any restore wording or the hidden role', fun
         ->assertSee(route('admin.database-backups.store'), false)
         ->assertDontSee(route('admin.database-backups.restore', $file), false);
 
-    expect(strtolower($response->getContent()))->not->toContain('restore')->not->toContain('developer');
+    expect(strtolower((string) $response->getContent()))->not->toContain('restore')->not->toContain('developer');
 });
 
 it('hides a restore result banner from an admin', function (): void {

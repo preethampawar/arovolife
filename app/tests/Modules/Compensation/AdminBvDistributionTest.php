@@ -61,7 +61,7 @@ it('splits the period company BV across the switched-on bonuses at their configu
     bvDistEntry(-200_000, '2026-10-06 12:00:00');    // −2,000 BV reversal
     bvDistEntry(5_000_000, '2026-09-30 12:00:00');   // previous month, excluded
 
-    $html = $this->actingAs(bvDistAdmin())
+    $html = (string) $this->actingAs(bvDistAdmin())
         ->get(route('admin.compensation.bv-distribution', ['period' => 'month', 'date' => '2026-10-10']))
         ->assertOk()
         ->assertSee('8,000 BV')                 // company BV

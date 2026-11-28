@@ -90,7 +90,7 @@ it('F100-02: states that GST is withheld and issued as a voucher where the matri
 it('F100-03: says plainly that shipping is refunded on cooling-off only', function (): void {
     [$user, $order] = rfdOrder();
 
-    $html = $this->actingAs($user)->get(route('orders.return.create', $order->order_no))
+    $html = (string) $this->actingAs($user)->get(route('orders.return.create', $order->order_no))
         ->assertOk()
         ->getContent();
 

@@ -199,7 +199,7 @@ it('POL-05b: the thread page renders its flash status once, not twice (F79)', fu
         ->assertOk();
 
     expect(substr_count(
-        $response->getContent(),
+        (string) $response->getContent(),
         'You have blocked this person. They cannot send you new messages, and they have not been told.',
     ))->toBe(1);
 });

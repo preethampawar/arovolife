@@ -243,7 +243,7 @@ function checkoutPageFor(ProductVariant $variant): string
         'unit_price_paise' => $variant->sale_price_paise, 'bv_paise' => 0, 'gst_rate_bp' => 1800,
     ]);
 
-    return test()->actingAs($user)
+    return (string) test()->actingAs($user)
         ->get(route('shop.checkout'))
         ->assertOk()
         ->getContent();

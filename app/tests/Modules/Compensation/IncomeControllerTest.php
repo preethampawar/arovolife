@@ -919,7 +919,7 @@ it('shows a forfeited day on the gsb history page and csv, with no slab badge an
         ],
     ]);
 
-    $html = $this->get(route('income.gsb-history', ['f' => 1]))
+    $html = (string) $this->get(route('income.gsb-history', ['f' => 1]))
         ->assertOk()
         ->assertSee('Repurchase not met — day not counted', false)
         // The day's raw Genos BV is shown, but no slab badge is rendered for it.

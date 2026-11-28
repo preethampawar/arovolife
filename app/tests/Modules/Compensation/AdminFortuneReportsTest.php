@@ -299,7 +299,7 @@ it('still says the engine has not run when there is neither a pool nor a result'
 it('shows the distributor their own FB points times the frozen point value', function () {
     $alice = fbReportDistributor('FBAAA1', 'Alice');
     makeFbResult($alice, 36, 200, 7_200, FortuneBonusResult::STATUS_CREDITED, '2026-07-01');
-    $user = User::find(DB::table('distributors')->where('id', $alice)->value('user_id'));
+    $user = User::findOrFail((int) DB::table('distributors')->where('id', $alice)->value('user_id'));
 
     $this->actingAs($user)
         ->get(route('income.fortune-bonus', ['f' => 1]))

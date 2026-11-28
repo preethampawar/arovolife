@@ -311,6 +311,6 @@ it('shows what the Mentorship Royalty cap withheld, per sponsor and for the day 
 
     $res->assertSee('Royalty cap withheld');
     // ₹1,44,000.00 in Indian grouping: once on the sponsor's line, once in the day total.
-    expect(substr_count($res->getContent(), '₹1,44,000.00'))->toBe(2);
+    expect(substr_count((string) $res->getContent(), '₹1,44,000.00'))->toBe(2);
     $res->assertViewHas('earners', fn (array $earners): bool => (int) $earners[$date][0]->royalty_withheld_paise === 1_44_00_000);
 });

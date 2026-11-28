@@ -246,7 +246,7 @@ it('DSH-14: the attention panel renders the service\'s own order, criticals firs
     // comparator, so re-introducing a sort in the Blade fails here.
     $admin = dashUser('admin');
 
-    $body = $this->actingAs($admin)
+    $body = (string) $this->actingAs($admin)
         ->get(panelUrl('attention'))
         ->assertOk()
         ->getContent();

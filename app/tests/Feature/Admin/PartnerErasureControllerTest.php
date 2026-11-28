@@ -116,7 +116,7 @@ it('answers 404 to every other admin role on all three routes', function (string
 it('keeps a plain partner out of the admin area on all three routes', function (): void {
     $tree = ctrlTree();
     $adn = ctrlAdn($tree['a']);
-    $partner = User::find(DB::table('distributors')->where('id', $tree['x'])->value('user_id'));
+    $partner = User::findOrFail((int) DB::table('distributors')->where('id', $tree['x'])->value('user_id'));
 
     // The admin route group's own role middleware answers 403 for a non-staff user.
     $this->actingAs($partner)->get(route('admin.distributors.erase.form'))->assertForbidden();
