@@ -148,14 +148,14 @@
                 {{-- Distributors: a plain name label. Their profile links live in
                      the sidebar's "My Profile" group; Sign out is the red pill at
                      the end of this strip. --}}
-                {{-- White box around name + ADN (client, 2026-10-10). --}}
+                {{-- White box around name + ADN (client, 2026-10-10); both bold (client, 2026-11-28). --}}
                 <span class="inline-flex items-center gap-2 pl-1 pr-3 py-0.5 rounded-full bg-white text-brand-700" data-header-identity>
                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand-600 text-white text-[10px] font-bold leading-none">{{ $initials }}</span>
-                    <span class="font-medium">{{ $name }}</span>
+                    <span class="font-bold">{{ $name }}</span>
                     {{-- The ADN beside the name so every page says whose
                          account this is (client, 2026-10-01). --}}
                     <span class="text-brand-300">·</span>
-                    <span class="font-mono tracking-wider" data-header-adn>{{ $user->distributor->adn }}</span>
+                    <span class="font-mono font-bold tracking-wider" data-header-adn>{{ $user->distributor->adn }}</span>
                 </span>
             @endif
         @endguest
